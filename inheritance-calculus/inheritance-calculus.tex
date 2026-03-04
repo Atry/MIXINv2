@@ -1770,6 +1770,72 @@ fewer abstractions, worse ergonomics, no new expressiveness.
 None of these reductions exhibits emergent phenomena
 absent from the model it reduces.
 
+%% === 审稿人备忘：SF-calculus 与 inheritance-calculus 的关系 ===
+%%
+%% Barry Jay 的 SF-calculus（Intensional Computation with Higher-Order
+%% Functions, TCS 2019, doi:10.1016/j.tcs.2019.02.016；前身为
+%% Confusion in the Church-Turing Thesis, arXiv:1410.7103, 2014）
+%% 和 inheritance-calculus 都试图解决 λ-calculus 的 extensionality 限制，
+%% 但方向完全不同。
+%%
+%% 共同出发点：λ-calculus 是 extensional 的——只能观察函数的输入输出行为，
+%% 无法检查程序的内部结构。两个内部结构不同但行为相同的 λ 项不可区分。
+%%   - Jay 的诊断：λ-calculus 缺乏 intensional 操作（检查项的结构），
+%%     无法定义结构等式判定。
+%%   - 本文的诊断：λ-calculus 的 function body 是 closed 的，无法从外部
+%%     添加新的可观察投影（open extension）。
+%%
+%% 核心机制对比：
+%%   SF-calculus：保留 S、K（或 λ），添加 F（factorisation）算子，
+%%     可以将闭合范式拆解为组成部分。程序仍然是函数，只是多了检查函数
+%%     结构的能力。属于 λ-calculus 的 *扩展*。
+%%   Inheritance-calculus：用三个不同的原语（record、definition、
+%%     inheritance）替代 λ-calculus 的三个原语。β-reduction 是 deep merge
+%%     的特例（Section 3 的翻译 T 将函数应用映射为继承）。
+%%     属于 λ-calculus 的 *包含*（subsumption）。
+%%
+%% 关于 F 算子的编码：
+%%   F 做两件事：(1) 判断结构形态（atom vs. compound），
+%%   (2) 提取子部分。
+%%   在 inheritance-calculus 中：
+%%     - 提取子部分是平凡的：所有值都是透明 record，通过 qualified this
+%%       投影任意 slot 即可。Theorem 6 的 separating context 就在读取
+%%       argument slot（↑².argument）。
+%%     - 判断结构形态并分支：需要 Visitor pattern（Section 4）。
+%%       NatVisitor 对 Nat 做的事情与 F 对 SF-calculus 项做的事情
+%%       完全对应：VisitZero/VisitSuccessor 对应 F 的 atom/compound
+%%       分支。Visitor 可以通过 open extension 添加到已有 term 上，
+%%       不修改原始定义。
+%%   Visitor 在精神上就是 F：两者都是对 closed normal form 做
+%%   constructor dispatch。区别在于 F 是不可扩展的 built-in primitive
+%%   （硬编码了 S 和 F 两个 atom），而 Visitor 是可扩展的 encoding
+%%   （新增 constructor 只需继承新的 Visit* 分支，即 Expression Problem
+%%   immunity）。
+%%
+%% 精确差异：
+%%   SF-calculus 把 intensional observation 做成了 object-level 的
+%%   primitive reduction rule（F 是一个 term）；
+%%   inheritance-calculus 把它留在了 meta-level（观察者总能通过
+%%   properties(p) 查询任何路径），而 term-level 的分支需要通过
+%%   Visitor pattern 显式编码。
+%%   换言之：inheritance-calculus 中 F 的 *读取* 能力是免费的
+%%   （所有值都是透明 record），但 F 的 *分支* 能力需要 Visitor。
+%%   SF-calculus 的 F 则把读取和分支捆绑在一个不可扩展的 primitive 里。
+%%   Visitor 是可扩展的（新增 constructor 只需继承新分支，
+%%   即 Expression Problem immunity），而 F 硬编码了固定的 atom 集合
+%%   （S 和 F）。
+%%
+%% 关于 Jay 所谓的 "trivial solution of the Halting Problem"：
+%%   Jay 用非标准编码将每个程序（包括不停机的）映射到闭合范式（静态数据），
+%%   然后结构等式判定变得平凡。这并不推翻图灵定理——它改变了问题的
+%%   形式化方式（把程序当静态数据而非可执行代码），而非解决了原来的问题。
+%%   Jay 的真正论点是：λ-definability 和 Turing computability 不是同一回事，
+%%   Church-Turing Thesis 的等价性证明隐含了编码假设。
+%%
+%% 正文篇幅不够论述 embeds SF-calculus，暂不展开。
+%% 如果审稿人提到 SF-calculus，可以基于上述分析撰写回复或补充段落。
+%% ================================================================
+
 \paragraph{Semantic descriptions of the $\lambda$-calculus}
 The semantics of the $\lambda$-calculus can be defined in
 several fundamentally different ways.
