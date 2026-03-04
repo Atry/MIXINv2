@@ -699,6 +699,81 @@ and the six equations form a memoizable
 dynamic-programming recurrence keyed by paths.
 No separate operational semantics is needed.
 
+%% === 审稿人备忘：六个方程的渐近复杂度分析 ===
+%%
+%% 论文声称语义是一阶的，审稿人可能追问：一阶性是否带来额外的
+%% 计算开销？下面按场景分析。
+%%
+%% 关键观察：set comprehension 自动去重（集合语义），加上路径
+%% intern（结构相等退化为指针相等）和 memoization，相同的
+%% (path, query) 对只计算一次。这不是可选的优化，而是集合语义
+%% 的固有性质——集合不会包含重复元素。
+%%
+%% --- 场景 1：λ-calculus 翻译 ---
+%% Single-Path Lemma (Lemma 3) 保证 this 的 frontier 集合 S
+%% 始终只有一个元素。每个路径的 overrides 也只有一个元素。
+%% bases 每个节点最多一个继承源。supers 的传递闭包是线性链。
+%% 复杂度：O(n)，其中 n 是 ANF term 的大小。
+%% 与传统环境机（environment machine）一致。
+%%
+%% --- 场景 2：Object algebra（k 个 constructor，t 个 operation 文件，m 个字段） ---
+%% 多个 operation 文件各自继承同一个 data 文件，然后在最终组合时
+%% merge。每个 constructor 在每个 operation 文件里各有一个定义，
+%% 通过 overrides 合并，所以 overrides 大小为 O(t)。
+%%
+%% 关键点：this 的 frontier 是 1，不是"去重后 O(1)"，就是 1。
+%% 原因：qualified this 解析的是外层 scope（如 NatFactory），
+%% 而这个外层 scope 在继承链上只有一条路径到达——因为是从一个
+%% 具体的 operation 定义点出发往上走的。multi-target this 的前提
+%% 是同一个定义点被继承到多个不同的 site，这只在 trie union 时
+%% 发生。Object algebra 的继承是把多个 operation merge 到同一个
+%% factory 上，不是把多个 factory merge 成一个值。方向不同。
+%%
+%% 这也解释了与 Scala 的关系：Scala 拒绝 multi-path inheritance
+%%（Appendix B 的 "conflicting base types"），但在 object algebra
+%% 场景下 this 本来就是 single-target 的，所以 Scala 的拒绝是
+%% 过度保守——它拒绝了一类去重后（实际上根本不需要去重，因为
+%% frontier 就是 1）完全合法的组合。
+%%
+%% 复杂度：O(k · m · t)，与 Scala trait linearization 一致。
+%%
+%% --- 场景 3：Nat/BinNat/Boolean 算术 ---
+%% 数值的递归深度为 n（Nat 值的大小），每次递归触发一次 this
+%% 解析（single-target），遍历 O(t) 个 override。
+%% Nat 算术复杂度：O(n · t)，即 Peano 算术 + 常数因子。
+%% BinNat 算术复杂度：O(log n · t)，即二进制算术 + 常数因子。
+%%
+%% --- 场景 4：Cartesian product / 逻辑编程 ---
+%% 这是唯一出现真正 multi-target this 的场景。
+%% trie union 的 bases 包含多条路径，每条路径的 addend 通过
+%% this 解析到另一个 trie union，路径数相乘。
+%% 对于 |R₁| × |R₂| 的 join，复杂度为 O(|R₁| · |R₂|)
+%% （memoization 下）。
+%%
+%% 这与 B-Tree 引擎的 Datalog nested-loop join 复杂度一致。
+%% trie 天然有索引——路径本身是前缀树，共享前缀的值自动共享
+%% 计算（memoization 命中）。这与 Datalog 引擎对 B-Tree 做
+%% prefix scan 在精神上一致。
+%%
+%% --- 总结 ---
+%%
+%% | 场景               | 复杂度              | 对比               |
+%% |--------------------|---------------------|--------------------|
+%% | λ-calculus         | O(n)                | = 环境机           |
+%% | Object algebra     | O(k·m·t)            | = Scala线性化      |
+%% | Nat 算术           | O(n·t)              | = Peano 算术       |
+%% | BinNat 算术        | O(log n · t)        | = 二进制算术       |
+%% | Cartesian product  | O(|R₁|·|R₂|)       | = nested-loop join |
+%%
+%% 每个场景都与对应的专用引擎复杂度一致。一阶性没有带来额外开销。
+%%
+%% Single-Path Lemma 的适用范围比论文明示的更大：不仅 λ-calculus
+%% 翻译是 single-path，所有不涉及 trie union 的正常 OOP/object
+%% algebra 代码都是 single-path。multi-target this 是 trie union
+%% 的专属现象，而 trie union 对应的恰好是关系代数的 join，其
+%% 复杂度是固有的，与引擎无关。
+%% ================================================================
+
 \section{Embedding the \texorpdfstring{$\lambda$}{λ}-Calculus}
 \label{sec:translation}
 \label{sec:forward-translation}
@@ -1116,6 +1191,39 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Visitor}$:
             \mathrm{equal} \mapsto \{
     \mathrm{OtherVisitor}.\mathrm{Visit}.\mathrm{equal}\}\}\}\}\}
 \end{align*}}
+%% === 审稿人备忘：关于代码"冗长"的回应 ===
+%%
+%% NatEquality 的定义看起来比等价的 Haskell 或 ML 模式匹配更长，
+%% 但这种冗长与 point-free / 组合子风格的"简洁"形成的对比是表面的。
+%% 需要区分两种"长"：
+%%
+%% 1. 自描述式的长：每个中间步骤都有名字（如 _recursiveEquality、
+%%    OtherVisitor），步骤写得详细。名字本身是零成本的语义锚点。
+%% 2. 组合子膨胀式的长：如 SKI bracket abstraction 的指数级膨胀，
+%%    在玩具例子里看起来精炼，但在真实程序中复杂度是 λ-calculus 的
+%%    多项式甚至指数倍，而且没有涌现出新的计算模式（论文 Related Work
+%%    已指出这一点）。
+%%
+%% Inheritance-calculus 的"冗长"属于第一种，而且是结构上的必要代价：
+%% 每个有名字的中间步骤既是代码，也是 mixin 树上可路径寻址、可扩展的
+%% 节点。这正是 open extension 的前提——无法扩展匿名的子表达式。
+%% 如果加语法糖把名字隐藏（如同 M-表达式之于 S-表达式），反而会
+%% 破坏这一性质。Lisp 社区的历史经验表明，S-表达式的"冗长"最终
+%% 被证明是优势（代码即数据，宏系统直接操作统一结构），M-表达式
+%% 的语法糖从未被真正需要。
+%%
+%% 在 AI 辅助编程的语境下，这种显式命名的风格尤其有利：
+%% _recursiveEquality 这样的名字对 LLM 而言是自带的 chain-of-thought，
+%% 比起让 AI 猜测 point-free 管道中第 n 个组合子的意图，
+%% 每个自描述的步骤都降低了生成和理解的认知负荷。
+%% 考虑到未来越来越多的代码将由 AI 生成和维护，
+%% 多写几个 token 的显式名称不是成本，而是投资。
+%%
+%% 当然，如果确实需要更紧凑的表面语法，为 inheritance-calculus 加一个
+%% ANF 预处理器（自动为匿名子表达式生成名字）并不困难，
+%% 正如 ANF 变换本身是机械化的。但这是表面语法的选择，
+%% 不影响演算本身的语义。
+%% ================================================================
 Composing $\mathrm{NatPlus}$ with $\mathrm{NatEquality}$ by
 inheriting both, with no modifications to either file, gives the
 resulting Nat values both $\mathrm{Plus}$ and $\mathrm{Equal}$
