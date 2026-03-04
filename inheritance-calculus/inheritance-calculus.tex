@@ -299,8 +299,8 @@ All tests are mechanically verified against expected output snapshots.
       and the judgments are first-order inductive
       definitions~\cite{aczel1977inductive} over paths
       and labels, where quantifiers range over paths and labels,
-    never over functions or predicates.}
-    and computable; no function spaces, substitution, or
+    never over functions or predicates.},
+    denotational, and computable; no function spaces, substitution, or
     separate operational semantics are needed.
   \item Self-referential records require no fixed-point combinator;
     the mixin tree \emph{is} the call stack.
@@ -319,7 +319,7 @@ All tests are mechanically verified against expected output snapshots.
     $\lambda$-calculus coincide with a sublanguage of
     inheritance-calculus's first-order semantics.
     As a corollary, the lazy $\lambda$-calculus has a
-    first-order and computable semantics in its own right
+    first-order denotational computable semantics in its own right
     (Appendix~\ref{app:lambda-fixpoint}).
   \item Inheritance-calculus is strictly more expressive than
     the lazy $\lambda$-calculus in Felleisen's
