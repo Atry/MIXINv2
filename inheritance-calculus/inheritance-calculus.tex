@@ -437,22 +437,9 @@ Its semantics is purely \emph{observational}: given an
 inheritance-calculus program, one queries whether a
 label $\ell$ is a property at a given position $p$.
 
-This section defines the semantics as an indexed
-hylomorphism~\cite{meijer1991functional,loh2011generic},
-a family of mutually recursive unfold--fold
-pairs, over six set-comprehension equations on paths,
-in the style of fixpoint
-semantics~\cite{vanemden1976semantics} and inductive
-definitions~\cite{aczel1977inductive}.
-Each semantic function has its own coalgebra (one-level
-exploration) and algebra (combination), and the indexed
-hylomorphism ties them together.
-The equations are well-defined for every query whose
-recursive evaluation terminates: the reachable dependency
-subgraph is necessarily finite and acyclic, so the equations
-have a unique solution
-(Appendix~\ref{app:well-definedness}).
-The six equations map object-oriented concepts to
+This section defines the semantics via six mutually recursive
+first-order functions on paths.
+The six functions map object-oriented concepts to
 set-theoretic operations: $\properties$ and $\supers$
 generalize member lookup and inheritance chains,
 $\overrides$ and $\bases$ capture method override and
@@ -523,10 +510,6 @@ Both $\defines$ and $\inherits$ are pure data; they are not functions
 of runtime state.
 Given these two primitives, we can now answer the question
 posed at the beginning of this section.
-The answer is a system of six mutually recursive functions
-$\properties$, $\supers$, $\overrides$, $\bases$, $\resolve$,
-$\this$
-defined below.
 
 \paragraph{Properties}
 The properties of a path are its own properties together with
@@ -549,8 +532,8 @@ plus the $\overrides$ of each
 direct base $\bases$ of $p$, and so on transitively.
 Each result is paired with the inheritance-site context
 $\init(p_{\mathrm{base}})$ through which it is reached.
-Qualified this resolution (the $\this$ function defined below)
-uses this provenance to map a definition-site mixin back to
+This provenance is needed by qualified this resolution, i.e.\ the $\this$ function defined below,
+to map a definition-site mixin back to
 the inheritance-site paths that incorporate it:
 \begin{equation}\label{eq:supers}
   \supers(p) =
@@ -671,29 +654,29 @@ At each step $\init$ shortens $p_{\mathrm{def}}$ by one label
 and $n$ decreases by one.
 Since $n$ is a nonnegative integer, the recursion terminates.
 
-This completes the six mutually recursive functions.
+This completes the chain of definitions needed to compute $\properties(p)$.
 
 \subsection{Recursive Evaluation}
-Equations~(\ref{eq:properties})--(\ref{eq:this})
+The definitions~(\ref{eq:properties})--(\ref{eq:this})
 define set membership recursively:
 $\ell \in \properties(p)$ holds if and only if it can
 be established by a finite chain of applications of
-these equations.
+these functions.
 The six functions decompose into an indexed
 hylomorphism~\cite{meijer1991functional,loh2011generic}
 $\hylo{\Idx}$, a pattern of structured mutual
 recursion~\cite{mcbride2015turing};
 Appendix~\ref{app:well-definedness} gives the explicit
-coalgebra--algebra decomposition for each equation,
+coalgebra--algebra decomposition for each function,
 proves well-definedness for terminating queries,
 and characterises divergence via the final coalgebra.
 
 Since hylomorphisms are a computation
-model~\cite{hinze2015conjugate}, the equations \emph{are}
+model~\cite{hinze2015conjugate}, the functions \emph{are}
 the interpreter: the observer drives the computation by
 choosing which path to inspect, and each coalgebra
 unfolds on demand.
-The equations are pure and order-independent, so the
+The functions are pure and order-independent, so the
 reflexive-transitive closure $\bases^*$
 in~(\ref{eq:supers}) may be explored breadth-first or
 depth-first without affecting the result;
@@ -2333,9 +2316,9 @@ dependency graph.
 Fix an AST with its primitive functions $\defines$ and
 $\inherits$.
 The \emph{dependency graph}~$G$ has as vertices all
-semantic-function applications\linebreak
+semantic-function applications
 ($\properties(p)$, $\supers(p)$, $\overrides(p)$,
-$\bases(p)$, $\resolve(\ldots)$,
+  $\bases(p)$, $\resolve(\ldots)$,
 $\this(\ldots)$) that arise from the AST\@.
 There is a directed edge from vertex~$u$ to vertex~$v$
 whenever computing~$u$ via
@@ -2379,20 +2362,20 @@ $\hyloi{i} = \varphi_i \circ F_i(\hylo{\Idx}) \circ \alpha_i$%
   \{\,\overrides(p),\;\bases(p)\,\} \notag \\
   &\quad{}\cup\;
   \{\,\supers(p_{\mathrm{base}}) \;|\;
-    p_{\mathrm{base}} \in R_{\bases(p)}\,\}
+  p_{\mathrm{base}} \in R_{\bases(p)}\,\}
   \\
   \varphi_{\supers}(
     p,\;R_{\overrides(p)},\;
-      R_{\bases(p)}, \notag \\
-  \quad
+    R_{\bases(p)}, \notag \\
+    \quad
     (R_{\supers(p_{\mathrm{base}})})_{
-      p_{\mathrm{base}} \in R_{\bases(p)}}
+    p_{\mathrm{base}} \in R_{\bases(p)}}
   ) &\;=\;
   \{\,(\init(p),\; p_{\mathrm{override}})
     \;|\;
     p_{\mathrm{override}}
-      \in R_{\overrides(p)}\,\}%
-    \footnote{The functions $\init$ and $\last$ are
+  \in R_{\overrides(p)}\,\}%
+  \footnote{The functions $\init$ and $\last$ are
     defined only for non-root paths
     (Section~\ref{sec:mixin-trees}).
     When $p = ()$, the value $\init(p)$ in the first
@@ -2413,16 +2396,16 @@ $\hyloi{i} = \varphi_i \circ F_i(\hylo{\Idx}) \circ \alpha_i$%
     $\init(p_{\mathrm{def}})$
     where $p_{\mathrm{def}}$ always originates
     from an $\inherits$ entry and is therefore
-    non-root.}
+  non-root.}
   \notag \\
   &\quad{}\cup\;
   \{\; (p_{\mathrm{site}},\; p_{\mathrm{override}})
     \;|\; \notag \\
-  &\qquad
+    &\qquad
     p_{\mathrm{base}} \in R_{\bases(p)},\; \notag \\
-  &\qquad
+    &\qquad
     (p_{\mathrm{site}},\; p_{\mathrm{override}})
-      \in R_{\supers(p_{\mathrm{base}})}
+    \in R_{\supers(p_{\mathrm{base}})}
   \;\}
 \end{align}
 The second batch of sub-queries depends on
@@ -2454,9 +2437,9 @@ $\supers \to \bases \to \supers$.
     \{p\}
     \;\cup\;
     \{\; p_{\mathrm{branch}} \snoc \last(p) \;|\; \\
-    \qquad
+      \qquad
       (\_,\; p_{\mathrm{branch}}) \in R_{\supers(\init(p))}, \\
-    \qquad
+      \qquad
       \last(p) \in \defines(p_{\mathrm{branch}})
     \;\}
     & \text{if } p \neq ()
@@ -2473,35 +2456,35 @@ $\supers \to \bases \to \supers$.
   \{\,
     \resolve(\init(p),\;
       p_{\mathrm{override}},\;
-      n,\;\ell_{\mathrm{down},*})
+    n,\;\ell_{\mathrm{down},*})
     \notag \\
-  &\qquad\;|\;
+    &\qquad\;|\;
     p_{\mathrm{override}} \in R_{\overrides(p)}, \notag \\
-  &\qquad\phantom{\;|\;}
+    &\qquad\phantom{\;|\;}
     (n,\; \ell_{\mathrm{down},*})
-      \in \inherits(p_{\mathrm{override}})
+    \in \inherits(p_{\mathrm{override}})
   \,\}
   \\
   \varphi_{\bases}(
     p,\;
-      R_{\overrides(p)}, \notag \\
-  \quad
+    R_{\overrides(p)}, \notag \\
+    \quad
     (R_{\resolve(
-      \init(p),\,p_{\mathrm{override}},\,
+          \init(p),\,p_{\mathrm{override}},\,
       n,\,\ell_{\mathrm{down},*})}
     )
   ) &\;=\;
   \{\; p_{\mathrm{target}} \;|\; \notag \\
-  &\;\;
+    &\;\;
     p_{\mathrm{override}} \in R_{\overrides(p)}, \notag \\
-  &\;\;
+    &\;\;
     (n,\; \ell_{\mathrm{down},*})
-      \in \inherits(p_{\mathrm{override}}), \notag \\
-  &\;\;
+    \in \inherits(p_{\mathrm{override}}), \notag \\
+    &\;\;
     p_{\mathrm{target}} \in
-      R_{\resolve(\init(p),\,
+    R_{\resolve(\init(p),\,
         p_{\mathrm{override}},\,
-        n,\,\ell_{\mathrm{down},*})}
+    n,\,\ell_{\mathrm{down},*})}
   \;\}
 \end{align}
 Like $F_{\supers}$, the functor $F_{\bases}$ is a
@@ -2512,7 +2495,7 @@ result~$R_{\overrides(p)}$.
 \noindent\textbf{(5)\;$\resolve$.}
 \begin{align}
   \alpha_{\resolve}(p_{\mathrm{site}},\; p_{\mathrm{def}},\;
-    n,\; \ell_{\mathrm{down},*})
+  n,\; \ell_{\mathrm{down},*})
   &\;=\;
   \{\,
     \this(\{p_{\mathrm{site}}\},\; \init(p_{\mathrm{def}}),\; n)
@@ -2520,10 +2503,10 @@ result~$R_{\overrides(p)}$.
   \\
   \varphi_{\resolve}(
     p_{\mathrm{site}},\; p_{\mathrm{def}},\;
-      n,\; \ell_{\mathrm{down},*}, \notag \\
-  \quad
+    n,\; \ell_{\mathrm{down},*}, \notag \\
+    \quad
     R_{\this(\{p_{\mathrm{site}}\},\,
-      \init(p_{\mathrm{def}}),\,n)}
+    \init(p_{\mathrm{def}}),\,n)}
   ) &\;=\;
   \{\;
     p_{\mathrm{current}}
@@ -2531,10 +2514,10 @@ result~$R_{\overrides(p)}$.
     \snoc \cdots
     \snoc \ell_{\mathrm{down},k}
     \notag \\
-  &\quad\;|\;
+    &\quad\;|\;
     p_{\mathrm{current}} \in
-      R_{\this(\{p_{\mathrm{site}}\},\,
-        \init(p_{\mathrm{def}}),\,n)}
+    R_{\this(\{p_{\mathrm{site}}\},\,
+    \init(p_{\mathrm{def}}),\,n)}
   \;\}
 \end{align}
 
@@ -2545,32 +2528,32 @@ result~$R_{\overrides(p)}$.
   \begin{cases}
     \emptyset & \text{if } n = 0 \\[4pt]
     \{\,\supers(p_{\mathrm{current}}) \;|\;
-      p_{\mathrm{current}} \in S\,\} \\
+    p_{\mathrm{current}} \in S\,\} \\
     \;\cup\;
     \{\,\this(S',\;
-      \init(p_{\mathrm{def}}),\;
-      n - 1)\,\}
+        \init(p_{\mathrm{def}}),\;
+    n - 1)\,\}
     & \text{if } n > 0
   \end{cases}
-\intertext{where
-$S' = \{\,p_{\mathrm{site}} \;|\;
-  p_{\mathrm{current}} \in S,\;
-  (p_{\mathrm{site}},\; p_{\mathrm{override}})
-    \in R_{\supers(p_{\mathrm{current}})},\;
+  \intertext{where
+    $S' = \{\,p_{\mathrm{site}} \;|\;
+      p_{\mathrm{current}} \in S,\;
+      (p_{\mathrm{site}},\; p_{\mathrm{override}})
+      \in R_{\supers(p_{\mathrm{current}})},\;
   p_{\mathrm{override}} = p_{\mathrm{def}}\,\}$.}
   \varphi_{\this}(
     S,\; p_{\mathrm{def}},\; n, \notag \\
-  \quad
+    \quad
     (R_{\supers(p_{\mathrm{current}})})_{
-        p_{\mathrm{current}} \in S}, \notag \\
-  \quad
+    p_{\mathrm{current}} \in S}, \notag \\
+    \quad
     R_{\this(S',\,\init(p_{\mathrm{def}}),\,n-1)}
   ) &\;=\;
   \begin{cases}
     S & \text{if } n = 0 \\[4pt]
     R_{\this(S',\,
-      \init(p_{\mathrm{def}}),\,
-      n-1)}
+        \init(p_{\mathrm{def}}),\,
+    n-1)}
     & \text{if } n > 0
   \end{cases}
 \end{align}
@@ -2633,7 +2616,7 @@ reachable dependency subgraph.
 Termination implies that the reachable subgraph of~$G$ is
 finite (finitely many vertices visited) and acyclic
 (a cycle $v_0 \to \cdots \to v_0$ would require
-the value of~$v_0$ before it has been determined,
+  the value of~$v_0$ before it has been determined,
 giving infinite recursion).
 On this finite DAG the restriction of each~$\alpha_i$
 is a well-founded (recursive)
@@ -3245,7 +3228,7 @@ constructs of $\mathscr{L}_2$ in $\mathscr{L}_0$.
 \begin{proof}
 Each construct~$F$ of~$\mathscr{L}_2$ has a fixed
 syntactic abstraction~$A_F^{(2)}$
-over~$\mathscr{L}_1$.\linebreak
+over~$\mathscr{L}_1$.
 Each $\mathscr{L}_1$-construct~$G$ appearing
 in~$A_F^{(2)}$ has a fixed
 syntactic abstraction~$A_G^{(1)}$
@@ -3429,9 +3412,9 @@ We check each rule of $\mathcal{T}$
     Binary.\newline
     $A(\cdot_1, \cdot_2) =
     \{\mathrm{tailCall} \mapsto
-    \{\cdot_1,\;
+      \{\cdot_1,\;
       \mathrm{argument} \mapsto \cdot_2\},\;
-    \mathrm{result} \mapsto
+      \mathrm{result} \mapsto
     \mathrm{tailCall}.\mathrm{result}\}$.
 \end{enumerate}
 In each case the syntactic abstraction~$A_F$ is a fixed
@@ -3592,7 +3575,7 @@ Define the context $C[\cdot]$ as:
   \mathrm{extended} = \{[\cdot],\;
     \mathrm{eq} \mapsto \{
       \mathrm{result} \mapsto \{ \\
-  &\quad
+        &\quad
         \mathrm{result} \mapsto \{
           \mathrm{repr} \mapsto \{
             \mathrm{firstOperand}
@@ -4095,7 +4078,7 @@ $\mathrm{tailCall}.\mathrm{result}$.
 
 \smallskip\noindent
 A $\lambda$-bound variable~$\dbi{n}$ used as an
-inheritance source at an application\linebreak
+inheritance source at an application
 node~$p$ contributes
 $(n,\; (\mathrm{argument}))$
 to~$\refs(p)$: navigate up~$n$ scope levels,
@@ -4256,11 +4239,11 @@ divergence.
 An ANF term $M$ \emph{converges}, written $M{\Downarrow}$,
 if there exists $n \ge 0$ such that
 \[
-  \{\mathrm{argument},\, \mathrm{result}\}
-  \;\subseteq\;
-  \labels\!\bigl(\,\underbrace{
+\{\mathrm{argument},\, \mathrm{result}\}
+\;\subseteq\;
+\labels\!\bigl(\,\underbrace{
     \mathrm{result} \snoc \cdots \snoc \mathrm{result}
-  }_{n}\,\bigr)
+}_{n}\,\bigr)
 \]
 in the semantics defined by the equations above.
 This corresponds exactly to the B\"ohm
