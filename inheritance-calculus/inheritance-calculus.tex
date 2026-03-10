@@ -868,6 +868,10 @@ In the value $\mathbf{let}$-binding rule, $x$ wraps $\mathcal{T}(V)$
 under a $\mathrm{result}$ child so that the uniform accessor
 $x.\mathrm{result}$ yields $\mathcal{T}(V)$, the translated value
 itself.
+This extra wrapper is semantically inert but proof-relevant:
+it lets the same $\mathrm{result}$-following argument used for
+applications extend uniformly to value
+$\mathbf{let}$-bindings in the adequacy proof below.
 In the tail-call rule, the fresh label $\mathrm{tailCall}$ serves
 the same purpose, and $\mathrm{result}$ projects the answer.
 In the application and tail-call cases, the inheritance that
@@ -2331,25 +2335,29 @@ requires the value of~$v$.
 \label{def:tp-operator}
 Let $\mathcal{Q}$ be the set of all
 semantic-function queries
-(vertices of~$G$), and let
-$\mathcal{V}$ be the set of possible answer values
+(vertices of~$G$).
+For each query $q \in \mathcal{Q}$, let
+$\mathcal{V}_q$ be the set of answer values of the
+appropriate shape for~$q$
 (paths, sets of paths, or sets of pairs of paths,
-depending on the equation).
-A \emph{query--answer map} is a function
-$M : \mathcal{Q} \to \mathcal{P}(\mathcal{V})$
-assigning to each query a set of answer values.
+depending on the equation defining~$q$).
+A \emph{query--answer map} is an element of the
+pointwise product
+$\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q)$;
+equivalently, it assigns to each query~$q$ a set
+$M(q) \subseteq \mathcal{V}_q$ of candidate answers.
 The \emph{immediate consequence
 operator}~\cite{vanemden1976semantics}
 $T_P$ maps a query--answer map~$M$ to a new
-query--answer map~$T_P(M)$ by evaluating the
-right-hand side of each
-equation~(\ref{eq:properties})--(\ref{eq:this}),
-substituting $M(q)$ for every sub-query~$q$.
+query--answer map~$T_P(M)$ by evaluating, for each
+query~$q$, the right-hand side of the equation that
+defines~$q$, interpreting every sub-query~$q'$ by
+the current approximation~$M(q')$.
 \end{definition}
 
 \begin{lemma}[Monotonicity]\label{lem:monotonicity}
 The operator $T_P$ is monotone on the complete lattice
-$(\mathcal{Q} \to \mathcal{P}(\mathcal{V}),\; \subseteq)$.
+$\Bigl(\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q),\; \subseteq\Bigr)$.
 \end{lemma}
 
 \begin{proof}
@@ -2369,11 +2377,11 @@ $\mathrm{lfp}(T_P)$.
 \end{theorem}
 
 \begin{proof}
-The powerset lattice
-$(\mathcal{P}(\mathcal{V}), \subseteq)$
+Each powerset lattice
+$(\mathcal{P}(\mathcal{V}_q), \subseteq)$
 is complete,
-so the pointwise lattice
-$(\mathcal{Q} \to \mathcal{P}(\mathcal{V}), \subseteq)$
+so the pointwise product lattice
+$\Bigl(\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q), \subseteq\Bigr)$
 is also complete.
 By the Knaster--Tarski
 theorem~\cite{tarski1955lattice},
@@ -2442,15 +2450,32 @@ For~(2), the implementation accumulates via
 $A \leftarrow A \cup T_P(A)$, which is monotone in~$A$.
 
 For~(3), when no reentry occurs, the evaluation is
-ordinary memoised recursion on a (finite, acyclic)
-subgraph and computes the exact value.
-When reentry occurs and $A = A \cup T_P(A)$,
-$A$ is a post-fixed point of~$T_P$.
-Since $A$ was built by iterating from
-$\bot = \lambda q.\, \varnothing$,
-it is the \emph{least} post-fixed point, i.e.\
-$\mathrm{lfp}(T_P)$ restricted to the reachable
-queries.
+ordinary memoised recursion on a finite acyclic
+reachable subgraph, so every sub-query is computed
+exactly and no approximation is involved.
+When reentry occurs, let $R \subseteq \mathcal{Q}$ be
+the set of queries reachable from the initial query,
+and let $T_P^R$ denote the restriction of $T_P$ to
+maps on~$R$.
+If the accumulator is stable, i.e.\
+$A = A \cup T_P^R(A)$, then
+$T_P^R(A) \subseteq A$, so $A$ is a pre-fixed point
+of~$T_P^R$.
+
+By~(1), every fact ever added to the accumulator was
+produced by some right-hand side evaluation and
+therefore belongs to $\mathrm{lfp}(T_P^R)$.
+Hence $A \subseteq \mathrm{lfp}(T_P^R)$.
+
+Conversely, by the Knaster--Tarski characterization
+of the least fixed point as the least pre-fixed
+point, $\mathrm{lfp}(T_P^R)$ is contained in every
+pre-fixed point of~$T_P^R$, in particular in~$A$.
+Thus $\mathrm{lfp}(T_P^R) \subseteq A$.
+
+Therefore $A = \mathrm{lfp}(T_P^R)$, i.e.\ the stable
+accumulator equals the exact denotation on the
+reachable queries.
 
 For~(4), budget exhaustion and stack overflow both
 produce exceptions, never silent wrong answers.
@@ -2623,6 +2648,22 @@ $\mathcal{T}(V_1)$.
 Inside $\mathcal{T}(M)$, the induction hypothesis applies
 directly.
 
+\paragraph{Case
+  $\mathcal{T}(\mathbf{let}\; x = V
+  \;\mathbf{in}\; M)
+  = \{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
+\mathrm{result} \mapsto \mathcal{T}(M)\}$}
+The outer record has own properties $\{x, \mathrm{result}\}$
+and no inheritance sources at the outer level, so
+$\overrides(\text{root}) = \{\text{root}\}$.
+The $x$ subtree is itself a record literal with own
+property $\{\mathrm{result}\}$ and no inheritance
+sources.
+Thus neither entering the bound value nor entering the
+body introduces branching in $\supers$.
+By induction, the single-path property holds inside both
+$\mathcal{T}(V)$ and $\mathcal{T}(M)$.
+
 \paragraph{Case $\mathcal{T}(V_1\; V_2) =
   \{\mathrm{tailCall} \mapsto
     \{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto
@@ -2646,15 +2687,19 @@ sub-term under~$\mathcal{T}$, so each step of $\this$
 encounters exactly one matching pair in $\supers$.
 
 \medskip\noindent
-The key structural invariant is that the translation
-$\mathcal{T}$ never produces two independent inheritance sources
-at the same scope level that both define the same label.
-In every case, application inheritances are \emph{encapsulated}
-inside a named property ($x$ or $\mathrm{tailCall}$), and each
-such encapsulated inheritance has exactly one inheritance
-source.
-This prevents diamond inheritance and ensures single-path
-resolution throughout.
+The key structural invariant is the following.
+For every subtree generated by~$\mathcal{T}$,
+its root has either no inheritance source or exactly one
+inheritance source.
+Moreover, the only roots with an inheritance source are the
+application wrappers introduced by the application
+$\mathbf{let}$-binding and tail-call rules, and in both cases
+that source is unique and encapsulated under a distinguished
+child ($x$ or $\mathrm{tailCall}$), never at the enclosing
+scope level.
+Therefore every scope level traversed by $\this$ contributes
+at most one matching pair in $\supers$, so the frontier set
+remains a singleton throughout evaluation.
 \end{proof}
 
 \subsection{Substitution Lemma}
@@ -2704,12 +2749,22 @@ Since $M[V/x] = V$, we have
 $\mathcal{T}(M[V/x]) = \mathcal{T}(V)$, and the properties
 coincide.
 
-\paragraph{Base case: $M = y$ where $y \neq x$}
-Then $\dbi{m}.\mathrm{argument}$ (where $m$ is the de~Bruijn
-index of $y$, $m \neq n$) walks up to a different scope level,
-so the inheritance with
-$\mathrm{argument} \mapsto \mathcal{T}(V)$ at the
-binding scope of $x$ has no effect.
+\paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
+$\lambda$-bound}
+Then $\mathcal{T}(y) = \dbi{m}.\mathrm{argument}$ where $m$
+is the de~Bruijn index of~$y$.
+This walks up to the scope that binds~$y$, which is different
+from the scope that binds~$x$, so the inheritance with
+$\mathrm{argument} \mapsto \mathcal{T}(V)$ at $x$'s binding
+scope has no effect.
+Since $M[V/x] = y$, the properties are identical.
+
+\paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
+let-bound}
+Then $\mathcal{T}(y) = y.\mathrm{result}$.
+This is a lexical reference to the sibling property~$y$ in the
+enclosing record, so the inherited tree~$C$ does not alter its
+resolution.
 Since $M[V/x] = y$, the properties are identical.
 
 \paragraph{Inductive case: $M = \lambda y.\, M'$}
@@ -2747,6 +2802,26 @@ By induction on $V_1$, $V_2$, and $M'$, the properties under
 each subtree ($z$ and $\mathrm{result}$) coincide,
 since references to $x$ inside each subtree resolve to
 $\mathcal{T}(V)$ via the same $\this$ mechanism.
+
+\paragraph{Inductive case:
+  $M = \mathbf{let}\; z = V'
+  \;\mathbf{in}\; M'$}
+Then
+\[
+  \mathcal{T}(M) =
+  \{z \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V')\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M')\}.
+\]
+The substitution distributes:
+$M[V/x] =
+\mathbf{let}\; z = V'[V/x]
+\;\mathbf{in}\; M'[V/x]$.
+By induction on $V'$ and $M'$, the properties under both
+subtrees ($z$ and $\mathrm{result}$) coincide.
+In particular, occurrences of~$z$ in $M'$ are translated as the
+lexical reference $z.\mathrm{result}$ on both sides, so the
+wrapper introduced by the value $\mathbf{let}$-binding is
+preserved by the substitution.
 
 \paragraph{Inductive case: $M = V_1\; V_2$ (tail call)}
 Analogous to the $\mathbf{let}$-binding case with
@@ -2837,6 +2912,30 @@ Therefore the properties at
 $\text{root} \snoc \mathrm{result} \snoc p$ in
 $\mathcal{T}(M)$ coincide with those at
 $\text{root} \snoc p$ in $\mathcal{T}(N)$ for all $p$.
+
+\medskip\noindent
+\emph{Value let-binding variant.}
+An analogous result holds for
+$\mathbf{let}\; x = V \;\mathbf{in}\; M'$.
+The translation gives:
+\[
+  \mathcal{T}\bigl(\mathbf{let}\; x = V \;\mathbf{in}\; M'\bigr) =
+  \{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M')\}.
+\]
+Since $\mathrm{result} \mapsto \mathcal{T}(M')$ is a property
+definition, the subtree at
+$\text{root} \snoc \mathrm{result}$ is $\mathcal{T}(M')$.
+Inside $\mathcal{T}(M')$, each occurrence of $x$ is translated
+as the lexical reference $x.\mathrm{result}$, which resolves to
+the subtree $\mathcal{T}(V)$.
+This is exactly the translation of the reduct
+$M'[V/x]$.
+Therefore the properties at
+$\text{root} \snoc \mathrm{result} \snoc p$ in
+$\mathcal{T}(\mathbf{let}\; x = V \;\mathbf{in}\; M')$
+coincide with those at
+$\text{root} \snoc p$ in $\mathcal{T}(M'[V/x])$ for all $p$.
 \end{proof}
 
 \begin{theorem}[Convergence preservation]%
@@ -2847,15 +2946,20 @@ $\mathcal{T}(N){\Downarrow}$.
 \end{theorem}
 
 \begin{proof}
-A head reduction step in ANF takes one of two forms:
+A head reduction step in ANF takes one of three forms:
 a tail call $(\lambda x.\, M')\; V \to_h M'[V/x]$,
-or a $\mathbf{let}$-binding
+an application $\mathbf{let}$-binding
 $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M'
-\to_h M'[(V_1\; V_2)/x]$
-(since $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M' =
-(\lambda x.\, M')(V_1\; V_2)$ in the $\lambda$-calculus).
-In both cases, Lemma~\ref{lem:result-step} (tail-call and
-let-binding variants respectively) shows that
+\to_h M'[(V_1\; V_2)/x]$,
+or a value $\mathbf{let}$-binding
+$\mathbf{let}\; x = V \;\mathbf{in}\; M'
+\to_h M'[V/x]$.
+The second and third forms are simply the ANF
+presentation of one $\beta$-step in the underlying
+$\lambda$-term.
+In all three cases, Lemma~\ref{lem:result-step}
+(tail-call, application let-binding, and value
+let-binding variants) shows that
 the properties at $\text{root} \snoc \mathrm{result}^n$ in
 $\mathcal{T}(M)$ coincide with the properties at
 $\text{root} \snoc \mathrm{result}^{n-1}$ in
@@ -2911,8 +3015,9 @@ convergence preservation still holds:
 \subsection{Adequacy}
 
 A closed ANF term at the top level is either an abstraction
-(a value) or a computation (a $\mathbf{let}$-binding or tail
-call).
+(a value) or a computation (an application
+$\mathbf{let}$-binding, a value $\mathbf{let}$-binding,
+or a tail call).
 An abstraction translates to a record whose root immediately
 has the abstraction shape; a computation's root has the form
 $\{x, \mathrm{result}\}$ or
@@ -2938,15 +3043,19 @@ the recursive evaluation returns them without further
 recursion, and $\mathcal{T}(M)$ converges at depth $n = 0$.
 
 \emph{Inductive step} ($k \ge 1$): $M$ is not an abstraction,
-so $M$ is either a tail call or a $\mathbf{let}$-binding,
-both of which are $\beta$-redexes.
+so $M$ is either a tail call, an application
+$\mathbf{let}$-binding, or a value
+$\mathbf{let}$-binding.
+Each form corresponds to one head $\beta$-step in the
+underlying $\lambda$-term.
 Let $N$ be the head reduct, so
 $M \to_h N \to^{k-1}_h \lambda x.\, M'$.
 Note that $N$ is closed: head reduction substitutes a
 closed value into a term whose only free variable is the
 substitution target, preserving closedness.
-By Lemma~\ref{lem:result-step} (tail-call or
-let-binding variant), the properties at
+By Lemma~\ref{lem:result-step} (tail-call,
+application let-binding, or value let-binding
+variant), the properties at
 $\text{root} \snoc \mathrm{result} \snoc p$
 in $\mathcal{T}(M)$ coincide with those at
 $\text{root} \snoc p$ in $\mathcal{T}(N)$.
@@ -2975,15 +3084,17 @@ form.
 
 \emph{Inductive step} ($n \ge 1$): the abstraction shape
 appears at depth $n$ but not at depth $0$.
-By the base case argument, $M$ is not an abstraction, so $M$
-is either a tail call $V_1\; V_2$ or a $\mathbf{let}$-binding
-$\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M'$.
-In both cases, $M$ is a $\beta$-redex
-(since $V_1 = \lambda x.\, M'$ or
-  $V_1 = \lambda y.\, M''$ respectively, the only closed
-ANF value).
-By Lemma~\ref{lem:result-step} (tail-call or
-let-binding variant respectively), the properties at depth
+By the base case argument, $M$ is not an abstraction, so at the
+head position of this closed top-level ANF term, $M$ is either
+a tail call, an application $\mathbf{let}$-binding, or a value
+$\mathbf{let}$-binding.
+In each case, the head form is a $\beta$-redex in the
+underlying $\lambda$-term: the function position is occupied by
+a closed ANF value, and the only closed ANF value that can
+appear at head position is a $\lambda$-abstraction.
+By Lemma~\ref{lem:result-step} (tail-call,
+application let-binding, or value let-binding
+variant), the properties at depth
 $n - 1$ in $\mathcal{T}(N)$ match those at depth $n$
 in $\mathcal{T}(M)$, where $N$ is the head reduct.
 So $\mathcal{T}(N)$ converges at depth $n - 1$.
