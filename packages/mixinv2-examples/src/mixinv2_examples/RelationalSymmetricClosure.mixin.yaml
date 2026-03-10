@@ -1,0 +1,199 @@
+# Datalog symmetric closure via column swap.
+#
+# Graph: a → b, b → c (directed linear chain)
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#
+# Rules:
+#   sym(X,Y) :- edge(X,Y).
+#   sym(X,Y) :- edge(Y,X).
+#
+# Expected sym (Datalog-correct):
+#   direct: {(a,b), (b,c)}
+#   swap:   {(b,a), (c,b)}
+#   union:  {(a,b), (b,a), (b,c), (c,b)}
+#
+# This encoding uses repeated Acceptance/Visitor pattern.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricClosure, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricClosure, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricClosure, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalSymmetricClosure, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalSymmetricClosure, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# sym(X,Y) :- edge(X,Y).  (direct copy)
+#
+# Iterate edge: for each X, for each Y in X's tail, construct (X, Y).
+# No join — just iterate and reconstruct using Replacement.
+- _DirectXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance:
+                - [_Y, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _YReplacement:
+                        - [_Y, Replacement]
+                        - NewTail: [RelationalSymmetricClosure, ~, Nil]
+                      _XReplacement:
+                        - [_X, Replacement]
+                        - NewTail: [_YReplacement, Replaced]
+                      Visited: [_XReplacement, Replaced]
+              Visited: [_NilAcceptance, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  sym: [_DirectXAcceptance, Accepted]
+
+# sym(X,Y) :- edge(Y,X).  (column swap)
+#
+# Iterate edge as (Y, X): for each Y (edge's first col),
+# for each X (edge's second col), construct output (X, Y) — swapped.
+- _SwapYAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _SwapY: [VisiteeTail]
+        _SwapXAcceptance:
+          - [_SwapY, Acceptance]
+          - VisitorMap: [_SwapY, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_SwapY, Tail]
+              _SwapX: [VisiteeTail]
+              _SwapNilAcceptance:
+                - [_SwapX, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      # Construct (X, Y) — note the swap: X from second col, Y from first
+                      _SwapYReplacement:
+                        - [_SwapY, Replacement]
+                        - NewTail: [RelationalSymmetricClosure, ~, Nil]
+                      _SwapXReplacement:
+                        - [_SwapX, Replacement]
+                        - NewTail: [_SwapYReplacement, Replaced]
+                      Visited: [_SwapXReplacement, Replaced]
+              Visited: [_SwapNilAcceptance, Accepted]
+        Visited: [_SwapXAcceptance, Accepted]
+
+  sym: [_SwapYAcceptance, Accepted]

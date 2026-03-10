@@ -1,0 +1,155 @@
+# Self-join counterexample for repeated Visitor pattern.
+#
+# edge = {(a,b), (b,a)}
+#
+# Datalog: twoHop(X,Z) := edge(X,Y), edge(Y,Z).
+#   Y=b: edge(a,b), edge(b,a) -> twoHop(a,a)
+#   Y=a: edge(b,a), edge(a,b) -> twoHop(b,b)
+#   Datalog result: {(a,a), (b,b)} -- 2 pairs
+#
+# The old VisitorMapFactory approach over-approximates to 4 pairs.
+# This file tests whether the repeated Visitor approach is exact.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+    
+- Nil:
+    - [Relation]
+    - 
+      Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,a).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# twoHop(X,Z) := edge(X,Y), edge(Y,Z).
+- _XAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [edge, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [edge, Tail]
+              _Y1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _ZAcceptance:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                              - [_Y1, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [_Y1, Tail]
+                              _Z: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _ZReplacement:
+                                        - [_Z, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalTwoHopRepeatedVisitorSelfJoin,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_ZReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_ZAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  twoHop: [_XAcceptance, Accepted]

@@ -1,0 +1,248 @@
+# Datalog three-way join (rule with 3 body atoms).
+#
+# Facts:
+#   alpha(a,b).
+#   alpha(c,b).
+#   beta(b,a).
+#   beta(b,c).
+#   gamma(a,b).
+#   gamma(c,a).
+#
+# Rule:
+#   chain(X,W) :- alpha(X,Y), beta(Y,Z), gamma(Z,W).
+#
+# Expected chain (Datalog-correct):
+#   alpha(a,b) + beta(b,a) + gamma(a,b) → chain(a,b)
+#   alpha(a,b) + beta(b,c) + gamma(c,a) → chain(a,a)
+#   alpha(c,b) + beta(b,a) + gamma(a,b) → chain(c,b)
+#   alpha(c,b) + beta(b,c) + gamma(c,a) → chain(c,a)
+#   Result: {(a,a), (a,b), (c,a), (c,b)}
+#
+# This encoding uses repeated Acceptance/Visitor pattern for
+# value-level joins on Y and Z, producing exact Datalog semantics.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalThreeWayJoin, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalThreeWayJoin, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalThreeWayJoin, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# alpha(a,b).
+- alpha:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalThreeWayJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# alpha(c,b).
+- alpha:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalThreeWayJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# beta(b,a).
+- beta:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalThreeWayJoin, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# beta(b,c).
+- beta:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalThreeWayJoin, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# gamma(a,b).
+- gamma:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalThreeWayJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# gamma(c,a).
+- gamma:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalThreeWayJoin, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# chain(X,W) :- alpha(X,Y), beta(Y,Z), gamma(Z,W).
+#
+# Three chained joins:
+#   1. Iterate alpha's first col to get X
+#   2. Y join: alpha's second col against beta's first col
+#   3. Z join: beta's second col against gamma's first col
+#   4. Iterate gamma's second col to get W
+#   5. Construct output (X, W) via Replacement
+- _XAcceptance:
+    - [alpha, Acceptance]
+    - VisitorMap: [alpha, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [alpha, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [beta, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [beta, Tail]
+              _Y1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _ZAcceptance:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                              - [gamma, WithVisitorTail]
+                              - [_Y1, WithVisiteeTail]
+                            Visitor:
+                              VisiteeTail: [_Y1, Tail]
+                              _Z0: [VisiteeTail]
+                              VisitorTail: [gamma, Tail]
+                              _Z1: [VisitorTail]
+                              _NilAcceptance1:
+                                - [_Z0, Acceptance]
+                                - VisitorMap:
+                                    - Nil:
+                                        _WAcceptance:
+                                          - [_Z1, Acceptance]
+                                          - VisitorMap:
+                                              - [_Z1, WithVisiteeTail]
+                                          - Visitor:
+                                              VisiteeTail: [_Z1, Tail]
+                                              _W: [VisiteeTail]
+                                              _NilAcceptance2:
+                                                - [VisiteeTail, Acceptance]
+                                                - VisitorMap:
+                                                    Nil:
+                                                      _WReplacement:
+                                                        - [_W, Replacement]
+                                                        - NewTail:
+                                                            [
+                                                              RelationalThreeWayJoin,
+                                                              ~,
+                                                              Nil,
+                                                            ]
+                                                      _XReplacement:
+                                                        - [_X, Replacement]
+                                                        - NewTail: [_WReplacement, Replaced]
+                                                      Visited: [_XReplacement, Replaced]
+                                              Visited: [_NilAcceptance2, Accepted]
+                                        Visited: [_WAcceptance, Accepted]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_ZAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  chain: [_XAcceptance, Accepted]

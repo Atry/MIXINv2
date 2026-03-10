@@ -1,0 +1,308 @@
+# Datalog symmetric transitive closure (chained/stratified rules).
+#
+# Graph: a → b → c (directed linear chain)
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#
+# Rules (layer 1 — symmetric closure):
+#   sym(X,Y) :- edge(X,Y).
+#   sym(X,Y) :- edge(Y,X).
+#
+# Rules (layer 2 — transitive closure of sym):
+#   reach(X,Y) :- sym(X,Y).
+#   reach(X,Y) :- sym(X,Z), reach(Z,Y).
+#
+# Expected sym (Datalog-correct — 4 pairs):
+#   direct: {(a,b), (b,c)}
+#   swap:   {(b,a), (c,b)}
+#   union:  {(a,b), (b,a), (b,c), (c,b)}
+#
+# Expected reach (final — complete graph on {a,b,c}, all 9 pairs):
+#   {(a,a), (a,b), (a,c), (b,a), (b,b), (b,c), (c,a), (c,b), (c,c)}
+#
+# Since sym's first and second columns each cover {a,b,c}, the recursive
+# rule fills in all remaining pairs, yielding all 9 pairs.
+#
+# This tests CHAINED/STRATIFIED RULES: reach depends on sym, which
+# depends on edge. It also tests that a derived predicate (sym) can
+# be used as input to another derived predicate (reach).
+#
+# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap).
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricTransitiveClosure, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricTransitiveClosure, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSymmetricTransitiveClosure, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalSymmetricTransitiveClosure, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalSymmetricTransitiveClosure, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# =========================================================================
+# Layer 1: sym(X,Y) — symmetric closure of edge
+# =========================================================================
+
+# sym(X,Y) :- edge(X,Y).  (direct copy)
+- _DirectXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance:
+                - [_Y, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _YReplacement:
+                        - [_Y, Replacement]
+                        - NewTail:
+                            [
+                              RelationalSymmetricTransitiveClosure,
+                              ~,
+                              Nil,
+                            ]
+                      _XReplacement:
+                        - [_X, Replacement]
+                        - NewTail: [_YReplacement, Replaced]
+                      Visited: [_XReplacement, Replaced]
+              Visited: [_NilAcceptance, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  sym: [_DirectXAcceptance, Accepted]
+
+# sym(X,Y) :- edge(Y,X).  (column swap)
+- _SwapYAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _SwapY: [VisiteeTail]
+        _SwapXAcceptance:
+          - [_SwapY, Acceptance]
+          - VisitorMap: [_SwapY, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_SwapY, Tail]
+              _SwapX: [VisiteeTail]
+              _SwapNilAcceptance:
+                - [_SwapX, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _SwapYReplacement:
+                        - [_SwapY, Replacement]
+                        - NewTail:
+                            [
+                              RelationalSymmetricTransitiveClosure,
+                              ~,
+                              Nil,
+                            ]
+                      _SwapXReplacement:
+                        - [_SwapX, Replacement]
+                        - NewTail: [_SwapYReplacement, Replaced]
+                      Visited: [_SwapXReplacement, Replaced]
+              Visited: [_SwapNilAcceptance, Accepted]
+        Visited: [_SwapXAcceptance, Accepted]
+
+  sym: [_SwapYAcceptance, Accepted]
+
+# =========================================================================
+# Layer 2: reach(X,Y) — transitive closure of sym
+# =========================================================================
+
+# reach(X,Y) :- sym(X,Y).  (base case)
+- _BaseXAcceptance:
+    - [sym, Acceptance]
+    - VisitorMap: [sym, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [sym, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance:
+                - [VisiteeTail, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _YReplacement:
+                        - [_Y, Replacement]
+                        - NewTail:
+                            [
+                              RelationalSymmetricTransitiveClosure,
+                              ~,
+                              Nil,
+                            ]
+                      _XReplacement:
+                        - [_X, Replacement]
+                        - NewTail: [_YReplacement, Replaced]
+                      Visited: [_XReplacement, Replaced]
+              Visited: [_NilAcceptance, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  reach: [_BaseXAcceptance, Accepted]
+
+# reach(X,Y) :- sym(X,Z), reach(Z,Y).  (recursive case)
+- _RecursiveXAcceptance:
+    - [sym, Acceptance]
+    - VisitorMap: [sym, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [sym, Tail]
+        _X: [VisiteeTail]
+        _ZAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [reach, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Z0: [VisiteeTail]
+              VisitorTail: [reach, Tail]
+              _NilAcceptance0:
+                - [_Z0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _YAcceptance:
+                          - [VisitorTail, Acceptance]
+                          - VisitorMap:
+                              - [VisitorTail, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [VisitorTail, Tail]
+                              _Y: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _YReplacement:
+                                        - [_Y, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalSymmetricTransitiveClosure,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_YReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_YAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_ZAcceptance, Accepted]
+
+  reach: [_RecursiveXAcceptance, Accepted]

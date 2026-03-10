@@ -1,0 +1,195 @@
+# Datalog rule with constant matches and variables.
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#
+# Rule:
+#   viaB(X,Z) :- edge(X,b), edge(b,Z).
+#
+# This rule uses the CONSTANT b in two positions:
+#   - edge(X,b): X is variable, b is constant in second column
+#   - edge(b,Z): b is constant in first column, Z is variable
+#
+# Expected viaB (Datalog-correct):
+#   edge(X,b): X ∈ {a} (only edge(a,b) has b in second column)
+#   edge(b,Z): Z ∈ {c} (edge(b,c))
+#   Output: {(a,c)}
+#
+# This encoding uses repeated Acceptance/Visitor pattern.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    -
+      Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstant, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstant, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstant, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalConstant, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalConstant, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# viaB(X,Z) :- edge(X,b), edge(b,Z).
+#
+# This is a constant-match join where Y is the constant b.
+# 1. Iterate X over edge's first column (outer acceptance)
+# 2. For each X, get edge(X,Y) — iterate Y values
+# 3. Check Y=b via acceptance with only b in VisitorMap (constant match)
+# 4. On b match, get Z from edge(b,Z) = edge.TailMap.b
+# 5. Construct output (X, Z) via Replacement
+
+# edge(b,Z) — direct navigation to b's row
+- _edgeBTail:
+    - [edge, TailMap, b]
+
+- _XAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+                # Constant match: only b in VisitorMap
+                b:
+                  _NilAcceptance0:
+                    - [_X, TailMap, b, Acceptance]
+                    - VisitorMap:
+                        Nil:
+                          # Y=b confirmed, Nil after b confirmed.
+                          # Now iterate Z from edge(b,Z).
+                          _ZAcceptance:
+                            - [_edgeBTail, Acceptance]
+                            - VisitorMap: [_edgeBTail, WithVisiteeTail]
+                            - Visitor:
+                                VisiteeTail: [_edgeBTail, Tail]
+                                _Z: [VisiteeTail]
+                                _NilAcceptance1:
+                                  - [_Z, Acceptance]
+                                  - VisitorMap:
+                                      Nil:
+                                        _ZReplacement:
+                                          - [_Z, Replacement]
+                                          - NewTail:
+                                              [
+                                                RelationalConstant,
+                                                ~,
+                                                Nil,
+                                              ]
+                                        _XReplacement:
+                                          - [_X, Replacement]
+                                          - NewTail: [_ZReplacement, Replaced]
+                                        Visited: [_XReplacement, Replaced]
+                                Visited: [_NilAcceptance1, Accepted]
+                          Visited: [_ZAcceptance, Accepted]
+                  Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  viaB: [_XAcceptance, Accepted]

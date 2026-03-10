@@ -7,15 +7,16 @@
       Zero:
         Equal:
           other: [Product]
-          _OtherVisitors:
-            - [other, Visitors]
-            - ZeroVisitor:
-                equal: [NatEquality, ~, BooleanFactory, "True"]
-              SuccessorVisitor:
-                equal: [NatEquality, ~, BooleanFactory, "False"]
+          _OtherAcceptance:
+            - [other, Acceptance]
+            - VisitorMap:
+                ZeroVisitor:
+                  equal: [NatEquality, ~, BooleanFactory, "True"]
+                SuccessorVisitor:
+                  equal: [NatEquality, ~, BooleanFactory, "False"]
               Accepted:
                 equal: [NatEquality, ~, Boolean]
-          equal: [_OtherVisitors, Accepted, equal]
+          equal: [_OtherAcceptance, Accepted, equal]
       Successor:
         predecessor:
           Equal:
@@ -27,13 +28,14 @@
           _recursiveEquality:
             - [Successor, ~, predecessor, Equal]
             - other: [Equal, ~, other, predecessor]
-          _OtherVisitors:
-            - [other, Visitors]
-            - ZeroVisitor:
-                equal: [NatEquality, ~, BooleanFactory, "False"]
-              SuccessorVisitor:
-                equal: [_recursiveEquality, equal]
+          _OtherAcceptance:
+            - [other, Acceptance]
+            - VisitorMap:
+                ZeroVisitor:
+                  equal: [NatEquality, ~, BooleanFactory, "False"]
+                SuccessorVisitor:
+                  equal: [_recursiveEquality, equal]
               Accepted:
                 equal: [NatEquality, ~, Boolean]
-          equal: [_OtherVisitors, Accepted, equal]
+          equal: [_OtherAcceptance, Accepted, equal]
 - [BooleanData]

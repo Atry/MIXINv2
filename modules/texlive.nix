@@ -5,12 +5,15 @@
       packages = [ pkgs.tex-fmt ];
       scripts.package-arxiv.exec = ''
         cd inheritance-calculus
+        latexmk -pdf preprint.tex
         ${lib.getExe pkgs.gnutar} -czvf arxiv-submission.tar.gz \
           -C . \
-          *.tex \
-          *.bib \
-          *.bst \
-          *.cls
+          $(${lib.getExe pkgs.gawk} '
+            /^OUTPUT [^\/]/{gsub(/^OUTPUT \.\//, "OUTPUT "); outputs[$2]=1}
+            /^INPUT [^\/]/{gsub(/^INPUT \.\//, "INPUT "); inputs[$2]=1}
+            END{for (f in inputs) if (!(f in outputs) && f !~ /\.bbl$/) print f}
+          ' preprint.fls | sort -u) \
+          *.bib
       '';
       languages = {
         texlive = {

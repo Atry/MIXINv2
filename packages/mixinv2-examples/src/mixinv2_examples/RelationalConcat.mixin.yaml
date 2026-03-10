@@ -1,0 +1,201 @@
+# Datalog no-join Cartesian product (4-column output).
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#
+# Rule:
+#   concat(X,Y,W,Z) :- edge(X,Y), edge(W,Z).
+#
+# Standard Datalog result (4 tuples):
+#   {(a,b,a,b), (a,b,b,c), (b,c,a,b), (b,c,b,c)}
+#
+# This encoding uses nested Acceptance/Replacement to implement
+# the Cartesian product without TailAppend.
+#
+# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap).
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConcat, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConcat, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConcat, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalConcat, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalConcat, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# concat(X,Y,W,Z) :- edge(X,Y), edge(W,Z).
+#
+# Cartesian product via nested Acceptance:
+#   1. Iterate X from edge (outer acceptance)
+#   2. Iterate Y from edge(X,...) (second column)
+#   3. Confirm edge(X,Y) ends with Nil
+#   4. On Nil: iterate W from edge (independent second iteration)
+#   5. Iterate Z from edge(W,...) (fourth column)
+#   6. Confirm edge(W,Z) ends with Nil
+#   7. Construct output (X,Y,W,Z) via 4 nested Replacements
+
+- _XAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance0:
+                - [_Y, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _WAcceptance:
+                        - [edge, Acceptance]
+                        - VisitorMap: [edge, WithVisiteeTail]
+                        - Visitor:
+                            VisiteeTail: [edge, Tail]
+                            _W: [VisiteeTail]
+                            _ZAcceptance:
+                              - [_W, Acceptance]
+                              - VisitorMap: [_W, WithVisiteeTail]
+                              - Visitor:
+                                  VisiteeTail: [_W, Tail]
+                                  _Z: [VisiteeTail]
+                                  _NilAcceptance1:
+                                    - [_Z, Acceptance]
+                                    - VisitorMap:
+                                        Nil:
+                                          _ZReplacement:
+                                            - [_Z, Replacement]
+                                            - NewTail:
+                                                [
+                                                  RelationalConcat,
+                                                  ~,
+                                                  Nil,
+                                                ]
+                                          _WReplacement:
+                                            - [_W, Replacement]
+                                            - NewTail: [_ZReplacement, Replaced]
+                                          _YReplacement:
+                                            - [_Y, Replacement]
+                                            - NewTail: [_WReplacement, Replaced]
+                                          _XReplacement:
+                                            - [_X, Replacement]
+                                            - NewTail: [_YReplacement, Replaced]
+                                          Visited: [_XReplacement, Replaced]
+                                  Visited: [_NilAcceptance1, Accepted]
+                            Visited: [_ZAcceptance, Accepted]
+                      Visited: [_WAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  concat: [_XAcceptance, Accepted]

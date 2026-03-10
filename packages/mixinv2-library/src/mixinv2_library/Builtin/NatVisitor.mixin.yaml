@@ -1,16 +1,19 @@
 - [NatData]
 - NatFactory:
     Product:
-      Visitors:
+      Acceptance:
+        VisitorMap: []
         Accepted: []
     Zero:
-      Visitors:
-        - ZeroVisitor: []
-          Accepted: [ZeroVisitor]
+      Acceptance:
+        VisitorMap:
+          ZeroVisitor: []
+        Accepted: [VisitorMap, ZeroVisitor]
 
     Successor:
       predecessor: [Product]
 
-      Visitors:
-        - SuccessorVisitor: []
-          Accepted: [SuccessorVisitor]
+      Acceptance:
+        VisitorMap:
+          SuccessorVisitor: []
+        Accepted: [VisitorMap, SuccessorVisitor]

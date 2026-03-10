@@ -1406,7 +1406,7 @@ class TestExtendInstanceScopeProhibition:
             class Invalid:
                 pass
 
-        with pytest.raises(ValueError, match=r"'my_instance' has no child 'MyInner'"):
+        with pytest.raises(ValueError, match=r"has no child 'MyInner'"):
             root = evaluate(Root)
             _ = root.Invalid.foo
 

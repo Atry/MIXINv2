@@ -11,35 +11,37 @@
         Decrement:
           decreased: [Product]
       Decrement:
-        _HalfVisitors:
-          - [Even, ~, half, Visitors]
-          - ZeroVisitor:
-              decreased: [Zero]
-            EvenVisitor:
-              decreased:
-                - [Odd]
-                - halfOfPredecessor: [Even, ~, half, Decrement, decreased]
-            OddVisitor:
-              decreased:
-                - [Odd]
-                - halfOfPredecessor: [Even, ~, half, Decrement, decreased]
+        _HalfAcceptance:
+          - [Even, ~, half, Acceptance]
+          - VisitorMap:
+              ZeroVisitor:
+                decreased: [Zero]
+              EvenVisitor:
+                decreased:
+                  - [Odd]
+                  - halfOfPredecessor: [Even, ~, half, Decrement, decreased]
+              OddVisitor:
+                decreased:
+                  - [Odd]
+                  - halfOfPredecessor: [Even, ~, half, Decrement, decreased]
             Accepted:
               decreased: [Product]
-        decreased: [_HalfVisitors, Accepted, decreased]
+        decreased: [_HalfAcceptance, Accepted, decreased]
     Odd:
       Decrement:
-        _HalfVisitors:
-          - [Odd, ~, halfOfPredecessor, Visitors]
-          - ZeroVisitor:
-              decreased: [Zero]
-            EvenVisitor:
-              decreased:
-                - [Even]
-                - half: [Odd, ~, halfOfPredecessor]
-            OddVisitor:
-              decreased:
-                - [Even]
-                - half: [Odd, ~, halfOfPredecessor]
+        _HalfAcceptance:
+          - [Odd, ~, halfOfPredecessor, Acceptance]
+          - VisitorMap:
+              ZeroVisitor:
+                decreased: [Zero]
+              EvenVisitor:
+                decreased:
+                  - [Even]
+                  - half: [Odd, ~, halfOfPredecessor]
+              OddVisitor:
+                decreased:
+                  - [Even]
+                  - half: [Odd, ~, halfOfPredecessor]
             Accepted:
               decreased: [Product]
-        decreased: [_HalfVisitors, Accepted, decreased]
+        decreased: [_HalfAcceptance, Accepted, decreased]

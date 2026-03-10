@@ -115,21 +115,26 @@ class Nat:
 
         @public
         @scope
-        class Visitors:
-            """Visitors pattern for Zero."""
+        class Acceptance:
+            """Acceptance pattern for Zero."""
 
             @public
             @scope
-            class ZeroVisitor:
-                """Handler for zero case."""
+            class VisitorMap:
+                """Visitor map for Zero."""
 
-                pass
+                @public
+                @scope
+                class ZeroVisitor:
+                    """Handler for zero case."""
+
+                    pass
 
             @public
-            @extend(LexicalReference(path=("ZeroVisitor",)))
+            @extend(LexicalReference(path=("VisitorMap", "ZeroVisitor")))
             @scope
-            class Visitors:
-                """Result of visitor application (inherits from ZeroVisitor)."""
+            class Accepted:
+                """Result of acceptance (inherits from VisitorMap.ZeroVisitor)."""
 
                 pass
 
@@ -164,21 +169,26 @@ class Nat:
 
         @public
         @scope
-        class Visitors:
-            """Visitors pattern for Succ."""
+        class Acceptance:
+            """Acceptance pattern for Succ."""
 
             @public
             @scope
-            class SuccVisitor:
-                """Handler for successor case."""
+            class VisitorMap:
+                """Visitor map for Succ."""
 
-                pass
+                @public
+                @scope
+                class SuccVisitor:
+                    """Handler for successor case."""
+
+                    pass
 
             @public
-            @extend(LexicalReference(path=("SuccVisitor",)))
+            @extend(LexicalReference(path=("VisitorMap", "SuccVisitor")))
             @scope
-            class Visitors:
-                """Result of visitor application (inherits from SuccVisitor)."""
+            class Accepted:
+                """Result of acceptance (inherits from VisitorMap.SuccVisitor)."""
 
                 pass
 
@@ -221,31 +231,33 @@ def test_nat_structure():
     assert hasattr(nat, "Succ")
 
     zero = nat.Zero
-    assert hasattr(zero, "Visitors")
+    assert hasattr(zero, "Acceptance")
 
     succ = nat.Succ
-    assert hasattr(succ, "Visitors")
+    assert hasattr(succ, "Acceptance")
 
 
-def test_zero_visitors_structure():
-    """Test Zero's visitor pattern structure."""
+def test_zero_acceptance_structure():
+    """Test Zero's acceptance pattern structure."""
     nat = evaluate(Nat)
-    zero_visitors = nat.Zero.Visitors
+    zero_acceptance = nat.Zero.Acceptance
 
-    assert hasattr(zero_visitors, "ZeroVisitor")
-    assert hasattr(zero_visitors, "Visitors")
+    assert hasattr(zero_acceptance, "VisitorMap")
+    assert hasattr(zero_acceptance.VisitorMap, "ZeroVisitor")
+    assert hasattr(zero_acceptance, "Accepted")
 
-    # Visitors should inherit from ZeroVisitor
+    # Accepted should inherit from VisitorMap.ZeroVisitor
     # (This is expressed via @extend in the definition)
 
 
-def test_succ_visitors_structure():
-    """Test Succ's visitor pattern structure."""
+def test_succ_acceptance_structure():
+    """Test Succ's acceptance pattern structure."""
     nat = evaluate(Nat)
-    succ_visitors = nat.Succ.Visitors
+    succ_acceptance = nat.Succ.Acceptance
 
-    assert hasattr(succ_visitors, "SuccVisitor")
-    assert hasattr(succ_visitors, "Visitors")
+    assert hasattr(succ_acceptance, "VisitorMap")
+    assert hasattr(succ_acceptance.VisitorMap, "SuccVisitor")
+    assert hasattr(succ_acceptance, "Accepted")
 
 
 # =============================================================================
@@ -459,7 +471,7 @@ def test_nat_symbol_tree_terminates():
     assert node_count > 0, "Nat should have at least some symbols"
 
     # Verify tree is reasonably sized (not infinite)
-    # Nat has: Zero, Succ, their Visitors, Additions, etc.
+    # Nat has: Zero, Succ, their Acceptance, Additions, etc.
     # Should be < 100 unique symbols
     assert (
         node_count < 100

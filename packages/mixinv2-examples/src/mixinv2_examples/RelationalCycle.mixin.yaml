@@ -1,0 +1,226 @@
+# Datalog transitive closure on a cyclic directed graph.
+#
+# Graph: a → b → c → a (3-cycle)
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#   edge(c,a).
+#
+# Rules:
+#   path(X,Y) :- edge(X,Y).
+#   path(X,Y) :- edge(X,Z), path(Z,Y).
+#
+# Expected path (fixpoint = complete graph including self-loops):
+#   {(a,a), (a,b), (a,c), (b,a), (b,b), (b,c), (c,a), (c,b), (c,c)}
+#
+# This tests that the trie-based fixpoint computation terminates correctly
+# when the graph contains cycles, producing all reachable pairs.
+#
+# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap).
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+                WithVisitorTail: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalCycle, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalCycle, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalCycle, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalCycle, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalCycle, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# edge(c,a).
+- edge:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalCycle, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# path(X,Y) :- edge(X,Y).
+- _BaseXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance:
+                - [VisiteeTail, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _YReplacement:
+                        - [_Y, Replacement]
+                        - NewTail: [RelationalCycle, ~, Nil]
+                      _XReplacement:
+                        - [_X, Replacement]
+                        - NewTail: [_YReplacement, Replaced]
+                      Visited: [_XReplacement, Replaced]
+              Visited: [_NilAcceptance, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  path: [_BaseXAcceptance, Accepted]
+
+# path(X,Y) :- edge(X,Z), path(Z,Y).
+- _RecursiveXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _ZAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [path, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Z0: [VisiteeTail]
+              VisitorTail: [path, Tail]
+              _Z1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Z0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _YAcceptance:
+                          - [_Z1, Acceptance]
+                          - VisitorMap:
+                              - [_Z1, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [_Z1, Tail]
+                              _Y: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _YReplacement:
+                                        - [_Y, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalCycle,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_YReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_YAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_ZAcceptance, Accepted]
+
+  path: [_RecursiveXAcceptance, Accepted]

@@ -9,7 +9,7 @@
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "yaml.schemas": {
-    "./overlay.schema.json": [
+    "./mixinv2.schema.json": [
       "*.mixin.yaml",
       "*.mixin.yml",
       "*.oyml",

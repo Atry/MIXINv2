@@ -1,0 +1,175 @@
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalTwoHopRepeatedVisitor, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalTwoHopRepeatedVisitor, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalTwoHopRepeatedVisitor, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalTwoHopRepeatedVisitor, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalTwoHopRepeatedVisitor, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# edge(c,a).
+- edge:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalTwoHopRepeatedVisitor, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# twoHop(X,Z) := edge(X,Y), edge(Y,Z).
+- _XAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [edge, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [edge, Tail]
+              _Y1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _ZAcceptance:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                              - [_Y1, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [_Y1, Tail]
+                              _Z: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _ZReplacement:
+                                        - [_Z, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalTwoHopRepeatedVisitor,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_ZReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_ZAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  twoHop: [_XAcceptance, Accepted]

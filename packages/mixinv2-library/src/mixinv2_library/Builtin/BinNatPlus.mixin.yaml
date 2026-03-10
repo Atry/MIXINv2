@@ -17,27 +17,28 @@
           - [Product]
           - half: [Product]
           - halfOfPredecessor: [Product]
-        _AddendVisitors:
-          - [addend, Visitors]
-          - ZeroVisitor:
-              sum: [Even, ~]
-            EvenVisitor:
-              _recursiveAddition:
-                - [Even, ~, half, Plus]
-                - addend: [Plus, ~, addend, half]
-              sum:
-                - [Even]
-                - half: [_recursiveAddition, sum]
-            OddVisitor:
-              _recursiveAddition:
-                - [Even, ~, half, Plus]
-                - addend: [Plus, ~, addend, halfOfPredecessor]
-              sum:
-                - [Odd]
-                - halfOfPredecessor: [_recursiveAddition, sum]
+        _AddendAcceptance:
+          - [addend, Acceptance]
+          - VisitorMap:
+              ZeroVisitor:
+                sum: [Even, ~]
+              EvenVisitor:
+                _recursiveAddition:
+                  - [Even, ~, half, Plus]
+                  - addend: [Plus, ~, addend, half]
+                sum:
+                  - [Even]
+                  - half: [_recursiveAddition, sum]
+              OddVisitor:
+                _recursiveAddition:
+                  - [Even, ~, half, Plus]
+                  - addend: [Plus, ~, addend, halfOfPredecessor]
+                sum:
+                  - [Odd]
+                  - halfOfPredecessor: [_recursiveAddition, sum]
             Accepted:
               sum: [Product]
-        sum: [_AddendVisitors, Accepted, sum]
+        sum: [_AddendAcceptance, Accepted, sum]
     Odd:
       halfOfPredecessor:
         Plus:
@@ -48,24 +49,25 @@
           - [Product]
           - half: [Product]
           - halfOfPredecessor: [Product]
-        _AddendVisitors:
-          - [addend, Visitors]
-          - ZeroVisitor:
-              sum: [Odd, ~]
-            EvenVisitor:
-              _recursiveAddition:
-                - [Odd, ~, halfOfPredecessor, Plus]
-                - addend: [Plus, ~, addend, half]
-              sum:
-                - [Odd]
-                - halfOfPredecessor: [_recursiveAddition, sum]
-            OddVisitor:
-              _recursiveAddition:
-                - [Odd, ~, halfOfPredecessor, Plus]
-                - addend: [Plus, ~, addend, halfOfPredecessor]
-              sum:
-                - [Even]
-                - half: [_recursiveAddition, sum, increment]
+        _AddendAcceptance:
+          - [addend, Acceptance]
+          - VisitorMap:
+              ZeroVisitor:
+                sum: [Odd, ~]
+              EvenVisitor:
+                _recursiveAddition:
+                  - [Odd, ~, halfOfPredecessor, Plus]
+                  - addend: [Plus, ~, addend, half]
+                sum:
+                  - [Odd]
+                  - halfOfPredecessor: [_recursiveAddition, sum]
+              OddVisitor:
+                _recursiveAddition:
+                  - [Odd, ~, halfOfPredecessor, Plus]
+                  - addend: [Plus, ~, addend, halfOfPredecessor]
+                sum:
+                  - [Even]
+                  - half: [_recursiveAddition, sum, increment]
             Accepted:
               sum: [Product]
-        sum: [_AddendVisitors, Accepted, sum]
+        sum: [_AddendAcceptance, Accepted, sum]

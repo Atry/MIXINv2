@@ -1,0 +1,213 @@
+# Datalog relation composition (join of two different relations).
+#
+# Facts:
+#   alpha(a,b).
+#   alpha(c,b).
+#   beta(b,a).
+#   beta(b,c).
+#
+# Rule:
+#   composed(X,Z) :- alpha(X,Y), beta(Y,Z).
+#
+# Expected composed (Datalog-correct):
+#   {(a,a), (a,c), (c,a), (c,c)}
+#
+# Derivation:
+#   alpha(a,b) + beta(b,a) → composed(a,a)
+#   alpha(a,b) + beta(b,c) → composed(a,c)
+#   alpha(c,b) + beta(b,a) → composed(c,a)
+#   alpha(c,b) + beta(b,c) → composed(c,c)
+#
+# This encoding uses repeated Acceptance/Visitor pattern for
+# value-level join on Y, producing exact Datalog semantics.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+    
+- Nil:
+    - [Relation]
+    - 
+      Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalComposition, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalComposition, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalComposition, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# alpha(a,b).
+- alpha:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalComposition, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# alpha(c,b).
+- alpha:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalComposition, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# beta(b,a).
+- beta:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalComposition, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# beta(b,c).
+- beta:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalComposition, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# composed(X,Z) :- alpha(X,Y), beta(Y,Z).
+#
+# Join alpha and beta on Y:
+#   - Visitee: alpha (iterate alpha's first column to get X)
+#   - Visitor: beta (iterate beta's first column, match Y)
+#   - On Y match: extract Z from beta, construct output (X, Z)
+- _XAcceptance:
+    - [alpha, Acceptance]
+    - VisitorMap: [alpha, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [alpha, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [beta, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [beta, Tail]
+              _Y1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _ZAcceptance:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                              - [_Y1, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [_Y1, Tail]
+                              _Z: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _ZReplacement:
+                                        - [_Z, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalComposition,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_ZReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_ZAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  composed: [_XAcceptance, Accepted]

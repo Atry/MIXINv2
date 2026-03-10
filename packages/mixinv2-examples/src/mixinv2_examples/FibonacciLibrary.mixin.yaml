@@ -3,12 +3,13 @@
     Zero: [Product]
     One: [Product]
     Product:
-      Visitors:
-        ZeroVisitor: []
-        OneVisitor: []
-        MoreThanOneVisitor:
-          decrementedOnce: [Product]
-          decrementedTwice: [Product]
+      Acceptance:
+        VisitorMap:
+          ZeroVisitor: []
+          OneVisitor: []
+          MoreThanOneVisitor:
+            decrementedOnce: [Product]
+            decrementedTwice: [Product]
         Accepted:
           decrementedOnce: [Product]
           decrementedTwice: [Product]
@@ -19,54 +20,56 @@
     Fibonacci:
       n:
         - [Product]
-        - Visitors: []
-      _NVisitors:
-        - [n, Visitors]
-        - ZeroVisitor:
-            fibonacci: [Zero]
-          OneVisitor:
-            fibonacci: [One]
-          MoreThanOneVisitor:
-            _fibonacciDecrementedOnce:
-              - [Fibonacci]
-              - n: [_NVisitors, ~, Accepted, decrementedOnce]
-            _fibonacciDecrementedTwice:
-              - [Fibonacci]
-              - n: [_NVisitors, ~, Accepted, decrementedTwice]
-            _addition:
-              - [_fibonacciDecrementedOnce, fibonacci, Plus]
-              - addend: [_fibonacciDecrementedTwice, fibonacci]
-            fibonacci: [_addition, sum]
+        - Acceptance: []
+      _NAcceptance:
+        - [n, Acceptance]
+        - VisitorMap:
+            ZeroVisitor:
+              fibonacci: [Zero]
+            OneVisitor:
+              fibonacci: [One]
+            MoreThanOneVisitor:
+              _fibonacciDecrementedOnce:
+                - [Fibonacci]
+                - n: [_NAcceptance, ~, Accepted, decrementedOnce]
+              _fibonacciDecrementedTwice:
+                - [Fibonacci]
+                - n: [_NAcceptance, ~, Accepted, decrementedTwice]
+              _addition:
+                - [_fibonacciDecrementedOnce, fibonacci, Plus]
+                - addend: [_fibonacciDecrementedTwice, fibonacci]
+              fibonacci: [_addition, sum]
           Accepted:
             fibonacci: [Product]
-      fibonacci: [_NVisitors, Accepted, fibonacci]
+      fibonacci: [_NAcceptance, Accepted, fibonacci]
 
     FibonacciAccumulator:
       n:
         - [Product]
-        - Visitors: []
-      _NVisitors:
-        - [n, Visitors]
-        - ZeroVisitor:
-            _current: [Zero]
-            _next: [One]
-          OneVisitor:
-            _current: [One]
-            _next: [One]
-          MoreThanOneVisitor:
-            _previousAccumulator:
-              - [FibonacciAccumulator]
-              - n: [_NVisitors, ~, Accepted, decrementedOnce]
-            _current: [_previousAccumulator, _next]
-            _addition:
-              - [_previousAccumulator, _next, Plus]
-              - addend: [_previousAccumulator, _current]
-            _next: [_addition, sum]
+        - Acceptance: []
+      _NAcceptance:
+        - [n, Acceptance]
+        - VisitorMap:
+            ZeroVisitor:
+              _current: [Zero]
+              _next: [One]
+            OneVisitor:
+              _current: [One]
+              _next: [One]
+            MoreThanOneVisitor:
+              _previousAccumulator:
+                - [FibonacciAccumulator]
+                - n: [_NAcceptance, ~, Accepted, decrementedOnce]
+              _current: [_previousAccumulator, _next]
+              _addition:
+                - [_previousAccumulator, _next, Plus]
+                - addend: [_previousAccumulator, _current]
+              _next: [_addition, sum]
           Accepted:
             _current: [Product]
             _next: [Product]
-      _current: [_NVisitors, Accepted, _current]
-      _next: [_NVisitors, Accepted, _next]
+      _current: [_NAcceptance, Accepted, _current]
+      _next: [_NAcceptance, Accepted, _next]
       fibonacci: [_current]
 
 - [Builtin, BooleanData]

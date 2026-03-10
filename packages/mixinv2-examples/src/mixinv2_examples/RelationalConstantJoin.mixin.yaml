@@ -1,0 +1,222 @@
+# Datalog rule mixing constant matches and variable joins in a 3-body rule.
+#
+# Facts:
+#   edge(a,b).
+#   edge(b,c).
+#   edge(c,a).
+#
+# Rule:
+#   constJoin(X,W) :- edge(X,Y), edge(Y,b), edge(b,W).
+#
+# Datalog-correct derivation:
+#   edge(Y,b) means Y's row in edge has b in second col.
+#     edge(a,b): Y=a has second col b → match
+#     edge(b,c): Y=b has second col c≠b → no match
+#     edge(c,a): Y=c has second col a≠b → no match
+#   So only Y=a matches. X from edge(X,a): edge(c,a) → X=c
+#   edge(b,W): edge(b,c) → W=c
+#   Result: {(c,c)}
+#
+# This encoding uses repeated Acceptance/Visitor pattern.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    -
+      Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstantJoin, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstantJoin, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalConstantJoin, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,b).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalConstantJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# edge(b,c).
+- edge:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalConstantJoin, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# edge(c,a).
+- edge:
+    - [c]
+    - TailMap:
+        c:
+          - [RelationalConstantJoin, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# constJoin(X,W) :- edge(X,Y), edge(Y,b), edge(b,W).
+#
+# Three-body rule with constant b:
+#   1. Outer acceptance: iterate X over edge1's first column
+#   2. Y join: match edge1's Y against edge2's first col (value-level)
+#   3. Constant b check: check edge2's second col = b
+#   4. W extraction: get W from edge(b,W)
+#   5. Construct output (X, W) via Replacement
+
+# edge(b,W) — direct navigation to b's row in edge
+- _edgeBTail:
+    - [edge, TailMap, b]
+
+# Main join
+- _XAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [edge, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [edge, Tail]
+              _Y1: [VisitorTail]
+              # Verify edge1's Y tail is Nil (single element)
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        # Y confirmed as single element.
+                        # Now check edge2(Y,?) has b in second col.
+                        _BAcceptance:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                                b:
+                                  _NilAfterB:
+                                    - [_Y1, TailMap, b, Acceptance]
+                                    - VisitorMap:
+                                        Nil:
+                                          _WAcceptance:
+                                            - [_edgeBTail, Acceptance]
+                                            - VisitorMap: [_edgeBTail, WithVisiteeTail]
+                                            - Visitor:
+                                                VisiteeTail: [_edgeBTail, Tail]
+                                                _W: [VisiteeTail]
+                                                _NilAcceptanceW:
+                                                  - [_W, Acceptance]
+                                                  - VisitorMap:
+                                                      Nil:
+                                                        _WReplacement:
+                                                          - [_W, Replacement]
+                                                          - NewTail:
+                                                              [
+                                                                RelationalConstantJoin,
+                                                                ~,
+                                                                Nil,
+                                                              ]
+                                                        _XReplacement:
+                                                          - [_X, Replacement]
+                                                          - NewTail: [_WReplacement, Replaced]
+                                                        Visited: [_XReplacement, Replaced]
+                                                Visited: [_NilAcceptanceW, Accepted]
+                                          Visited: [_WAcceptance, Accepted]
+                                  Visited: [_NilAfterB, Accepted]
+                        Visited: [_BAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  constJoin: [_XAcceptance, Accepted]

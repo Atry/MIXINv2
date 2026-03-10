@@ -720,7 +720,7 @@ For initialisms/acronyms, follow C#-style casing: keep the acronym uppercase in 
 | algebraic structure (partial class) | UpperCamelCase | `NatPlus`, `BooleanAnd`                  | partial class       | endomorphism (Sort → Sort)      |
 | category                            | UpperCamelCase | `NatEquality`, `BinNatEquality`          | —                   | morphism (Sort₁ → Sort₂)        |
 | entity                              | UpperCamelCase | `Zero`, `Successor`, `True`, `False`     | —                   | element of a sort               |
-| nested class/method                 | UpperCamelCase | `Visitors`, `Plus`, `Equal`, `And`, `Or`  | method/nested class | —                               |
+| nested class/method                 | UpperCamelCase | `Acceptance`, `Plus`, `Equal`, `And`, `Or`  | method/nested class | —                               |
 | field                               | lowerCamelCase | `predecessor`, `addend`, `sum`           | field               | —                               |
 | parameter                           | lowerCamelCase | `addend`, `other`, `operand0`            | parameter           | —                               |
 | private member                      | `_` prefix     | `_increasedAddend`, `_recursiveAddition` | `private`           | —                               |
@@ -839,15 +839,16 @@ A category encodes operations across different sorts (Sort₁ → Sort₂). Cate
       Zero:
         Equal:
           other: [Product]
-          _OtherVisitors:
-            - [other, Visitors]
-            - ZeroVisitor:
-                equal: [NatEquality, ~, BooleanFactory, "True"]
-              SuccessorVisitor:
-                equal: [NatEquality, ~, BooleanFactory, "False"]
+          _OtherAcceptance:
+            - [other, Acceptance]
+            - VisitorMap:
+                ZeroVisitor:
+                  equal: [NatEquality, ~, BooleanFactory, "True"]
+                SuccessorVisitor:
+                  equal: [NatEquality, ~, BooleanFactory, "False"]
               Accepted:
                 equal: [NatEquality, ~, Boolean]
-          equal: [_OtherVisitors, Accepted, equal]
+          equal: [_OtherAcceptance, Accepted, equal]
       Successor:
         ...
 - [BooleanData]      # Inherit Boolean sort data (output sort)
@@ -968,7 +969,7 @@ Prefer **nouns and adjectives** over verbs to reflect MIXINv2's declarative natu
 
 ```yaml
 # ✓ GOOD - nouns and adjectives (declarative)
-Visitors:
+Acceptance:
 Accepted:
 Plus:
 Addition:
@@ -1059,26 +1060,28 @@ Successor:
       - predecessor: [addend]
 
     # ✓ GOOD - UpperCamelCase: defines new nested scopes
-    # (ZeroVisitor, SuccessorVisitor, Accepted are new scope definitions)
-    _OtherVisitors:
-      - [other, Visitors]
-      - ZeroVisitor:
-            equal: [NatEquality, ~, "False"]
-          SuccessorVisitor:
-            equal: [_recursiveEquality, equal]
+    # (VisitorMap, Accepted are new scope definitions)
+    _OtherAcceptance:
+      - [other, Acceptance]
+      - VisitorMap:
+            ZeroVisitor:
+              equal: [NatEquality, ~, "False"]
+            SuccessorVisitor:
+              equal: [_recursiveEquality, equal]
           Accepted:
             equal: [NatEquality, ~, Boolean]
 
     # ✗ BAD - lowerCamelCase but defines new scopes
-    _otherVisitors:
-      - [other, Visitors]
-      - ZeroVisitor:            # Defines a new scope → parent must be UpperCamelCase
-            equal: ...
+    _otherAcceptance:
+      - [other, Acceptance]
+      - VisitorMap:            # Defines a new scope → parent must be UpperCamelCase
+            ZeroVisitor:
+              equal: ...
 
-    equal: [_OtherVisitors, Accepted, equal]
+    equal: [_OtherAcceptance, Accepted, equal]
 ```
 
-The distinction: `_increasedAddend` is lowerCamelCase because it only **contains** a Successor scope (via inheritance `- [Successor]`) and provides field values (`predecessor: [addend]`). `_OtherVisitors` is UpperCamelCase because it **defines** new nested scopes (`ZeroVisitor`, `SuccessorVisitor`, `Accepted`).
+The distinction: `_increasedAddend` is lowerCamelCase because it only **contains** a Successor scope (via inheritance `- [Successor]`) and provides field values (`predecessor: [addend]`). `_OtherAcceptance` is UpperCamelCase because it **defines** new nested scopes (`VisitorMap`, `Accepted`).
 
 ### Python FFI Naming Conventions
 
@@ -1221,9 +1224,10 @@ NatFactory:
 NatFactory:
   Zero:
     Equal:
-      _OtherVisitors:
-        ZeroVisitor:
-          equal: [NatEquality, ~, BooleanFactory, "True"]  # BooleanFactory.True is inherited
+      _OtherAcceptance:
+        VisitorMap:
+          ZeroVisitor:
+            equal: [NatEquality, ~, BooleanFactory, "True"]  # BooleanFactory.True is inherited
           #       ^^^^^^^^^^^^ scope name
           #                     ^^^^^^^^^^^^^^^ ^^^^^^ path to inherited entity
 ```

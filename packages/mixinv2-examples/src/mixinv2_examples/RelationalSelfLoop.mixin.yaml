@@ -1,0 +1,206 @@
+# Datalog transitive closure on a graph with a single self-loop.
+#
+# Graph: a → a
+#
+# Facts:
+#   edge(a,a).
+#
+# Rules:
+#   path(X,Y) :- edge(X,Y).
+#   path(X,Y) :- edge(X,Z), path(Z,Y).
+#
+# Expected path:
+#   {(a,a)}
+#
+# This tests the degenerate case where the only edge is a self-loop.
+# The recursive rule path(a,Y) :- edge(a,a), path(a,Y) reproduces
+# only what the base case already provides, so the fixpoint is trivial.
+#
+# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap).
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+                WithVisitorTail: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSelfLoop, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSelfLoop, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalSelfLoop, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# edge(a,a).
+- edge:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalSelfLoop, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# path(X,Y) :- edge(X,Y).
+- _BaseXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _YAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap: [_X, WithVisiteeTail]
+          - Visitor:
+              VisiteeTail: [_X, Tail]
+              _Y: [VisiteeTail]
+              _NilAcceptance:
+                - [VisiteeTail, Acceptance]
+                - VisitorMap:
+                    Nil:
+                      _YReplacement:
+                        - [_Y, Replacement]
+                        - NewTail: [RelationalSelfLoop, ~, Nil]
+                      _XReplacement:
+                        - [_X, Replacement]
+                        - NewTail: [_YReplacement, Replaced]
+                      Visited: [_XReplacement, Replaced]
+              Visited: [_NilAcceptance, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  path: [_BaseXAcceptance, Accepted]
+
+# path(X,Y) :- edge(X,Z), path(Z,Y).
+- _RecursiveXAcceptance:
+    - [edge, Acceptance]
+    - VisitorMap: [edge, WithVisiteeTail]
+    - Visitor:
+        VisiteeTail: [edge, Tail]
+        _X: [VisiteeTail]
+        _ZAcceptance:
+          - [_X, Acceptance]
+          - VisitorMap:
+              - [path, WithVisitorTail]
+              - [_X, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X, Tail]
+              _Z0: [VisiteeTail]
+              VisitorTail: [path, Tail]
+              _NilAcceptance0:
+                - [_Z0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _YAcceptance:
+                          - [VisitorTail, Acceptance]
+                          - VisitorMap:
+                              - [VisitorTail, WithVisiteeTail]
+                          - Visitor:
+                              VisiteeTail: [VisitorTail, Tail]
+                              _Y: [VisiteeTail]
+                              _NilAcceptance1:
+                                - [VisiteeTail, Acceptance]
+                                - VisitorMap:
+                                    Nil:
+                                      _YReplacement:
+                                        - [_Y, Replacement]
+                                        - NewTail:
+                                            [
+                                              RelationalSelfLoop,
+                                              ~,
+                                              Nil,
+                                            ]
+                                      _XReplacement:
+                                        - [_X, Replacement]
+                                        - NewTail: [_YReplacement, Replaced]
+                                      Visited: [_XReplacement, Replaced]
+                              Visited: [_NilAcceptance1, Accepted]
+                        Visited: [_YAcceptance, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_ZAcceptance, Accepted]
+
+  path: [_RecursiveXAcceptance, Accepted]

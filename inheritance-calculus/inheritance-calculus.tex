@@ -52,14 +52,6 @@
 \newcommand{\qualifiedthis}[1]{#1.\mathbf{this}}
 \newcommand{\dbi}[1]{\uparrow^{\!#1}}
 
-%% Indexed hylomorphism notation
-%% (Meijer--Fokkinga--Paterson 1991; L\"oh--Magalh\~aes 2011)
-%%   \hylo{I}        — full indexed hylomorphism over index set I
-%%   \hyloi{i}       — component at index value i
-\newcommand{\Idx}{\mathcal{I}}
-\newcommand{\hylo}[1]{[\![(\varphi_i,\; \alpha_i)_{i \in #1}]\!]}
-\newcommand{\hyloi}[1]{[\![\varphi_{#1},\; \alpha_{#1}]\!]}
-
 %% Semantic functions for the direct λ-calculus fixpoint semantics (Appendix E)
 \newcommand{\labels}{\mathtt{labels}}
 \newcommand{\children}{\mathtt{children}}
@@ -266,11 +258,16 @@ All constructions in this paper have been implemented and tested in
 MIXINv2,
 \selfcite{available as open source~\cite{mixin2025}}{included as supplementary material},
 with a test suite covering every example.%
-\footnote{MIXINv2 is statically typed and therefore
-  stricter than the untyped inheritance-calculus.
+\footnote{MIXINv2 separates symbol resolution (which resolves
+  lexical references and qualified-this references) from runtime
+  mixin evaluation, but symbol resolution is performed
+  just-in-time per symbol rather than ahead of time, so it does
+  not provide static type checking in the traditional sense.
+  Nevertheless, MIXINv2's resolution phase is stricter than the
+  untyped inheritance-calculus.
   All examples in this paper are ported from MIXINv2
   and conform to both semantics.
-  Elements added to satisfy the type checker are harmless
+  Elements added to satisfy the resolver are harmless
 for the algorithms presented here and may aid readability.}
 All tests are mechanically verified against expected output snapshots.
 
@@ -655,33 +652,41 @@ Since $n$ is a nonnegative integer, the recursion terminates.
 This completes the chain of definitions needed to compute $\properties(p)$.
 
 \subsection{Recursive Evaluation}
-The definitions~(\ref{eq:properties})--(\ref{eq:this})
-define set membership recursively:
+The six equations~(\ref{eq:properties})--(\ref{eq:this})
+define $\properties(p)$ by mutual recursion:
 $\ell \in \properties(p)$ holds if and only if it can
 be established by a finite chain of applications of
 these functions.
-The six functions decompose into an indexed
-hylomorphism~\cite{meijer1991functional,loh2011generic}
-$\hylo{\Idx}$, a pattern of structured mutual
-recursion~\cite{mcbride2015turing};
-Appendix~\ref{app:well-definedness} gives the explicit
-coalgebra--algebra decomposition for each function,
-proves well-definedness for terminating queries,
-and characterises divergence via the final coalgebra.
-
-Since hylomorphisms are a computation
-model~\cite{hinze2015conjugate}, the functions \emph{are}
-the interpreter: the observer drives the computation by
-choosing which path to inspect, and each coalgebra
-unfolds on demand.
-The functions are pure and order-independent, so the
-reflexive-transitive closure $\bases^*$
+The functions \emph{are} the interpreter---the observer
+drives the computation by choosing which path to
+inspect, and each equation unfolds on demand.
+Because the functions are pure and order-independent,
+the reflexive-transitive closure $\bases^*$
 in~(\ref{eq:supers}) may be explored breadth-first or
 depth-first without affecting the result;
 paths may be \emph{interned} so that structural equality
 reduces to pointer equality;
 and the six functions form a memoizable
 dynamic-programming recurrence keyed by paths.
+
+Operationally, evaluation uses \emph{tabled
+evaluation}~\cite{tamaki1986old,chen1996tabled}:
+each query is memoised on first encounter, and
+re-entrant calls (cycles in the dependency graph)
+return the current accumulator rather than diverging.
+Denotationally, the six equations define a monotone
+immediate consequence
+operator~$T_P$~\cite{vanemden1976semantics}---their
+right-hand sides use only $\cup$, $\in$, equality, and
+positive set comprehension, with no negation, set
+difference, or complement---so
+by the Knaster--Tarski
+theorem~\cite{tarski1955lattice}, $T_P$ has a unique
+least fixed point $\mathrm{lfp}(T_P)$, which serves as
+the denotational semantics.
+Appendix~\ref{app:well-definedness} proves that tabled
+evaluation never returns a wrong answer and analyses
+termination.
 
 %% === 审稿人备忘：六个方程的渐近复杂度分析 ===
 %%
@@ -1012,8 +1017,8 @@ files\selfcite{~\cite{mixin2025}}{~(supplementary material)}.
 This section traces the unary Nat case in detail.
 The implementation follows a declarative object-oriented style:
 each concern is one file;
-UpperCamelCase names are constructors and operations;
-lowerCamelCase names are fields and parameters;
+UpperCamelCase names serve as data constructors and operations;
+lowerCamelCase names serve as fields and parameters;
 and since there are no methods, all names are nouns or adjectives: $\mathrm{Plus}$
 is a structure, not an action.
 Operations expose their result through a projection field (e.g., $\mathrm{sum}$).
@@ -1023,13 +1028,13 @@ Following the Church-encoding
 convention\selfcite{~\cite{mixin2025}}{~(supplementary material)},%
 \footnote{The data representation (Zero/Successor) is a Peano
   encoding, an initial algebra of the functor $F(X) = 1 + X$.
-  The Visitors pattern (NatVisitor, below) adds the
+  The visitor pattern (NatVisitor, below) adds the
   Church-encoding behavior: a fold (catamorphism) over this
   algebra.  These two concerns are defined in separate files
   and composed via inheritance, which is itself an instance of
 the Expression Problem.}
-we define a factory containing the abstract product type and its two
-constructors.
+we define a factory containing the abstract product type and two
+labels that serve as data constructors.
 A $\mathrm{Zero}$ value inherits $\mathrm{Product}$;
 a $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
 exposes a $\mathrm{predecessor}$ field.
@@ -1050,7 +1055,7 @@ The file name $\mathrm{NatData}$ is itself the top-level scope:
 
 \paragraph{NatPlus}
 Addition is a separate MIXINv2 file that inherits $\mathrm{NatData}$
-and extends each constructor with a $\mathrm{Plus}$ operation
+and extends each data constructor with a $\mathrm{Plus}$ operation
 exposing a $\mathrm{sum}$ field.
 The base case is $0 + m = m$; the recursive case reduces
 $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
@@ -1082,23 +1087,28 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 
 \paragraph{NatEquality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
-Equality requires case analysis on the constructor; we use the
-Visitors pattern.
-$\mathrm{NatVisitor}$ adds a $\mathrm{Visitors}$ operation to each constructor,
-with a $\mathrm{Accepted}$ field that delegates to the appropriate
-$\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch:
+Equality requires case analysis on the data constructor; we use the
+visitor pattern.
+$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to each data constructor,
+containing a $\mathrm{VisitorMap}$ with the appropriate
+$\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch,
+and an $\mathrm{Accepted}$ field that delegates to the matching branch:
 \begin{align*}
   \mathrm{NatVisitor} \mapsto \{\;&
     \mathrm{NatData},\\
     &\mathrm{NatFactory} \mapsto \{\\
-      &\quad \mathrm{Product} \mapsto \{\mathrm{Visitors} \mapsto \{
+      &\quad \mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{
       \mathrm{Accepted} \mapsto \{\}\}\},\\[2pt]
-      &\quad \mathrm{Zero} \mapsto \{\mathrm{Visitors} \mapsto \{
-          \mathrm{ZeroVisitor} \mapsto \{\},\;
-      \mathrm{Accepted} \mapsto \{\mathrm{ZeroVisitor}\}\}\},\\[2pt]
-      &\quad \mathrm{Successor} \mapsto \{\mathrm{Visitors} \mapsto \{
-          \mathrm{SuccessorVisitor} \mapsto \{\},\;
-  \mathrm{Accepted} \mapsto \{\mathrm{SuccessorVisitor}\}\}\}\}\}
+      &\quad \mathrm{Zero} \mapsto \{\mathrm{Acceptance} \mapsto \{
+          \mathrm{VisitorMap} \mapsto \{
+      \mathrm{ZeroVisitor} \mapsto \{\}\},\\
+          &\qquad
+      \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}\}\},\\[2pt]
+      &\quad \mathrm{Successor} \mapsto \{\mathrm{Acceptance} \mapsto \{
+          \mathrm{VisitorMap} \mapsto \{
+      \mathrm{SuccessorVisitor} \mapsto \{\}\},\\
+          &\qquad
+  \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}\}\}\}\}
 \end{align*}
 $\mathrm{BooleanData}$ defines the output sort:
 \begin{align*}
@@ -1111,11 +1121,11 @@ $\mathrm{BooleanData}$ defines the output sort:
   \mathrm{BooleanFactory}.\mathrm{Product}\}\}
 \end{align*}
 $\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
-and adds an $\mathrm{Equal}$ operation to each constructor.
+and adds an $\mathrm{Equal}$ operation to each data constructor.
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$;
 $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$
 with an equal predecessor.
-Case analysis on $\mathrm{other}$ is done via its $\mathrm{Visitors}$:
+Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
 {\small
   \begin{align*}
     \mathrm{NatEquality} \mapsto \{\;&
@@ -1129,23 +1139,24 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Visitors}$:
         &\quad \mathrm{Zero} \mapsto \{\mathrm{Equal} \mapsto \{
             \mathrm{other} \mapsto \{\mathrm{Product}\},\\
             &\qquad
-            \mathrm{OtherVisitor} \mapsto \{
-              \mathrm{other}.\mathrm{Visitors},\\
+            \mathrm{OtherAcceptance} \mapsto \{
+              \mathrm{other}.\mathrm{Acceptance},\\
               &\qquad\;
-              \mathrm{ZeroVisitor} \mapsto \{
-                \mathrm{equal} \mapsto \{
+              \mathrm{VisitorMap} \mapsto \{
+                \mathrm{ZeroVisitor} \mapsto \{
+                  \mathrm{equal} \mapsto \{
               \qualifiedthis{\mathrm{NatEquality}}.\mathrm{True}\}\},\\
-              &\qquad\;
-              \mathrm{SuccessorVisitor} \mapsto \{
-                \mathrm{equal} \mapsto \{
-              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\},\\
+              &\qquad\;\quad
+                \mathrm{SuccessorVisitor} \mapsto \{
+                  \mathrm{equal} \mapsto \{
+              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\}\},\\
               &\qquad\;
               \mathrm{Accepted} \mapsto \{
                 \mathrm{equal} \mapsto \{
             \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
             &\qquad
             \mathrm{equal} \mapsto \{
-        \mathrm{OtherVisitor}.\mathrm{Accepted}.\mathrm{equal}\}\}\},\\[2pt]
+        \mathrm{OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\},\\[2pt]
         &\quad \mathrm{Successor} \mapsto \{\mathrm{Equal} \mapsto \{
             \mathrm{other} \mapsto \{
               \mathrm{Product},\;
@@ -1157,23 +1168,24 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Visitors}$:
               \mathrm{other} \mapsto \{
             \qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}\},\\
             &\qquad
-            \mathrm{OtherVisitor} \mapsto \{
-              \mathrm{other}.\mathrm{Visitors},\\
+            \mathrm{OtherAcceptance} \mapsto \{
+              \mathrm{other}.\mathrm{Acceptance},\\
               &\qquad\;
-              \mathrm{ZeroVisitor} \mapsto \{
-                \mathrm{equal} \mapsto \{
+              \mathrm{VisitorMap} \mapsto \{
+                \mathrm{ZeroVisitor} \mapsto \{
+                  \mathrm{equal} \mapsto \{
               \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\},\\
-              &\qquad\;
-              \mathrm{SuccessorVisitor} \mapsto \{
-                \mathrm{equal} \mapsto \{
-              \mathrm{RecursiveEquality}.\mathrm{equal}\}\},\\
+              &\qquad\;\quad
+                \mathrm{SuccessorVisitor} \mapsto \{
+                  \mathrm{equal} \mapsto \{
+              \mathrm{RecursiveEquality}.\mathrm{equal}\}\}\},\\
               &\qquad\;
               \mathrm{Accepted} \mapsto \{
                 \mathrm{equal} \mapsto \{
             \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
             &\qquad
             \mathrm{equal} \mapsto \{
-    \mathrm{OtherVisitor}.\mathrm{Accepted}.\mathrm{equal}\}\}\}\}\}
+    \mathrm{OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\}\}\}
 \end{align*}}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
 %%
@@ -1182,7 +1194,7 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Visitors}$:
 %% 需要区分两种"长"：
 %%
 %% 1. 自描述式的长：每个中间步骤都有名字（如 _recursiveEquality、
-%%    OtherVisitor），步骤写得详细。名字本身是零成本的语义锚点。
+%%    OtherAcceptance），步骤写得详细。名字本身是零成本的语义锚点。
 %% 2. 组合子膨胀式的长：如 SKI bracket abstraction 的指数级膨胀，
 %%    在玩具例子里看起来精炼，但在真实程序中复杂度是 λ-calculus 的
 %%    多项式甚至指数倍，而且没有涌现出新的计算模式（论文 Related Work
@@ -1261,7 +1273,7 @@ dimensions of the Expression Problem~\cite{wadler1998expression}.
 Each operation is an independent mixin that extends a factory's
 subtree.
 Inheritance recursively merges subtrees that share a label,
-so every entity in the factory acquires all operations from all
+so every label in the factory acquires all operations from all
 inherited mixins.
 Crucially, this applies to return types: $\mathrm{NatPlus}$ returns
 values from $\mathrm{NatFactory}$, and $\mathrm{NatEquality}$
@@ -1299,7 +1311,7 @@ accommodate.
 
 \paragraph{Church-encoded Nats are tries}
 A Church-encoded Nat is a record whose structure mirrors the
-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
+data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
 field pointing to a $\mathrm{Zero}$ record; and so on.
 This is exactly the shape of a trie.
@@ -1387,6 +1399,12 @@ Below we explain why they arise from the three primitives.
     This contrasts with
     Datalog's bottom-up materialization, but the relational
     structure of the computation is the same.
+    Appendix~\ref{app:datalog-encoding} makes this correspondence
+    precise with a systematic encoding of Datalog into
+    inheritance-calculus, demonstrating that variable joins,
+    constant matches, multi-body rules, and recursive rules are
+    all expressible using only the three primitives of
+    Section~\ref{sec:syntax}.
 
   \item[Immunity to nonextensibility]
     It is structurally impossible to write a nonextensible program.
@@ -1891,14 +1909,14 @@ absent from the model it reduces.
 %%     - 提取子部分是平凡的：所有值都是透明 record，通过 qualified this
 %%       投影任意 slot 即可。Theorem 6 的 separating context 就在读取
 %%       argument slot（↑².argument）。
-%%     - 判断结构形态并分支：需要 Visitors pattern（Section 4）。
+%%     - 判断结构形态并分支：需要 Acceptance pattern（Section 4）。
 %%       NatVisitor 对 Nat 做的事情与 F 对 SF-calculus 项做的事情
 %%       完全对应：VisitZero/SuccessorVisitor 对应 F 的 atom/compound
 %%       分支。Visitor 可以通过 open extension 添加到已有 term 上，
 %%       不修改原始定义。
-%%   Visitors 在精神上就是 F：两者都是对 closed normal form 做
+%%   Acceptance 在精神上就是 F：两者都是对 closed normal form 做
 %%   constructor dispatch。区别在于 F 是不可扩展的 built-in primitive
-%%   （硬编码了 S 和 F 两个 atom），而 Visitors 是可扩展的 encoding
+%%   （硬编码了 S 和 F 两个 atom），而 Acceptance 是可扩展的 encoding
 %%   （新增 constructor 只需继承新的 Accepted* 分支，即 Expression Problem
 %%   immunity）。
 %%
@@ -1907,11 +1925,11 @@ absent from the model it reduces.
 %%   primitive reduction rule（F 是一个 term）；
 %%   inheritance-calculus 把它留在了 meta-level（观察者总能通过
 %%   properties(p) 查询任何路径），而 term-level 的分支需要通过
-%%   Visitors pattern 显式编码。
+%%   Acceptance pattern 显式编码。
 %%   换言之：inheritance-calculus 中 F 的 *读取* 能力是免费的
-%%   （所有值都是透明 record），但 F 的 *分支* 能力需要 Visitor。
+%%   （所有值都是透明 record），但 F 的 *分支* 能力需要 Acceptance。
 %%   SF-calculus 的 F 则把读取和分支捆绑在一个不可扩展的 primitive 里。
-%%   Visitors 是可扩展的（新增 constructor 只需继承新分支，
+%%   Acceptance 是可扩展的（新增 constructor 只需继承新分支，
 %%   即 Expression Problem immunity），而 F 硬编码了固定的 atom 集合
 %%   （S 和 F）。
 %%
@@ -2225,22 +2243,6 @@ constraint on what must fill it.
 Totality checking would enforce such declarations statically,
 rejecting inheritances that leave required slots unfilled.
 
-\subsection{Embedding Datalog}
-Section~\ref{sec:emergent-phenomena} observed that ordinary
-arithmetic on Church-encoded values produces the relational
-semantics of logic programming as an emergent phenomenon:
-trie union is a relation, $\bases$ is cross-join, $\supers$ is
-union, and $\properties$ is projection.
-Formalizing this observation as an embedding of Datalog
-into inheritance-calculus, analogous to the $\lambda$-calculus
-embedding of Section~\ref{sec:forward-translation}, is future
-work.
-Such an embedding would be structurally notable: the
-$\lambda$-calculus is inherently lazy, Datalog is inherently
-eager, and inheritance-calculus is neither, suggesting that
-the two models are projections of the same observational
-fixed-point semantics.
-
 \subsection{Standard Library}
 The remaining items concern the \emph{standard library}: they require
 no extensions to the calculus or type system, but involve nontrivial
@@ -2248,24 +2250,24 @@ encodings within the existing framework.
 
 Inheritance-calculus is \emph{open by default}: inheritance
 can freely merge any two mixins, and a value may simultaneously
-inhabit multiple constructors (e.g.,
+inhabit multiple data constructors (e.g.,
 $\{\mathrm{Zero},\; \mathrm{Odd},\; \mathrm{half} \mapsto \mathrm{Zero}\}$).
 This is the natural trie semantics of the
 calculus, and the basis for solving the expression problem
 (Section~\ref{sec:expression-problem}).
 However, many operations (e.g., equality testing) assume that values
-are \emph{linear}, inhabiting exactly one constructor.
+are \emph{linear}, inhabiting exactly one data constructor.
 The observer pattern (Section~\ref{sec:case-study}) does not enforce
-this: applied to a multi-constructor value, all callbacks fire and
+this: applied to a multi-data-constructor value, all callbacks fire and
 their results are inherited.
 
 \emph{Schema validation} can be implemented at the library level
 using existing primitives.
-An observer can test whether a particular constructor is present,
+An observer can test whether a particular data constructor is present,
 returning a Boolean; a second Boolean dispatch then branches on the
 result.
 By chaining such tests, a factory can validate that a value matches
-exactly one constructor and carries the required fields.
+exactly one data constructor and carries the required fields.
 This does not restrict inheritance itself, which remains
 unconstrained, but provides a way to detect invariant violations
 before they propagate.
@@ -2273,10 +2275,10 @@ before they propagate.
 The same technique, an observer returning Boolean followed by Boolean
 dispatch, yields \emph{closed pattern matching}.
 The observer pattern of Section~\ref{sec:case-study} is inherently
-\emph{open}: new constructor cases can be added through inheritance.
+\emph{open}: new data-constructor cases can be added through inheritance.
 Closed matching, where exactly one branch is taken, can be encoded as
 a \emph{visitor chain}: a linked list of if-then-else nodes, each
-testing one constructor and falling through on mismatch.
+testing one data constructor and falling through on mismatch.
 This is analogous to GHC.Generics' $\mathrm{(:+:)}$ sum
 representation~\cite{magalhaes2010generic}, where each link
 corresponds to one summand.
@@ -2306,9 +2308,10 @@ equations~(\ref{eq:properties})--(\ref{eq:this}) are
 first-order: their inputs and outputs are paths and sets of
 paths, with no function spaces, closures, or higher-order
 constructs.
-This section exploits the first-order character to establish
-well-definedness via an indexed hylomorphism over the
-dependency graph.
+This section establishes well-definedness by showing that
+the six equations define a monotone operator whose least
+fixed point is computed soundly by tabled
+evaluation~\cite{tamaki1986old,chen1996tabled}.
 
 \begin{definition}[Dependency graph]\label{def:dependency-graph}
 Fix an AST with its primitive functions $\defines$ and
@@ -2324,328 +2327,152 @@ equations~(\ref{eq:properties})--(\ref{eq:this})
 requires the value of~$v$.
 \end{definition}
 
-\begin{definition}[Coalgebras, algebras, and the indexed functor]%
-\label{def:indexed-functor}
-Each equation~(\ref{eq:properties})--(\ref{eq:this})
-decomposes into a \emph{coalgebra}~$\alpha_i$
-that extracts the sub-queries on its right-hand side
-(the outgoing edges from a vertex in~$G$)
-and an \emph{algebra}~$\varphi_i$
-that assembles the sub-query results into the
-equation's value.
-We write each decomposition below;
-the hylomorphism at index~$i$ recovers the
-original equation as
-$\hyloi{i} = \varphi_i \circ F_i(\hylo{\Idx}) \circ \alpha_i$%
-~\cite{meijer1991functional,loh2011generic}.
-
-\medskip\noindent\textbf{(1)\;$\properties$.}
-\begin{align}
-  \alpha_{\properties}(p)
-  &\;=\;
-  \{\,\supers(p)\,\}
-  \\
-  \varphi_{\properties}(p,\; R_{\supers(p)})
-  &\;=\;
-  \{\; \ell \;|\;
-    (\_,\; p_{\mathrm{override}}) \in R_{\supers(p)},\;
-    \ell \in \defines(p_{\mathrm{override}})
-  \;\}
-\end{align}
-
-\noindent\textbf{(2)\;$\supers$.}
-\begin{align}
-  \alpha_{\supers}(p)
-  &\;=\;
-  \{\,\overrides(p),\;\bases(p)\,\} \notag \\
-  &\quad{}\cup\;
-  \{\,\supers(p_{\mathrm{base}}) \;|\;
-  p_{\mathrm{base}} \in R_{\bases(p)}\,\}
-  \\
-  \varphi_{\supers}(
-    p,\;R_{\overrides(p)},\;
-    R_{\bases(p)}, \notag \\
-    \quad
-    (R_{\supers(p_{\mathrm{base}})})_{
-    p_{\mathrm{base}} \in R_{\bases(p)}}
-  ) &\;=\;
-  \{\,(\init(p),\; p_{\mathrm{override}})
-    \;|\;
-    p_{\mathrm{override}}
-  \in R_{\overrides(p)}\,\}%
-  \footnote{The functions $\init$ and $\last$ are
-    defined only for non-root paths
-    (Section~\ref{sec:mixin-trees}).
-    When $p = ()$, the value $\init(p)$ in the first
-    component is never consumed:
-    $\varphi_{\properties}$ uses only the second
-    component~$p_{\mathrm{override}}$,
-    and $\alpha_{\overrides}$ calls
-    $\supers(\init(p))$
-    only for non-root~$p$.
-    In $\alpha_{\bases}$ and $\varphi_{\bases}$,
-    $\init(p)$ is guarded by the condition
-    $(n, \ell_{\mathrm{down},*})
-    \in \inherits(p_{\mathrm{override}})$;
-    since $\inherits = \varnothing$ at the root,
-    $\init(p)$ is never reached.
-    Likewise, $\alpha_{\resolve}$ and
-    $\alpha_{\this}$ use
-    $\init(p_{\mathrm{def}})$
-    where $p_{\mathrm{def}}$ always originates
-    from an $\inherits$ entry and is therefore
-  non-root.}
-  \notag \\
-  &\quad{}\cup\;
-  \{\; (p_{\mathrm{site}},\; p_{\mathrm{override}})
-    \;|\; \notag \\
-    &\qquad
-    p_{\mathrm{base}} \in R_{\bases(p)},\; \notag \\
-    &\qquad
-    (p_{\mathrm{site}},\; p_{\mathrm{override}})
-    \in R_{\supers(p_{\mathrm{base}})}
-  \;\}
-\end{align}
-The second batch of sub-queries depends on
-the result~$R_{\bases(p)}$ of the first batch,
-making $F_{\supers}$ a dependent polynomial
-(container) functor~\cite{abbott2005containers,hancock2000interactive}
-rather than a simple polynomial.
-Equivalently, the closed-form $\bases^*$
-in~(\ref{eq:supers}) is the reflexive-transitive
-closure of~$\bases$---itself a hylomorphism
-(coalgebra~$= \bases$, algebra~$= \cup$)
-embedded via the cross-index recursion
-$\supers \to \bases \to \supers$.
-
-\noindent\textbf{(3)\;$\overrides$.}
-\begin{align}
-  \alpha_{\overrides}(p)
-  &\;=\;
-  \begin{cases}
-    \emptyset & \text{if } p = () \\[4pt]
-    \{\,\supers(\init(p))\,\}
-    & \text{if } p \neq ()
-  \end{cases}
-  \\
-  \varphi_{\overrides}(p,\; R_{\supers(\init(p))})
-  &\;=\;
-  \begin{cases}
-    \{p\} & \text{if } p = () \\[4pt]
-    \{p\}
-    \;\cup\;
-    \{\; p_{\mathrm{branch}} \snoc \last(p) \;|\; \\
-      \qquad
-      (\_,\; p_{\mathrm{branch}}) \in R_{\supers(\init(p))}, \\
-      \qquad
-      \last(p) \in \defines(p_{\mathrm{branch}})
-    \;\}
-    & \text{if } p \neq ()
-  \end{cases}
-\end{align}
-
-\noindent\textbf{(4)\;$\bases$.}
-\begin{align}
-  \alpha_{\bases}(p)
-  &\;=\;
-  \{\,\overrides(p)\,\}
-  \;\cup \notag \\
-  &\quad
-  \{\,
-    \resolve(\init(p),\;
-      p_{\mathrm{override}},\;
-    n,\;\ell_{\mathrm{down},*})
-    \notag \\
-    &\qquad\;|\;
-    p_{\mathrm{override}} \in R_{\overrides(p)}, \notag \\
-    &\qquad\phantom{\;|\;}
-    (n,\; \ell_{\mathrm{down},*})
-    \in \inherits(p_{\mathrm{override}})
-  \,\}
-  \\
-  \varphi_{\bases}(
-    p,\;
-    R_{\overrides(p)}, \notag \\
-    \quad
-    (R_{\resolve(
-          \init(p),\,p_{\mathrm{override}},\,
-      n,\,\ell_{\mathrm{down},*})}
-    )
-  ) &\;=\;
-  \{\; p_{\mathrm{target}} \;|\; \notag \\
-    &\;\;
-    p_{\mathrm{override}} \in R_{\overrides(p)}, \notag \\
-    &\;\;
-    (n,\; \ell_{\mathrm{down},*})
-    \in \inherits(p_{\mathrm{override}}), \notag \\
-    &\;\;
-    p_{\mathrm{target}} \in
-    R_{\resolve(\init(p),\,
-        p_{\mathrm{override}},\,
-    n,\,\ell_{\mathrm{down},*})}
-  \;\}
-\end{align}
-Like $F_{\supers}$, the functor $F_{\bases}$ is a
-dependent polynomial:
-the $\resolve$-positions depend on the
-result~$R_{\overrides(p)}$.
-
-\noindent\textbf{(5)\;$\resolve$.}
-\begin{align}
-  \alpha_{\resolve}(p_{\mathrm{site}},\; p_{\mathrm{def}},\;
-  n,\; \ell_{\mathrm{down},*})
-  &\;=\;
-  \{\,
-    \this(\{p_{\mathrm{site}}\},\; \init(p_{\mathrm{def}}),\; n)
-  \,\}
-  \\
-  \varphi_{\resolve}(
-    p_{\mathrm{site}},\; p_{\mathrm{def}},\;
-    n,\; \ell_{\mathrm{down},*}, \notag \\
-    \quad
-    R_{\this(\{p_{\mathrm{site}}\},\,
-    \init(p_{\mathrm{def}}),\,n)}
-  ) &\;=\;
-  \{\;
-    p_{\mathrm{current}}
-    \snoc \ell_{\mathrm{down},1}
-    \snoc \cdots
-    \snoc \ell_{\mathrm{down},k}
-    \notag \\
-    &\quad\;|\;
-    p_{\mathrm{current}} \in
-    R_{\this(\{p_{\mathrm{site}}\},\,
-    \init(p_{\mathrm{def}}),\,n)}
-  \;\}
-\end{align}
-
-\noindent\textbf{(6)\;$\this$.}
-\begin{align}
-  \alpha_{\this}(S,\; p_{\mathrm{def}},\; n)
-  &\;=\;
-  \begin{cases}
-    \emptyset & \text{if } n = 0 \\[4pt]
-    \{\,\supers(p_{\mathrm{current}}) \;|\;
-    p_{\mathrm{current}} \in S\,\} \\
-    \;\cup\;
-    \{\,\this(S',\;
-        \init(p_{\mathrm{def}}),\;
-    n - 1)\,\}
-    & \text{if } n > 0
-  \end{cases}
-  \intertext{where
-    $S' = \{\,p_{\mathrm{site}} \;|\;
-      p_{\mathrm{current}} \in S,\;
-      (p_{\mathrm{site}},\; p_{\mathrm{override}})
-      \in R_{\supers(p_{\mathrm{current}})},\;
-  p_{\mathrm{override}} = p_{\mathrm{def}}\,\}$.}
-  \varphi_{\this}(
-    S,\; p_{\mathrm{def}},\; n, \notag \\
-    \quad
-    (R_{\supers(p_{\mathrm{current}})})_{
-    p_{\mathrm{current}} \in S}, \notag \\
-    \quad
-    R_{\this(S',\,\init(p_{\mathrm{def}}),\,n-1)}
-  ) &\;=\;
-  \begin{cases}
-    S & \text{if } n = 0 \\[4pt]
-    R_{\this(S',\,
-        \init(p_{\mathrm{def}}),\,
-    n-1)}
-    & \text{if } n > 0
-  \end{cases}
-\end{align}
-Like $F_{\supers}$ and $F_{\bases}$, the functor
-$F_{\this}$ is a dependent polynomial:
-the $\this$-position depends on the frontier~$S'$
-computed from the $\supers$~results.
-The self-call is structural recursion on~$n$
-and terminates independently of the dependency graph.
-
-\medskip
-Because every $\alpha_i$ and $\varphi_i$ operates on paths
-and sets of paths---first-order data with no function
-spaces---the construction is purely set-theoretic.
-The \emph{indexed functor}
-$F_{\Idx} = (F_i)_{i \in \Idx}$ is the family of
-container
-endofunctors~\cite{abbott2005containers}
-on $\prod_{j \in \Idx}\mathbf{Set}$
-whose shape at each index~$i$ is determined by the
-sub-queries that $\alpha_i$
-emits~\cite{loh2011generic}.
-For indices where the set of sub-queries depends on
-earlier results ($\supers$, $\bases$, $\this$),
-$F_i$ is a dependent polynomial
-functor~\cite{hancock2000interactive};
-for the remaining indices ($\properties$, $\overrides$,
-$\resolve$) it is a simple polynomial.
-The cross-index dependencies
-($\supers \leftrightarrow \overrides$,
-$\supers \to \bases \to \resolve \to \this \to \supers$)
-are encoded in the index arguments of each~$F_i$.
-The initial algebra $\mu F_{\Idx}$ consists of finite
-dependency trees, and the final coalgebra $\nu F_{\Idx}$
-includes the infinite trees that arise from diverging queries.
-
-The equivalence between the decompositions above and the
-original equations~(\ref{eq:properties})--(\ref{eq:this})
-is constructive:
-for each index~$i$, substituting the sub-query results
-produced by $F_i(\hylo{\Idx}) \circ \alpha_i$ into
-$\varphi_i$ recovers the corresponding equation
-in Section~\ref{sec:mixin-trees}.
-The reader may verify this by inlining each
-$\alpha_i$ into its $\varphi_i$ and checking that the
-resulting expression coincides with
-equations~(\ref{eq:properties})--(\ref{eq:this}).
+\begin{definition}[Immediate consequence operator $T_P$]%
+\label{def:tp-operator}
+Let $\mathcal{Q}$ be the set of all
+semantic-function queries
+(vertices of~$G$), and let
+$\mathcal{V}$ be the set of possible answer values
+(paths, sets of paths, or sets of pairs of paths,
+depending on the equation).
+A \emph{query--answer map} is a function
+$M : \mathcal{Q} \to \mathcal{P}(\mathcal{V})$
+assigning to each query a set of answer values.
+The \emph{immediate consequence
+operator}~\cite{vanemden1976semantics}
+$T_P$ maps a query--answer map~$M$ to a new
+query--answer map~$T_P(M)$ by evaluating the
+right-hand side of each
+equation~(\ref{eq:properties})--(\ref{eq:this}),
+substituting $M(q)$ for every sub-query~$q$.
 \end{definition}
 
-\begin{theorem}[Well-definedness]\label{thm:well-defined}
-The semantic functions
-$\properties$, $\supers$, $\overrides$, $\bases$, $\resolve$,
-$\this$ are well-defined: for every query whose recursive
-evaluation terminates, the result is the unique solution of
-$\hylo{\Idx}$~(\ref{eq:properties})--(\ref{eq:this}) on the
-reachable dependency subgraph.
+\begin{lemma}[Monotonicity]\label{lem:monotonicity}
+The operator $T_P$ is monotone on the complete lattice
+$(\mathcal{Q} \to \mathcal{P}(\mathcal{V}),\; \subseteq)$.
+\end{lemma}
+
+\begin{proof}
+Each equation's right-hand side is built from
+$\cup$, $\in$, equality tests, and positive set
+comprehension $\{\, x \mid x \in S, \ldots \,\}$.
+None of the six equations uses negation, set
+difference, or complement.
+Therefore, if $M \subseteq M'$ (pointwise), then
+$T_P(M) \subseteq T_P(M')$.
+\end{proof}
+
+\begin{theorem}[Existence and uniqueness of
+  $\mathrm{lfp}(T_P)$]\label{thm:lfp-exists}
+The operator $T_P$ has a unique least fixed point
+$\mathrm{lfp}(T_P)$.
 \end{theorem}
 
 \begin{proof}
-Termination implies that the reachable subgraph of~$G$ is
-finite (finitely many vertices visited) and acyclic
-(a cycle $v_0 \to \cdots \to v_0$ would require
-  the value of~$v_0$ before it has been determined,
-giving infinite recursion).
-On this finite DAG the restriction of each~$\alpha_i$
-is a well-founded (recursive)
-coalgebra~\cite{taylor1999practical,capretta2006recursive},
-so $\hylo{\Idx}$ has a unique solution by the general
-recursion theorem for recursive
-coalgebras~\cite{adamek2019well}.
-Memoized evaluation computes exactly this solution,
-visiting each vertex at most once.
+The powerset lattice
+$(\mathcal{P}(\mathcal{V}), \subseteq)$
+is complete,
+so the pointwise lattice
+$(\mathcal{Q} \to \mathcal{P}(\mathcal{V}), \subseteq)$
+is also complete.
+By the Knaster--Tarski
+theorem~\cite{tarski1955lattice},
+every monotone function on a complete lattice has a
+unique least fixed point.
 \end{proof}
 
-\paragraph{Divergence}
-When evaluation does not terminate, the
-$\hylo{\Idx}$ framework accounts for divergence
-without additional apparatus.
-The dependency graph either contains a cycle (circular
-inheritance, giving infinite recursion) or an infinite
-acyclic chain (unbounded inheritance hierarchy).
-In both cases~$\alpha_i$ is non-well-founded
-and the unfold produces an infinite
-tree~\cite{capretta2006recursive}---an element of the
-final coalgebra
-$\nu F_{\Idx}$~(Definition~\ref{def:indexed-functor}),
-the carrier of the terminal
-$F_{\Idx}$-coalgebra~\cite{rutten2000universal}.
-Convergence and divergence are therefore \emph{internal}
-to the first-order framework: convergent queries yield
-elements of $\mu F_{\Idx}$ (finite dependency trees),
-divergent queries yield elements of
-$\nu F_{\Idx} \setminus \mu F_{\Idx}$
-(infinite trees).
+\begin{theorem}[Well-definedness]\label{thm:well-defined}
+The semantic functions
+$\properties$, $\supers$, $\overrides$, $\bases$,
+$\resolve$, $\this$ are well-defined:
+their denotational semantics is
+$\mathrm{lfp}(T_P)$, the unique least fixed point of
+the immediate consequence operator.
+\end{theorem}
+
+\begin{theorem}[Tabling soundness]%
+\label{thm:tabling-soundness}
+Tabled evaluation of
+equations~(\ref{eq:properties})--(\ref{eq:this})
+never returns a wrong answer, even when the
+dependency graph~$G$ is infinite.
+Specifically:
+\begin{enumerate}
+\item \textbf{Soundness (no false positives).}
+  Every fact returned by tabling was produced by
+  evaluating some equation's right-hand side on its
+  inputs.
+  By induction on the evaluation trace, every
+  returned fact belongs to $\mathrm{lfp}(T_P)$.
+
+\item \textbf{Monotone accumulation.}
+  The tabling accumulator only grows between
+  iterations (via set union); no fact is ever
+  removed.
+
+\item \textbf{Correct fixpoint detection.}
+  If no sub-query was re-entered during evaluation,
+  all sub-queries were fully computed with no
+  approximation, and the result is exact.
+  If re-entry occurred but the accumulator is
+  stable (no new facts were added), the
+  accumulator equals
+  $\mathrm{lfp}(T_P)$ restricted to the reachable
+  queries, because it is a pre-fixed point reached
+  by ascending from~$\bot$.
+
+\item \textbf{Honest failure.}
+  When tabling cannot determine the answer---either
+  because the iteration budget is exhausted
+  (signalled by an explicit exception) or because
+  of an infinite non-cyclic chain (stack
+  overflow)---it raises an error rather than
+  returning a wrong answer.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+For~(1), each returned fact is the output of some
+equation's right-hand side applied to previously
+returned facts; by induction, all inputs are in
+$\mathrm{lfp}(T_P)$, so the output is too (by
+monotonicity and the fixed-point property).
+
+For~(2), the implementation accumulates via
+$A \leftarrow A \cup T_P(A)$, which is monotone in~$A$.
+
+For~(3), when no reentry occurs, the evaluation is
+ordinary memoised recursion on a (finite, acyclic)
+subgraph and computes the exact value.
+When reentry occurs and $A = A \cup T_P(A)$,
+$A$ is a post-fixed point of~$T_P$.
+Since $A$ was built by iterating from
+$\bot = \lambda q.\, \varnothing$,
+it is the \emph{least} post-fixed point, i.e.\
+$\mathrm{lfp}(T_P)$ restricted to the reachable
+queries.
+
+For~(4), budget exhaustion and stack overflow both
+produce exceptions, never silent wrong answers.
+\end{proof}
+
+\paragraph{Termination}
+Whether evaluation terminates depends on the
+program:
+\begin{itemize}
+\item \textbf{Acyclic, finite reachable subgraph.}
+  One pass suffices; evaluation terminates.
+\item \textbf{Cyclic, finite per-query domain.}
+  Multiple passes converge by the ascending chain
+  condition on a finite
+  lattice~\cite{bancilhon1986amateur}.
+  This is the Datalog case
+  (Section~\ref{sec:recursive-rules}).
+\item \textbf{Infinite reachable subgraph.}
+  Evaluation may diverge; this is inherent to
+  Turing-completeness and not a defect of the
+  evaluation strategy.
+\end{itemize}
 
 \section{B\"ohm Tree Correspondence: Proofs}
 \label{app:bohm-tree-proofs}
@@ -3038,6 +2865,48 @@ Hence the abstraction shape appears at depth $n$ in the
 pre-reduct if and only if it appears at depth $n - 1$ in
 the post-reduct.
 \end{proof}
+
+\paragraph{Extension to $\mathrm{lfp}(T_P)$ semantics}
+\label{rem:convergence-lfp}
+The proof above works directly with the six
+equations~(\ref{eq:properties})--(\ref{eq:this}),
+not with any particular evaluation strategy.
+When evaluation uses multi-pass tabled evaluation
+(computing $\mathrm{lfp}(T_P)$ via iterated
+application of~$T_P$;
+see Appendix~\ref{app:well-definedness}),
+convergence preservation still holds:
+\begin{itemize}
+\item
+  The Result-Step Lemma
+  (Lemma~\ref{lem:result-step}) establishes a
+  structural isomorphism between the equation
+  systems of $\mathcal{T}(M)$ and
+  $\mathcal{T}(N)$, shifted by one
+  $\mathrm{result}$ step.
+  This isomorphism preserves monotonicity, so
+  $\mathrm{lfp}(T_P)$ yields the same answer on
+  both sides (modulo the depth shift).
+\item
+  For $\lambda$-calculus--translated programs, the
+  Single-Path Lemma
+  (Lemma~\ref{lem:single-path}) ensures that no
+  cycles arise in the dependency graph (each scope
+  level has exactly one inheritance source), so
+  single-pass and multi-pass evaluation produce
+  identical results.
+\item
+  For programs beyond the $\lambda$-calculus
+  fragment that introduce cyclic dependencies,
+  multi-pass evaluation may converge where
+  single-pass evaluation diverges; in this case,
+  convergence preservation under
+  $\mathrm{lfp}(T_P)$ follows from the
+  isomorphism argument: if $\mathcal{T}(M)$
+  converges at depth~$n$ under $\mathrm{lfp}$,
+  then $\mathcal{T}(N)$ converges at
+  depth~$n - 1$, and vice versa.
+\end{itemize}
 
 \subsection{Adequacy}
 
@@ -4262,6 +4131,446 @@ ensures that the set-valued $\this$ function
 (equation~\ref{eq:this}) degenerates to the
 single-valued $\scope$
 (equation~\ref{eq:lambda-scope}).
+
+\section{Encoding Datalog in Inheritance-Calculus}
+\label{app:datalog-encoding}
+
+Section~\ref{sec:emergent-phenomena} observed that
+inheritance-calculus natively produces the relational semantics
+of logic programming.
+This appendix makes that observation precise by giving a
+systematic encoding of Datalog into inheritance-calculus.
+The encoding uses no extensions to the calculus; it is
+expressible in the three primitives of Section~\ref{sec:syntax}.
+All examples in this appendix have executable MIXINv2
+implementations\selfcite{~\cite{mixin2025}}{~(supplementary
+material)}.
+
+\subsection{Relations as Tries}
+
+A binary relation over a finite domain $D = \{a, b, c, \ldots\}$
+is represented as a \emph{trie}: a mixin tree whose paths
+encode tuples.
+The trie is built from three base scopes:
+$\mathrm{Relation}$ (abstract base),
+$\mathrm{Cons}$ (non-empty node), and $\mathrm{Nil}$ (terminator).
+Each constant $d \in D$ inherits from $\mathrm{Cons}$ and carries
+a $\mathrm{TailMap}$ that provides per-constant sub-tries:
+\begin{align*}
+  &\mathrm{Relation} \mapsto \{\},\quad
+    \mathrm{Cons} \mapsto \{\mathrm{Relation},\;
+      \mathrm{Tail} \mapsto \{\mathrm{Relation}\}\},\quad
+    \mathrm{Nil} \mapsto \{\mathrm{Relation}\}\\[2pt]
+  &d \mapsto \{\mathrm{Cons},\;
+      \mathrm{Tail} \mapsto \{\},\;
+      \mathrm{TailMap} \mapsto \{d \mapsto \{\mathrm{Tail}\}\}\}
+\end{align*}
+A fact $R(d_1, d_2)$ is encoded as a trie path of depth~2,
+with a $\mathrm{Nil}$ terminator.
+The per-constant sub-tries are accessed via
+$\mathrm{TailMap}.d$:
+\begin{align*}
+  R(a, b) \;\leadsto\quad
+  R \mapsto \{a,\; \mathrm{TailMap} \mapsto \{a \mapsto
+    \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\}\}\}
+\end{align*}
+Multiple facts for the same relation are accumulated by
+inheritance (trie union).
+Adding $R(b, c)$:
+\begin{align*}
+  R \mapsto \{a,\; b,\;
+    \mathrm{TailMap} \mapsto \{&
+      a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+      &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}\}\}
+\end{align*}
+
+\subsection{Infrastructure}
+
+Each constant $d$ carries four groups of boilerplate
+definitions used by the encoding.
+These play a role analogous to derived type-class instances
+in Haskell: each constant must provide a fixed set of
+properties that the encoding's generic patterns rely on.
+Inheritance-calculus has no built-in derivation mechanism,
+so the boilerplate is written out manually; however, the
+amount of boilerplate per constant is $O(1)$---it does not
+grow with the domain size $|D|$---so adding a new constant
+does not require modifying any existing scope, preserving
+the expression-problem property.
+
+\begin{description}
+  \item[Acceptance]
+    The visitor-pattern infrastructure from
+    Section~\ref{sec:case-study}.
+    Each constant $d$ defines a $\mathrm{VisitorMap}$
+    containing a branch keyed by $d$, a $\mathrm{Visitor}$
+    with a $\mathrm{Visited}$ slot for per-constant results,
+    and an $\mathrm{Accepted}$ property that delegates to the
+    matching branch's $\mathrm{Visited}$ value.
+    This is the dispatch mechanism: given a scope that may
+    contain multiple constants, $\mathrm{Acceptance}$ selects the
+    branch corresponding to each constant present and
+    collects the per-constant $\mathrm{Visited}$ results.
+
+  \item[WithVisitorTail]
+    Maps each constant $d$ to its sub-trie entry
+    $\mathrm{TailMap}.d$, labeled as $\mathrm{VisitorTail}$.
+    This provides the \emph{right-hand} (visitor) side of a
+    join: when two relations' $\mathrm{VisitorMap}$ entries are
+    composed, $\mathrm{VisitorTail}$ carries the joined
+    relation's row data for the matched constant.
+
+  \item[WithVisiteeTail]
+    Maps each constant $d$ to its sub-trie entry
+    $\mathrm{TailMap}.d$, labeled as $\mathrm{VisiteeTail}$.
+    This provides the \emph{left-hand} (visitee) side: the
+    relation being iterated. Together,
+    $\mathrm{WithVisitorTail}$ and $\mathrm{WithVisiteeTail}$
+    enable value-level joins where only constants present
+    in \emph{both} relations produce output.
+
+  \item[Replacement]
+    Given a $\mathrm{NewTail}$ value, produces a
+    $\mathrm{Replaced}$ scope that inherits the label $d$
+    but substitutes $\mathrm{TailMap}.d$ with
+    $\mathrm{NewTail}$.
+    This is the \emph{output construction} mechanism: it
+    builds output tuples by substituting new sub-tries into
+    constant wrappers.
+    Crucially, $\mathrm{Replacement}$ is defined on the
+    per-constant $\mathrm{TailMap}$ entry (not on the merged
+    scope), ensuring that output construction operates on
+    individual constants rather than their union.
+\end{description}
+
+\subsection{Encoding Rules}
+
+A Datalog rule $H(\bar{X}) \mathrel{{:}\!{-}} B_1(\bar{Y}_1), \ldots, B_n(\bar{Y}_n)$
+is encoded using three mechanisms that compose by nesting:
+
+\begin{enumerate}
+  \item \textbf{Column iteration.}
+    For each column position, an $\mathrm{Acceptance}$ dispatch
+    iterates over the constants present.
+    The $\mathrm{VisitorMap}$ is populated from
+    $\mathrm{WithVisiteeTail}$, so each matched constant's
+    $\mathrm{Visitor}$ receives $\mathrm{VisiteeTail}$: the
+    per-constant sub-trie at that position.
+    The result of processing each constant is placed in
+    $\mathrm{Visited}$, and $\mathrm{Accepted}$ collects all
+    per-constant results.
+    (Details in Sections~\ref{sec:encoding-variables},
+    \ref{sec:encoding-constants}, and~\ref{sec:encoding-multi}.)
+
+  \item \textbf{Join.}
+    For each shared variable between body atoms, the inner
+    $\mathrm{Acceptance}$'s $\mathrm{VisitorMap}$ inherits from
+    \emph{both} $\mathrm{WithVisitorTail}$ (from the joined
+    relation) and $\mathrm{WithVisiteeTail}$ (from the iterated
+    relation).
+    A constant $d$ produces a $\mathrm{Visitor}$ entry only if
+    $d$ appears in both relations, achieving a value-level
+    join.
+    The $\mathrm{Visitor}$ then receives both
+    $\mathrm{VisiteeTail}$ and $\mathrm{VisitorTail}$,
+    providing access to both relations' data for the
+    matched constant.
+
+  \item \textbf{Output construction.}
+    Inside the innermost $\mathrm{Nil}$ confirmation (verifying
+    that each body atom's tuple is complete), chain
+    $\mathrm{Replacement}$ operations from the innermost
+    output column outward, each setting $\mathrm{NewTail}$ to
+    the previous $\mathrm{Replaced}$ value, terminated by
+    $\mathrm{Nil}$.
+    The final $\mathrm{Replaced}$ value is assigned to
+    $\mathrm{Visited}$.
+\end{enumerate}
+
+\subsection{Variable Join}
+\label{sec:encoding-variables}
+
+Consider the simplest join:
+$\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$.
+
+The shared variable $Y$ requires matching constants
+between $\alpha$'s second column and $\beta$'s first column.
+The encoding nests five $\mathrm{Acceptance}$ dispatches:
+iterate $X$ from $\alpha$, join on $Y$ between $\alpha$
+and $\beta$, confirm $\mathrm{Nil}$ after $Y$ in $\alpha$,
+iterate $Z$ from $\beta$'s matched row, and confirm
+$\mathrm{Nil}$ after $Z$.
+We present each level as a named sub-scope.
+
+\paragraph{Level~1: iterate $X$ from $\alpha$}
+{\small
+\begin{align*}
+  &\mathrm{xAcc} \mapsto \{
+    \alpha.\mathrm{Acceptance},\;
+    \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
+  &\quad \mathrm{Visitor} \mapsto \{
+    \_X \mapsto \{\mathrm{VisiteeTail}\},\;
+    \ldots,\;
+    \mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}\}\}
+\end{align*}}
+
+\paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
+
+The $\mathrm{VisitorMap}$ inherits from \emph{both}
+$\beta.\mathrm{WithVisitorTail}$ and
+$\_X.\mathrm{WithVisiteeTail}$, producing an entry for
+constant $d$ only if $d$ appears in both $\alpha$'s
+second column (via $\_X$) and $\beta$'s first column.
+{\small
+\begin{align*}
+  &\mathrm{yAcc} \mapsto \{
+    \_X.\mathrm{Acceptance},\\
+  &\quad \mathrm{VisitorMap} \mapsto \{
+    \beta.\mathrm{WithVisitorTail},\;
+    \_X.\mathrm{WithVisiteeTail}\},\\
+  &\quad \mathrm{Visitor} \mapsto \{
+    \_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\;
+    \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
+  &\qquad
+    \ldots,\;
+    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}\}\}
+\end{align*}}
+
+\paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
+
+This checks that $\alpha(X, Y)$ is a complete two-column
+fact (its trie path terminates at $\mathrm{Nil}$ after $Y$).
+Inside the $\mathrm{Nil}$ branch, the encoding proceeds to
+iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
+{\small
+\begin{align*}
+  &\mathrm{nilAcc}_0 \mapsto \{
+    \_Y_0.\mathrm{Acceptance},\;
+    \mathrm{VisitorMap} \mapsto \{
+    \mathrm{Nil} \mapsto \{\ldots,\;
+    \mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}\}\}\}
+\end{align*}}
+
+\paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
+{\small
+\begin{align*}
+  &\mathrm{zAcc} \mapsto \{
+    \mathrm{VisitorTail}.\mathrm{Acceptance},\;
+    \mathrm{VisitorMap} \mapsto \{
+      \mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
+  &\quad \mathrm{Visitor} \mapsto \{
+    \_Z \mapsto \{\mathrm{VisiteeTail}\},\;
+    \ldots,\;
+    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}\}\}
+\end{align*}}
+
+\paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
+{\small
+\begin{align*}
+  &\mathrm{nilAcc}_1 \mapsto \{
+    \mathrm{VisiteeTail}.\mathrm{Acceptance},\;
+    \mathrm{VisitorMap} \mapsto \{
+    \mathrm{Nil} \mapsto \{\\
+  &\quad
+    \mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\;
+      \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
+  &\quad
+    \mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\;
+      \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
+  &\quad
+    \mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}\}\}\}
+\end{align*}}
+
+\paragraph{Final result}
+\[
+  \mathrm{composed} \mapsto \{\mathrm{xAcc}.\mathrm{Accepted}\}
+\]
+
+\paragraph{Semantics}
+At Level~2, the combined $\mathrm{VisitorMap}$ ensures that a
+constant $d$ produces a $\mathrm{Visitor}$ only when $d$
+appears in both $\alpha$'s second column \emph{and}
+$\beta$'s first column.
+The $\mathrm{Visitor}$ for each matched constant $d$
+independently receives $\mathrm{VisiteeTail}$ ($\alpha$'s
+data for~$d$) and $\mathrm{VisitorTail}$ ($\beta$'s row
+for~$d$).
+Output construction (Level~5) operates inside this
+per-constant $\mathrm{Visitor}$, so $\mathrm{Replacement}$
+acts on the \emph{individual} constant's data, not on the
+merged scope.
+Each matched constant $d$ produces its own output tuples
+in $\mathrm{Visited}$, and these are collected by
+$\mathrm{Accepted}$ via trie union ($\supers$).
+This yields standard Datalog tuple-level semantics: only
+constants that actually match between both relations
+contribute to the output.
+
+\subsection{Constant Match and Navigation}
+\label{sec:encoding-constants}
+
+Constants in Datalog atoms use two mechanisms, neither of
+which is a join:
+
+\paragraph{Type existence match}
+An atom $R(X, b)$ with a constant in the second position
+requires checking that constant $b$ exists in $R$'s
+second column at the matched row.
+This is encoded as an $\mathrm{Acceptance}$ with a
+hand-crafted $\mathrm{VisitorMap}$ containing \emph{only}
+the $b$ branch (instead of composing from
+$\mathrm{WithVisitorTail}$, which would create branches for
+all constants):
+{\small
+\begin{align*}
+  \mathrm{VisitorMap} \mapsto \{b \mapsto \{\ldots\}\}
+\end{align*}}
+If $b$ exists in the dispatching scope, the
+$b$ branch fires; otherwise, $\mathrm{Accepted}$
+receives no matching branch.
+
+\paragraph{Direct navigation}
+An atom $R(b, Z)$ with a constant in the first position
+navigates directly to $b$'s sub-trie:
+\[
+  \mathrm{edgeB}_Z \mapsto \{R.\mathrm{TailMap}.b\}
+\]
+This bypasses the visitor mechanism entirely, accessing
+the per-constant $\mathrm{TailMap}$ entry to restrict the
+scope to only $b$'s data.
+
+\paragraph{Example}
+$\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
+combines both mechanisms.
+The encoding iterates $\mathrm{edge}$ for $X$ (Level~1),
+then checks for constant $b$ in $X$'s row with a
+hand-crafted $\mathrm{VisitorMap}$ (Level~2), navigates
+$\mathrm{edge}.\mathrm{TailMap}.b$ for $Z$ (Level~3),
+confirms $\mathrm{Nil}$ (Level~4), and constructs $(X, Z)$
+via $\mathrm{Replacement}$.
+
+\subsection{Multi-Body Rules}
+\label{sec:encoding-multi}
+
+Rules with $n > 2$ body atoms chain additional join levels.
+Each shared variable introduces one combined
+$\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ join
+inside the previous level's $\mathrm{Visitor}$,
+and the output construction is placed inside the innermost
+$\mathrm{Nil}$ confirmation.
+
+\paragraph{Three-body rule}
+$\mathrm{chain}(X, W) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z),\; \gamma(Z, W)$
+requires two joins: on $Y$ (between $\alpha$ and $\beta$)
+and on $Z$ (between $\beta$ and $\gamma$).
+The structure is: iterate $X$ from $\alpha$, join on $Y$
+(getting both $\alpha$'s and $\beta$'s data), confirm
+$\mathrm{Nil}$ after $Y$ in $\alpha$, then inside the
+$\mathrm{Nil}$ branch join $\beta$'s $Z$-column with
+$\gamma$'s first column, iterate $W$ from $\gamma$'s
+matched row, confirm $\mathrm{Nil}$, and construct
+$(X, W)$.
+The $Z$-join is nested inside the $Y$-join's
+$\mathrm{Nil}$ confirmation, ensuring that $\beta$'s data
+for the matched $Y$ constant (available via
+$\mathrm{VisitorTail}$) is used to iterate $\beta$'s
+second column.
+
+\paragraph{Mixed constants and variables}
+$\mathrm{constJoin}(X, W) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, b),\; \mathrm{edge}(b, W)$
+combines a variable join on $Y$, a constant match on $b$
+(hand-crafted $\mathrm{VisitorMap}$ with only the $b$ entry),
+and direct navigation via $\mathrm{edge}.\mathrm{TailMap}.b$
+for $W$.
+
+\subsection{Multi-Variable Join}
+
+When a rule shares \emph{multiple} variables between two
+body atoms, each shared variable requires its own
+$\mathrm{Acceptance}$ check.
+The checks are chained: the outer $\mathrm{Acceptance}$
+joins on one column pair using combined
+$\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$, and
+its $\mathrm{Visitor}$ contains an inner $\mathrm{Acceptance}$
+joining on another column pair.
+
+\paragraph{Example}
+$\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
+shares both $X$ and $Y$.
+The outer $\mathrm{Acceptance}$ joins $r$'s and $s$'s first
+columns (variable $X$) using combined
+$\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$.
+Inside the outer $\mathrm{Visitor}$, an inner
+$\mathrm{Acceptance}$ joins $r$'s and $s$'s second columns
+(variable $Y$) similarly.
+Both joins must match for the output to be produced, and
+the per-constant $\mathrm{Visited}$ pattern ensures that
+only constants present in both relations contribute.
+
+\subsection{Recursive Rules}
+\label{sec:recursive-rules}
+
+Recursive Datalog rules, such as transitive closure
+$\mathrm{path}(X, Y) \mathrel{{:}\!{-}} \mathrm{edge}(X, Z),\; \mathrm{path}(Z, Y)$,
+are encoded identically to non-recursive rules: the
+head relation $\mathrm{path}$ appears both as a defined scope
+and as a reference in the body (providing
+$\mathrm{WithVisitorTail}$ for the $Z$-join).
+Tabled evaluation
+(Section~\ref{sec:mixin-trees},
+Appendix~\ref{app:well-definedness})
+computes $\mathrm{lfp}(T_P)$: each query into
+$\mathrm{path}$ triggers further evaluation through
+the recursive body, and the trie union ($\supers$)
+accumulates all reachable tuples.
+This corresponds exactly to \emph{Naive
+evaluation}~\cite{bancilhon1986amateur} of the
+$T_P$
+operator~\cite{vanemden1976semantics}:
+each iteration applies every rule to the current
+fact set and adds newly derived facts.
+Because Datalog-encoded relations have finitely many
+constants per query, the per-query answer domain is
+finite, and convergence is guaranteed by the ascending
+chain condition on a finite lattice.
+\emph{Semi-Naive} evaluation~\cite{bancilhon1986amateur},
+which restricts each iteration to rules that use at
+least one newly derived fact, is a natural
+optimisation left for future work.
+
+\subsection{Semantic Correspondence with Standard Datalog}
+\label{sec:datalog-semantics}
+
+The encoding produces standard Datalog tuple-level semantics.
+The key mechanism is the per-constant $\mathrm{Visited}$
+pattern: output construction ($\mathrm{Replacement}$)
+occurs inside each matched constant's $\mathrm{Visitor}$
+scope, operating on the \emph{individual} constant's data
+rather than on the merged scope.
+The $\mathrm{Accepted}$ field then collects all per-constant
+$\mathrm{Visited}$ results via trie union ($\supers$).
+
+For example, given $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$
+(a~3-cycle), the two-hop self-join
+$\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
+produces exactly $3$ pairs:
+$\{(a,c),\; (b,a),\; (c,b)\}$, matching standard Datalog.
+When the $Y$-join matches constant $b$ (present in both
+$\mathrm{edge}$'s second column from $(a,b)$ and
+$\mathrm{edge}$'s first column), the $\mathrm{Visitor}$ for
+$b$ receives $\mathrm{VisitorTail} = \mathrm{edge}.\mathrm{TailMap}.b$
+(containing only~$c$), and $\mathrm{Replacement}$ constructs
+a single output tuple $(a, c)$---not all of $\{a,b,c\}$.
+
+This value-level precision arises because each constant's
+$\mathrm{Replacement}$ operates on $\mathrm{TailMap}.d$
+(the per-constant sub-trie) rather than on the merged
+trie.
+Although $\bases$ (equation~\ref{eq:bases}) still computes
+cross-joins at the primitive level, the encoding routes
+computation through per-constant $\mathrm{TailMap}$ entries
+before any merging occurs, achieving the same effect as
+standard Datalog's tuple-level evaluation.
 
 \begin{acks}
 Claude Code, GitHub Copilot, Gemini Code Assist, and Codex were utilized to generate sections of this Work,

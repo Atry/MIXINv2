@@ -18,6 +18,9 @@ Decorators:
 Runtime:
     - :func:`evaluate`
 
+Exceptions:
+    - :class:`Bottom`
+
 Reference types (parameters to :func:`extend`):
     - :class:`AbsoluteReference`
     - :class:`RelativeReference`
@@ -40,6 +43,7 @@ from mixinv2._core import patch_many as patch_many
 from mixinv2._core import public as public
 from mixinv2._core import resource as resource
 from mixinv2._core import scope as scope
+from mixinv2._core import Bottom as Bottom
 from mixinv2._runtime import evaluate as evaluate
 
 if TYPE_CHECKING:

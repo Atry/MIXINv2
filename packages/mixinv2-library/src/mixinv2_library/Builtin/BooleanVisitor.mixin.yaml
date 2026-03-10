@@ -1,14 +1,17 @@
 - [BooleanData]
 - BooleanFactory:
     Product:
-      Visitors:
+      Acceptance:
+        VisitorMap: []
         Accepted: []
     "True":
-      Visitors:
-        - TrueVisitor: []
-          Accepted: [TrueVisitor]
+      Acceptance:
+        VisitorMap:
+          TrueVisitor: []
+        Accepted: [VisitorMap, TrueVisitor]
 
     "False":
-      Visitors:
-        - FalseVisitor: []
-          Accepted: [FalseVisitor]
+      Acceptance:
+        VisitorMap:
+          FalseVisitor: []
+        Accepted: [VisitorMap, FalseVisitor]

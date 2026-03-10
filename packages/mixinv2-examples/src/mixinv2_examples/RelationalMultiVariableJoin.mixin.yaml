@@ -1,0 +1,212 @@
+# Datalog rule joining two relations on MULTIPLE variables.
+#
+# Facts:
+#   r(a,b).
+#   r(b,c).
+#   s(a,c).
+#   s(b,a).
+#
+# Rule:
+#   multiJoin(X,Y) :- r(X,Y), s(X,Y).
+#
+# This rule joins r and s on TWO variables simultaneously:
+#   - X shared between r's first column and s's first column
+#   - Y shared between r's second column and s's second column
+#
+# Standard Datalog intersection r ∩ s = {} (no common tuples).
+#
+# With RepeatedVisitor value-level join:
+#   X join: r's first col against s's first col (value-level match)
+#   Y join: r's second col against s's second col (value-level match)
+#   Output: matched (X, Y) pairs reconstructed via Replacement
+#
+# Since r and s share no common (X,Y) tuples, the result is empty.
+#
+# This encoding uses repeated Acceptance/Visitor pattern for
+# value-level joins, producing exact Datalog semantics.
+
+- Relation:
+    Acceptance:
+      VisitorMap: []
+      Visitor:
+        Visited: []
+      Accepted: []
+
+- Nil:
+    - [Relation]
+    - Acceptance:
+        VisitorMap:
+          Nil: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, Nil, Visited]
+- Cons:
+    - [Relation]
+    - Tail:
+        - [Relation]
+        - Replacement:
+            NewTail: [Relation]
+            Replaced:
+              - [Cons]
+              - TailMap: []
+
+- a:
+    - [Cons]
+    - Tail: []
+      TailMap:
+        a:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalMultiVariableJoin, ~, a]
+                - TailMap:
+                    a: [NewTail]
+      WithVisitorTail:
+        a:
+          VisitorTail: [TailMap, a]
+      WithVisiteeTail:
+        a:
+          VisiteeTail: [TailMap, a]
+      Acceptance:
+        - Visitor:
+            Visited: []
+          VisitorMap:
+            - a: [Visitor]
+          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+- b:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        b:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalMultiVariableJoin, ~, b]
+                - TailMap:
+                    b: [NewTail]
+      WithVisitorTail:
+        b:
+          VisitorTail: [TailMap, b]
+      WithVisiteeTail:
+        b:
+          VisiteeTail: [TailMap, b]
+      Acceptance:
+        VisitorMap:
+          b: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, b, Visited]
+- c:
+    - [Cons]
+    - Tail: []
+    - TailMap:
+        c:
+          - [Tail]
+          - Replacement:
+              NewTail: [Tail]
+              Replaced:
+                - [RelationalMultiVariableJoin, ~, c]
+                - TailMap:
+                    c: [NewTail]
+      WithVisitorTail:
+        c:
+          VisitorTail: [TailMap, c]
+      WithVisiteeTail:
+        c:
+          VisiteeTail: [TailMap, c]
+      Acceptance:
+        VisitorMap:
+          c: [Visitor]
+        Visitor:
+          Visited: []
+        Accepted: [VisitorMap, c, Visited]
+
+# r(a,b).
+- r:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalMultiVariableJoin, ~, b]
+          - TailMap:
+              b: [Nil]
+
+# r(b,c).
+- r:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalMultiVariableJoin, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# s(a,c).
+- s:
+    - [a]
+    - TailMap:
+        a:
+          - [RelationalMultiVariableJoin, ~, c]
+          - TailMap:
+              c: [Nil]
+
+# s(b,a).
+- s:
+    - [b]
+    - TailMap:
+        b:
+          - [RelationalMultiVariableJoin, ~, a]
+          - TailMap:
+              a: [Nil]
+
+# multiJoin(X,Y) :- r(X,Y), s(X,Y).
+#
+# Two chained value-level joins:
+#   1. X join: r's first col against s's first col
+#   2. Y join: r's second col against s's second col
+#   On both matches, construct output (X, Y) via Replacement
+- _XAcceptance:
+    - [r, Acceptance]
+    - VisitorMap:
+        - [s, WithVisitorTail]
+        - [r, WithVisiteeTail]
+      Visitor:
+        VisiteeTail: [r, Tail]
+        _X0: [VisiteeTail]
+        VisitorTail: [s, Tail]
+        _X1: [VisitorTail]
+        _YAcceptance:
+          - [_X0, Acceptance]
+          - VisitorMap:
+              - [_X1, WithVisitorTail]
+              - [_X0, WithVisiteeTail]
+            Visitor:
+              VisiteeTail: [_X0, Tail]
+              _Y0: [VisiteeTail]
+              VisitorTail: [_X1, Tail]
+              _Y1: [VisitorTail]
+              _NilAcceptance0:
+                - [_Y0, Acceptance]
+                - VisitorMap:
+                    - Nil:
+                        _NilAcceptance1:
+                          - [_Y1, Acceptance]
+                          - VisitorMap:
+                              Nil:
+                                _YReplacement:
+                                  - [_Y0, Replacement]
+                                  - NewTail:
+                                      [
+                                        RelationalMultiVariableJoin,
+                                        ~,
+                                        Nil,
+                                      ]
+                                _XReplacement:
+                                  - [_X0, Replacement]
+                                  - NewTail: [_YReplacement, Replaced]
+                                Visited: [_XReplacement, Replaced]
+                        Visited: [_NilAcceptance1, Accepted]
+              Visited: [_NilAcceptance0, Accepted]
+        Visited: [_YAcceptance, Accepted]
+
+  multiJoin: [_XAcceptance, Accepted]
