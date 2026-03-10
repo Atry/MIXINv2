@@ -74,7 +74,7 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. A single abstraction unifies class, method, object, and property; inheritance is inherently commutative, idempotent, and associative, and the linearization problem does not arise. Its semantics is first-order, denotational, and computable. These three properties extend to the lazy $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984lambda} is fully abstract for a sublanguage of inheritance-calculus. Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976semantics}; self-reference resolves to multiple targets; and programs are immune to the Expression Problem~\cite{wadler1998expression}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991expressive}.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. A single abstraction unifies class, method, object, and property; inheritance is inherently commutative, idempotent, and associative, and the linearization problem does not arise. Its semantics is first-order, denotational, and fixpoint-computable. These three properties extend to the lazy $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984lambda} is fully abstract for a sublanguage of inheritance-calculus, except that recursive $\lambda$-programs that diverge under $\beta$-reduction may converge under $\mathrm{lfp}(T_P)$. Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976semantics}; self-reference resolves to multiple targets; and programs are immune to the Expression Problem~\cite{wadler1998expression}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991expressive}.
 \end{abstract}
 
 \begin{CCSXML}
@@ -295,7 +295,7 @@ All tests are mechanically verified against expected output snapshots.
       definitions~\cite{aczel1977inductive} over paths
       and labels, where quantifiers range over paths and labels,
     never over functions or predicates.},
-    denotational, and computable.
+    denotational, and fixpoint-computable.
   \item The mixin tree \emph{is} the call stack.
     Self-reference resolves to \emph{multiple objects}.
     Since inheritance
@@ -311,6 +311,11 @@ All tests are mechanically verified against expected output snapshots.
     inheritance-calculus's first-order equations.
     Appendix~\ref{app:lambda-fixpoint} reformulates this
     semantics directly on ANF\@.
+    As a corollary, some $\lambda$-terms that diverge
+    in the $\lambda$-calculus converge under
+    $\mathrm{lfp}(T_P)$ after translation
+    (Section~\ref{sec:translation};
+    Remark~\ref{rem:convergence-lfp}).
   \item Inheritance-calculus is strictly more expressive than
     the lazy $\lambda$-calculus in Felleisen's
     sense~\cite{felleisen1991expressive}
@@ -1105,12 +1110,12 @@ and an $\mathrm{Accepted}$ field that delegates to the matching branch:
       \mathrm{Accepted} \mapsto \{\}\}\},\\[2pt]
       &\quad \mathrm{Zero} \mapsto \{\mathrm{Acceptance} \mapsto \{
           \mathrm{VisitorMap} \mapsto \{
-      \mathrm{ZeroVisitor} \mapsto \{\}\},\\
+          \mathrm{ZeroVisitor} \mapsto \{\}\},\\
           &\qquad
       \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}\}\},\\[2pt]
       &\quad \mathrm{Successor} \mapsto \{\mathrm{Acceptance} \mapsto \{
           \mathrm{VisitorMap} \mapsto \{
-      \mathrm{SuccessorVisitor} \mapsto \{\}\},\\
+          \mathrm{SuccessorVisitor} \mapsto \{\}\},\\
           &\qquad
   \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}\}\}\}\}
 \end{align*}
@@ -1149,8 +1154,8 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
               \mathrm{VisitorMap} \mapsto \{
                 \mathrm{ZeroVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{True}\}\},\\
-              &\qquad\;\quad
+                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{True}\}\},\\
+                &\qquad\;\quad
                 \mathrm{SuccessorVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
               \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\}\},\\
@@ -1178,8 +1183,8 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
               \mathrm{VisitorMap} \mapsto \{
                 \mathrm{ZeroVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\},\\
-              &\qquad\;\quad
+                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\},\\
+                &\qquad\;\quad
                 \mathrm{SuccessorVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
               \mathrm{RecursiveEquality}.\mathrm{equal}\}\}\},\\
@@ -1441,6 +1446,7 @@ Below we explain why they arise from the three primitives.
     and code that uses nonextensible constructs
     cannot be extended unless rewritten in the framework.
     Section~\ref{sec:semantic-variants} analyzes why deep merge
+    is the only composition mechanism that achieves this.
 
   \item[Function color blindness]
     \label{sec:practical-function-color}
@@ -1471,7 +1477,6 @@ Below we explain why they arise from the three primitives.
       continuations as in \texttt{call/cc}, cannot be abstracted
       this way, as it requires a global CPS transformation that
     inheritance-calculus does not express.}
-    is the only composition mechanism that achieves this.
 \end{description}
 
 \subsection{Semantic Alternatives}
@@ -1991,6 +1996,9 @@ in operational semantics.}
 none eliminates the function space from the semantic domain;
 and none unifies denotational and operational semantics
 into a single first-order definition.
+All three also inherit $\beta$-reduction's divergence on
+recursive programs: a na\"ive transitive closure on a cyclic
+graph, for instance, diverges in every framework.
 
 \paragraph{Set-theoretic models of the $\lambda$-calculus}
 Several families of $\lambda$-calculus models avoid the
@@ -2047,6 +2055,10 @@ None of these prior frameworks has been applied to a first-order
 domain of paths to obtain a fully abstract semantics of the lazy
 $\lambda$-calculus without function spaces, substitution, or
 reduction rules.
+In particular, Van~Emden and Kowalski's $T_P$ computes
+$\mathrm{lfp}$ for recursive Datalog programs, but has not
+been used to give recursive $\lambda$-programs a fixpoint
+semantics in which they converge instead of diverging.
 
 \subsection{Inheritance, Objects, and Records}
 
@@ -2371,7 +2383,7 @@ $T_P(M) \subseteq T_P(M')$.
 \end{proof}
 
 \begin{theorem}[Existence and uniqueness of
-  $\mathrm{lfp}(T_P)$]\label{thm:lfp-exists}
+$\mathrm{lfp}(T_P)$]\label{thm:lfp-exists}
 The operator $T_P$ has a unique least fixed point
 $\mathrm{lfp}(T_P)$.
 \end{theorem}
@@ -2406,36 +2418,36 @@ never returns a wrong answer, even when the
 dependency graph~$G$ is infinite.
 Specifically:
 \begin{enumerate}
-\item \textbf{Soundness (no false positives).}
-  Every fact returned by tabling was produced by
-  evaluating some equation's right-hand side on its
-  inputs.
-  By induction on the evaluation trace, every
-  returned fact belongs to $\mathrm{lfp}(T_P)$.
+  \item \textbf{Soundness (no false positives).}
+    Every fact returned by tabling was produced by
+    evaluating some equation's right-hand side on its
+    inputs.
+    By induction on the evaluation trace, every
+    returned fact belongs to $\mathrm{lfp}(T_P)$.
 
-\item \textbf{Monotone accumulation.}
-  The tabling accumulator only grows between
-  iterations (via set union); no fact is ever
-  removed.
+  \item \textbf{Monotone accumulation.}
+    The tabling accumulator only grows between
+    iterations (via set union); no fact is ever
+    removed.
 
-\item \textbf{Correct fixpoint detection.}
-  If no sub-query was re-entered during evaluation,
-  all sub-queries were fully computed with no
-  approximation, and the result is exact.
-  If re-entry occurred but the accumulator is
-  stable (no new facts were added), the
-  accumulator equals
-  $\mathrm{lfp}(T_P)$ restricted to the reachable
-  queries, because it is a pre-fixed point reached
-  by ascending from~$\bot$.
+  \item \textbf{Correct fixpoint detection.}
+    If no sub-query was re-entered during evaluation,
+    all sub-queries were fully computed with no
+    approximation, and the result is exact.
+    If re-entry occurred but the accumulator is
+    stable (no new facts were added), the
+    accumulator equals
+    $\mathrm{lfp}(T_P)$ restricted to the reachable
+    queries, because it is a pre-fixed point reached
+    by ascending from~$\bot$.
 
-\item \textbf{Honest failure.}
-  When tabling cannot determine the answer---either
-  because the iteration budget is exhausted
-  (signalled by an explicit exception) or because
-  of an infinite non-cyclic chain (stack
-  overflow)---it raises an error rather than
-  returning a wrong answer.
+  \item \textbf{Honest failure.}
+    When tabling cannot determine the answer---either
+    because the iteration budget is exhausted
+    (signalled by an explicit exception) or because
+    of an infinite non-cyclic chain (stack
+    overflow)---it raises an error rather than
+    returning a wrong answer.
 \end{enumerate}
 \end{theorem}
 
@@ -2805,7 +2817,7 @@ $\mathcal{T}(V)$ via the same $\this$ mechanism.
 
 \paragraph{Inductive case:
   $M = \mathbf{let}\; z = V'
-  \;\mathbf{in}\; M'$}
+\;\mathbf{in}\; M'$}
 Then
 \[
   \mathcal{T}(M) =
@@ -3010,6 +3022,35 @@ convergence preservation still holds:
   converges at depth~$n$ under $\mathrm{lfp}$,
   then $\mathcal{T}(N)$ converges at
   depth~$n - 1$, and vice versa.
+
+  As a minimal illustration, consider transitive
+  closure on a cyclic graph.  In the lazy
+  $\lambda$-calculus, the na\"ive recursive
+  definition
+  \[
+    \mathbf{let}\; \mathit{path} =
+    \lambda x.\, \lambda y.\,
+    \mathit{edge}\; x\; y
+    \;\lor\;
+    \exists z.\,
+    \mathit{edge}\; x\; z
+    \;\land\;
+    \mathit{path}\; z\; y
+  \]
+  diverges (stack overflow) when the graph
+  contains cycles, because
+  $\mathit{path}\; a\; b$ unfolds
+  $\mathit{path}\; a\; b$ again without
+  memoization.
+  The inheritance-calculus can express the same
+  computation using cyclic self-reference
+  (multiple inheritance paths that revisit the
+  same scope), and $\mathrm{lfp}(T_P)$
+  converges by iterating from~$\bot$ until
+  the set of reachable pairs stabilizes---exactly
+  as in Datalog's bottom-up evaluation.
+  Appendix~\ref{app:datalog-encoding} gives the
+  full encoding.
 \end{itemize}
 
 \subsection{Adequacy}
@@ -3054,7 +3095,7 @@ Note that $N$ is closed: head reduction substitutes a
 closed value into a term whose only free variable is the
 substitution target, preserving closedness.
 By Lemma~\ref{lem:result-step} (tail-call,
-application let-binding, or value let-binding
+  application let-binding, or value let-binding
 variant), the properties at
 $\text{root} \snoc \mathrm{result} \snoc p$
 in $\mathcal{T}(M)$ coincide with those at
@@ -3093,7 +3134,7 @@ underlying $\lambda$-term: the function position is occupied by
 a closed ANF value, and the only closed ANF value that can
 appear at head position is a $\lambda$-abstraction.
 By Lemma~\ref{lem:result-step} (tail-call,
-application let-binding, or value let-binding
+  application let-binding, or value let-binding
 variant), the properties at depth
 $n - 1$ in $\mathcal{T}(N)$ match those at depth $n$
 in $\mathcal{T}(M)$, where $N$ is the head reduct.
@@ -4256,6 +4297,17 @@ expressible in the three primitives of Section~\ref{sec:syntax}.
 All examples in this appendix have executable MIXINv2
 implementations\selfcite{~\cite{mixin2025}}{~(supplementary
 material)}.
+There are three ingredients to keep separate.
+First, relations are stored as tries, so tuple lookup is indexed
+by prefixes rather than by scanning a flat set of facts.
+Second, the control skeleton is written in the visitor-pattern
+style already used in Section~\ref{sec:case-study}; from a
+functional-programming viewpoint, this is the same role played by
+Scott-encoded case analysis.
+Third, inheritance union and tabled evaluation give the resulting
+program its relational, least-fixed-point semantics.
+The appendix proceeds in that order: data representation first,
+then control flow, then recursion.
 
 \subsection{Relations as Tries}
 
@@ -4268,32 +4320,40 @@ $\mathrm{Cons}$ (non-empty node), and $\mathrm{Nil}$ (terminator).
 Each constant $d \in D$ inherits from $\mathrm{Cons}$ and carries
 a $\mathrm{TailMap}$ that provides per-constant sub-tries:
 \begin{align*}
-  &\mathrm{Relation} \mapsto \{\},\quad
-    \mathrm{Cons} \mapsto \{\mathrm{Relation},\;
-      \mathrm{Tail} \mapsto \{\mathrm{Relation}\}\},\quad
-    \mathrm{Nil} \mapsto \{\mathrm{Relation}\}\\[2pt]
-  &d \mapsto \{\mathrm{Cons},\;
-      \mathrm{Tail} \mapsto \{\},\;
-      \mathrm{TailMap} \mapsto \{d \mapsto \{\mathrm{Tail}\}\}\}
+&\mathrm{Relation} \mapsto \{\},\quad
+\mathrm{Cons} \mapsto \{\mathrm{Relation},\;
+\mathrm{Tail} \mapsto \{\mathrm{Relation}\}\},\quad
+\mathrm{Nil} \mapsto \{\mathrm{Relation}\}\\[2pt]
+&d \mapsto \{\mathrm{Cons},\;
+  \mathrm{Tail} \mapsto \{\},\;
+\mathrm{TailMap} \mapsto \{d \mapsto \{\mathrm{Tail}\}\}\}
 \end{align*}
 A fact $R(d_1, d_2)$ is encoded as a trie path of depth~2,
 with a $\mathrm{Nil}$ terminator.
 The per-constant sub-tries are accessed via
 $\mathrm{TailMap}.d$:
 \begin{align*}
-  R(a, b) \;\leadsto\quad
-  R \mapsto \{a,\; \mathrm{TailMap} \mapsto \{a \mapsto
-    \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\}\}\}
+R(a, b) \;\leadsto\quad
+R \mapsto \{a,\; \mathrm{TailMap} \mapsto \{a \mapsto
+\{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\}\}\}
 \end{align*}
 Multiple facts for the same relation are accumulated by
 inheritance (trie union).
 Adding $R(b, c)$:
 \begin{align*}
-  R \mapsto \{a,\; b,\;
-    \mathrm{TailMap} \mapsto \{&
-      a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
-      &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}\}\}
+R \mapsto \{a,\; b,\;
+  \mathrm{TailMap} \mapsto \{&
+    a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+&b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}\}\}
 \end{align*}
+The point of the trie representation is not merely that it is a
+tree-shaped encoding.
+It also provides the indexing structure used by the subsequent
+joins: once a constant $d$ has been selected, the encoding moves
+directly to $\mathrm{TailMap}.d$ and continues from the matching
+sub-trie.
+This is why the appendix speaks about tries rather than about an
+arbitrary encoding of finite sets of tuples.
 
 \subsection{Infrastructure}
 
@@ -4310,92 +4370,119 @@ does not require modifying any existing scope, preserving
 the expression-problem property.
 
 \begin{description}
-  \item[Acceptance]
-    The visitor-pattern infrastructure from
-    Section~\ref{sec:case-study}.
-    Each constant $d$ defines a $\mathrm{VisitorMap}$
-    containing a branch keyed by $d$, a $\mathrm{Visitor}$
-    with a $\mathrm{Visited}$ slot for per-constant results,
-    and an $\mathrm{Accepted}$ property that delegates to the
-    matching branch's $\mathrm{Visited}$ value.
-    This is the dispatch mechanism: given a scope that may
-    contain multiple constants, $\mathrm{Acceptance}$ selects the
-    branch corresponding to each constant present and
-    collects the per-constant $\mathrm{Visited}$ results.
+\item[Acceptance]
+  The visitor-pattern infrastructure from
+  Section~\ref{sec:case-study}.
+  Operationally, this is the object-oriented spelling of a
+  case split on the current constant.
+  Each constant $d$ defines a $\mathrm{VisitorMap}$
+  containing a branch keyed by $d$, a $\mathrm{Visitor}$
+  with a $\mathrm{Visited}$ slot for per-constant results,
+  and an $\mathrm{Accepted}$ property that delegates to the
+  matching branch's $\mathrm{Visited}$ value.
+  This is the dispatch mechanism: given a scope that may
+  contain multiple constants, $\mathrm{Acceptance}$ selects the
+  branch corresponding to each constant present and
+  collects the per-constant $\mathrm{Visited}$ results.
 
-  \item[WithVisitorTail]
-    Maps each constant $d$ to its sub-trie entry
-    $\mathrm{TailMap}.d$, labeled as $\mathrm{VisitorTail}$.
-    This provides the \emph{right-hand} (visitor) side of a
-    join: when two relations' $\mathrm{VisitorMap}$ entries are
-    composed, $\mathrm{VisitorTail}$ carries the joined
-    relation's row data for the matched constant.
+\item[WithVisitorTail]
+  Maps each constant $d$ to its sub-trie entry
+  $\mathrm{TailMap}.d$, labeled as $\mathrm{VisitorTail}$.
+  This provides the \emph{right-hand} (visitor) side of a
+  join: when two relations' $\mathrm{VisitorMap}$ entries are
+  composed, $\mathrm{VisitorTail}$ carries the joined
+  relation's row data for the matched constant.
 
-  \item[WithVisiteeTail]
-    Maps each constant $d$ to its sub-trie entry
-    $\mathrm{TailMap}.d$, labeled as $\mathrm{VisiteeTail}$.
-    This provides the \emph{left-hand} (visitee) side: the
-    relation being iterated. Together,
-    $\mathrm{WithVisitorTail}$ and $\mathrm{WithVisiteeTail}$
-    enable value-level joins where only constants present
-    in \emph{both} relations produce output.
+\item[WithVisiteeTail]
+  Maps each constant $d$ to its sub-trie entry
+  $\mathrm{TailMap}.d$, labeled as $\mathrm{VisiteeTail}$.
+  This provides the \emph{left-hand} (visitee) side: the
+  relation being iterated. Together,
+  $\mathrm{WithVisitorTail}$ and $\mathrm{WithVisiteeTail}$
+  enable value-level joins where only constants present
+  in \emph{both} relations produce output.
 
-  \item[Replacement]
-    Given a $\mathrm{NewTail}$ value, produces a
-    $\mathrm{Replaced}$ scope that inherits the label $d$
-    but substitutes $\mathrm{TailMap}.d$ with
-    $\mathrm{NewTail}$.
-    This is the \emph{output construction} mechanism: it
-    builds output tuples by substituting new sub-tries into
-    constant wrappers.
-    Crucially, $\mathrm{Replacement}$ is defined on the
-    per-constant $\mathrm{TailMap}$ entry (not on the merged
-    scope), ensuring that output construction operates on
-    individual constants rather than their union.
+\item[Replacement]
+  Given a $\mathrm{NewTail}$ value, produces a
+  $\mathrm{Replaced}$ scope that inherits the label $d$
+  but substitutes $\mathrm{TailMap}.d$ with
+  $\mathrm{NewTail}$.
+  This is the \emph{output construction} mechanism: it
+  builds output tuples by substituting new sub-tries into
+  constant wrappers.
+  Crucially, $\mathrm{Replacement}$ is defined on the
+  per-constant $\mathrm{TailMap}$ entry (not on the merged
+  scope), ensuring that output construction operates on
+  individual constants rather than their union.
 \end{description}
+
+As a running example, we use the executable two-hop encoding
+$\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
+from
+\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)}.
+Its top-level scopes are named after the stages of the
+encoding: \texttt{\_XAcceptance} iterates the first column,
+\texttt{\_YAcceptance} performs the shared-variable join,
+\texttt{\_NilAcceptance0} confirms the end of the first fact,
+\texttt{\_ZAcceptance} iterates the output column, and
+\texttt{\_NilAcceptance1} triggers the final
+\texttt{Replacement} chain.
+The schematic encodings below should be read as abstractions
+of that executable MIXINv2 file.
+If one temporarily ignores relational accumulation and reads
+each dispatch as an ordinary case split, the control flow is:
+choose $X$ from the first relation, choose a matching $Y$,
+confirm that the first tuple is complete, choose $Z$ from the
+second relation's matching row, confirm that the second tuple
+is complete, and emit $(X, Z)$.
+The rest of the appendix explains how that familiar
+single-valued control skeleton is realised by visitor dispatch
+over tries and then lifted to relational semantics by
+inheritance union.
 
 \subsection{Encoding Rules}
 
 A Datalog rule $H(\bar{X}) \mathrel{{:}\!{-}} B_1(\bar{Y}_1), \ldots, B_n(\bar{Y}_n)$
-is encoded using three mechanisms that compose by nesting:
+is encoded by nesting three mechanisms inside that control
+skeleton:
 
 \begin{enumerate}
-  \item \textbf{Column iteration.}
-    For each column position, an $\mathrm{Acceptance}$ dispatch
-    iterates over the constants present.
-    The $\mathrm{VisitorMap}$ is populated from
-    $\mathrm{WithVisiteeTail}$, so each matched constant's
-    $\mathrm{Visitor}$ receives $\mathrm{VisiteeTail}$: the
-    per-constant sub-trie at that position.
-    The result of processing each constant is placed in
-    $\mathrm{Visited}$, and $\mathrm{Accepted}$ collects all
-    per-constant results.
-    (Details in Sections~\ref{sec:encoding-variables},
-    \ref{sec:encoding-constants}, and~\ref{sec:encoding-multi}.)
+\item \textbf{Column iteration.}
+  For each column position, an $\mathrm{Acceptance}$ dispatch
+  iterates over the constants present.
+  The $\mathrm{VisitorMap}$ is populated from
+  $\mathrm{WithVisiteeTail}$, so each matched constant's
+  $\mathrm{Visitor}$ receives $\mathrm{VisiteeTail}$: the
+  per-constant sub-trie at that position.
+  The result of processing each constant is placed in
+  $\mathrm{Visited}$, and $\mathrm{Accepted}$ collects all
+  per-constant results.
+  (Details in Sections~\ref{sec:encoding-variables},
+  \ref{sec:encoding-constants}, and~\ref{sec:encoding-multi}.)
 
-  \item \textbf{Join.}
-    For each shared variable between body atoms, the inner
-    $\mathrm{Acceptance}$'s $\mathrm{VisitorMap}$ inherits from
-    \emph{both} $\mathrm{WithVisitorTail}$ (from the joined
-    relation) and $\mathrm{WithVisiteeTail}$ (from the iterated
-    relation).
-    A constant $d$ produces a $\mathrm{Visitor}$ entry only if
-    $d$ appears in both relations, achieving a value-level
-    join.
-    The $\mathrm{Visitor}$ then receives both
-    $\mathrm{VisiteeTail}$ and $\mathrm{VisitorTail}$,
-    providing access to both relations' data for the
-    matched constant.
+\item \textbf{Join.}
+  For each shared variable between body atoms, the inner
+  $\mathrm{Acceptance}$'s $\mathrm{VisitorMap}$ inherits from
+  \emph{both} $\mathrm{WithVisitorTail}$ (from the joined
+  relation) and $\mathrm{WithVisiteeTail}$ (from the iterated
+  relation).
+  A constant $d$ produces a $\mathrm{Visitor}$ entry only if
+  $d$ appears in both relations, achieving a value-level
+  join.
+  The $\mathrm{Visitor}$ then receives both
+  $\mathrm{VisiteeTail}$ and $\mathrm{VisitorTail}$,
+  providing access to both relations' data for the
+  matched constant.
 
-  \item \textbf{Output construction.}
-    Inside the innermost $\mathrm{Nil}$ confirmation (verifying
-    that each body atom's tuple is complete), chain
-    $\mathrm{Replacement}$ operations from the innermost
-    output column outward, each setting $\mathrm{NewTail}$ to
-    the previous $\mathrm{Replaced}$ value, terminated by
-    $\mathrm{Nil}$.
-    The final $\mathrm{Replaced}$ value is assigned to
-    $\mathrm{Visited}$.
+\item \textbf{Output construction.}
+  Inside the innermost $\mathrm{Nil}$ confirmation (verifying
+  that each body atom's tuple is complete), chain
+  $\mathrm{Replacement}$ operations from the innermost
+  output column outward, each setting $\mathrm{NewTail}$ to
+  the previous $\mathrm{Replaced}$ value, terminated by
+  $\mathrm{Nil}$.
+  The final $\mathrm{Replaced}$ value is assigned to
+  $\mathrm{Visited}$.
 \end{enumerate}
 
 \subsection{Variable Join}
@@ -4403,6 +4490,14 @@ is encoded using three mechanisms that compose by nesting:
 
 Consider the simplest join:
 $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$.
+The executable self-join instance of this pattern is
+\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)},
+whose scope names are shown in parentheses below.
+This is the right place to see the division of labour from the
+section introduction: visitor dispatch provides the control flow,
+the trie provides direct access to the matching tails, and
+$\supers$ accumulates the outputs produced by each successful
+match.
 
 The shared variable $Y$ requires matching constants
 between $\alpha$'s second column and $\beta$'s first column.
@@ -4414,18 +4509,21 @@ $\mathrm{Nil}$ after $Z$.
 We present each level as a named sub-scope.
 
 \paragraph{Level~1: iterate $X$ from $\alpha$}
+(Executable scope: \texttt{\_XAcceptance}.)
 {\small
 \begin{align*}
   &\mathrm{xAcc} \mapsto \{
     \alpha.\mathrm{Acceptance},\;
     \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
-  &\quad \mathrm{Visitor} \mapsto \{
-    \_X \mapsto \{\mathrm{VisiteeTail}\},\;
-    \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}\}\}
+    &\quad \mathrm{Visitor} \mapsto \{
+      \_X \mapsto \{\mathrm{VisiteeTail}\},\;
+      \ldots,\;
+  \mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}\}\}
 \end{align*}}
 
 \paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
+
+(Executable scope: \texttt{\_YAcceptance}.)
 
 The $\mathrm{VisitorMap}$ inherits from \emph{both}
 $\beta.\mathrm{WithVisitorTail}$ and
@@ -4436,18 +4534,20 @@ second column (via $\_X$) and $\beta$'s first column.
 \begin{align*}
   &\mathrm{yAcc} \mapsto \{
     \_X.\mathrm{Acceptance},\\
-  &\quad \mathrm{VisitorMap} \mapsto \{
-    \beta.\mathrm{WithVisitorTail},\;
+    &\quad \mathrm{VisitorMap} \mapsto \{
+      \beta.\mathrm{WithVisitorTail},\;
     \_X.\mathrm{WithVisiteeTail}\},\\
-  &\quad \mathrm{Visitor} \mapsto \{
-    \_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\;
-    \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
-  &\qquad
-    \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}\}\}
+    &\quad \mathrm{Visitor} \mapsto \{
+      \_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\;
+      \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
+      &\qquad
+      \ldots,\;
+  \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}\}\}
 \end{align*}}
 
 \paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
+
+(Executable scope: \texttt{\_NilAcceptance0}.)
 
 This checks that $\alpha(X, Y)$ is a complete two-column
 fact (its trie path terminates at $\mathrm{Nil}$ after $Y$).
@@ -4458,43 +4558,46 @@ iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
   &\mathrm{nilAcc}_0 \mapsto \{
     \_Y_0.\mathrm{Acceptance},\;
     \mathrm{VisitorMap} \mapsto \{
-    \mathrm{Nil} \mapsto \{\ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}\}\}\}
+      \mathrm{Nil} \mapsto \{\ldots,\;
+  \mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}\}\}\}
 \end{align*}}
 
 \paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
+(Executable scope: \texttt{\_ZAcceptance}.)
 {\small
 \begin{align*}
   &\mathrm{zAcc} \mapsto \{
     \mathrm{VisitorTail}.\mathrm{Acceptance},\;
     \mathrm{VisitorMap} \mapsto \{
-      \mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
-  &\quad \mathrm{Visitor} \mapsto \{
-    \_Z \mapsto \{\mathrm{VisiteeTail}\},\;
-    \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}\}\}
+    \mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
+    &\quad \mathrm{Visitor} \mapsto \{
+      \_Z \mapsto \{\mathrm{VisiteeTail}\},\;
+      \ldots,\;
+  \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}\}\}
 \end{align*}}
 
 \paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
+(Executable scope: \texttt{\_NilAcceptance1}, with
+\texttt{\_ZReplacement} and \texttt{\_XReplacement}.)
 {\small
 \begin{align*}
   &\mathrm{nilAcc}_1 \mapsto \{
     \mathrm{VisiteeTail}.\mathrm{Acceptance},\;
     \mathrm{VisitorMap} \mapsto \{
-    \mathrm{Nil} \mapsto \{\\
-  &\quad
-    \mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\;
-      \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
-  &\quad
-    \mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\;
-      \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
-  &\quad
-    \mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}\}\}\}
+      \mathrm{Nil} \mapsto \{\\
+        &\quad
+        \mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\;
+        \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
+        &\quad
+        \mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\;
+        \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
+        &\quad
+  \mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}\}\}\}
 \end{align*}}
 
 \paragraph{Final result}
 \[
-  \mathrm{composed} \mapsto \{\mathrm{xAcc}.\mathrm{Accepted}\}
+\mathrm{composed} \mapsto \{\mathrm{xAcc}.\mathrm{Accepted}\}
 \]
 
 \paragraph{Semantics}
@@ -4516,12 +4619,23 @@ $\mathrm{Accepted}$ via trie union ($\supers$).
 This yields standard Datalog tuple-level semantics: only
 constants that actually match between both relations
 contribute to the output.
+For the concrete instance
+$\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$, as encoded in
+\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)},
+Level~1 selects $a$, Level~2 matches $b$, Level~3 confirms
+that $\mathrm{edge}(a,b)$ ends in $\mathrm{Nil}$, Level~4
+iterates $\mathrm{edge}.\mathrm{TailMap}.b$ and selects $c$,
+and Level~5 confirms $\mathrm{Nil}$ again before the two
+$\mathrm{Replacement}$ operations reconstruct $(a,c)$.
 
 \subsection{Constant Match and Navigation}
 \label{sec:encoding-constants}
 
 Constants in Datalog atoms use two mechanisms, neither of
-which is a join:
+which is a join.
+They are simpler than variable joins because no value from a
+second relation needs to be matched against the currently chosen
+constant:
 
 \paragraph{Type existence match}
 An atom $R(X, b)$ with a constant in the second position
@@ -4544,7 +4658,7 @@ receives no matching branch.
 An atom $R(b, Z)$ with a constant in the first position
 navigates directly to $b$'s sub-trie:
 \[
-  \mathrm{edgeB}_Z \mapsto \{R.\mathrm{TailMap}.b\}
+\mathrm{edgeB}_Z \mapsto \{R.\mathrm{TailMap}.b\}
 \]
 This bypasses the visitor mechanism entirely, accessing
 the per-constant $\mathrm{TailMap}$ entry to restrict the
@@ -4553,6 +4667,8 @@ scope to only $b$'s data.
 \paragraph{Example}
 $\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
 combines both mechanisms.
+The executable MIXINv2 encoding is
+\selfcite{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalConstant.mixin.yaml}~(supplementary material)}.
 The encoding iterates $\mathrm{edge}$ for $X$ (Level~1),
 then checks for constant $b$ in $X$'s row with a
 hand-crafted $\mathrm{VisitorMap}$ (Level~2), navigates
@@ -4569,6 +4685,8 @@ $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ join
 inside the previous level's $\mathrm{Visitor}$,
 and the output construction is placed inside the innermost
 $\mathrm{Nil}$ confirmation.
+So the binary-rule encoding is the whole story structurally:
+larger bodies only add more nested copies of the same pattern.
 
 \paragraph{Three-body rule}
 $\mathrm{chain}(X, W) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z),\; \gamma(Z, W)$
@@ -4593,6 +4711,8 @@ combines a variable join on $Y$, a constant match on $b$
 (hand-crafted $\mathrm{VisitorMap}$ with only the $b$ entry),
 and direct navigation via $\mathrm{edge}.\mathrm{TailMap}.b$
 for $W$.
+The corresponding executable MIXINv2 file is
+\selfcite{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)}.
 
 \subsection{Multi-Variable Join}
 
@@ -4608,6 +4728,8 @@ joining on another column pair.
 \paragraph{Example}
 $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 shares both $X$ and $Y$.
+The executable MIXINv2 encoding is
+\selfcite{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(supplementary material)}.
 The outer $\mathrm{Acceptance}$ joins $r$'s and $s$'s first
 columns (variable $X$) using combined
 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$.
@@ -4627,7 +4749,9 @@ are encoded identically to non-recursive rules: the
 head relation $\mathrm{path}$ appears both as a defined scope
 and as a reference in the body (providing
 $\mathrm{WithVisitorTail}$ for the $Z$-join).
-Tabled evaluation
+This should not be read as ordinary self-reference of a
+single-valued lazy program.
+Operationally, tabled evaluation
 (Section~\ref{sec:mixin-trees},
 Appendix~\ref{app:well-definedness})
 computes $\mathrm{lfp}(T_P)$: each query into
@@ -4653,6 +4777,10 @@ optimisation left for future work.
 \label{sec:datalog-semantics}
 
 The encoding produces standard Datalog tuple-level semantics.
+Putting the previous subsections together: tries provide indexed
+tuple storage, visitor dispatch supplies the control skeleton,
+and per-constant $\mathrm{Replacement}$ keeps output
+construction local to each witness.
 The key mechanism is the per-constant $\mathrm{Visited}$
 pattern: output construction ($\mathrm{Replacement}$)
 occurs inside each matched constant's $\mathrm{Visitor}$
@@ -4666,6 +4794,8 @@ For example, given $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 produces exactly $3$ pairs:
 $\{(a,c),\; (b,a),\; (c,b)\}$, matching standard Datalog.
+This is the behavior exhibited by
+\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)}.
 When the $Y$-join matches constant $b$ (present in both
 $\mathrm{edge}$'s second column from $(a,b)$ and
 $\mathrm{edge}$'s first column), the $\mathrm{Visitor}$ for
@@ -4677,6 +4807,10 @@ This value-level precision arises because each constant's
 $\mathrm{Replacement}$ operates on $\mathrm{TailMap}.d$
 (the per-constant sub-trie) rather than on the merged
 trie.
+The same point is visible in
+the repeated-visitor self-join regression example\selfcite{~\cite{mixin2025}}{~(supplementary material)},
+where repeated visitor dispatch prevents witnesses from
+different constants from being merged spuriously.
 Although $\bases$ (equation~\ref{eq:bases}) still computes
 cross-joins at the primitive level, the encoding routes
 computation through per-constant $\mathrm{TailMap}$ entries
