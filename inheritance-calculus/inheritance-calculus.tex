@@ -3824,9 +3824,7 @@ $\mathrm{MyOuter}$, so querying
 $\mathrm{HasMultipleOuters}.\mathrm{outer}$ yields the
 $\properties$ of $\mathrm{MyOuter}$ regardless of which
 route is taken.
-Since inheritance is idempotent, the two routes contribute the
-same properties in this semantics, so no route-priority
-disambiguation rule is introduced.
+Because attribute resolution aggregates results via set union (which is intrinsically idempotent), identical property definitions from the two routes merge without conflict. Thus, the calculus eliminates the need for any artificial route-priority or linearization rules.
 
 \subsection*{NixOS Module System}
 
