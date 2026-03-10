@@ -34,7 +34,6 @@ from mixinv2._core import (
     HasDict,
     OuterSentinel,
     SymbolKind,
-    _max_fixpoint_iterations_var,
 )
 
 
@@ -639,7 +638,6 @@ class MultiplePatcher(Patcher[TPatch_co]):
 def evaluate(
     *namespaces: "ModuleType | ScopeDefinition",
     modules_public: bool = False,
-    max_fixpoint_iterations: int = 100,
 ) -> Scope:
     """
     Resolves a Scope from the given namespaces.
@@ -653,13 +651,15 @@ def evaluate(
     When multiple namespaces are provided, they are union-mounted at the root level.
     Resources from all namespaces are merged according to the merger election algorithm.
 
+    To control fixpoint iteration, set the class-level ContextVar before calling::
+
+        from mixinv2._core import fixpoint_cached_property
+        fixpoint_cached_property.max_fixpoint_iterations.set(0)   # single-pass
+        fixpoint_cached_property.max_fixpoint_iterations.set(100) # multi-pass (default)
+
     :param namespaces: Modules or namespace definitions (decorated with @scope) to resolve.
     :param modules_public: If True, modules are marked as public, making their submodules
         accessible via attribute access. Defaults to False (private by default).
-    :param max_fixpoint_iterations: Maximum number of fixpoint iterations for
-        resolving cyclic dependencies.  ``0`` disables fixpoint iteration and
-        raises ``Bottom`` on reentry.  Default ``100`` iterates until convergence
-        or raises ``Bottom`` if not converged.
     :return: The root Scope.
 
     Example::
@@ -667,7 +667,6 @@ def evaluate(
         root = evaluate(MyNamespace)
         root = evaluate(Base, Override)  # Union mount
         root = evaluate(my_package, modules_public=True)  # Make modules accessible
-        root = evaluate(MyNamespace, max_fixpoint_iterations=0)  # No fixpoint iteration
 
     """
     from dataclasses import replace
@@ -682,44 +681,36 @@ def evaluate(
     )
 
     assert namespaces, "evaluate() requires at least one namespace"
-    if max_fixpoint_iterations < 0:
-        raise ValueError(
-            f"max_fixpoint_iterations must be non-negative, got {max_fixpoint_iterations}"
-        )
 
-    token = _max_fixpoint_iterations_var.set(max_fixpoint_iterations)
-    try:
-        def to_scope_definition(
-            namespace: ModuleType | ScopeDefinition,
-        ) -> ScopeDefinition:
-            if isinstance(namespace, ScopeDefinition):
-                return namespace
-            if isinstance(namespace, ModuleType):
-                definition = _parse_package(namespace)
-                if modules_public:
-                    return replace(definition, is_public=True)
-                return definition
-            assert_never(namespace)
+    def to_scope_definition(
+        namespace: ModuleType | ScopeDefinition,
+    ) -> ScopeDefinition:
+        if isinstance(namespace, ScopeDefinition):
+            return namespace
+        if isinstance(namespace, ModuleType):
+            definition = _parse_package(namespace)
+            if modules_public:
+                return replace(definition, is_public=True)
+            return definition
+        assert_never(namespace)
 
-        definitions = tuple(to_scope_definition(namespace) for namespace in namespaces)
+    definitions = tuple(to_scope_definition(namespace) for namespace in namespaces)
 
-        root_symbol = MixinSymbol(origin=definitions)
+    root_symbol = MixinSymbol(origin=definitions)
 
-        # Create a synthetic root Mixin to enable lexical scope navigation
-        # This is needed so that children of the root scope can navigate up
-        # to find parent scope dependencies (via get_mixin)
-        root_mixin = Mixin(
-            symbol=root_symbol,
-            outer=OuterSentinel.ROOT,
-            kwargs=KwargsSentinel.STATIC,  # Root is always static
-        )
+    # Create a synthetic root Mixin to enable lexical scope navigation
+    # This is needed so that children of the root scope can navigate up
+    # to find parent scope dependencies (via get_mixin)
+    root_mixin = Mixin(
+        symbol=root_symbol,
+        outer=OuterSentinel.ROOT,
+        kwargs=KwargsSentinel.STATIC,  # Root is always static
+    )
 
-        # Evaluate the root mixin to get the Scope
-        result = root_mixin.evaluated
-        assert isinstance(result, Scope)
-        return result
-    finally:
-        _max_fixpoint_iterations_var.reset(token)
+    # Evaluate the root mixin to get the Scope
+    result = root_mixin.evaluated
+    assert isinstance(result, Scope)
+    return result
 
 
 # Re-export types needed by TYPE_CHECKING imports

@@ -553,6 +553,7 @@ from typing import (
     Awaitable,
     Callable,
     ChainMap,
+    ClassVar,
     Collection,
     ContextManager,
     Final,
@@ -665,9 +666,6 @@ class Bottom(RecursionError):
         self.incomplete_result = incomplete_result
 
 
-_max_fixpoint_iterations_var: ContextVar[int] = ContextVar(
-    "_max_fixpoint_iterations_var", default=100
-)
 _FIXPOINT_SENTINEL = object()
 
 # Registry of attribute names that need clearing during fixpoint digest cycles.
@@ -706,7 +704,19 @@ class fixpoint_cached_property:
         @fixpoint_cached_property(bottom=lambda: defaultdict(set))
         def qualified_this(self):
             ...
+
+    The class-level ``max_fixpoint_iterations`` ContextVar controls the
+    maximum number of digest rounds.  ``0`` disables fixpoint iteration
+    and raises ``Bottom`` on reentry.  Default ``100`` iterates until
+    convergence or raises ``Bottom`` if not converged::
+
+        fixpoint_cached_property.max_fixpoint_iterations.set(0)   # single-pass
+        fixpoint_cached_property.max_fixpoint_iterations.set(100) # multi-pass (default)
     """
+
+    max_fixpoint_iterations: ClassVar[ContextVar[int]] = ContextVar(
+        "fixpoint_cached_property.max_fixpoint_iterations", default=100
+    )
 
     def __init__(
         self,
@@ -737,6 +747,10 @@ class fixpoint_cached_property:
             self.attrname = name
         _fixpoint_clearable_attrs.add(self.attrname)
 
+    @classmethod
+    def _get_max_iterations(cls) -> int:
+        return cls.max_fixpoint_iterations.get()
+
     def __get__(self, instance: object, owner: type = None) -> object:
         if instance is None:
             return self
@@ -745,7 +759,7 @@ class fixpoint_cached_property:
         cache = instance.__dict__
         value = cache.get(self.attrname)
         if value is not None:
-            max_iterations = _max_fixpoint_iterations_var.get()
+            max_iterations = self._get_max_iterations()
             if max_iterations == 0:
                 return value
             # Detect reentry: if this key is currently being computed
@@ -759,7 +773,7 @@ class fixpoint_cached_property:
                     context.add_participant(instance)
             return value
 
-        max_iterations = _max_fixpoint_iterations_var.get()
+        max_iterations = self._get_max_iterations()
         context = _fixpoint_context_var.get()
         instance_id = id(instance)
         key = (instance_id, self.attrname)
@@ -895,7 +909,7 @@ class _fixpoint_dependent_property:
         if value is not None:
             return value
 
-        if _max_fixpoint_iterations_var.get() > 0:
+        if fixpoint_cached_property.max_fixpoint_iterations.get() > 0:
             # Register as participant so clear_participant_caches can
             # invalidate this cached value between fixpoint iterations.
             context = _fixpoint_context_var.get()

@@ -44,6 +44,7 @@ from mixinv2._core import public as public
 from mixinv2._core import resource as resource
 from mixinv2._core import scope as scope
 from mixinv2._core import Bottom as Bottom
+from mixinv2._core import fixpoint_cached_property as fixpoint_cached_property
 from mixinv2._runtime import evaluate as evaluate
 
 if TYPE_CHECKING:

@@ -1,0 +1,13 @@
+# A inherits from its own child via qualified this.
+# This creates a cycle in qualified_this computation:
+#   A.qualified_this → BFS processes A's references →
+#   get_symbols returns A.child → processing A.child.overlays →
+#   _generate_overlays calls A.qualified_this → REENTRY
+#
+# With max_fixpoint_iterations=0: raises Bottom on reentry
+# With max_fixpoint_iterations>0: converges via fixpoint iteration
+
+A:
+  - [SelfReferenceTest, ~, A, child]  # A inherits from its own child
+  - child:
+      value: []

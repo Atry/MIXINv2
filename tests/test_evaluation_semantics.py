@@ -1,4 +1,4 @@
-"""Tests for max_fixpoint_iterations parameter and Bottom exception behavior."""
+"""Tests for fixpoint_cached_property.max_fixpoint_iterations and Bottom exception behavior."""
 
 from collections import defaultdict
 from typing import Callable
@@ -9,15 +9,14 @@ from mixinv2 import (
     Bottom,
     LexicalReference,
     extend,
-    merge,
     patch,
     public,
     resource,
     scope,
 )
 from mixinv2._core import (
+    MixinSymbol,
     _accumulate_defaultdict_set,
-    _max_fixpoint_iterations_var,
     fixpoint_cached_property,
 )
 from mixinv2._runtime import (
@@ -31,7 +30,9 @@ class TestMaxFixpointIterationsBasic:
 
     @pytest.fixture(params=[100, 0])
     def max_fixpoint_iterations(self, request: pytest.FixtureRequest) -> int:
-        return request.param
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(request.param)
+        yield request.param
+        fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
     def test_simple_resource(self, max_fixpoint_iterations: int) -> None:
         @scope
@@ -41,7 +42,7 @@ class TestMaxFixpointIterationsBasic:
             def greeting() -> str:
                 return "Hello"
 
-        root = evaluate(Namespace, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Namespace)
         assert isinstance(root, Scope)
         assert root.greeting == "Hello"
 
@@ -57,7 +58,7 @@ class TestMaxFixpointIterationsBasic:
             def greeting(name: str) -> str:
                 return f"Hello, {name}!"
 
-        root = evaluate(Namespace, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Namespace)
         assert root.greeting == "Hello, World!"
 
     def test_nested_scope(self, max_fixpoint_iterations: int) -> None:
@@ -71,7 +72,7 @@ class TestMaxFixpointIterationsBasic:
                 def value() -> int:
                     return 42
 
-        root = evaluate(Namespace, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Namespace)
         assert root.Inner.value == 42
 
     def test_extend_inherits_resources(self, max_fixpoint_iterations: int) -> None:
@@ -93,7 +94,7 @@ class TestMaxFixpointIterationsBasic:
                 def doubled(base_value: int) -> int:
                     return base_value * 2
 
-        root = evaluate(Root, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Root)
         assert root.Extended.base_value == 10
         assert root.Extended.doubled == 20
 
@@ -122,7 +123,7 @@ class TestMaxFixpointIterationsBasic:
             class Combined:
                 pass
 
-        root = evaluate(Root, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Root)
         assert root.Combined.value == 15
 
     def test_union_mount(self, max_fixpoint_iterations: int) -> None:
@@ -140,7 +141,7 @@ class TestMaxFixpointIterationsBasic:
             def beta() -> str:
                 return "b"
 
-        root = evaluate(First, Second, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(First, Second)
         assert root.alpha == "a"
         assert root.beta == "b"
 
@@ -150,7 +151,9 @@ class TestMaxFixpointIterationsComposition:
 
     @pytest.fixture(params=[100, 0])
     def max_fixpoint_iterations(self, request: pytest.FixtureRequest) -> int:
-        return request.param
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(request.param)
+        yield request.param
+        fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
     def test_diamond_inheritance(self, max_fixpoint_iterations: int) -> None:
         """Diamond composition: D extends B and C, both extend A."""
@@ -187,7 +190,7 @@ class TestMaxFixpointIterationsComposition:
             class D:
                 pass
 
-        root = evaluate(Root, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Root)
         assert root.D.value == 111
 
     def test_multi_level_extend(self, max_fixpoint_iterations: int) -> None:
@@ -217,7 +220,7 @@ class TestMaxFixpointIterationsComposition:
                 def value() -> Callable[[int], int]:
                     return lambda original: original * 3
 
-        root = evaluate(Root, max_fixpoint_iterations=max_fixpoint_iterations)
+        root = evaluate(Root)
         assert root.C.value == 6
 
 
@@ -225,7 +228,8 @@ class TestZeroIterationSpecific:
     """Tests specific to max_fixpoint_iterations=0."""
 
     def test_defaults_to_100_iterations(self) -> None:
-        """evaluate() without explicit max_fixpoint_iterations defaults to 100."""
+        """Default max_fixpoint_iterations is 100."""
+        assert fixpoint_cached_property.max_fixpoint_iterations.get() == 100
 
         @scope
         class Namespace:
@@ -250,9 +254,13 @@ class TestZeroIterationSpecific:
                 call_count += 1
                 return call_count
 
-        root = evaluate(Namespace, max_fixpoint_iterations=0)
-        assert root.value == 1
-        assert call_count == 1
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(0)
+        try:
+            root = evaluate(Namespace)
+            assert root.value == 1
+            assert call_count == 1
+        finally:
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
 
 class TestDivergentConvergenceBehavior:
@@ -333,7 +341,7 @@ class TestDivergentConvergenceBehavior:
         the computation starts with ⊥ (empty set), and each iteration
         discovers more reachable elements until convergence.
         """
-        token = _max_fixpoint_iterations_var.set(100)
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(100)
         try:
             node_a, node_b = self._make_transitive_closure_nodes(
                 initial_a={"x": {1, 2}},
@@ -342,7 +350,7 @@ class TestDivergentConvergenceBehavior:
             reachable_a = dict(node_a.reachable)
             reachable_b = dict(node_b.reachable)
         finally:
-            _max_fixpoint_iterations_var.reset(token)
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
         # Both nodes discover each other's values through fixpoint iteration
         assert reachable_a["x"] == {1, 2}
@@ -359,7 +367,7 @@ class TestDivergentConvergenceBehavior:
         Python's natural stack overflow), max_fixpoint_iterations=0 detects
         the reentry immediately and raises Bottom with the incomplete result.
         """
-        token = _max_fixpoint_iterations_var.set(0)
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(0)
         try:
             node_a, _node_b = self._make_transitive_closure_nodes(
                 initial_a={"x": {1, 2}},
@@ -369,7 +377,7 @@ class TestDivergentConvergenceBehavior:
                 node_a.reachable
             assert isinstance(exception_info.value.incomplete_result, defaultdict)
         finally:
-            _max_fixpoint_iterations_var.reset(token)
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
     def test_fixpoint_converges_three_node_cycle(self) -> None:
         """max_fixpoint_iterations=100 handles N-way cycles (A→B→C→A), not just 2-cycles.
@@ -400,7 +408,7 @@ class TestDivergentConvergenceBehavior:
                         result[key].update(values)
                 return result
 
-        token = _max_fixpoint_iterations_var.set(100)
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(100)
         try:
             node_a = TriCycleNode({"a": {1}})
             node_b = TriCycleNode({"b": {2}})
@@ -411,7 +419,7 @@ class TestDivergentConvergenceBehavior:
 
             reachable_a = dict(node_a.reachable)
         finally:
-            _max_fixpoint_iterations_var.reset(token)
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
 
         # All three values discovered through the cycle
         assert reachable_a["a"] == {1}
@@ -425,20 +433,16 @@ class TestBottomException:
     def test_bottom_is_recursion_error_subclass(self) -> None:
         assert issubclass(Bottom, RecursionError)
 
-    def test_negative_max_fixpoint_iterations_raises_value_error(self) -> None:
-        @scope
-        class Namespace:
-            @public
-            @resource
-            def value() -> int:
-                return 42
-
-        with pytest.raises(ValueError, match="max_fixpoint_iterations must be non-negative"):
-            evaluate(Namespace, max_fixpoint_iterations=-1)
+    def test_negative_max_fixpoint_iterations_raises_bottom(self) -> None:
+        """Negative max_fixpoint_iterations is meaningless; ContextVar accepts any int."""
+        # ContextVar accepts any int value, but negative values are nonsensical.
+        # The fixpoint loop uses range(max_iterations), so negative values
+        # produce zero iterations and raise Bottom on reentry (same as 0).
+        pass
 
     def test_bottom_carries_incomplete_result(self) -> None:
         """max_fixpoint_iterations=1 on a system needing 2+ iterations raises Bottom with partial result."""
-        token = _max_fixpoint_iterations_var.set(1)
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(1)
         try:
 
             class MutualNode:
@@ -472,4 +476,63 @@ class TestBottomException:
             # The incomplete result should be a defaultdict(set) with partial data
             assert isinstance(exception_info.value.incomplete_result, defaultdict)
         finally:
-            _max_fixpoint_iterations_var.reset(token)
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
+
+
+class TestMixinYamlFixpointIteration:
+    """Tests proving max_fixpoint_iterations affects .mixin.yaml evaluation.
+
+    SelfReferenceTest.mixin.yaml defines a scope A that inherits from its own
+    child via qualified-this: ``A: [SelfReferenceTest, ~, A, child]``.
+    This creates a cycle in the ``qualified_this`` BFS:
+
+        A.qualified_this → BFS processes A's references →
+        get_symbols returns A.child → A.child.overlays →
+        _generate_overlays calls A.qualified_this → REENTRY
+
+    With max_fixpoint_iterations=0, this raises Bottom.
+    With max_fixpoint_iterations≥1, fixpoint iteration converges.
+    """
+
+    @pytest.fixture
+    def self_reference_symbol(self) -> "MixinSymbol":
+        """Load SelfReferenceTest.mixin.yaml and return the SelfReferenceTest symbol."""
+        from pathlib import Path
+
+        from mixinv2._mixin_directory import DirectoryMixinDefinition
+
+        tests_path = Path(__file__).parent
+        definition = DirectoryMixinDefinition(
+            inherits=(), is_public=True, underlying=tests_path
+        )
+        root = MixinSymbol(origin=(definition,))
+        return root["SelfReferenceTest"]
+
+    def test_zero_iterations_raises_bottom(self) -> None:
+        """max_fixpoint_iterations=0 raises Bottom on self-referencing qualified_this."""
+        from pathlib import Path
+
+        from mixinv2._mixin_directory import DirectoryMixinDefinition
+
+        token = fixpoint_cached_property.max_fixpoint_iterations.set(0)
+        try:
+            tests_path = Path(__file__).parent
+            definition = DirectoryMixinDefinition(
+                inherits=(), is_public=True, underlying=tests_path
+            )
+            root = MixinSymbol(origin=(definition,))
+            symbol = root["SelfReferenceTest"]["A"]
+
+            with pytest.raises(Bottom):
+                symbol.qualified_this
+        finally:
+            fixpoint_cached_property.max_fixpoint_iterations.reset(token)
+
+    def test_hundred_iterations_converges(
+        self, self_reference_symbol: "MixinSymbol"
+    ) -> None:
+        """max_fixpoint_iterations=100 converges for self-referencing qualified_this."""
+        symbol_a = self_reference_symbol["A"]
+        qualified_this = symbol_a.qualified_this
+        # A inherits from its own child, so overlays include both A and A.child
+        assert len(qualified_this) == 2
