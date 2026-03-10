@@ -2998,70 +2998,75 @@ the post-reduct.
 The proof above works directly with the six
 equations~(\ref{eq:properties})--(\ref{eq:this}),
 not with any particular evaluation strategy.
-When evaluation uses multi-pass tabled evaluation
+We distinguish two consequences of switching from
+single-pass evaluation to multi-pass tabled evaluation
 (computing $\mathrm{lfp}(T_P)$ via iterated
 application of~$T_P$;
-see Appendix~\ref{app:well-definedness}),
-convergence preservation still holds:
-\begin{itemize}
-\item
-  The Result-Step Lemma
-  (Lemma~\ref{lem:result-step}) establishes a
-  structural isomorphism between the equation
-  systems of $\mathcal{T}(M)$ and
-  $\mathcal{T}(N)$, shifted by one
-  $\mathrm{result}$ step.
-  This isomorphism preserves monotonicity, so
-  $\mathrm{lfp}(T_P)$ yields the same answer on
-  both sides (modulo the depth shift).
-\item
-  For $\lambda$-calculus--translated programs, the
-  Single-Path Lemma
-  (Lemma~\ref{lem:single-path}) ensures that no
-  cycles arise in the dependency graph (each scope
-  level has exactly one inheritance source), so
-  single-pass and multi-pass evaluation produce
-  identical results.
-\item
-  For programs beyond the $\lambda$-calculus
-  fragment that introduce cyclic dependencies,
-  multi-pass evaluation may converge where
-  single-pass evaluation diverges; in this case,
-  convergence preservation under
-  $\mathrm{lfp}(T_P)$ follows from the
-  isomorphism argument: if $\mathcal{T}(M)$
-  converges at depth~$n$ under $\mathrm{lfp}$,
-  then $\mathcal{T}(N)$ converges at
-  depth~$n - 1$, and vice versa.
+see Appendix~\ref{app:well-definedness}).
 
-  As a minimal illustration, the $\lambda$-term
-  $\mathbf{let}\; x = x \;\mathbf{in}\; x$
-  diverges under $\beta$-reduction (unfolding
-  $x$ produces $x$ again, \emph{ad infinitum}).
-  Translation~$\mathcal{T}$ gives
-  \[
-    \{x \mapsto \{\mathrm{result} \mapsto
-      x.\mathrm{result}\},\;
-    \mathrm{result} \mapsto x.\mathrm{result}\}
-  \]
-  where $x.\mathrm{result}$ inherits from
-  itself, creating a cyclic dependency.
-  Under single-pass evaluation
-  ($\mathit{max\_fixpoint\_iterations} = 0$),
-  the cycle raises~$\bot$, matching the
-  $\lambda$-calculus divergence.
-  Under $\mathrm{lfp}(T_P)$, fixpoint iteration
-  detects the cycle and converges:
-  $\mathrm{properties}(\mathrm{root}) =
-  \{x, \mathrm{result}\}$ and
-  $\mathrm{properties}(\mathrm{root} \triangleright
-  \mathrm{result}) = \varnothing$,
-  reflecting that the value is undefined
-  (no abstraction shape).
-  Appendix~\ref{app:datalog-encoding} gives a
-  more motivated example (Datalog transitive
-  closure on cyclic graphs).
-\end{itemize}
+\begin{description}
+\item[Head-reduction preservation is maintained.]
+The Result-Step Lemma
+(Lemma~\ref{lem:result-step}) establishes a
+structural isomorphism between the equation
+systems of $\mathcal{T}(M)$ and
+$\mathcal{T}(N)$, shifted by one
+$\mathrm{result}$ step.
+This isomorphism preserves monotonicity, so
+$\mathrm{lfp}(T_P)$ yields the same answer on
+both sides (modulo the depth shift):
+if $\mathcal{T}(M)$ converges at depth~$n$ under
+$\mathrm{lfp}$, then $\mathcal{T}(N)$ converges at
+depth~$n - 1$, and vice versa.
+For $\lambda$-calculus--translated programs, the
+Single-Path Lemma
+(Lemma~\ref{lem:single-path}) ensures that no
+cycles arise in the dependency graph (each scope
+level has exactly one inheritance source), so
+single-pass and multi-pass evaluation produce
+identical results in this fragment.
+
+\item[Agreement with the $\lambda$-calculus is
+not maintained in general.]
+For programs beyond the $\lambda$-calculus
+fragment that introduce cyclic dependencies,
+$\mathrm{lfp}(T_P)$ may converge where
+the $\lambda$-calculus diverges.
+This means $\mathrm{lfp}(T_P)$ evaluation is
+\emph{strictly more defined} than
+$\beta$-reduction on the translated image:
+$M{\Downarrow}_\lambda$ implies
+$\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
+but not conversely.
+
+As a minimal illustration, the $\lambda$-term
+$\mathbf{let}\; x = x \;\mathbf{in}\; x$
+diverges under $\beta$-reduction (unfolding
+$x$ produces $x$ again, \emph{ad infinitum}).
+Translation~$\mathcal{T}$ gives
+\[
+  \{x \mapsto \{\mathrm{result} \mapsto
+    x.\mathrm{result}\},\;
+  \mathrm{result} \mapsto x.\mathrm{result}\}
+\]
+where $x.\mathrm{result}$ inherits from
+itself, creating a cyclic dependency.
+Under single-pass evaluation
+($\mathit{max\_fixpoint\_iterations} = 0$),
+the cycle raises~$\bot$, matching the
+$\lambda$-calculus divergence.
+Under $\mathrm{lfp}(T_P)$, fixpoint iteration
+detects the cycle and converges:
+$\mathrm{properties}(\mathrm{root}) =
+\{x, \mathrm{result}\}$ and
+$\mathrm{properties}(\mathrm{root} \triangleright
+\mathrm{result}) = \varnothing$,
+reflecting that the value is undefined
+(no abstraction shape).
+Appendix~\ref{app:datalog-encoding} gives a
+more motivated example (Datalog transitive
+closure on cyclic graphs).
+\end{description}
 
 \subsection{Adequacy}
 
