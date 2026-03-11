@@ -313,8 +313,6 @@ All tests are mechanically verified against expected output snapshots.
     denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}.
   \item The mixin tree \emph{is} the call stack.
     Self-reference resolves to \emph{multiple targets}.
-    Since inheritance
-    is idempotent, all objects contribute equally.
   \item The $\lambda$-calculus macro-expresses into
     inheritance-calculus in five local rules
     (Section~\ref{sec:translation}).
@@ -326,7 +324,7 @@ All tests are mechanically verified against expected output snapshots.
     inheritance-calculus's first-order equations.
     Appendix~\ref{app:lambda-fixpoint} reformulates this
     semantics directly on ANF\@.
-    As a corollary, this establishes a convergence hierarchy
+  \item As a corollary, this establishes a convergence hierarchy
     among the eager, lazy, and fixpoint $\lambda$-calculi
     sharing the same $\lambda$-syntax
     (Section~\ref{sec:translation};
