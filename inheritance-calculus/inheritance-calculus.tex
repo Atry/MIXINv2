@@ -1074,7 +1074,7 @@ and binary, as MIXINv2
 files\selfcite{~\cite{mixin2025}}{~(supplementary material)}.
 This section traces the unary Nat case in detail.
 The implementation follows a declarative object-oriented style:
-each concern is one file;
+each concern is one top-level mixin;
 UpperCamelCase names serve as data constructors and operations;
 lowerCamelCase names serve as fields and parameters;
 and since there are no methods, all names are nouns or adjectives: $\mathrm{Plus}$
@@ -1096,7 +1096,7 @@ labels that serve as data constructors.
 A $\mathrm{Zero}$ value inherits $\mathrm{Product}$;
 a $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
 exposes a $\mathrm{predecessor}$ field.
-The file name $\mathrm{NatData}$ is itself the top-level scope:
+The name $\mathrm{NatData}$ is the top-level scope:
 \begin{align*}
   \mathrm{NatData} \mapsto \{\;&
     \mathrm{NatFactory} \mapsto \{
@@ -1284,10 +1284,10 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
 %% 不影响演算本身的语义。
 %% ================================================================
 Composing $\mathrm{NatPlus}$ with $\mathrm{NatEquality}$ by
-inheriting both, with no modifications to either file, gives the
+inheriting both, with no modifications to either mixin, gives the
 resulting Nat values both $\mathrm{Plus}$ and $\mathrm{Equal}$
 automatically.
-The concrete numerals live in a shared file that inherits only $\mathrm{NatData}$:
+The concrete numerals live in a shared mixin that inherits only $\mathrm{NatData}$:
 \begin{align*}
   \mathrm{NatConstants} \mapsto \{\;&
     \mathrm{NatData},\\
@@ -1326,9 +1326,9 @@ The arithmetic test inherits $\mathrm{NatConstants}$ together with the operation
 \end{align*}
 Querying $\mathrm{Test}.\mathrm{Test2plus3}.\mathrm{equal}$ via the host-language API
 returns $\mathrm{True}$.
-No existing file was modified.
+No existing mixin was modified.
 $\mathrm{NatEquality}$, a new operation, and $\mathrm{Boolean}$,
-a new data type, each required only a new file: extensibility in both
+a new data type, each required only a new mixin: extensibility in both
 dimensions of the Expression Problem~\cite{wadler1998-expression-problem}.
 
 \paragraph{Tree-level inheritance and return types}
@@ -1342,14 +1342,14 @@ Crucially, this applies to return types: $\mathrm{NatPlus}$ returns
 values from $\mathrm{NatFactory}$, and $\mathrm{NatEquality}$
 independently adds $\mathrm{Equal}$ to the same factory.
 Inheriting both causes the values returned by $\mathrm{Plus}$ to
-carry $\mathrm{Equal}$ automatically, without modifying either file.
+carry $\mathrm{Equal}$ automatically, without modifying either mixin.
 In object algebras~\cite{oliveira2012-object-algebras} and finally
 tagless interpreters~\cite{carette2009-finally-tagless}, independently defined
 operations do not automatically enrich each other's return types;
 additional boilerplate or type-class machinery is required.
 
 Multi-target qualified this (equation~\ref{eq:this}) is essential.
-In the test file above, $\mathrm{NatPlus}.\mathrm{Successor}$ and
+In the test mixin above, $\mathrm{NatPlus}.\mathrm{Successor}$ and
 $\mathrm{NatEquality}.\mathrm{Successor}$ both inherit
 $\mathrm{NatData}.\mathrm{Successor}$.
 When the two operations are composed, the resulting
