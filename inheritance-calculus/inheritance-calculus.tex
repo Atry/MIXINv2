@@ -685,7 +685,7 @@ define $\properties(p)$ by mutual recursion:
 $\ell \in \properties(p)$ holds if and only if it can
 be established by a finite chain of applications of
 these functions.
-The functions \emph{are} the interpreter---the observer
+The functions \emph{are} the interpreter: the observer
 drives the computation by choosing which path to
 inspect, and each equation unfolds on demand.
 Because the functions are pure and order-independent,
@@ -869,11 +869,11 @@ accesses its $\mathrm{argument}$ slot.%
   $\mathbf{let}$-bindings and tail calls.
   The translation therefore adjusts the index:
   if a $\lambda$-bound variable crosses $k$ intervening
-  $\mathbf{let}$-binding or tail-call scopes in the ANF
-  term---that is, $k$ is the number of
-  $\mathbf{let}$- and tail-call constructs on the path
-  from the variable occurrence to its binding $\lambda$
-  in the ANF syntax tree---its inheritance-calculus
+  $\mathbf{let}$-binding or tail-call scopes
+  (that is, $k$ counts the $\mathbf{let}$- and tail-call
+  constructs on the path from the variable occurrence
+  to its binding $\lambda$ in the ANF syntax tree),
+  its inheritance-calculus
   index is $n' = n + k$,
   not~$n$.
   Let-bound variables are unaffected, as they use
@@ -2116,7 +2116,7 @@ define method dispatch and object construction at runtime.
 
 \paragraph{Mixins and traits}
 Bracha and Cook~\cite{bracha1990mixin} formalized mixins as
-abstract subclasses---functions from a superclass parameter to a
+abstract subclasses, that is, functions from a superclass parameter to a
 subclass.
 Because mixin application is function composition, it is
 \emph{neither commutative nor idempotent}; the C3 linearization
@@ -2556,8 +2556,8 @@ B\"ohm tree equivalence
 (Theorems~\ref{thm:adequacy} and~\ref{thm:first-order-semantics}),
 establishing that the first iteration coincides with
 the lazy $\lambda$-calculus.
-Second, the full $\mathrm{lfp}(T_P)$ semantics---the
-fixpoint $\lambda$-calculus---is strictly more defined:
+Second, the full $\mathrm{lfp}(T_P)$ semantics,
+the fixpoint $\lambda$-calculus, is strictly more defined:
 $\lambda$-terms that diverge under $\beta$-reduction
 may converge (Remark~\ref{rem:convergence-lfp}),
 establishing a convergence hierarchy among the eager,
@@ -4856,12 +4856,12 @@ However, this monadic program does not converge because
 \footnote{Enabling the \texttt{RecursiveDo} extension does not help:
   \texttt{mfix} ties a knot at the \emph{element} level via laziness,
   whereas the transitive closure equation requires a
-  fixed point at the \emph{container} level---finding a
+  fixed point at the \emph{container} level, i.e.\ finding a
 set~$S$ such that $S = F(S)$.}
 Inheritance-calculus solves this through tabled evaluation
 (Section~\ref{sec:mixin-trees}), which computes the
 least fixed point of the $T_P$ operator by iterating
-over the lattice of mixin trees---precisely the
+over the lattice of mixin trees, precisely the
 container-level fixed point that the pseudocode above cannot express.
 
 \subsection{Semantic Correspondence with Standard Datalog}
