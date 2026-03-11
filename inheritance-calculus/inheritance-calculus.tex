@@ -992,9 +992,31 @@ equivalence~\cite{barendregt1984-lambda-calculus}.%
   Appendix~\ref{app:lambda-fixpoint} reformulates this
   semantics directly on ANF, without passing through
 inheritance-calculus.}
-The full proof, including the Single-Path Lemma,
-Substitution Lemma, and Convergence Preservation, is given
-in Appendix~\ref{app:bohm-tree-proofs}.
+The full proof is given in Appendix~\ref{app:bohm-tree-proofs}.
+The correspondence holds at the first iteration
+$T_P\!\uparrow\!1$; the full $\mathrm{lfp}(T_P)$ is
+strictly more defined.
+For example,
+$\mathbf{let}\; x = x \;\mathbf{in}\; x$
+diverges under $\beta$-reduction, but its translation
+$\{x \mapsto \{\mathrm{result} \mapsto x.\mathrm{result}\},\;
+\mathrm{result} \mapsto x.\mathrm{result}\}$
+stabilizes under $\mathrm{lfp}(T_P)$:%
+\footnote{This simple cycle could also be resolved by a
+  fixed-point combinator such as~$Y$.
+  The $\mathrm{lfp}(T_P)$ semantics is more general:
+  it computes fixed points at the \emph{container} level,
+  e.g.\ finding a set~$S$ such that $S = F(S)$.
+  Recursive Datalog on cyclic graphs
+  (Appendix~\ref{app:datalog-encoding},
+  Section~\ref{sec:recursive-rules}) requires exactly this,
+  and neither $Y$ nor Haskell's \texttt{mfix}
+  (\texttt{RecursiveDo}) can express it.}
+tabled evaluation detects the cycle and returns
+$\properties(\mathrm{root}) = \{x, \mathrm{result}\}$
+with no abstraction shape, reflecting an undefined value
+rather than diverging
+(Remark~\ref{rem:convergence-lfp}).
 
 The relationship between $\approx_\lambda$ and full
 inheritance-contextual equivalence is clarified by the expressive
@@ -3022,9 +3044,11 @@ We make this precise.
 
 \paragraph{Extension to $\mathrm{lfp}(T_P)$ semantics}
 \label{rem:convergence-lfp}
-The denotational semantics of inheritance-calculus is
-$\mathrm{lfp}(T_P)$
-(Appendix~\ref{app:well-definedness}).
+Section~\ref{sec:bohm-tree} showed that the B\"ohm tree
+correspondence holds at the first iteration
+$T_P\!\uparrow\!1$ and that $\mathrm{lfp}(T_P)$ is
+strictly more defined.
+Here we make the connection precise.
 Tabled evaluation~\cite{tamaki1986-tabled-resolution}
 computes $\mathrm{lfp}(T_P)$ by iterating:
 $T_P\!\uparrow\!0 = \bot$,
@@ -3032,12 +3056,13 @@ $T_P\!\uparrow\!1 = T_P(\bot)$,
 $T_P\!\uparrow\!2 = T_P(T_P(\bot))$,
 \ldots\ until stabilisation
 (Theorem~\ref{thm:tabling-soundness}).
-We now relate two points in this sequence to the
-$\lambda$-calculus.
 
 \begin{description}
   \item[$T_P\!\uparrow\!1$ corresponds to
     $\beta$-reduction.]
+    $T_P\!\uparrow\!1$ evaluates each equation once,
+    with re-entrant calls returning~$\bot$
+    (the value from $T_P\!\uparrow\!0$).
     The Result-Step Lemma
     (Lemma~\ref{lem:result-step}) establishes a
     structural isomorphism between the equation
@@ -3046,58 +3071,19 @@ $\lambda$-calculus.
     $\mathrm{result}$ step.
     This isomorphism is purely structural and holds
     for any number of iterations.
-    $T_P\!\uparrow\!1$ evaluates each equation once,
-    with re-entrant calls returning~$\bot$
-    (the value from $T_P\!\uparrow\!0$).
-    The Adequacy theorem
-    (Theorem~\ref{thm:adequacy}) shows that
-    $\mathcal{T}(M)$ converges under $T_P\!\uparrow\!1$
-    if and only if $M$ has a head normal form under
-    lazy $\beta$-reduction.
-    The Adequacy theorem
-    (Theorem~\ref{thm:adequacy}) and the
-    first-order semantics theorem
-    (Theorem~\ref{thm:first-order-semantics})
+    Theorems~\ref{thm:adequacy}
+    and~\ref{thm:first-order-semantics}
     are proved at this level.
 
-  \item[$\mathrm{lfp}(T_P)$ is strictly more
-    defined than $\beta$-reduction.]
-    $\mathrm{lfp}(T_P)$ may converge where
-    $\beta$-reduction diverges.
-    We call this sublanguage with $\mathrm{lfp}(T_P)$
+  \item[$\mathrm{lfp}(T_P)$ defines the fixpoint
+    $\lambda$-calculus.]
+    We call the sublanguage with $\mathrm{lfp}(T_P)$
     semantics the \emph{fixpoint $\lambda$-calculus};
     it shares the same syntax as the lazy $\lambda$-calculus
-    but has strictly greater computational power.
+    but has strictly greater computational power:
     $M{\Downarrow}_\lambda$ implies
     $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
     but not conversely.
-
-    As a minimal illustration, the $\lambda$-term
-    $\mathbf{let}\; x = x \;\mathbf{in}\; x$
-    diverges under $\beta$-reduction (unfolding
-    $x$ produces $x$ again, \emph{ad infinitum}).
-    Translation~$\mathcal{T}$ gives
-    \[
-      \{x \mapsto \{\mathrm{result} \mapsto
-        x.\mathrm{result}\},\;
-      \mathrm{result} \mapsto x.\mathrm{result}\}
-    \]
-    where $x.\mathrm{result}$ inherits from
-    itself, creating a cyclic dependency.
-    Under $T_P\!\uparrow\!1$,
-    the cycle returns~$\bot$, matching the
-    $\lambda$-calculus divergence.
-    Under $\mathrm{lfp}(T_P)$, further iteration
-    detects the cycle and converges:
-    $\mathrm{properties}(\mathrm{root}) =
-    \{x, \mathrm{result}\}$ and
-    $\mathrm{properties}(\mathrm{root} \triangleright
-    \mathrm{result}) = \varnothing$,
-    reflecting that the value is undefined
-    , thus having no abstraction shape.
-    Appendix~\ref{app:datalog-encoding} gives a
-    more motivated example (Datalog transitive
-    closure on cyclic graphs).
 \end{description}
 
 \subsection{Adequacy}
