@@ -1114,9 +1114,14 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 \end{align*}
 
 \paragraph{NatEquality}
+\label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
 Equality requires case analysis on the data constructor; we use the
 visitor pattern.
+The Cartesian product test
+(page~\pageref{sec:case-study-cartesian}) will apply this
+same $\mathrm{Equal}$ to a trie union of multiple Nat
+values without modification.
 $\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to each data constructor,
 containing a $\mathrm{VisitorMap}$ with the appropriate
 $\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch,
@@ -1338,6 +1343,7 @@ shared schemas, which DOT's single-valued self variable cannot
 accommodate.
 
 \paragraph{Church-encoded Nats are tries}
+\label{sec:case-study-cartesian}
 A Church-encoded Nat is a record whose structure mirrors the
 data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
@@ -3154,10 +3160,12 @@ By the base case argument, $M$ is not an abstraction, so at the
 head position of this closed top-level ANF term, $M$ is either
 a tail call, an application $\mathbf{let}$-binding, or a value
 $\mathbf{let}$-binding.
-In each case, the head form is a $\beta$-redex in the
-underlying $\lambda$-term: the function position is occupied by
-a closed ANF value, and the only closed ANF value that can
-appear at head position is a $\lambda$-abstraction.
+In each case, the ANF grammar requires the function
+position to be a value~$V_1$
+($V ::= x \mid \lambda x.\, M$).
+Since $M$ is closed, $V_1$ cannot be a free variable,
+so $V_1$ must be a $\lambda$-abstraction;
+the head form is therefore a $\beta$-redex.
 By Lemma~\ref{lem:result-step} (tail-call,
   application let-binding, or value let-binding
 variant), the properties at depth
