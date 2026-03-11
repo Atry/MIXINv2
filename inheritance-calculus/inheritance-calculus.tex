@@ -981,7 +981,8 @@ using only recursive evaluation of set-comprehension
 equations over paths and sets of paths.
 The prior higher-order semantic frameworks
 of~\cite{scott1972-continuous-lattices,wadsworth1976-scott-d-infinity-models,abramsky2000-full-abstraction-pcf,hyland2000-full-abstraction-pcf,barendregt1984-lambda-calculus}
-are thereby shown to be faithful to this first-order
+are thereby shown to be faithful to the first-iteration
+approximation $T_P\!\uparrow\!1$ of this first-order
 semantics: they agree with the equations on B\"ohm tree
 equivalence~\cite{barendregt1984-lambda-calculus}.%
 \footnote{Composing $\mathcal{T}$ with the equations of
@@ -993,9 +994,7 @@ equivalence~\cite{barendregt1984-lambda-calculus}.%
   semantics directly on ANF, without passing through
 inheritance-calculus.}
 The full proof is given in Appendix~\ref{app:bohm-tree-proofs}.
-The correspondence holds at the first iteration
-$T_P\!\uparrow\!1$; the full $\mathrm{lfp}(T_P)$ is
-strictly more defined.
+The full $\mathrm{lfp}(T_P)$ is strictly more defined.
 For example,
 $\mathbf{let}\; x = x \;\mathbf{in}\; x$
 diverges under $\beta$-reduction, but its translation
