@@ -82,7 +82,7 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying classes, methods, objects, and properties under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling~\cite{tamaki1986old}. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984lambda} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same syntax. Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976semantics}; self-reference resolves to multiple targets; and programs are immune to the Expression Problem~\cite{wadler1998expression}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991expressive}.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying classes, methods, objects, and properties under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling~\cite{tamaki1986old}. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984lambda} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same $\lambda$-syntax. Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976semantics}; self-reference resolves to multiple targets; and programs are immune to the Expression Problem~\cite{wadler1998expression}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991expressive}.
 \end{abstract}
 
 \begin{CCSXML}
@@ -321,7 +321,7 @@ All tests are mechanically verified against expected output snapshots.
     semantics directly on ANF\@.
     As a corollary, this establishes a convergence hierarchy
     among the eager, lazy, and fixpoint $\lambda$-calculi
-    sharing the same syntax
+    sharing the same $\lambda$-syntax
     (Section~\ref{sec:translation};
     Remark~\ref{rem:convergence-lfp}).
   \item Inheritance-calculus is strictly more expressive than
@@ -3018,64 +3018,64 @@ $\lambda$-calculus.
 
 \begin{description}
 \item[$T_P\!\uparrow\!1$ corresponds to
-$\beta$-reduction.]
-The Result-Step Lemma
-(Lemma~\ref{lem:result-step}) establishes a
-structural isomorphism between the equation
-systems of $\mathcal{T}(M)$ and
-$\mathcal{T}(N)$, shifted by one
-$\mathrm{result}$ step.
-This isomorphism is purely structural and holds
-for any number of iterations.
-$T_P\!\uparrow\!1$ evaluates each equation once,
-with re-entrant calls returning~$\bot$
-(the value from $T_P\!\uparrow\!0$);
-this matches the convergence behavior
-of lazy $\beta$-reduction.
-The Adequacy theorem
-(Theorem~\ref{thm:adequacy}) and the
-full abstraction theorem
-(Theorem~\ref{thm:full-abstraction})
-are proved at this level.
+  $\beta$-reduction.]
+  The Result-Step Lemma
+  (Lemma~\ref{lem:result-step}) establishes a
+  structural isomorphism between the equation
+  systems of $\mathcal{T}(M)$ and
+  $\mathcal{T}(N)$, shifted by one
+  $\mathrm{result}$ step.
+  This isomorphism is purely structural and holds
+  for any number of iterations.
+  $T_P\!\uparrow\!1$ evaluates each equation once,
+  with re-entrant calls returning~$\bot$
+  (the value from $T_P\!\uparrow\!0$);
+  this matches the convergence behavior
+  of lazy $\beta$-reduction.
+  The Adequacy theorem
+  (Theorem~\ref{thm:adequacy}) and the
+  full abstraction theorem
+  (Theorem~\ref{thm:full-abstraction})
+  are proved at this level.
 
 \item[$\mathrm{lfp}(T_P)$ is strictly more
-defined than $\beta$-reduction.]
-$\mathrm{lfp}(T_P)$ may converge where
-$\beta$-reduction diverges.
-We call this sublanguage with $\mathrm{lfp}(T_P)$
-semantics the \emph{fixpoint $\lambda$-calculus};
-it shares the same syntax as the lazy $\lambda$-calculus
-but has strictly greater computational power.
-$M{\Downarrow}_\lambda$ implies
-$\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
-but not conversely.
+  defined than $\beta$-reduction.]
+  $\mathrm{lfp}(T_P)$ may converge where
+  $\beta$-reduction diverges.
+  We call this sublanguage with $\mathrm{lfp}(T_P)$
+  semantics the \emph{fixpoint $\lambda$-calculus};
+  it shares the same syntax as the lazy $\lambda$-calculus
+  but has strictly greater computational power.
+  $M{\Downarrow}_\lambda$ implies
+  $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
+  but not conversely.
 
-As a minimal illustration, the $\lambda$-term
-$\mathbf{let}\; x = x \;\mathbf{in}\; x$
-diverges under $\beta$-reduction (unfolding
-$x$ produces $x$ again, \emph{ad infinitum}).
-Translation~$\mathcal{T}$ gives
-\[
-  \{x \mapsto \{\mathrm{result} \mapsto
-    x.\mathrm{result}\},\;
-  \mathrm{result} \mapsto x.\mathrm{result}\}
-\]
-where $x.\mathrm{result}$ inherits from
-itself, creating a cyclic dependency.
-Under $T_P\!\uparrow\!1$,
-the cycle returns~$\bot$, matching the
-$\lambda$-calculus divergence.
-Under $\mathrm{lfp}(T_P)$, further iteration
-detects the cycle and converges:
-$\mathrm{properties}(\mathrm{root}) =
-\{x, \mathrm{result}\}$ and
-$\mathrm{properties}(\mathrm{root} \triangleright
-\mathrm{result}) = \varnothing$,
-reflecting that the value is undefined
-(no abstraction shape).
-Appendix~\ref{app:datalog-encoding} gives a
-more motivated example (Datalog transitive
-closure on cyclic graphs).
+  As a minimal illustration, the $\lambda$-term
+  $\mathbf{let}\; x = x \;\mathbf{in}\; x$
+  diverges under $\beta$-reduction (unfolding
+  $x$ produces $x$ again, \emph{ad infinitum}).
+  Translation~$\mathcal{T}$ gives
+  \[
+    \{x \mapsto \{\mathrm{result} \mapsto
+      x.\mathrm{result}\},\;
+    \mathrm{result} \mapsto x.\mathrm{result}\}
+  \]
+  where $x.\mathrm{result}$ inherits from
+  itself, creating a cyclic dependency.
+  Under $T_P\!\uparrow\!1$,
+  the cycle returns~$\bot$, matching the
+  $\lambda$-calculus divergence.
+  Under $\mathrm{lfp}(T_P)$, further iteration
+  detects the cycle and converges:
+  $\mathrm{properties}(\mathrm{root}) =
+  \{x, \mathrm{result}\}$ and
+  $\mathrm{properties}(\mathrm{root} \triangleright
+  \mathrm{result}) = \varnothing$,
+  reflecting that the value is undefined
+  (no abstraction shape).
+  Appendix~\ref{app:datalog-encoding} gives a
+  more motivated example (Datalog transitive
+  closure on cyclic graphs).
 \end{description}
 
 \subsection{Adequacy}
