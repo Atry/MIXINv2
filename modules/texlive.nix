@@ -9,8 +9,17 @@
         ${lib.getExe pkgs.gnutar} -czvf arxiv-submission.tar.gz \
           -C . \
           $(${lib.getExe pkgs.gawk} '
-            /^OUTPUT [^\/]/{gsub(/^OUTPUT \.\//, "OUTPUT "); outputs[$2]=1}
-            /^INPUT [^\/]/{gsub(/^INPUT \.\//, "INPUT "); inputs[$2]=1}
+            NR==1 && /^PWD /{pwd=$2 "/"; next}
+            /^OUTPUT /{gsub(/^OUTPUT \.\//, "OUTPUT "); outputs[$2]=1; next}
+            /^INPUT /{
+              sub(/^INPUT \.\//, "INPUT ");
+              path=$2;
+              if (path ~ /^\//) {
+                if (index(path, pwd)==1) path=substr(path, length(pwd)+1);
+                else next;
+              }
+              inputs[path]=1;
+            }
             END{for (f in inputs) if (!(f in outputs) && f !~ /\.bbl$/) print f}
           ' preprint.fls | sort -u) \
           *.bib
