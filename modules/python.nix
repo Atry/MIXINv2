@@ -130,8 +130,9 @@ topLevel@{ ... }: {
             ../packages/mixinv2-examples/src
             ../packages/mixinv2-examples/pyproject.toml
             ../packages/mixinv2-examples/tests
+            ../packages/mixinv2-library/tests
+            ../packages/mixinv2/tests
             ../mixinv2.schema.json
-            ../tests
             ../pyproject.toml
             ../uv.lock
             ../LICENSE
