@@ -98,9 +98,9 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984-lambda-calculus} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same $\lambda$-syntax.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order~\cite{vanemden1976-predicate-logic-semantics, reynolds1972-definitional-interpreters, aczel1977-inductive-definitions}, denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984-lambda-calculus} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same $\lambda$-syntax.
 
-  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015-function-color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976-predicate-logic-semantics}; self-reference resolves to multiple objects; and programs are immune to the Expression Problem~\cite{wadler1998-expression-problem}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991-expressive-power}.
+  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015-function-color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976-predicate-logic-semantics}; self-reference resolves to multiple objects; and programs are immune to nonextensibility in the sense of the Expression Problem~\cite{wadler1998-expression-problem}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991-expressive-power}.
 \end{abstract}
 
 \begin{CCSXML}
@@ -312,10 +312,10 @@ for the algorithms presented here and may aid readability.}
     \footnote{First-order in three senses simultaneously:
       the semantic domain contains only paths (finite
       sequences of labels) and sets of paths, with no function
-      spaces, closures, or strategies;
+      spaces, closures, or strategies~\cite{vanemden1976-predicate-logic-semantics};
       the six equations are first-order functions whose
       inputs and outputs are paths and sets of paths,
-      never functions;
+      never functions~\cite{reynolds1972-definitional-interpreters};
       and the judgments are first-order inductive
       definitions~\cite{aczel1977-inductive-definitions} over paths
       and labels, where quantifiers range over paths and labels,
@@ -372,7 +372,7 @@ Let $k$ denote a nonnegative integer\footnote{The integer $k$ typically denotes 
   c \quad ::= \quad & \ell \mapsto e
   && \text{(definition)} \\
   \mid\quad & [\qualifiedthis{\ell_{\mathrm{up}}}. \mid \dbi{n}.]\;\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
-  && \text{(inheritance, } k \ge 0 \text{ with qualifier,} \\
+  && \text{(inheritance source, } k \ge 0 \text{ with qualifier,} \\
   &&& k \ge 1 \text{ without)}
 \end{align*}
 
@@ -412,7 +412,11 @@ $\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$ from it.
 The named form desugars to the indexed form during parsing
 (Section~\ref{sec:mixin-trees}).
 
-A new scope level is created at each $\{\ldots\}$ record literal.
+A new scope level is created at each $\{\ldots\}$ record literal.%
+\footnote{We use \emph{record} for the syntactic construct, \emph{scope}
+  for the name-resolution context it creates, and \emph{mixin} for its
+  role as a composable unit; in inheritance-calculus these are three views
+  of the same entity.}
 The scope contains all properties of that mixin, including those
 inherited via inheritance sources.
 For example, $\{a \mapsto \{\},\; b \mapsto \{\}\}$ is a single mixin whose scope
@@ -555,7 +559,7 @@ plus the $\overrides$ of each
 direct base $\bases$ of $p$, and so on transitively.
 Each result is paired with the inheritance-site context
 $\init(p_{\mathrm{base}})$ through which it is reached.
-This provenance is needed by qualified this resolution, i.e.\ the $\this$ function defined below,
+This provenance is needed by qualified this resolution, that is, the $\this$ function defined below,
 to map a definition-site mixin back to
 the inheritance-site paths that incorporate it:
 \begin{equation}\label{eq:supers}
@@ -680,7 +684,7 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   $(p_{\mathrm{site}},\; p_{\mathrm{override}})$ exists
   at some step, the frontier becomes the empty set, and
   $\resolve$ returns $\varnothing$: the reference has no
-  target, and no properties are inherited.
+  target; no properties are inherited.
   This is the most self-consistent semantics for the
   untyped calculus.
   MIXINv2\selfcite{~\cite{mixin2025}}{~(supplementary
@@ -1027,7 +1031,11 @@ tabled evaluation detects the cycle and returns
 $\properties(\mathrm{root}) = \{x, \mathrm{result}\}$
 with no abstraction shape, reflecting an undefined value
 rather than diverging
-(Remark~\ref{rem:convergence-lfp}).
+(Remark~\ref{rem:convergence-lfp}).%
+\footnote{We call the sublanguage of inheritance-calculus corresponding
+  to $\lambda$-terms, evaluated under $\mathrm{lfp}(T_P)$ rather than
+  $T_P\!\uparrow\!1$, the \emph{fixpoint $\lambda$-calculus};
+  Remark~\ref{rem:convergence-lfp} elaborates.}
 
 The relationship between $\approx_\lambda$ and full
 inheritance-contextual equivalence is clarified by the expressive
@@ -1082,7 +1090,10 @@ definition.
 
 We implemented boolean logic and natural number arithmetic, both unary
 and binary, as MIXINv2
-files\selfcite{~\cite{mixin2025}}{~(supplementary material)}.
+files\selfcite{~\cite{mixin2025}}{~(supplementary material)}.%
+\footnote{The examples in this section are rendered in
+  inheritance-calculus notation; the executable MIXINv2 sources are
+  available as supplementary material.}
 This section traces the unary Nat case in detail.
 The implementation follows a declarative object-oriented style:
 each concern is one top-level mixin;
@@ -1154,15 +1165,9 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
   \mathrm{\_recursiveAddition}.\mathrm{sum}\}\}\}\}\}
 \end{align*}
 
-\paragraph{NatEquality}
-\label{sec:nat-equality}
-To test that $2 + 3 = 5$, we needed equality on Nat values.
+\paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
 visitor pattern.
-The Cartesian product test
-(page~\pageref{sec:case-study-cartesian}) will apply this
-same $\mathrm{Equal}$ to a trie union of multiple Nat
-values without modification.
 $\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to each data constructor,
 containing a $\mathrm{VisitorMap}$ with the appropriate
 $\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch,
@@ -1194,6 +1199,13 @@ $\mathrm{BooleanData}$ defines the output sort:
     &\mathrm{Boolean} \mapsto \{\mathrm{BooleanFactory},\;
   \mathrm{BooleanFactory}.\mathrm{Product}\}\}
 \end{align*}
+\paragraph{NatEquality}
+\label{sec:nat-equality}
+To test that $2 + 3 = 5$, we needed equality on Nat values.
+The Cartesian product test
+(page~\pageref{sec:case-study-cartesian}) will apply this
+same $\mathrm{Equal}$ to a trie union of multiple Nat
+values without modification.
 $\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
 and adds an $\mathrm{Equal}$ operation to each data constructor.
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$;
@@ -1435,7 +1447,9 @@ Cartesian product.
 
 The same $\mathrm{Plus}$ and $\mathrm{Equal}$ files that operate on
 single values thus produce, without modification, the relational
-semantics of logic programming:
+semantics of logic programming:%
+\footnote{Appendix~\ref{app:datalog-encoding} gives the systematic
+  encoding of Datalog into inheritance-calculus.}
 $\overrides$ and $\supers$ collect all inheritance paths, and
 every operation distributes over them.
 
@@ -2541,7 +2555,7 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   the set of queries reachable from the initial query,
   and let $T_P^R$ denote the restriction of $T_P$ to
   maps on~$R$.
-  If the accumulator is stable, i.e.\
+  If the accumulator is stable, that is,
   $A = A \cup T_P^R(A)$, then
   $T_P^R(A) \subseteq A$, so $A$ is a pre-fixed point
   of~$T_P^R$.
@@ -2557,7 +2571,7 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   pre-fixed point of~$T_P^R$, in particular in~$A$.
   Thus $\mathrm{lfp}(T_P^R) \subseteq A$.
 
-  Therefore $A = \mathrm{lfp}(T_P^R)$, i.e.\ the stable
+  Therefore $A = \mathrm{lfp}(T_P^R)$, that is, the stable
   accumulator equals the exact denotation on the
   reachable queries.
 
@@ -2611,7 +2625,7 @@ the outermost $\beta$-redex only: if $M$ has the form
 $(\lambda x.\, e)\; v\; M_1 \cdots M_k$, then
 $M \to_h e[v/x]\; M_1 \cdots M_k$.
 A term $M$ is in \emph{head normal form} (HNF) if it has no
-head redex, i.e., $M = \lambda x_1 \ldots x_m.\;
+head redex, that is, $M = \lambda x_1 \ldots x_m.\;
 y\; M_1 \cdots M_k$ where $y$ is a variable.
 
 The \emph{B\"ohm tree} $\mathrm{BT}(M)$ of a $\lambda$-term $M$
@@ -2804,7 +2818,12 @@ substitution.  We make this precise.
 
 \begin{lemma}[Substitution]\label{lem:substitution}
   Let $M$ be an ANF term in which $x$ may occur free,
-  and let $V$ be a closed value.
+  and let $V$ be a closed value.%
+  \footnote{The proof uses the Single-Path Lemma
+    (Lemma~\ref{lem:single-path}), which requires the inherited tree
+    to occur within a closed term. This holds whenever
+    $\lambda x.\, M$ applied to $V$ is a subterm of a closed ANF
+    program.}
   Define the \emph{inherited tree}
   $C = \{\mathcal{T}(\lambda x.\, M),\;
   \mathrm{argument} \mapsto \mathcal{T}(V)\}$.
@@ -3331,7 +3350,7 @@ absolute paths inside mixin trees.
   three steps:
   \begin{enumerate}
     \item Convert every maximal $\lambda$-calculus
-      subexpression (i.e.\ every subtree whose root
+      subexpression (that is, every subtree whose root
         and all internal nodes use only $\lambda$-calculus
       constructors) to A-normal
       form~\cite{flanagan1993-essence-compiling-continuations}.
@@ -3702,7 +3721,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   the inheritance chain to $\mathrm{tailCall}$.
   In $C[M]$: the $\mathrm{eqFalse}$ binding supplies
   $\mathrm{argument} \mapsto f_1.\mathrm{result}$
-  (i.e.\ $\mathrm{false}$) to the $\lambda a$ scope, so
+  (that is, $\mathrm{false}$) to the $\lambda a$ scope, so
   $\mathrm{firstOperand}$ evaluates to
   $\mathrm{false} = \lambda t.\,\lambda f.\, f$.
   In $C[N]$: the $\mathrm{eqTrue}$ binding supplies
@@ -4002,9 +4021,10 @@ contexts without duplication.
 \texorpdfstring{$\lambda$}{λ}-Calculus}
 \label{app:lambda-fixpoint}
 
-This appendix defines a first-order fixpoint B\"ohm tree
-semantics for the $\lambda$-calculus in A-normal form (ANF),
-and its first-iteration approximation, which is the lazy
+This appendix reformulates the semantics of
+Section~\ref{sec:mixin-trees}, specialized to $\lambda$-terms via
+the Single-Path Lemma (Lemma~\ref{lem:single-path}), directly on
+ANF syntax. The first-iteration approximation gives the lazy
 $\lambda$-calculus semantics.
 
 The B\"ohm tree has exactly two node types---\emph{scope}
@@ -4105,7 +4125,7 @@ For a scope node $s \in \mathcal{S}$:
     let-binding names
     $\{x_1, \ldots, x_k\}$ in this scope.
   \item $\mathrm{is\_abstraction}(s)$: whether $s$ is
-    a $\lambda$-abstraction (i.e.\ has a binder slot).
+    a $\lambda$-abstraction (that is, has a binder slot).
   \item $\tail(s)$: the tail expression, which is one of:
     \begin{itemize}
       \item $\mathrm{Ref}(n,\, \ell)$: a reference.
@@ -4918,7 +4938,7 @@ However, this monadic program does not converge because
 \footnote{Enabling the \texttt{RecursiveDo} extension does not help:
   \texttt{mfix} ties a knot at the \emph{element} level via laziness,
   whereas the transitive closure equation requires a
-  fixed point at the \emph{container} level, i.e.\ finding a
+  fixed point at the \emph{container} level, that is, finding a
 set~$S$ such that $S = F(S)$.}
 Inheritance-calculus solves this through tabled evaluation
 (Section~\ref{sec:mixin-trees}), which computes the
