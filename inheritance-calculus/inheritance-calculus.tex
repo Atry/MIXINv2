@@ -231,8 +231,9 @@ and inheritance) and no functions or let-bindings.%
   material)} contains every example in this paper.}
 
 In developing real programs in MIXINv2, including boolean logic,
-natural number arithmetic, and a web application, we encountered
-several phenomena we did not design for.
+natural number arithmetic, and a web application, several
+phenomena arose beyond those anticipated by the adopted
+design patterns.
 Section~\ref{sec:mixin-trees} shows how the three constructs
 give rise to a single abstraction that simultaneously serves as
 module, class, object, method, field, and local binding.
@@ -1400,8 +1401,17 @@ every operation distributes over them.
 \subsection{Emergent Phenomena}
 \label{sec:emergent-phenomena}
 
-In developing real programs in MIXINv2, we encountered three
-phenomena that we did not design for.  They can be seen in the
+In developing real programs in MIXINv2, three phenomena arose
+beyond those anticipated by the adopted design patterns.%
+\footnote{MIXINv2 programs adopt two standard patterns:
+  data types follow a factory pattern isomorphic to Scala's
+  \texttt{sealed trait} with \texttt{case class}es;
+  pattern matching uses Scott encoding.
+  Both are named after Gang-of-Four
+  terminology~\cite{gamma1994-design-patterns}
+  (factory, visitor, acceptance), with verbs replaced by
+  nouns since the calculus has no methods.}
+They can be seen in the
 source code\selfcite{~\cite{mixin2025}}{~(supplementary material)}
 and the Case Study (Section~\ref{sec:case-study}).
 Below we explain why they arise from the three primitives.
