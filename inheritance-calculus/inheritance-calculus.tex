@@ -208,16 +208,17 @@ its inheritance-based composition over recursive records, without
 explicit functions, is expressive enough to configure entire operating
 systems.
 
-Conventionally, the value domain of configuration languages is assumed
-to consist of finite, well-founded structures, which serve as initial algebras in the
-sense of universal algebra. We challenge this assumption. Configuration
-values are better understood as lazily observable, possibly infinite
-structures, where
-semantics is determined by the observer and a finite prefix suffices
-for any finite observation. The \texttt{nixpkgs} package
-collection~\cite{dolstra2006-purely-functional-deployment} (over 100{,}000
-packages) behaves as a lazily observed structure in practice, allowing any
-single package to be evaluated without materializing the entire set.
+Most configuration languages operate on finite, well-founded
+structures (initial algebras in the sense of universal algebra).
+Nix is an exception: although designed specifically as a
+configuration language for
+NixOS~\cite{dolstra2006-purely-functional-deployment},
+it is a complete programming language whose values are lazily
+observable and possibly infinite.
+The \texttt{nixpkgs} package collection (over 100{,}000
+packages) behaves as a lazily observed structure, allowing any
+single package to be evaluated without materializing the entire
+set.
 Guided by this observation, we set out to reduce the
 NixOS module system to a minimal set of primitives.
 The reduction produced MIXIN, an early implementation in Nix,
