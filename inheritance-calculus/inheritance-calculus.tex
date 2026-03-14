@@ -296,64 +296,6 @@ with a test suite covering every example.%
   Elements added to satisfy the resolver are harmless
 for the algorithms presented here and may aid readability.}
 
-\paragraph{Contributions}
-\begin{itemize}
-  \item We present inheritance-calculus, a minimal computational model for
-    declarative programming that contains three constructs (record,
-    definition, inheritance).
-  \item The mixin is a single abstraction that unifies module,
-    class, object, method, field, and local binding.
-    Method-level overriding is subsumed by deep merge of mixin
-    trees; inheritance is commutative, idempotent,
-    and associative, and the linearization problem in OOP does not arise.
-  \item The semantics is \emph{observational}: the observer drives computation by
-    querying paths in a lazily constructed tree.
-    The six semantic equations are first-order%
-    \footnote{First-order in three senses simultaneously:
-      the semantic domain contains only paths (finite
-      sequences of labels) and sets of paths, with no function
-      spaces, closures, or strategies~\cite{vanemden1976-predicate-logic-semantics};
-      the six equations are first-order functions whose
-      inputs and outputs are paths and sets of paths,
-      never functions~\cite{reynolds1972-definitional-interpreters};
-      and the judgments are first-order inductive
-      definitions~\cite{aczel1977-inductive-definitions} over paths
-      and labels, where quantifiers range over paths and labels,
-    never over functions or predicates.},
-    denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}.
-  \item The mixin tree \emph{is} the call stack.
-    Self-reference resolves to \emph{multiple targets}.
-  \item The $\lambda$-calculus macro-expresses into
-    inheritance-calculus in six local rules
-    (Section~\ref{sec:translation}).
-  \item The translation gives the lazy $\lambda$-calculus a
-    first-order semantics
-    (Section~\ref{sec:bohm-tree}):
-    the prior higher-order semantic frameworks are shown
-    to be faithful to the first-iteration approximation
-    of a sublanguage of
-    inheritance-calculus's first-order equations.
-    Appendix~\ref{app:lambda-fixpoint} reformulates this
-    semantics directly on ANF\@.
-  \item As a corollary, this establishes a convergence hierarchy
-    among the eager, lazy, and fixpoint $\lambda$-calculi
-    sharing the same $\lambda$-syntax
-    (Section~\ref{sec:translation};
-    Remark~\ref{rem:convergence-lfp}).
-  \item Inheritance-calculus is strictly more expressive than
-    the lazy $\lambda$-calculus in Felleisen's
-    sense~\cite{felleisen1991-expressive-power}
-    (Section~\ref{sec:asymmetry}).
-  \item We observe further properties: immunity to
-    nonextensibility in the sense of the
-    Expression Problem~\cite{wadler1998-expression-problem}
-    (Section~\ref{sec:expression-problem}), relational semantics of logic
-    programming from ordinary arithmetic
-    (Section~\ref{sec:case-study}), and function color
-    blindness~\cite{nystrom2015-function-color}
-    (Section~\ref{sec:practical-function-color}).
-\end{itemize}
-
 Section~\ref{sec:case-study} demonstrates these properties
 through a case study of Nat arithmetic.
 
@@ -467,7 +409,19 @@ inheritance-calculus program, one queries whether a
 label $\ell$ is a property at a given position $p$.
 
 This section defines the semantics via six mutually recursive
-first-order functions on paths.
+first-order%
+\footnote{First-order in three senses simultaneously:
+  the semantic domain contains only paths (finite
+  sequences of labels) and sets of paths, with no function
+  spaces, closures, or strategies~\cite{vanemden1976-predicate-logic-semantics};
+  the six equations are first-order functions whose
+  inputs and outputs are paths and sets of paths,
+  never functions~\cite{reynolds1972-definitional-interpreters};
+  and the judgments are first-order inductive
+  definitions~\cite{aczel1977-inductive-definitions} over paths
+  and labels, where quantifiers range over paths and labels,
+  never over functions or predicates.}
+functions on paths.
 The six functions map object-oriented concepts to
 set-theoretic operations: $\properties$ and $\supers$
 generalize member lookup and inheritance chains,
@@ -2394,8 +2348,60 @@ dispatch.
 
 Immunity to nonextensibility guided the design of
 inheritance-calculus.
-The emergent phenomena exhibit an expressive asymmetry
-between inheritance-calculus and the $\lambda$-calculus.
+Section~\ref{sec:semantic-variants} eliminated every
+alternative composition mechanism and reference resolution,
+leaving deep merge with multi-target late-binding qualified
+this as the unique survivor.
+The resulting calculus is a minimal computational
+model for declarative programming built from three constructs:
+record, definition, and inheritance.
+The mixin served as the single abstraction unifying module,
+class, object, method, field, and local binding;
+deep merge of mixin trees subsumed method-level overriding
+and made inheritance commutative, idempotent, and associative,
+so the linearization problem of multiple inheritance did not arise.
+
+The observational semantics drove computation by querying paths
+in a lazily constructed tree.
+Six semantic equations, all first-order,
+denotational, and computable by
+tabling~\cite{tamaki1986-tabled-resolution}, sufficed to
+define the semantics.
+The mixin tree was the call stack;
+self-reference resolved to multiple targets.
+
+The $\lambda$-calculus macro-expressed into
+inheritance-calculus in six local rules in
+Section~\ref{sec:translation}.
+The B\"ohm tree correspondence of
+Section~\ref{sec:bohm-tree} gave the lazy
+$\lambda$-calculus a first-order semantics:
+the prior higher-order semantic frameworks proved faithful
+to the first-iteration approximation of a sublanguage of
+inheritance-calculus's first-order equations;
+Appendix~\ref{app:lambda-fixpoint} reformulated this
+semantics directly on ANF\@.
+Unlike those prior frameworks, the semantic domain
+contained no function space: only paths and sets of paths.
+A convergence hierarchy among the eager, lazy, and fixpoint
+$\lambda$-calculi sharing the same $\lambda$-syntax followed
+as a corollary, detailed in Remark~\ref{rem:convergence-lfp}.
+Inheritance-calculus is strictly more expressive than the
+lazy $\lambda$-calculus in Felleisen's
+sense~\cite{felleisen1991-expressive-power}, as
+Section~\ref{sec:asymmetry} demonstrated.
+
+Three emergent phenomena arose from the three primitives.
+Section~\ref{sec:expression-problem} established immunity
+to nonextensibility in the sense of the
+Expression Problem~\cite{wadler1998-expression-problem}.
+The case study of Section~\ref{sec:case-study} showed that
+ordinary arithmetic yields the relational semantics of logic
+programming; Appendix~\ref{app:datalog-encoding} gave a
+systematic encoding of Datalog.
+Section~\ref{sec:practical-function-color} exhibited
+function color
+blindness~\cite{nystrom2015-function-color}.
 Functions are syntactic sugar for inheritance.
 
 \bibliographystyle{ACM-Reference-Format}
