@@ -177,7 +177,7 @@ without modifying existing modules.%
   nearly three times the count of Debian or Ubuntu,
   with a comparable number of contributors.
   Not every package exercises the module system's
-  composability, but the same caveat applies to other distributions.}
+  extensibility, but the same caveat applies to other distributions.}
 The mechanism has been adopted well beyond NixOS itself: Home
 Manager~\cite{homemanager}, nix-darwin~\cite{nixdarwin},
 disko~\cite{disko}, flake-parts~\cite{flakeparts},
@@ -186,7 +186,7 @@ KubeNix~\cite{kubenix}, and nixidy~\cite{nixidy} use it to manage
 user environments, macOS configuration, disk partitioning, flake
 structure, multi-language packaging, developer environments, and
 Kubernetes clusters respectively. Yet no computational
-theory explains \emph{why} this mechanism is so expressive.
+theory captures the extensibility that this mechanism exhibits.
 
 The $\lambda$-calculus serves as the foundational computational model for
 functional programming. No analogous calculus exists for declarative
@@ -2250,9 +2250,9 @@ making the inheritance-calculus patterns explicit rather than ad~hoc.
 Union file systems, such as UnionFS, OverlayFS, and AUFS, layer multiple directory
 hierarchies to present a unified view. Their semantics resembles
 inheritance-calculus in that later layers override earlier layers and files from all
-layers remain accessible, but without a formal foundation these systems
-resort to ad-hoc choices: asymmetric inheritance, noncommutative
-conflict resolution for scalar files, and no late-binding or dynamic
+layers remain accessible, but their designs differ in specific ways:
+inheritance is asymmetric, conflict resolution for scalar files
+is noncommutative, and there is no late-binding or dynamic
 dispatch across layers.
 We implemented inheritance-calculus directly as a union file
 system\selfcite{~\cite{ratarmount2025}}{~(included as supplementary material)},
@@ -2362,8 +2362,9 @@ model for declarative programming built from three constructs:
 record, definition, and inheritance.
 The mixin served as the single abstraction unifying module,
 class, object, method, field, and local binding;
-deep merge of mixin trees subsumed method-level overriding
-and made inheritance commutative, idempotent, and associative,
+deep merge of mixin trees generalized method-level overriding
+to recursive merging of nested structure,
+and the resulting inheritance was commutative, idempotent, and associative,
 so the linearization problem of multiple inheritance did not arise.
 
 The observational semantics drove computation by querying paths
