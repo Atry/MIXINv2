@@ -168,8 +168,17 @@ Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023}, CUE~\cite{cue2019}, Dhall~\cite{
 Kustomize~\cite{kustomize}, and JSON Patch~\cite{rfc6902-json-patch} all provide mechanisms for composing
 structured data through inheritance or merging. Among these, the NixOS
 module system stands out: its recursive attribute set merging with
-fixpoint semantics and deferred modules~\cite{nixosmodules} achieves
-considerable expressiveness in practice, and the mechanism has been adopted well beyond NixOS itself: Home
+fixpoint semantics and deferred modules~\cite{nixosmodules} allows
+independently authored modules to extend the system configuration
+without modifying existing modules.%
+\footnote{As a rough proxy for ecosystem scale:
+  according to Repology~\cite{repology2025},
+  \texttt{nixpkgs} contains over 113{,}000 packages,
+  nearly three times the count of Debian or Ubuntu,
+  with a comparable number of contributors.
+  Not every package exercises the module system's
+  composability, but the same caveat applies to other distributions.}
+The mechanism has been adopted well beyond NixOS itself: Home
 Manager~\cite{homemanager}, nix-darwin~\cite{nixdarwin},
 disko~\cite{disko}, flake-parts~\cite{flakeparts},
 dream2nix~\cite{dream2nix}, devenv~\cite{devenv},
@@ -1516,7 +1525,8 @@ Below we explain why they arise from the three primitives.
 
 The preceding item established that inheritance-calculus is immune
 to nonextensibility.
-We now ask whether an alternative design could share this property
+We adopt this as a design goal and ask whether an alternative
+design could share this property
 by surveying every candidate known to us.
 
 \paragraph{Degrees of freedom}
