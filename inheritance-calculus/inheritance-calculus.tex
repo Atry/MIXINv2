@@ -174,13 +174,15 @@ without modifying existing modules;
 in practice, the ecosystem has not been troubled by the
 multi-dimensional extension difficulty analogous to the
 Expression Problem~\cite{wadler1998-expression-problem}.%
-\footnote{As a rough proxy for ecosystem scale:
+\footnote{
+  As a rough proxy for ecosystem scale:
   according to Repology~\cite{repology2025},
   \texttt{nixpkgs} contains over 113{,}000 packages,
   nearly three times the count of Debian or Ubuntu,
   with a comparable number of contributors.
   Not every package exercises the module system's
-  extensibility, but the same caveat applies to other distributions.}
+  extensibility, but the same caveat applies to other distributions.
+}
 The mechanism has been adopted well beyond NixOS itself: Home
 Manager~\cite{homemanager}, nix-darwin~\cite{nixdarwin},
 disko~\cite{disko}, flake-parts~\cite{flakeparts},
@@ -239,9 +241,11 @@ MIXINv2\selfcite{~\cite{mixin2025}}{~(included as supplementary
 material)}, now implemented in Python: a declarative programming
 language with only three constructs (record literals, definitions,
 and inheritance) and no functions or let-bindings.%
-\footnote{The executable MIXINv2
+\footnote{
+  The executable MIXINv2
   implementation\selfcite{~\cite{mixin2025}}{~(supplementary
-  material)} contains every example in this paper.}
+  material)} contains every example in this paper.
+}
 
 In developing real programs in MIXINv2, including boolean logic,
 natural number arithmetic, and a web application, several
@@ -294,8 +298,12 @@ Felleisen's sense~\cite{felleisen1991-expressive-power}.
 \label{sec:syntax}
 
 Let $e$ denote an expression.
-Let $\ell$ denote a label\footnote{A label serves as a property name.}.
-Let $k$ denote a nonnegative integer\footnote{The integer $k$ typically denotes a path length.}.
+Let $\ell$ denote a label\footnote{
+  A label serves as a property name.
+}.
+Let $k$ denote a nonnegative integer\footnote{
+  The integer $k$ typically denotes a path length.
+}.
 
 \begin{align*}
   e \quad ::= \quad & \{c_1,\; \ldots,\; c_m\}
@@ -349,10 +357,12 @@ The named form desugars to the indexed form during parsing
 (Section~\ref{sec:mixin-trees}).
 
 A new scope level is created at each $\{\ldots\}$ record literal.%
-\footnote{We use \emph{record} for the syntactic construct, \emph{scope}
+\footnote{
+  We use \emph{record} for the syntactic construct, \emph{scope}
   for the name-resolution context it creates, and \emph{mixin} for its
   role as a composable unit; in inheritance-calculus these are three views
-  of the same entity.}
+  of the same entity.
+}
 The scope contains all properties of that mixin, including those
 inherited via inheritance sources.
 For example, $\{a \mapsto \{\},\; b \mapsto \{\}\}$ is a single mixin whose scope
@@ -389,10 +399,12 @@ In object-oriented programming, a
 that can be composed onto a class via inheritance.
 Inheritance-calculus has a single abstraction, the
 \emph{deep-mergeable mixin},%
-\footnote{Where no ambiguity arises, we write simply ``mixin.''
+\footnote{
+  Where no ambiguity arises, we write simply ``mixin.''
   The distinction from the Bracha--Cook
   mixin~\cite{bracha1990-mixin-inheritance} is detailed in
-Section~\ref{sec:related-work}.}
+  Section~\ref{sec:related-work}.
+}
 which can simultaneously serve as module, class, object, method, field, and
 local binding, because there are no opaque methods: every value is
 a transparent record, and inheritance always performs a deep
@@ -404,7 +416,8 @@ label $\ell$ is a property at a given position $p$.
 
 This section defines the semantics via six mutually recursive
 first-order%
-\footnote{First-order in three senses simultaneously:
+\footnote{
+  First-order in three senses simultaneously:
   the semantic domain contains only paths (finite
   sequences of labels) and sets of paths, with no function
   spaces, closures, or strategies~\cite{vanemden1976-predicate-logic-semantics};
@@ -414,7 +427,8 @@ first-order%
   and the judgments are first-order inductive
   definitions~\cite{aczel1977-inductive-definitions} over paths
   and labels, where quantifiers range over paths and labels,
-  never over functions or predicates.}
+  never over functions or predicates.
+}
 functions on paths.
 The six functions map object-oriented concepts to
 set-theoretic operations: $\properties$ and $\supers$
@@ -628,7 +642,8 @@ After $n$ steps the frontier contains the answer:
 At each step $\init$ shortens $p_{\mathrm{def}}$ by one label
 and $n$ decreases by one.
 Since $n$ is a nonnegative integer, the recursion terminates.%
-\footnote{If no matching pair
+\footnote{
+  If no matching pair
   $(p_{\mathrm{site}},\; p_{\mathrm{override}})$ exists
   at some step, the frontier becomes the empty set, and
   $\resolve$ returns $\varnothing$: the reference has no
@@ -638,7 +653,8 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   MIXINv2\selfcite{~\cite{mixin2025}}{~(supplementary
   material)} is stricter: its resolver rejects
   references whose frontier becomes empty, reporting a
-resolution error at compile time.}
+  resolution error at compile time.
+}
 
 This completes the chain of definitions needed to compute $\properties(p)$.
 
@@ -768,10 +784,12 @@ expression contains at most one application.
 We extend the standard ANF grammar with a \emph{value binding}
 $\mathbf{let}\; x = V \;\mathbf{in}\; M$, which gives a name to a
 value that is not an application result:%
-\footnote{Standard ANF allows values inline as operands;
+\footnote{
+  Standard ANF allows values inline as operands;
   the value-binding production names them so that every
   subexpression of the translated program is accessible
-via a lexical reference (Appendix~\ref{app:expressiveness}).}
+  via a lexical reference (Appendix~\ref{app:expressiveness}).
+}
 \[
   \begin{array}{r@{\;::=\;}l}
     M & \mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M
@@ -782,7 +800,9 @@ via a lexical reference (Appendix~\ref{app:expressiveness}).}
   \end{array}
 \]
 Every $\lambda$-term can be mechanically converted to ANF by
-naming intermediate results\footnote{This can optionally include naming values as well},
+naming intermediate results\footnote{
+  This can optionally include naming values as well
+},
 and every ANF term is a $\lambda$-term, so ANF is neither a
 restriction nor an extension of the $\lambda$-calculus.
 The ANF structure matches inheritance-calculus naturally: each
@@ -849,7 +869,8 @@ accesses its $\mathrm{argument}$ slot.%
   translation ($\mathrm{argument}$, $\mathrm{result}$,
   $\mathrm{tailCall}$) and the user-defined labels
   (let-bound names such as~$x$) are drawn from disjoint
-alphabets, so no collision can arise.}
+  alphabets, so no collision can arise.
+}
 A let-bound variable $x$ becomes the lexical reference
 $x.\mathrm{result}$, projecting the application result
 from the sibling property $x$ in the enclosing record.
@@ -883,7 +904,8 @@ $\lambda$-calculus (via ANF) to inheritance-calculus: every ANF
 term has an image, and the construction is compositional.
 Since the $\lambda$-calculus is Turing complete, so is
 inheritance-calculus.%
-\footnote{MIXINv2 separates symbol resolution (which resolves
+\footnote{
+  MIXINv2 separates symbol resolution (which resolves
   lexical references and qualified $\this$ references) from runtime
   mixin evaluation, but symbol resolution is performed
   just-in-time per symbol rather than ahead of time, so it does
@@ -893,15 +915,23 @@ inheritance-calculus.%
   All examples in this paper are ported from MIXINv2
   and conform to both semantics.
   Elements added to satisfy the resolver are harmless
-  for the algorithms presented here and may aid readability.}
+  for the algorithms presented here and may aid readability.
+}
 
 \subsection{B\"ohm Tree Correspondence}
 \label{sec:bohm-tree}
 
-The translation $\mathcal{T}$ induces an elementary semantics on the $\lambda$-calculus
-via the mixin tree equations~(\ref{eq:properties})--(\ref{eq:this}).
-We show that the induced semantics corresponds precisely to the
-B\"ohm tree~\cite{barendregt1984-lambda-calculus} of the original $\lambda$-term.
+The translation $\mathcal{T}$ embeds the $\lambda$-calculus
+into a sublanguage of inheritance-calculus.
+This subsection establishes the correspondence between the
+resulting mixin trees and
+B\"ohm trees.%
+\footnote{
+  Intuitively, a mixin tree augments the AST with
+  additional semantic structure; for translated
+  $\lambda$-terms, the projection of this additional
+  structure is isomorphic to the B\"ohm tree.
+}
 
 A mixin tree $T$ \emph{converges}, written $T{\Downarrow}$,
 if following finitely many $\mathrm{result}$ projections from
@@ -960,14 +990,16 @@ B\"ohm tree
 equivalence~\cite{barendregt1984-lambda-calculus}
 is fully abstract for the first-iteration approximation
 $T_P\!\uparrow\!1$ of the equations.%
-\footnote{More concretely, the translation $\mathcal{T}$ turns
+\footnote{
+  More concretely, the translation $\mathcal{T}$ turns
   each $\lambda$-term into a mixin whose semantics is given by
   the equations of Section~\ref{sec:mixin-trees}: function
   application becomes record inheritance, and convergence
   reduces to path queries.
   Appendix~\ref{app:lambda-fixpoint} reformulates this
   semantics directly on ANF, without passing through
-inheritance-calculus.}
+  inheritance-calculus.
+}
 The full proof is given in Appendix~\ref{app:bohm-tree-proofs}.
 The full $\mathrm{lfp}(T_P)$ is strictly more defined.
 For example,
@@ -976,7 +1008,8 @@ diverges under $\beta$-reduction, but its translation
 $\{x \mapsto \{\mathrm{result} \mapsto x.\mathrm{result}\},\;
 \mathrm{result} \mapsto x.\mathrm{result}\}$
 stabilizes under $\mathrm{lfp}(T_P)$:%
-\footnote{This simple cycle could also be resolved by a
+\footnote{
+  This simple cycle could also be resolved by a
   fixed-point combinator such as~$Y$.
   The $\mathrm{lfp}(T_P)$ semantics is more general:
   it computes fixed points at the \emph{container} level,
@@ -985,16 +1018,19 @@ stabilizes under $\mathrm{lfp}(T_P)$:%
   (Appendix~\ref{app:datalog-encoding},
   Section~\ref{sec:recursive-rules}) requires exactly this,
   and neither $Y$ nor Haskell's \texttt{mfix}
-(\texttt{RecursiveDo}) can express it.}
+  (\texttt{RecursiveDo}) can express it.
+}
 tabled evaluation detects the cycle and returns
 $\properties(\mathrm{root}) = \{x, \mathrm{result}\}$
 with no abstraction shape, reflecting an undefined value
 rather than diverging
 (Remark~\ref{rem:convergence-lfp}).%
-\footnote{We call the sublanguage of inheritance-calculus corresponding
+\footnote{
+  We call the sublanguage of inheritance-calculus corresponding
   to $\lambda$-terms, evaluated under $\mathrm{lfp}(T_P)$ rather than
   $T_P\!\uparrow\!1$, the \emph{fixpoint $\lambda$-calculus};
-  Remark~\ref{rem:convergence-lfp} elaborates.}
+  Remark~\ref{rem:convergence-lfp} elaborates.
+}
 
 The relationship between $\approx_\lambda$ and full
 inheritance-contextual equivalence is clarified by the expressive
@@ -1050,9 +1086,11 @@ definition.
 We implemented boolean logic and natural number arithmetic, both unary
 and binary, as MIXINv2
 files\selfcite{~\cite{mixin2025}}{~(supplementary material)}.%
-\footnote{The examples in this section are rendered in
+\footnote{
+  The examples in this section are rendered in
   inheritance-calculus notation; the executable MIXINv2 sources are
-  available as supplementary material.}
+  available as supplementary material.
+}
 This section traces the unary Nat case in detail.
 The implementation follows a declarative object-oriented style:
 each concern is one top-level mixin;
@@ -1065,13 +1103,15 @@ Operations expose their result through a projection field (e.g., $\mathrm{sum}$)
 \paragraph{NatData}
 Following the Church-encoding
 convention\selfcite{~\cite{mixin2025}}{~(supplementary material)},%
-\footnote{The data representation (Zero/Successor) is a Peano
+\footnote{
+  The data representation (Zero/Successor) is a Peano
   encoding, an initial algebra of the functor $F(X) = 1 + X$.
   The visitor pattern (NatVisitor, below) adds the
   Church-encoding behavior: a fold (catamorphism) over this
   algebra.  These two concerns are defined in separate files
   and composed via inheritance, which is itself an instance of
-the Expression Problem.}
+  the Expression Problem.
+}
 we define a factory containing the abstract product type and two
 labels that serve as data constructors.
 A $\mathrm{Zero}$ value inherits $\mathrm{Product}$;
@@ -1361,14 +1401,16 @@ data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
 field pointing to a $\mathrm{Zero}$ record; and so on.
 This is exactly the shape of a trie.%
-\footnote{The unary Nat trie can be viewed as a sparse linked list
+\footnote{
+  The unary Nat trie can be viewed as a sparse linked list
   whose depth equals the number it represents:
   in a trie union, some $\mathrm{Successor}$ nodes along
   the list point to $\mathrm{Zero}$ (leaf nodes),
   so not every position in the list is occupied.
   The\selfcite{ MIXINv2 source~\cite{mixin2025}}{
   supplementary material} includes a binary natural number
-  (BinNat) arithmetic whose trie depth is logarithmic.}
+  (BinNat) arithmetic whose trie depth is logarithmic.
+}
 A scope that simultaneously inherits two Nat values is a trie union.
 The following test applies $\mathrm{Plus}$ to a trie union of $\{1,2\}$
 with addend a trie union of $\{3,4\}$, then compares the result to itself
@@ -1415,8 +1457,10 @@ Cartesian product.
 The same $\mathrm{Plus}$ and $\mathrm{Equal}$ files that operate on
 single values thus produce, without modification, the relational
 semantics of logic programming:%
-\footnote{Appendix~\ref{app:datalog-encoding} gives the systematic
-  encoding of Datalog into inheritance-calculus.}
+\footnote{
+  Appendix~\ref{app:datalog-encoding} gives the systematic
+  encoding of Datalog into inheritance-calculus.
+}
 $\overrides$ and $\supers$ collect all inheritance paths, and
 every operation distributes over them.
 
@@ -1427,14 +1471,16 @@ every operation distributes over them.
 
 In developing real programs in MIXINv2, three phenomena arose
 beyond those anticipated by the adopted design patterns.%
-\footnote{MIXINv2 programs adopt two standard patterns:
+\footnote{
+  MIXINv2 programs adopt two standard patterns:
   data types follow a factory pattern isomorphic to Scala's
   \texttt{sealed trait} with \texttt{case class}es;
   pattern matching uses Scott encoding.
   Both are named after Gang-of-Four
   terminology~\cite{gamma1994-design-patterns}
   (factory, visitor, acceptance), with verbs replaced by
-  nouns since the calculus has no methods.}
+  nouns since the calculus has no methods.
+}
 They can be seen in the
 source code\selfcite{~\cite{mixin2025}}{~(supplementary material)}
 and the Case Study (Section~\ref{sec:case-study}).
@@ -1451,12 +1497,14 @@ Below we explain why they arise from the three primitives.
     (Section~\ref{sec:case-study}).
     When a mixin tree is viewed as a trie, the correspondence
     with relational algebra becomes precise.%
-    \footnote{Inheritance-calculus to relational algebra:
+    \footnote{
+      Inheritance-calculus to relational algebra:
       path from root to leaf $=$ tuple;
       trie union $=$ relation (set of tuples);
       $\bases$ (equation~\ref{eq:bases}) $=$ cross-join;
       $\supers$ (equation~\ref{eq:supers}) $=$ union;
-    $\properties$ (equation~\ref{eq:properties}) $=$ projection.}
+      $\properties$ (equation~\ref{eq:properties}) $=$ projection.
+    }
     The carrier is a trie rather than a flat relation, and
     observation is coinductive: the observer drives computation
     by querying progressively deeper paths.
@@ -1482,14 +1530,16 @@ Below we explain why they arise from the three primitives.
     and new observable projections are introduced.
     This is the extensibility that the
     Expression Problem~\cite{wadler1998-expression-problem} demands.%
-    \footnote{As an untyped calculus, inheritance-calculus cannot violate
+    \footnote{
+      As an untyped calculus, inheritance-calculus cannot violate
       the extensibility requirement of the Expression Problem but does
       not encounter its type-safety requirement.
       A typed language built on
       inheritance-calculus\selfcite{~\cite{mixin2025}}{~(supplementary
       material)} inherits the immunity to nonextensibility and need
       only ensure that its type system does not introduce
-    nonextensible constructs.}
+      nonextensible constructs.
+    }
     Programming languages typically provide a mix of extensible and
     nonextensible constructs, where extensibility is opt-in:
     frameworks must encode nonextensible constructs into extensible
@@ -1518,7 +1568,8 @@ Below we explain why they arise from the three primitives.
     business logic declares empty slots, and the assembly
     inherits an FFI module that fills them, so the same
     business logic accepts implementations of any color.%
-    \footnote{Function color~\cite{nystrom2015-function-color} arises when
+    \footnote{
+      Function color~\cite{nystrom2015-function-color} arises when
       effectful functions have signatures $a \to f\,b$ (Kleisli
       arrows), requiring monadic bind to compose and making the
       effect $f$ visible at every call site.
@@ -1531,7 +1582,8 @@ Below we explain why they arise from the three primitives.
       Unstructured control flow, such as capturing and resuming
       continuations as in \texttt{call/cc}, cannot be abstracted
       this way, as it requires a global CPS transformation that
-    inheritance-calculus does not express.}
+      inheritance-calculus does not express.
+    }
 \end{description}
 
 \subsection{Semantic Alternatives}
@@ -1550,19 +1602,23 @@ node is uniquely identified by the path from the root.
 For configuration languages this is naturally the case: every
 key in a JSON, YAML, or Nix attribute set is a label, and nesting
 produces paths.%
-\footnote{Nix is a functional language with first-class functions;
+\footnote{
+  Nix is a functional language with first-class functions;
   its attribute sets alone do not form a named-tree DSL.
   The NixOS module system~\cite{nixosmodules}, however,
   restricts the user-facing interface to nested attribute sets
   composed by recursive merging, and it is this DSL-level
-structure that naturally forms a named tree.}
+  structure that naturally forms a named tree.
+}
 For mainstream programming languages the AST is not directly a
 named tree, since anonymous expression positions and implicit
 scopes lack labels.
 After ANF
 transformation~\cite{flanagan1993-essence-compiling-continuations}, however, every intermediate
 result is bound to a name, and the remaining anonymous positions%
-\footnote{For example, the body of a $\mathbf{let}$.}
+\footnote{
+  For example, the body of a $\mathbf{let}$.
+}
 can be assigned synthetic
 fresh labels such as $\mathrm{result}$ and $\mathrm{tailCall}$
 in Section~\ref{sec:forward-translation}, yielding a named
@@ -1600,7 +1656,9 @@ target.
       & variable, constructor,
       type class dispatch,
       \texttt{import}, \ldots \\[3pt]
-      Scala\footnote{Scala is a multi-paradigm language.}
+      Scala\footnote{
+        Scala is a multi-paradigm language.
+      }
       & class, trait, object, method,
       block, conditional, \texttt{match},
       \texttt{while}, \texttt{throw}, \ldots
@@ -1795,7 +1853,8 @@ We examine the three known candidates.
     $\mathrm{argument} \mapsto \mathcal{T}(V)$ at~$x$'s scope
     has no effect.
     With dynamic scope this separation fails.%
-    \footnote{Counterexample:
+    \footnote{
+      Counterexample:
       $(\lambda x.\, \lambda y.\, x)\; V_1\; V_2$.
       The reference to~$x$ inside $\lambda y.\, x$ translates to
       $\dbi{1}.\mathrm{argument}$ (de~Bruijn index~$1$).
@@ -1811,7 +1870,8 @@ We examine the three known candidates.
       $\mathrm{argument}$ slot, returning $\mathcal{T}(V_2)$
       instead of $\mathcal{T}(V_1)$.
       This is the classical variable-capture failure of dynamic
-    scoping.}
+      scoping.
+    }
     As with early binding, the mixin cannot serve as a complete
     replacement for functions.
 
@@ -1911,7 +1971,9 @@ dynamic scope broke the substitution that the
 $\lambda$-calculus embedding relies on;
 single-target $\this$ rejected the multi-target compositions
 that the Expression Problem demands.%
-\footnote{Three successive implementations confirmed this; see the discussion above.}
+\footnote{
+  Three successive implementations confirmed this; see the discussion above.
+}
 Deep merge with multi-target late-binding $\this$ is what
 remained.
 
@@ -1924,7 +1986,9 @@ remained.
 Sch\"onfinkel~\cite{schonfinkel1924-combinatory-logic} and
 Curry~\cite{curry1958-combinatory-logic} showed that the
 $\lambda$-calculus reduces to three combinators $S$, $K$, $I$
-\footnote{The $I$ combinator is redundant since $I = SKK$.}.
+\footnote{
+  The $I$ combinator is redundant since $I = SKK$.
+}.
 The bracket abstraction that compiles $\lambda$-terms to SKI
 is mechanical but incurs exponential blow-up in term size;
 no new computational patterns emerge beyond those already
@@ -2052,10 +2116,12 @@ implicitly via substitution. In contrast, denotational semantics
 constructs it explicitly, and game semantics refines it via
 strategies.
 Each of these approaches involves higher-order structure%
-\footnote{Function spaces
+\footnote{
+  Function spaces
   in denotational semantics, strategies
   in game semantics, and substitution
-in operational semantics.}
+  in operational semantics.
+}
 and retains the function space in its semantic domain.
 The denotational and operational accounts remain separate
 formalisms in each case.
@@ -2101,7 +2167,13 @@ abstraction for the lazy $\lambda$-calculus.
 Van~Emden and Kowalski~\cite{vanemden1976-predicate-logic-semantics} showed that
 the semantics of predicate logic as a programming language admits
 three equivalent characterizations:
-operational\footnote{Typically SLD resolution.}, model-theoretic\footnote{Based on least Herbrand models.}, and fixed-point\footnote{Namely, the least fixed point of the immediate consequence operator~$T_P$ on the powerset of ground atoms.}.
+operational\footnote{
+  Typically SLD resolution.
+}, model-theoretic\footnote{
+  Based on least Herbrand models.
+}, and fixed-point\footnote{
+  Namely, the least fixed point of the immediate consequence operator~$T_P$ on the powerset of ground atoms.
+}.
 Aczel~\cite{aczel1977-inductive-definitions} gave a systematic treatment of
 inductive definitions via monotone operators on powerset lattices,
 providing the logical foundations that Datalog-style semantics
@@ -2125,8 +2197,12 @@ $\lambda$-calculus a fixpoint semantics has not been explored.
 Cook~\cite{cook1989-denotational-inheritance} gave the first denotational
 semantics of inheritance, modeling objects as recursive records.
 Inheritance is composition of \emph{generators}
-\footnote{These are functions from self to complete object.} and
-\emph{wrappers}\footnote{Wrappers are functions that modify generators.},
+\footnote{
+  These are functions from self to complete object.
+} and
+\emph{wrappers}\footnote{
+  Wrappers are functions that modify generators.
+},
 solved by a fixed-point construction.
 Cook's key insight is that inheritance is a general mechanism
 applicable to any form of recursive definition, not only
@@ -2845,11 +2921,13 @@ substitution.  We make this precise.
 \begin{lemma}[Substitution]\label{lem:substitution}
   Let $M$ be an ANF term in which $x$ may occur free,
   and let $V$ be a closed value.%
-  \footnote{The proof uses the Single-Path Lemma
+  \footnote{
+    The proof uses the Single-Path Lemma
     (Lemma~\ref{lem:single-path}), which requires the inherited tree
     to occur within a closed term. This holds whenever
     $\lambda x.\, M$ applied to $V$ is a subterm of a closed ANF
-    program.}
+    program.
+  }
   Define the \emph{inherited tree}
   $C = \{\mathcal{T}(\lambda x.\, M),\;
   \mathrm{argument} \mapsto \mathcal{T}(V)\}$.
@@ -3277,7 +3355,9 @@ that preserves and reflects B\"ohm tree equivalence.
 \noindent
 The subscript $\lambda$ emphasizes that the quantification ranges
 over $\lambda$-calculus contexts, not over all inheritance-calculus contexts.
-This definition observes only convergence\footnote{Convergence provides exactly a single bit of information.}, but
+This definition observes only convergence\footnote{
+  Convergence provides exactly a single bit of information.
+}, but
 quantifying over all $\lambda$-contexts makes it a fine-grained
 equivalence: different contexts can supply different arguments
 and project different results, probing every aspect of the
@@ -3685,14 +3765,16 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   In particular, $\dbi{1}.\mathrm{argument}$ reaches
   the outer $\lambda a$ scope and
   $\dbi{0}.\mathrm{argument}$ reaches $\lambda b$
-  itself.\footnote{These indices use the condensed
+  itself.\footnote{
+    These indices use the condensed
     convention, counting only $\lambda$-scopes.
     As noted in the translation footnote
     (Section~\ref{sec:forward-translation}),
     each let-binding and tail call introduces an
     additional scope level in inheritance-calculus;
     the formal index is correspondingly larger,
-  but the target scope is the same.}
+    but the target scope is the same.
+  }
 
   The $\mathscr{U}$-context uses inheritance to add
   a $\mathrm{repr}$ record inside the $\lambda b$ scope
@@ -4408,10 +4490,12 @@ we observe that each equation is the specialization of
 the corresponding mixin tree equation
 (Section~\ref{sec:mixin-trees}) to terms in the image
 of the translation~$\mathcal{T}$%
-\footnote{Concretely,
+\footnote{
+  Concretely,
   $\result$ specializes $\properties$/$\bases$,
   $\head$/$\argument$ specialize $\resolve$,
-and $\scoperesolution$ specializes $\this$.}
+  and $\scoperesolution$ specializes $\this$.
+}
 (Section~\ref{sec:forward-translation}), where the
 Single-Path Lemma (Lemma~\ref{lem:single-path})
 ensures that the set-valued $\this$ function
@@ -4525,14 +4609,18 @@ the expression-problem property.
   \item[WithVisitorTail]
     Maps each constant $d$ to its sub-trie entry
     $\mathrm{TailMap}.d$, labeled as $\mathrm{VisitorTail}$.
-    This provides the right-hand side of a join\footnote{In the context of the visitor pattern, this acts as the visitor.}: when two relations' $\mathrm{VisitorMap}$ entries are
+    This provides the right-hand side of a join\footnote{
+      In the context of the visitor pattern, this acts as the visitor.
+    }: when two relations' $\mathrm{VisitorMap}$ entries are
     composed, $\mathrm{VisitorTail}$ carries the joined
     relation's row data for the matched constant.
 
   \item[WithVisiteeTail]
     Maps each constant $d$ to its sub-trie entry
     $\mathrm{TailMap}.d$, labeled as $\mathrm{VisiteeTail}$.
-    This provides the left-hand side\footnote{This acts as the visitee.}: the
+    This provides the left-hand side\footnote{
+      This acts as the visitee.
+    }: the
     relation being iterated. Together,
     $\mathrm{WithVisitorTail}$ and $\mathrm{WithVisiteeTail}$
     enable value-level joins where only constants present
@@ -4961,11 +5049,13 @@ $T_P$ iteration (converges to $\mathrm{lfp}$).
 
 However, this monadic program does not converge because
 \texttt{path} is defined recursively.%
-\footnote{Enabling the \texttt{RecursiveDo} extension does not help:
+\footnote{
+  Enabling the \texttt{RecursiveDo} extension does not help:
   \texttt{mfix} ties a knot at the \emph{element} level via laziness,
   whereas the transitive closure equation requires a
   fixed point at the \emph{container} level, that is, finding a
-set~$S$ such that $S = F(S)$.}
+  set~$S$ such that $S = F(S)$.
+}
 Inheritance-calculus solves this through tabled evaluation
 (Section~\ref{sec:mixin-trees}), which computes the
 least fixed point of the $T_P$ operator by iterating
