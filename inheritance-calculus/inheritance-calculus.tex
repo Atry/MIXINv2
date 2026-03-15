@@ -287,16 +287,11 @@ mutually recursive first-order functions on paths and sets of paths,
 with no function spaces, closures, or higher-order constructs;
 the functions are computable by
 tabling~\cite{tamaki1986-tabled-resolution}.
-Section~\ref{sec:forward-translation} translates function
-application directly into inheritance, embedding the
-$\lambda$-calculus and thereby establishing Turing completeness.
-Section~\ref{sec:bohm-tree} shows that the translation preserves
-observational equivalence: the induced semantics corresponds to
-B\"ohm tree equivalence~\cite{barendregt1984-lambda-calculus},
-giving the lazy $\lambda$-calculus a first-order denotational
-semantics; a convergence hierarchy among eager, lazy, and fixpoint
-$\lambda$-calculi sharing the same syntax follows as a corollary
-(Remark~\ref{rem:convergence-lfp}).
+Section~\ref{sec:forward-translation} shows that
+these functions extend to the $\lambda$-calculus, embedding it.
+Remark~\ref{rem:convergence-lfp} derives a convergence hierarchy
+among eager, lazy, and fixpoint
+$\lambda$-calculi sharing the same syntax as a corollary.
 Section~\ref{sec:asymmetry} establishes that the lazy
 $\lambda$-calculus cannot macro-express the inheritance constructors,
 so inheritance-calculus is strictly more expressive in
