@@ -304,9 +304,12 @@ Let $k$ denote a nonnegative integer\footnote{The integer $k$ typically denotes 
   && \text{(sugar for } \{c\} \text{)} \\[6pt]
   c \quad ::= \quad & \ell \mapsto e
   && \text{(definition)} \\
-  \mid\quad & [\qualifiedthis{\ell_{\mathrm{up}}}. \mid \dbi{n}.]\;\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
-  && \text{(inheritance source, } k \ge 0 \text{ with qualifier,} \\
-  &&& k \ge 1 \text{ without)}
+  \mid\quad & (\qualifiedthis{\ell_{\mathrm{up}}} \mid \dbi{n}).\;\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
+  && \text{(inheritance: qualifier + downward path)} \\
+  \mid\quad & \qualifiedthis{\ell_{\mathrm{up}}} \mid \dbi{n}
+  && \text{(inheritance: qualifier only)} \\
+  \mid\quad & \ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
+  && \text{(inheritance: downward path only)}
 \end{align*}
 
 An expression is a \emph{set} of elements enclosed in braces.
