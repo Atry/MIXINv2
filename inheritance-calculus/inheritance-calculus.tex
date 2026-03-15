@@ -202,7 +202,8 @@ functions. At first glance, Turing completeness appears incompatible
 with these constraints. The three classical models of computation each
 violate at least one of them:
 
-\begin{center}
+\begin{table}[h]
+  \centering
   \begin{tabular}{lccc}
     \textbf{Model} & \textbf{Turing complete} & \textbf{Immutable} & \textbf{No $\lambda$} \\
     \hline
@@ -210,13 +211,15 @@ violate at least one of them:
     $\lambda$-calculus & $\checkmark$ & $\checkmark$ & $\times$ \\
     RAM Machine        & $\checkmark$ & $\times$     & $\checkmark$ \\
   \end{tabular}
-\end{center}
+  \caption{Classical computational models and the declarative gap.}
+  \label{tab:computational-models}
+\end{table}
 
 \noindent
 The Turing Machine and RAM Machine require mutable state;
 the $\lambda$-calculus requires first-class functions.
 A computational model that is Turing complete, immutable, and
-function-free would sit in the empty cell of this table.
+function-free would sit in the empty cell of Table~\ref{tab:computational-models}.
 The NixOS module system already suggests that such a model exists:
 its inheritance-based composition over recursive records, without
 explicit functions, is expressive enough to configure entire operating
@@ -2428,47 +2431,54 @@ Section~\ref{sec:semantic-variants} eliminated every
 alternative composition mechanism and reference resolution,
 leaving deep merge with multi-target late-binding qualified
 $\this$ as the unique survivor.
-The resulting calculus is a minimal computational
-model for declarative programming built from three constructs:
-record, definition, and inheritance.
 The mixin served as the single abstraction unifying module,
 class, object, method, field, and local binding;
-deep merge of mixin trees generalized method-level overriding
-to recursive merging of nested structure,
-and the resulting inheritance was commutative, idempotent, and associative,
+deep merge of mixin trees made inheritance commutative, idempotent, and associative,
 so the linearization problem of multiple inheritance did not arise.
-
-The observational semantics drove computation by querying paths
-in a lazily constructed tree.
-Six semantic equations, all first-order,
-denotational, and computable by
-tabling~\cite{tamaki1986-tabled-resolution}, sufficed to
-define the semantics.
-The mixin tree was the call stack;
-$\this$ resolved to multiple targets.
+The six first-order equations of Section~\ref{sec:mixin-trees},
+denotational and computable by
+tabling~\cite{tamaki1986-tabled-resolution}, suffice to
+define the semantics; the observer drives computation by
+querying paths in a lazily constructed tree.
+These equations are a minimal departure from standard
+object-oriented semantics: the only change is the $\overrides$ equation~(\ref{eq:overrides}),
+which replaces method-level shadowing with deep merge of subtrees.
+Object-oriented programming is traditionally classified as
+imperative; removing mutable state and function bodies yields
+pure object-oriented programming,%
+\footnote{
+  ``Pure'' carries a double meaning:
+  not impure, since values are immutable and composition has no
+  side effects; and not mixed, since composition relies entirely on
+  inheritance, without functional abstractions such
+  as~$\lambda$ or~$\beta$-reduction.
+}
+a minimal computational model for declarative programming
+that fills the empty cell of Table~\ref{tab:computational-models}.
 
 The $\lambda$-calculus macro-expressed into
-inheritance-calculus in six local rules in
+inheritance-calculus in six translation rules in
 Section~\ref{sec:translation}.
 The B\"ohm tree correspondence of
-Section~\ref{sec:bohm-tree} gave the lazy
-$\lambda$-calculus a first-order semantics:
+Section~\ref{sec:bohm-tree} extended this first-order
+semantics to the $\lambda$-calculus:
 the prior higher-order semantic frameworks proved faithful
 to the first-iteration approximation of a sublanguage of
 inheritance-calculus's first-order equations;
 Appendix~\ref{app:lambda-fixpoint} reformulated this
 semantics directly on ANF\@.
-Unlike those prior frameworks, the semantic domain
-contained no function space: only paths and sets of paths.
 A convergence hierarchy among the eager, lazy, and fixpoint
 $\lambda$-calculi sharing the same $\lambda$-syntax followed
 as a corollary, detailed in Remark~\ref{rem:convergence-lfp}.
+
+Removing function bodies loses nothing
+(Section~\ref{sec:translation}).
 Inheritance-calculus is strictly more expressive than the
 lazy $\lambda$-calculus in Felleisen's
 sense~\cite{felleisen1991-expressive-power}, as
-Section~\ref{sec:asymmetry} demonstrated.
-
-Three emergent phenomena arose from the three primitives.
+Section~\ref{sec:asymmetry} demonstrated,
+and gains three phenomena
+that the $\lambda$-calculus cannot express.
 Section~\ref{sec:expression-problem} established immunity
 to nonextensibility in the sense of the
 Expression Problem~\cite{wadler1998-expression-problem}.
@@ -2479,6 +2489,8 @@ systematic encoding of Datalog.
 Section~\ref{sec:practical-function-color} exhibited
 function color
 blindness~\cite{nystrom2015-function-color}.
+
+Inheritance is not a mechanism for organizing functions.
 Functions are syntactic sugar for inheritance.
 
 \bibliographystyle{ACM-Reference-Format}
