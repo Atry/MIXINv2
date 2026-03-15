@@ -1357,7 +1357,15 @@ A Church-encoded Nat is a record whose structure mirrors the
 data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
 field pointing to a $\mathrm{Zero}$ record; and so on.
-This is exactly the shape of a trie.
+This is exactly the shape of a trie.%
+\footnote{The unary Nat trie can be viewed as a sparse linked list
+  whose depth equals the number it represents:
+  in a trie union, some $\mathrm{Successor}$ nodes along
+  the list point to $\mathrm{Zero}$ (leaf nodes),
+  so not every position in the list is occupied.
+  The\selfcite{ MIXINv2 source~\cite{mixin2025}}{
+  supplementary material} includes a binary natural number
+  (BinNat) arithmetic whose trie depth is logarithmic.}
 A scope that simultaneously inherits two Nat values is a trie union.
 The following test applies $\mathrm{Plus}$ to a trie union of $\{1,2\}$
 with addend a trie union of $\{3,4\}$, then compares the result to itself
