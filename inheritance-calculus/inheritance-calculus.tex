@@ -2461,6 +2461,8 @@ pure object-oriented programming,%
 a minimal computational model for declarative programming
 that fills the empty cell of Table~\ref{tab:computational-models}.
 
+Since $\overrides$ merges subtrees rather than method bodies,
+functions are no longer primitive.
 The $\lambda$-calculus macro-expressed into
 inheritance-calculus in six translation rules in
 Section~\ref{sec:translation}.
@@ -2476,8 +2478,7 @@ A convergence hierarchy among the eager, lazy, and fixpoint
 $\lambda$-calculi sharing the same $\lambda$-syntax followed
 as a corollary, detailed in Remark~\ref{rem:convergence-lfp}.
 
-Removing function bodies loses nothing
-(Section~\ref{sec:translation}) but gains three phenomena
+Inheritance-calculus further gains three phenomena
 that the $\lambda$-calculus cannot express;
 indeed, inheritance-calculus is strictly more expressive
 than the lazy $\lambda$-calculus in Felleisen's
