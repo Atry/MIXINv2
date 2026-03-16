@@ -99,7 +99,7 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order~\cite{vanemden1976-predicate-logic-semantics, reynolds1972-definitional-interpreters, aczel1977-inductive-definitions}, denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984-lambda-calculus} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same $\lambda$-syntax.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order~\cite{vanemden1976-predicate-logic-semantics, reynolds1972-definitional-interpreters, aczel1977-inductive-definitions}, denotational, and computable by tabling~\cite{tamaki1986-tabled-resolution}, even for cyclic inheritance hierarchies. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence~\cite{barendregt1984-lambda-calculus} is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy among eager, lazy, and fixpoint $\lambda$-calculi sharing the same $\lambda$-syntax.
 
   Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors~\cite{nystrom2015-function-color}; ordinary arithmetic yields the relational semantics of logic programming~\cite{vanemden1976-predicate-logic-semantics}; $\mathtt{this}$ resolves to multiple targets; and programs are immune to nonextensibility in the sense of the Expression Problem~\cite{wadler1998-expression-problem}. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense~\cite{felleisen1991-expressive-power}.
 \end{abstract}
@@ -2459,8 +2459,10 @@ to nonextensibility in the sense of the
 Expression Problem~\cite{wadler1998-expression-problem}.
 The case study of Section~\ref{sec:case-study} showed that
 ordinary arithmetic yields the relational semantics of logic
-programming; Appendix~\ref{app:datalog-encoding} gave a
-systematic encoding of Datalog.
+programming: cyclic inheritance hierarchies converge by
+the same ascending chain condition that governs recursive
+Datalog, and Appendix~\ref{app:datalog-encoding} gave a
+systematic encoding.
 Section~\ref{sec:practical-function-color} exhibited
 function color
 blindness~\cite{nystrom2015-function-color}.
