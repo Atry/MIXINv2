@@ -68,21 +68,22 @@
 
 %% Semantic functions for the direct λ-calculus fixpoint semantics (Appendix E)
 %% -- Scope-level functions --
-\newcommand{\bindings}{\mathtt{bindings}}
-\newcommand{\tail}{\mathtt{tail}}
 \newcommand{\result}{\mathtt{result}}
-\newcommand{\visiblebindings}{\mathtt{visible\_bindings}}
+\newcommand{\visiblebindings}{\mathtt{visiblebindings}}
 %% -- Application-level functions --
-\newcommand{\headref}{\mathtt{head\_ref}}
-\newcommand{\argref}{\mathtt{arg\_ref}}
 \newcommand{\head}{\mathtt{head}}
 \newcommand{\argument}{\mathtt{argument}}
 %% -- Calling context --
-\newcommand{\callerargument}{\mathtt{caller\_arg}}
-\newcommand{\callerscope}{\mathtt{caller\_scope}}
+\newcommand{\callerargument}{\mathtt{callerargument}}
+\newcommand{\callerscope}{\mathtt{callerscope}}
+\newcommand{\letcontexts}{\mathtt{letcontexts}}
+\newcommand{\tailcontexts}{\mathtt{tailcontexts}}
+\newcommand{\contexts}{\mathtt{contexts}}
 %% -- Shared resolution --
-\newcommand{\scoperesolution}{\mathtt{scope\_resolve}}
-\newcommand{\resolveref}{\mathtt{resolve\_ref}}
+\newcommand{\scoperesolution}{\mathtt{scoperesolve}}
+\newcommand{\resolveref}{\mathtt{resolveref}}
+%% -- Auxiliary --
+\newcommand{\enclosingscope}{\mathtt{enclosingscope}}
 
 \begin{document}
 
@@ -4132,13 +4133,28 @@ the Single-Path Lemma (Lemma~\ref{lem:single-path}), directly on
 ANF syntax. The first-iteration approximation gives the lazy
 $\lambda$-calculus semantics.
 
-The B\"ohm tree has exactly two node types---\emph{scope}
-and \emph{application}---with separate path types and
-separate first-order functions for each.
-All dynamic functions are single-valued:
-the Single-Path Lemma (Lemma~\ref{lem:single-path})
-guarantees that no multi-inheritance arises for translated
-$\lambda$-terms.
+The B\"ohm tree has exactly two path types---\emph{scope}
+($\mathcal{S}$) and \emph{application}
+($\mathcal{A}$)---with a unified $\mathtt{node}$ function
+that maps paths to ADT values.
+As in the main semantics (Section~\ref{sec:mixin-trees}),
+all dynamic functions are set-valued, so that the
+immediate consequence operator $T_P$
+(Definition~\ref{def:tp-operator}) applies directly.
+At $T_P\!\uparrow\!1$, the Single-Path Lemma
+(Lemma~\ref{lem:single-path}) guarantees that each set
+contains at most one element for translated
+$\lambda$-terms; at $\mathrm{lfp}(T_P)$, re-entrant
+calls that converge across iterations may introduce
+additional calling contexts, so the sets can grow beyond
+singletons.
+
+The direct formulation requires eleven semantic equations,
+compared to six in Section~\ref{sec:mixin-trees}.
+The additional equations reflect syntactic distinctions
+of the $\lambda$-calculus that the three primitives of
+inheritance-calculus unify away;
+the proliferation is the cost of bypassing~$\mathcal{T}$.
 
 \paragraph{Syntax}
 Let $M$ denote a computation and $V$ a value.
@@ -4163,14 +4179,17 @@ Let-bound variables are referenced by their binding name $x$.
 \paragraph{Two node types}
 Each position in the B\"ohm tree is either a \emph{scope node}
 or an \emph{application node}.
-These have distinct path types $\mathcal{S}$ and
-$\mathcal{A}$ and distinct first-order functions.
+These correspond to the path types $\mathcal{S}$ and
+$\mathcal{A}$ introduced above.
 
 A \textbf{scope node} (path type~$\mathcal{S}$)
 represents a body: a chain of let-bindings ending
 in a tail expression.
-A scope may or may not be a $\lambda$-abstraction
-(recorded by $\mathrm{is\_abstraction}$).
+Its $\mathtt{node}$ is either
+$\mathrm{Abstraction}(B,\,t)$
+(introduced by $\lambda.\,M$) or
+$\mathrm{Body}(B,\,t)$
+(a continuation); see \emph{AST} below.
 Its edges are the names of \emph{application} let-bindings
 $\{x_1, \ldots, x_k\}$; value let-bindings do not create
 edges (see \emph{AST} below).
@@ -4181,14 +4200,13 @@ $a \in \mathcal{A}$.
 An \textbf{application node} (path type~$\mathcal{A}$)
 represents a function application $V_1\; V_2$ bound by a
 $\mathbf{let}$.
-In the AST, $\headref$ and $\argref$ are
-\emph{references} (de~Bruijn index plus projection, or
-an inline $\lambda$-literal);
-in the evaluated B\"ohm tree, $\head$ and $\argument$
-lazily resolve these references to scope nodes.
-Navigation from an application to a scope:
-$\head(a) \in \mathcal{S}$
-and $\argument(a) \in \mathcal{S}$.
+Its $\mathtt{node}$ is $\mathrm{App}(r_h,\, r_a)$,
+where $r_h, r_a \in \mathrm{ArgRef} \cup
+\mathrm{BindingRef} \cup \mathrm{InlineLambda}$.
+In the evaluated B\"ohm tree, $\head$ and $\argument$
+lazily resolve these references to sets of scope paths:
+$\head(p) \subseteq \mathcal{S}$
+and $\argument(p) \subseteq \mathcal{S}$.
 
 The path types alternate strictly:
 \[
@@ -4201,13 +4219,18 @@ There is no scope-to-scope or
 application-to-application direct transition.
 
 \paragraph{References}
-A reference encodes how to reach a target scope node:
+A reference
+$r \in \mathrm{ArgRef} \cup \mathrm{BindingRef}
+\cup \mathrm{InlineLambda}$
+encodes how to reach a target scope node.
+The ADT has three variants:
 \begin{itemize}
-  \item $(n,\, \mathrm{argument})$: go up $n$
+  \item $\mathrm{ArgRef}(n)$: go up $n$
     $\lambda$-scope levels, access the argument value.
-  \item $(n,\, x)$: go up $n$ $\lambda$-scope levels,
-    access binding~$x$.
-  \item Inline $\lambda$: immediately resolves to a
+  \item $\mathrm{BindingRef}(n,\, x)$: go up $n$
+    $\lambda$-scope levels, access binding~$x$.
+  \item $\mathrm{InlineLambda}(M)$: an inline
+    $\lambda$-literal that immediately resolves to a
     scope node (no lookup needed).
 \end{itemize}
 Since $n$ counts only $\lambda$-abstractions (not
@@ -4215,142 +4238,230 @@ $\mathbf{let}$-bindings or tail calls), it matches the
 standard de~Bruijn convention.
 For example, in $\lambda.\,\lambda.\,\mathbf{let}\; r =
 \dbi{1}\;\dbi{0}\;\mathbf{in}\;r$, the outer-$\lambda$
-variable has index $1$ and the inner-$\lambda$ variable has
-index $0$.
+variable is $\mathrm{ArgRef}(1)$ and the
+inner-$\lambda$ variable is $\mathrm{ArgRef}(0)$.
 
 \paragraph{AST}
-An ANF term is parsed into an AST that provides
-separate static functions for each node type.
-All are pure data extracted from the parsed term.
-
-\subparagraph{Scope-level AST functions.}
-For a scope node $s \in \mathcal{S}$:
+An ANF term is parsed into an AST\@.
+The function $\mathtt{node}$ maps each path to a
+pure-data ADT value extracted from the parsed term.
+The ADT has three variants:
 \begin{itemize}
-  \item $\bindings(s)$: the set of \emph{application}
-    let-binding names
-    $\{x_1, \ldots, x_k\}$ in this scope.
-  \item $\mathrm{is\_abstraction}(s)$: whether $s$ is
-    a $\lambda$-abstraction (that is, has a binder slot).
-  \item $\tail(s)$: the tail expression, which is one of:
-    \begin{itemize}
-      \item $\mathrm{Ref}(n,\, \ell)$: a reference.
-        A $\lambda$-bound variable $\dbi{m}$ in tail position
-        yields $\mathrm{Ref}(m,\, \mathrm{argument})$;
-        an application-binding name $x$ in the current scope
-        yields $\mathrm{Ref}(0,\, x)$;
-        an application-binding name $x$ that crosses
-        $n$ intervening $\lambda$-scopes yields
-        $\mathrm{Ref}(n,\, x)$.
-        (Value-bound names are resolved by inlining
-        and do not appear as references.)
-      \item $\mathrm{TailCall}(r_1, r_2)$: a tail-position
-        application, where $r_1$ and $r_2$ are references
-        encoding $V_1$ and~$V_2$.
-      \item $\mathrm{Lambda}(M)$: an inline $\lambda$-literal.
-    \end{itemize}
-\end{itemize}
-
-\smallskip\noindent
-Each ANF construct determines the scope-level AST as follows.
-An abstraction $\lambda.\, M$ creates a scope node with
-$\mathrm{is\_abstraction} = \mathrm{true}$
-whose $\bindings$ and $\tail$ are determined by~$M$.
-An application let-binding
-$\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M$
-adds $x$ to $\bindings$; the continuation $M$ determines
-further bindings and the eventual tail.
-A value let-binding $\mathbf{let}\; x = V \;\mathbf{in}\; M$
-does not add~$x$ to $\bindings$; instead, every reference
-to~$x$ in~$M$ is replaced by the encoding of~$V$
-(with appropriate de~Bruijn index adjustments for any
-intervening $\lambda$-abstractions).
-A tail call $V_1\; V_2$ sets
-$\tail = \mathrm{TailCall}(r_1, r_2)$ where $r_1, r_2$
-are the references encoding $V_1, V_2$.
-A tail value $V$ sets $\tail = \mathrm{Ref}(n, \ell)$
-or $\mathrm{Lambda}(M)$ according to the form of~$V$.
-
-\subparagraph{Application-level AST functions.}
-For an application binding
-$\mathbf{let}\; x = V_1\; V_2$, the node
-$s \snoc x$ is an application node ($a \in \mathcal{A}$)
-with:
-\begin{itemize}
-  \item $\headref(s \snoc x)$: encodes~$V_1$
-    (the function being applied).
-  \item $\argref(s \snoc x)$: encodes~$V_2$
+  \item $\mathrm{Abstraction}(B,\, t)$:
+    a $\lambda$-scope with a binder slot,
+    where $B$ is the set of application let-binding names
+    $\{x_1, \ldots, x_k\}$, and $t$ is the tail
+    expression (defined below).
+  \item $\mathrm{Body}(B,\, t)$:
+    a continuation scope,
+    where $B$ is the set of application let-binding names
+    $\{x_1, \ldots, x_k\}$, and $t$ is the tail
+    expression (defined below).
+  \item $\mathrm{App}(r_h,\, r_a)$ where
+    $r_h, r_a \in \mathrm{ArgRef} \cup
+    \mathrm{BindingRef} \cup \mathrm{InlineLambda}$:
+    a function application $V_1\; V_2$ bound by a
+    $\mathbf{let}$, where $r_h$ encodes~$V_1$
+    (the function being applied) and $r_a$ encodes~$V_2$
     (the argument).
 \end{itemize}
-A value $V$ is encoded as a reference:
-$\dbi{m} \mapsto (m,\, \mathrm{argument})$;\;
-let-bound name $y$ ($n$ $\lambda$-scopes away)
-$\mapsto (n,\, y)$;\;
-$\lambda.\,M' \mapsto \mathrm{Lambda}(M')$.
+For scope paths $s \in \mathcal{S}$,
+$\mathtt{node}(s) \in
+\mathrm{Abstraction} \cup \mathrm{Body}$;
+for application paths $a \in \mathcal{A}$,
+$\mathtt{node}(a) \in \mathrm{App}$.
+In pattern matches where the variant tag is irrelevant,
+we write $\mathtt{node}(s) = \_(B, t)$ to bind $B$
+and~$t$ from either variant.
 
-\paragraph{Dynamic scope-level functions}
+\subparagraph{Tail expression}
+The tail expression
+$t \in \mathrm{Ref} \cup \mathrm{TailCall}$
+has two variants:
+\begin{itemize}
+  \item $\mathrm{Ref}(r)$ where
+    $r \in \mathrm{ArgRef} \cup \mathrm{BindingRef}
+    \cup \mathrm{InlineLambda}$:
+    the tail is a reference.
+    A $\lambda$-bound variable $\dbi{m}$ in tail position
+    yields $\mathrm{Ref}(\mathrm{ArgRef}(m))$;
+    an application-binding name $x$ in the current scope
+    yields $\mathrm{Ref}(\mathrm{BindingRef}(0,\, x))$;
+    an application-binding name $x$ that crosses
+    $n$ intervening $\lambda$-scopes yields
+    $\mathrm{Ref}(\mathrm{BindingRef}(n,\, x))$;
+    an inline $\lambda$-literal $\lambda.\,M$ yields
+    $\mathrm{Ref}(\mathrm{InlineLambda}(M))$.
+    (Value-bound names are resolved by inlining
+    and do not appear as references.)
+  \item $\mathrm{TailCall}(r_1, r_2)$: a tail-position
+    application, where
+    $r_1, r_2 \in \mathrm{ArgRef} \cup
+    \mathrm{BindingRef} \cup \mathrm{InlineLambda}$.
+\end{itemize}
+
+\subparagraph{Reference encoding}
+The function $\mathrm{enc}$ maps a value $V$ to a
+reference:
+\[
+  \mathrm{enc}(V) =
+  \begin{cases}
+    \mathrm{ArgRef}(m)
+    & \text{if } V = \dbi{m} \\[4pt]
+    \mathrm{BindingRef}(n,\, y)
+    & \text{if } V = y
+    \text{ ($n$ $\lambda$-scopes away)} \\[4pt]
+    \mathrm{InlineLambda}(M')
+    & \text{if } V = \lambda.\, M'
+  \end{cases}
+\]
+
+\subparagraph{Definition of $\mathtt{node}$}
+The function $\mathtt{node}$ is defined by structural
+induction on the ANF term.
+The definition uses two mutually recursive procedures,
+$\mathrm{scope}$ and $\mathrm{body}$, corresponding to
+the two scope variants.
+
+$\mathrm{scope}(V,\, s)$ is called when a value
+$V = \lambda.\,M'$ introduces a fresh scope at
+path~$s$:
+\[
+  \mathrm{scope}(\lambda.\,M',\; s)
+  \;:\quad
+  \mathtt{node}(s) = \mathrm{Abstraction}(B,\, t)
+  \quad\text{where } (B,\, t) = \mathrm{body}(M',\, s)
+\]
+
+$\mathrm{body}(M,\, s)$ processes a computation~$M$
+within an existing scope~$s$, returning $(B,\, t)$
+by cases on~$M$:
+\begin{itemize}
+  \item $M = \mathbf{let}\; x = V_1\; V_2
+    \;\mathbf{in}\; M'$
+    (application let-binding).\;
+    Let $(B',\, t) = \mathrm{body}(M',\, s)$.
+    Then $B = \{x\} \cup B'$, and
+    $\mathtt{node}(s \snoc x) =
+    \mathrm{App}(\mathrm{enc}(V_1),\,
+    \mathrm{enc}(V_2))$.
+
+  \item $M = \mathbf{let}\; x = V
+    \;\mathbf{in}\; M'$
+    (value let-binding).\;
+    No path is created.
+    Every reference to~$x$ in~$M'$ is replaced by
+    $\mathrm{enc}(V)$, with the de~Bruijn index
+    in $\mathrm{ArgRef}$ and $\mathrm{BindingRef}$
+    incremented by one for each $\lambda$-abstraction
+    between the substitution site and the binding site.
+    Then $(B,\, t) = \mathrm{body}(M'[x := V],\, s)$.
+
+  \item $M = V_1\; V_2$
+    (tail call).\;
+    $B = \varnothing$ and
+    $t = \mathrm{TailCall}(\mathrm{enc}(V_1),\,
+    \mathrm{enc}(V_2))$.
+
+  \item $M = V$
+    (tail value).\;
+    $B = \varnothing$ and
+    $t = \mathrm{Ref}(\mathrm{enc}(V))$.
+\end{itemize}
+When $\mathrm{enc}(V) = \mathrm{InlineLambda}(M')$,
+a fresh scope path $s_\lambda$ is created with
+$\mathrm{scope}(\lambda.\,M',\; s_\lambda)$;
+that is,
+$\mathtt{node}(s_\lambda) =
+\mathrm{Abstraction}(B',\, t')$
+where $(B',\, t') = \mathrm{body}(M',\, s_\lambda)$.
+
+In every case, the recursion descends to a strict
+subterm of the input; $\mathtt{node}$ is therefore
+total on all paths reachable from the root.
+The initial call is
+$\mathrm{scope}(\lambda.\,M_0,\; \text{root})$
+if the top-level term is $\lambda.\,M_0$, or
+$\mathtt{node}(\text{root}) = \mathrm{Body}(B,\, t)$
+with $(B,\, t) = \mathrm{body}(M_0,\, \text{root})$
+otherwise.
+
+\paragraph{Dynamic functions}
 The following functions are computed via the fixpoint
 equations.
+Functions that directly access the AST are defined by
+exhaustive pattern matching on $\mathtt{node}$;
+the remaining functions are defined by set comprehension.
+We write $\enclosingscope(s \snoc x) = s$.
 
 \subparagraph{Result.}
-$\result(s)$ performs one step of head reduction,
-mapping a scope to its successor scope:
+$\result(p)$ performs one step of head reduction:
 \begin{equation}\label{eq:lambda-result}
-  \result(s) =
+  \result(p) =
   \begin{cases}
-    \resolveref(r,\; s)
-    & \text{if } \tail(s) = \mathrm{Ref}(r) \\[4pt]
-    \resolveref(r_1,\; s)
-    & \text{if } \tail(s) = \mathrm{TailCall}(r_1, r_2) \\[4pt]
-    s_{\lambda}
-    & \text{if } \tail(s) = \mathrm{Lambda}(M)
-    \text{ (inline scope $s_{\lambda}$)}
+    \resolveref(r,\; p)
+    & \text{if } \mathtt{node}(p) = \_(\_,\, \mathrm{Ref}(r)) \\[4pt]
+    \resolveref(r_1,\; p)
+    & \text{if } \mathtt{node}(p) = \_(\_,\, \mathrm{TailCall}(r_1, r_2)) \\[4pt]
+    \varnothing
+    & \text{if } \mathtt{node}(p) \in \mathrm{App}
   \end{cases}
 \end{equation}
-The three cases are exhaustive: every well-formed ANF scope
-has a $\tail$ that is one of $\mathrm{Ref}$,
-$\mathrm{TailCall}$, or $\mathrm{Lambda}$.
-In the $\mathrm{Ref}$ case, the tail is a reference
-$r = (n, \ell)$; $\resolveref$ resolves it to a scope.
-When $\ell = x$ (an application-binding name in some
-enclosing scope), this follows the binding's head to a scope.
-When $\ell = \mathrm{argument}$ (a $\lambda$-bound variable),
-this accesses the argument of the $n$-th enclosing $\lambda$.
+The two scope cases are exhaustive by the tail-expression
+ADT\@.
+In the $\mathrm{Ref}$ case, $r$ is a reference;
+$\resolveref$ resolves it to a set of scopes
+(including the $\mathrm{InlineLambda}$ case).
 In the $\mathrm{TailCall}$ case,
-$r_1$ is the tail call's head reference
-and $\resolveref$ resolves it to the function-body scope.
+$r_1$ is the head reference
+and $\resolveref$ resolves it to function-body scopes.
 The tail call also stores the argument reference~$r_2$,
 which is accessed by de~Bruijn resolution when the function
 body references its argument (see \emph{Calling context} below).
 
 \subparagraph{Visible bindings.}
-$\visiblebindings(s)$ collects all bindings along the
+$\visiblebindings(p)$ collects all bindings along the
 $\result$ chain:
 \begin{equation}\label{eq:lambda-visible-bindings}
-  \visiblebindings(s) =
-  \bindings(s) \;\cup\;
+  \visiblebindings(p) =
   \begin{cases}
-    \visiblebindings(\result(s))
-    & \text{if } \result(s) \neq \bot \\
-    \varnothing & \text{otherwise}
+    B \;\cup\;
+    \left\{\; b \;\left|\;
+      \begin{aligned}
+        &p' \in \result(p),\\
+        &b \in \visiblebindings(p')
+      \end{aligned}
+    \right.\right\}
+    & \text{if } \mathtt{node}(p) = \_(B,\, \_) \\[6pt]
+    \varnothing
+    & \text{if } \mathtt{node}(p) \in \mathrm{App}
   \end{cases}
 \end{equation}
 
-\paragraph{Dynamic application-level functions}
-
 \subparagraph{Head.}
-$\head(a)$ resolves the head reference of application~$a$
-to the applied function's scope:
+$\head(p)$ resolves the head reference of an application:
 \begin{equation}\label{eq:lambda-head}
-  \head(a) = \resolveref(\headref(a),\;
-  \mathrm{enclosing\_scope}(a))
+  \head(p) =
+  \begin{cases}
+    \resolveref(r_h,\; \enclosingscope(p))
+    & \text{if } \mathtt{node}(p) = \mathrm{App}(r_h,\, \_) \\[4pt]
+    \varnothing
+    & \text{if } \mathtt{node}(p) \in
+      \mathrm{Abstraction} \cup \mathrm{Body}
+  \end{cases}
 \end{equation}
-where $\mathrm{enclosing\_scope}(s \snoc x) = s$.
 
 \subparagraph{Argument.}
-$\argument(a)$ resolves the argument reference to a scope:
+$\argument(p)$ resolves the argument reference:
 \begin{equation}\label{eq:lambda-argument}
-  \argument(a) = \resolveref(\argref(a),\;
-  \mathrm{enclosing\_scope}(a))
+  \argument(p) =
+  \begin{cases}
+    \resolveref(r_a,\; \enclosingscope(p))
+    & \text{if } \mathtt{node}(p) = \mathrm{App}(\_,\, r_a) \\[4pt]
+    \varnothing
+    & \text{if } \mathtt{node}(p) \in
+      \mathrm{Abstraction} \cup \mathrm{Body}
+  \end{cases}
 \end{equation}
 
 \paragraph{Calling context and resolution}
@@ -4360,77 +4471,126 @@ When a $\lambda$-abstraction's body is entered via
 $\beta$-reduction, the resulting scope~$s$ acquires a
 \emph{calling context} that records which call
 introduced~$s$.
-We define two functions that extract information from this
-context:
-\begin{itemize}
-  \item $\callerargument(s)$: the argument scope passed to
-    the $\lambda$-abstraction~$s$.
-  \item $\callerscope(s)$: the scope in which the call to~$s$
-    was made.
-\end{itemize}
 A $\lambda$-body scope~$s$ is entered in one of two ways:
-\begin{enumerate}
-  \item \textbf{Via a let-binding application.}\;
-    An application node $a = s' \snoc x$ satisfies
-    $\head(a) = s$.
-    Then $\callerargument(s) = \argument(a)$
-    and $\callerscope(s) = s'$.
-  \item \textbf{Via a tail call.}\;
-    A scope $s'$ has
-    $\tail(s') = \mathrm{TailCall}(r_1, r_2)$
-    with $\resolveref(r_1,\, s') = s$.
-    Then $\callerargument(s) = \resolveref(r_2,\, s')$
-    and $\callerscope(s) = s'$.
-\end{enumerate}
-For the root scope, neither function is defined
+via a let-binding application, or via a tail call.
+Each mechanism contributes calling contexts.
+
+\emph{Let-binding contexts.}\;
+For a scope $s'$ with $\mathtt{node}(s') = \_(B,\, \_)$
+and a binding name $x \in B$, the application
+$s' \snoc x$ contributes:
+\begin{equation}\label{eq:lambda-let-contexts}
+  \letcontexts(s) =
+  \left\{\; (s',\; s_a) \;\left|\;
+    \begin{aligned}
+      &\mathtt{node}(s') = \_(B,\, \_),\;
+      x \in B,\\
+      &s \in \head(s' \snoc x),\\
+      &s_a \in \argument(s' \snoc x)
+    \end{aligned}
+  \right.\right\}
+\end{equation}
+
+\emph{Tail-call contexts.}\;
+A scope $s'$ with
+$\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2))$
+and $s \in \resolveref(r_1,\, s')$ contributes:
+\begin{equation}\label{eq:lambda-tail-contexts}
+  \tailcontexts(s) =
+  \left\{\; (s',\; s_a) \;\left|\;
+    \begin{aligned}
+      &\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2)),\\
+      &s \in \resolveref(r_1,\, s'),\\
+      &s_a \in \resolveref(r_2,\, s')
+    \end{aligned}
+  \right.\right\}
+\end{equation}
+
+The full set of calling contexts, and
+the projections $\callerscope$ and $\callerargument$:
+\begin{align}
+  \contexts(s) &=
+    \letcontexts(s) \;\cup\;
+    \tailcontexts(s)
+    \label{eq:lambda-contexts} \\[4pt]
+  \callerscope(s) &=
+    \bigl\{\; s' \;\big|\;
+      (s',\; \_) \in \contexts(s)
+    \;\bigr\}
+    \label{eq:lambda-caller-scope} \\[4pt]
+  \callerargument(s) &=
+    \bigl\{\; s_a \;\big|\;
+      (\_,\; s_a) \in \contexts(s)
+    \;\bigr\}
+    \label{eq:lambda-caller-argument}
+\end{align}
+For the root scope, $\contexts$ is empty
 (the root has no caller).
-The Single-Path Lemma
-(Lemma~\ref{lem:single-path}) guarantees that each scope
-is reached by exactly one calling context, so
-$\callerargument$ and $\callerscope$ are single-valued.
+At $T_P\!\uparrow\!1$, the Single-Path Lemma
+(Lemma~\ref{lem:single-path}) guarantees that
+$\contexts(s)$ contains at most one pair for
+translated $\lambda$-terms.
+At $\mathrm{lfp}(T_P)$, re-entrant calls may converge and
+supply additional calling contexts to the same scope.
 
 \subparagraph{Reference resolution.}
-$\resolveref$ resolves any reference to a scope node:
+$\resolveref$ resolves any reference to a set of scope nodes:
 \begin{equation}\label{eq:lambda-resolve-ref}
   \resolveref(r,\; s) =
   \begin{cases}
-    \callerargument(\scoperesolution(n, s))
-    & \text{if } r = (n,\, \mathrm{argument}) \\[4pt]
-    \head(\scoperesolution(n, s) \snoc x)
-    & \text{if } r = (n,\, x) \\[4pt]
-    s_{\lambda}
-    & \text{if } r = \mathrm{Lambda}(M)
-    \text{ (inline scope $s_\lambda$)}
+    \left\{\; s_a \;\left|\;
+      \begin{aligned}
+        &s' \in \scoperesolution(n,\, s),\\
+        &s_a \in \callerargument(s')
+      \end{aligned}
+    \right.\right\}
+    & \text{if } r = \mathrm{ArgRef}(n) \\[6pt]
+    \left\{\; s_h \;\left|\;
+      \begin{aligned}
+        &s' \in \scoperesolution(n,\, s),\\
+        &s_h \in \head(s' \snoc x)
+      \end{aligned}
+    \right.\right\}
+    & \text{if } r = \mathrm{BindingRef}(n,\, x) \\[6pt]
+    \{s_{\lambda}\}
+    & \text{if } r = \mathrm{InlineLambda}(M)
   \end{cases}
 \end{equation}
-For a reference $(n,\, \mathrm{argument})$,
+In the $\mathrm{InlineLambda}$ case,
+$s_\lambda$ is the fresh scope path whose
+$\mathtt{node}(s_\lambda)$ is defined by recursing
+on~$M$ (see \emph{Definition of $\mathtt{node}$} above).
+For $\mathrm{ArgRef}(n)$,
 $\scoperesolution$ navigates up $n$ $\lambda$-scope levels,
-then $\callerargument$ extracts the argument passed to the
-$\lambda$ at that level.
-For a reference $(n,\, x)$,
+yielding a set of scopes;
+$\callerargument$ then extracts the argument passed to the
+$\lambda$ at each such scope.
+For $\mathrm{BindingRef}(n,\, x)$,
 $\scoperesolution$ navigates up $n$ $\lambda$-scope levels,
-then $x$ is projected from that scope and its head is
+then $x$ is projected from each resulting scope and its head is
 resolved.
 
 \subparagraph{Scope resolution.}
 $\scoperesolution$ navigates upward through the B\"ohm tree
-to find the binding site of a de~Bruijn reference.
+to find the binding site of a de~Bruijn reference,
+returning a set of scopes.
 Only $\lambda$-abstractions count as scope levels;
 application $\mathbf{let}$-bindings and tail calls do not.
 \begin{equation}\label{eq:lambda-scope}
   \scoperesolution(n,\; s) =
   \begin{cases}
-    s & \text{if } n = 0 \\[6pt]
-    \scoperesolution\!\bigl(
-      n - 1,\;
-      \callerscope(s)
-    \bigr)
+    \{s\} & \text{if } n = 0 \\[6pt]
+    \left\{\; s'' \;\left|\;
+      \begin{aligned}
+        &s' \in \callerscope(s),\\
+        &s'' \in \scoperesolution(n - 1,\; s')
+      \end{aligned}
+    \right.\right\}
     & \text{if } n > 0
   \end{cases}
 \end{equation}
 Each recursive step moves from the current scope~$s$ to
-$\callerscope(s)$---the scope where the call to~$s$ was
-made---and decrements~$n$.
+each scope in $\callerscope(s)$ and decrements~$n$.
 Since $n$ is a nonnegative integer, the recursion terminates.
 
 \paragraph{Observational fixpoint semantics}
@@ -4441,25 +4601,33 @@ by choosing which path to inspect, and the mutually recursive
 definitions unfold on demand.
 
 Formally, the mutually recursive
-equations~(\ref{eq:lambda-result})--(\ref{eq:lambda-scope})
-define functions recursively:
-$\result(s) = s'$ holds if and only if it can be
+equations~(\ref{eq:lambda-result})--(\ref{eq:lambda-caller-argument})
+and~(\ref{eq:lambda-resolve-ref})--(\ref{eq:lambda-scope})
+define set-valued functions recursively:
+$p' \in \result(p)$ holds if and only if it can be
 established by a finite chain of applications of these
 equations.
-Well-definedness follows from the same termination argument
-as in Appendix~\ref{app:well-definedness}: if the recursive
-evaluation terminates, the reachable dependency subgraph is
-finite and acyclic, and the equations have a unique solution.
-When no finite derivation exists for a given query, the
-recursive evaluation does not terminate, analogous to
-divergence.
+Well-definedness has two parts.
+The static part: $\mathtt{node}$ is total on all
+reachable paths by structural induction on the ANF term,
+as established above.
+The dynamic part: each equation's right-hand side is
+built from $\cup$, $\in$, equality, and positive set
+comprehension, so the immediate consequence
+operator~$T_P$ (Definition~\ref{def:tp-operator}) is
+monotone on the complete lattice of query--answer maps,
+and the Knaster--Tarski theorem gives the least fixed
+point.
+When no finite derivation exists for a given query
+(as with $\Omega$), the fixed-point iteration does not
+terminate.
 
 \paragraph{Convergence and head normal form}
 An ANF term $M$ \emph{converges}, written $M{\Downarrow}$,
-if there exists $k \ge 0$ such that
-\[
-  \mathrm{is\_abstraction}\!\bigl(\result^k(\text{root})\bigr)
-\]
+if there exist scopes $s_0, s_1, \ldots, s_k$
+with $s_0 = \text{root}$,
+$s_{i+1} \in \result(s_i)$ for each $0 \le i < k$,
+and $\mathtt{node}(s_k) \in \mathrm{Abstraction}$,
 in the semantics defined by the equations above.
 The term has been reduced through $k$ head reduction steps
 (each tracked by one $\result$ step) to an abstraction
@@ -4467,7 +4635,7 @@ $\lambda.\,M'$.
 
 The same equations support two evaluation regimes.
 At $T_P\!\uparrow\!1$ (one iteration, re-entrant calls
-return~$\bot$), the semantics coincides with the lazy
+return~$\varnothing$), the semantics coincides with the lazy
 $\lambda$-calculus:
 $M$ converges iff it has a head normal form
 (Theorem~\ref{thm:adequacy}), and two terms are
@@ -4475,11 +4643,22 @@ equivalent iff they have the same
 B\"ohm tree~\cite{barendregt1984-lambda-calculus}
 (Theorem~\ref{thm:first-order-semantics}).
 At $\mathrm{lfp}(T_P)$ (iterate to the least fixpoint),
-the semantics defines the \emph{fixpoint $\lambda$-calculus},
-which is strictly more defined: terms that diverge under
-$\beta$-reduction may converge
-(Remark~\ref{rem:convergence-lfp}).
-Only the iteration depth changes.
+the semantics defines the \emph{fixpoint $\lambda$-calculus}
+(Remark~\ref{rem:convergence-lfp}):
+re-entrant calls that returned
+$\varnothing$ at $T_P\!\uparrow\!1$ may now converge and
+contribute additional heads and arguments to the same scope,
+so a single scope acquires multiple calling contexts:
+syntactically single inheritance becomes semantically
+multiple inheritance through value recursion.
+A term that converges under the lazy $\lambda$-calculus
+also converges under the fixpoint $\lambda$-calculus;
+a term that diverges under the lazy $\lambda$-calculus
+may, under the fixpoint $\lambda$-calculus, still diverge
+(as $\Omega$ does), or converge to zero, one, or
+multiple values.
+Only the iteration depth changes; the equations themselves
+are identical.
 
 The B\"ohm tree equations above are self-contained.
 For the proofs (Appendix~\ref{app:bohm-tree-proofs}),
@@ -4491,13 +4670,11 @@ of the translation~$\mathcal{T}$%
   Concretely,
   $\result$ specializes $\properties$/$\bases$,
   $\head$/$\argument$ specialize $\resolve$,
-  and $\scoperesolution$ specializes $\this$.
+  $\scoperesolution$ specializes $\this$,
+  and $\callerscope$/$\callerargument$ specialize the
+  provenance tracking in $\supers$.
 }
-(Section~\ref{sec:forward-translation}), where the
-Single-Path Lemma (Lemma~\ref{lem:single-path})
-ensures that the set-valued $\this$ function
-(equation~\ref{eq:this}) degenerates to single-valued
-functions.
+(Section~\ref{sec:forward-translation}).
 
 \section{Encoding Datalog in Inheritance-Calculus}
 \label{app:datalog-encoding}
