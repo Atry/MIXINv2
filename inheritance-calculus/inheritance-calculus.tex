@@ -163,47 +163,76 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Declarative and configuration languages are ubiquitous in modern software
-engineering. Systems such as NixOS modules~\cite{dolstra2010-nixos,nixosmodules},
-Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023}, CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
-Kustomize~\cite{kustomize}, and JSON Patch~\cite{rfc6902-json-patch} all provide mechanisms for composing
-structured data through inheritance or merging. Among these, the NixOS
-module system stands out: its recursive attribute set merging with
-fixpoint semantics and deferred modules~\cite{nixosmodules} allows
-independently authored modules to extend the system configuration
-without modifying existing modules;
-in practice, the ecosystem has not been troubled by the
-multi-dimensional extension difficulty analogous to the
-Expression Problem~\cite{wadler1998-expression-problem}.%
+Declarative and configuration languages are ubiquitous in modern
+software engineering.
+Systems such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
+CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
+Kustomize~\cite{kustomize}, and JSON
+Patch~\cite{rfc6902-json-patch} all provide mechanisms for
+composing structured data through inheritance or merging.
+
+Among these, the Nix ecosystem~\cite{dolstra2010-nixos} stands out,
+both for scale and for the trajectory of its design.
+Its package collection, \texttt{nixpkgs}, is one of the largest
+in existence.%
 \footnote{
   As a rough proxy for ecosystem scale:
   according to Repology~\cite{repology2025},
   \texttt{nixpkgs} contains over 113{,}000 packages,
   nearly three times the count of Debian or Ubuntu,
   with a comparable number of contributors.
-  Not every package exercises the module system's
-  extensibility, but the same caveat applies to other distributions.
+  Not every package exercises the extensibility mechanisms
+  described here, but the same caveat applies to other distributions.
 }
-The mechanism has been adopted well beyond NixOS itself: Home
-Manager~\cite{homemanager}, nix-darwin~\cite{nixdarwin},
-disko~\cite{disko}, flake-parts~\cite{flakeparts},
-dream2nix~\cite{dream2nix}, devenv~\cite{devenv},
-KubeNix~\cite{kubenix}, and nixidy~\cite{nixidy} use it to manage
-user environments, macOS configuration, disk partitioning, flake
-structure, multi-language packaging, developer environments, and
-Kubernetes clusters respectively. Yet no computational
-theory captures the extensibility that this mechanism exhibits.
+Package composition originally relied on a linearized mixin
+chain in which each layer sees its predecessor,%
+\footnote{
+  Nix overlays compose package sets via a linearized
+  \texttt{self}/\texttt{super} chain following the
+  Bracha--Cook mixin pattern~\cite{bracha1990-mixin-inheritance}:
+  \texttt{self} is late-bound to the fixed-point result
+  and \texttt{super} refers to the previous layer.
+  The mechanism is asymmetric and order-dependent.
+}
+but the ecosystem has increasingly converged on a symmetric
+alternative: the NixOS module
+system~\cite{dolstra2010-nixos,nixosmodules}, which composes by
+recursively merging nested attribute sets with self-referential
+evaluation and deferred modules~\cite{nixosmodules}---commutative,
+idempotent,
+and associative.
+Originally designed for system configuration, the module system
+has been adopted for user environments~\cite{homemanager},
+macOS configuration~\cite{nixdarwin},
+disk partitioning~\cite{disko},
+flake structure~\cite{flakeparts},
+developer environments~\cite{devenv},
+Kubernetes clusters~\cite{kubenix,nixidy},
+and multi-language package building~\cite{dream2nix}---%
+\footnote{
+  dream2nix~\cite{dream2nix} uses the NixOS module system for
+  package building, entering the very domain that
+  the asymmetric overlay mechanism was designed for.
+}
+the original domain of \texttt{nixpkgs}'s asymmetric mechanism.
+Nix is a functional language with first-class functions;
+yet a typical module configuration consists almost entirely of
+nested attribute sets, with functions appearing only
+occasionally as DSL syntax of the module system
+such as \texttt{mkIf} and \texttt{mkMerge}.
+No computational theory captures the extensibility that this
+mechanism exhibits.
 
 The $\lambda$-calculus serves as the foundational computational model for
 functional programming. No analogous calculus exists for declarative
 programming. This gap matters because the two paradigms differ in
-fundamental ways. Configuration languages are inherently declarative:
-their values are immutable and they have no first-class
-functions.
+fundamental ways.
+The configuration languages above all compose by extending
+existing structure from outside; their values are immutable;
+and they have no first-class functions.
 Note that a function body is closed: its internal structure
-cannot be extended without modifying the definition, whereas
-the configuration languages above all compose by extending
-existing structure from outside.
+cannot be extended without modifying the definition---the
+opposite of composition by extending from outside.
 At first glance, Turing completeness appears incompatible
 with these constraints. The three classical models of computation each
 violate at least one of them:
@@ -224,19 +253,16 @@ violate at least one of them:
 \noindent
 The Turing Machine and RAM Machine require mutable state;
 the $\lambda$-calculus requires first-class functions.
-A computational model that is Turing complete, immutable, and
-function-free would sit in the empty cell of Table~\ref{tab:computational-models}.
-The NixOS module system already suggests that such a model exists:
+No known computational model is simultaneously Turing complete,
+immutable, and function-free.
+
+The NixOS module system already suggests that such a model may exist:
 its inheritance-based composition over recursive records, without
 explicit functions, is expressive enough to configure entire operating
 systems.
-
 Most configuration languages operate on finite, well-founded
 structures (initial algebras in the sense of universal algebra).
-Nix is an exception: although designed specifically as a
-configuration language for
-NixOS~\cite{dolstra2006-purely-functional-deployment},
-it is a complete programming language whose values are lazily
+Nix is an exception: its lazy evaluation makes values
 observable and possibly infinite.
 The \texttt{nixpkgs} package collection (over 100{,}000
 packages) behaves as a lazily observed structure, allowing any
