@@ -1,0 +1,126 @@
+# Binary arithmetic
+_threeAddFour:
+  - [Builtin, PythonOperator, Add]
+  - operand0: 3
+    operand1: 4
+addResult: [_threeAddFour, result]
+
+_tenSubtractThree:
+  - [Builtin, PythonOperator, Subtract]
+  - operand0: 10
+    operand1: 3
+subtractResult: [_tenSubtractThree, result]
+
+_fiveMultiplySix:
+  - [Builtin, PythonOperator, Multiply]
+  - operand0: 5
+    operand1: 6
+multiplyResult: [_fiveMultiplySix, result]
+
+_sevenTrueDivideTwo:
+  - [Builtin, PythonOperator, TrueDivide]
+  - operand0: 7
+    operand1: 2
+trueDivideResult: [_sevenTrueDivideTwo, result]
+
+_sevenFloorDivideTwo:
+  - [Builtin, PythonOperator, FloorDivide]
+  - operand0: 7
+    operand1: 2
+floorDivideResult: [_sevenFloorDivideTwo, result]
+
+_sevenModuloThree:
+  - [Builtin, PythonOperator, Modulo]
+  - operand0: 7
+    operand1: 3
+moduloResult: [_sevenModuloThree, result]
+
+_twoPowerThree:
+  - [Builtin, PythonOperator, Power]
+  - operand0: 2
+    operand1: 3
+powerResult: [_twoPowerThree, result]
+
+# Comparison
+_threeEqualThree:
+  - [Builtin, PythonOperator, Equal]
+  - operand0: 3
+    operand1: 3
+equalTrueResult: [_threeEqualThree, result]
+
+_threeEqualFour:
+  - [Builtin, PythonOperator, Equal]
+  - operand0: 3
+    operand1: 4
+equalFalseResult: [_threeEqualFour, result]
+
+_threeLessThanFour:
+  - [Builtin, PythonOperator, LessThan]
+  - operand0: 3
+    operand1: 4
+lessThanTrueResult: [_threeLessThanFour, result]
+
+_fourLessThanThree:
+  - [Builtin, PythonOperator, LessThan]
+  - operand0: 4
+    operand1: 3
+lessThanFalseResult: [_fourLessThanThree, result]
+
+# Unary
+_negateFive:
+  - [Builtin, PythonOperator, Negate]
+  - operand: 5
+negateResult: [_negateFive, result]
+
+_absoluteNegativeSeven:
+  - [Builtin, PythonOperator, Absolute]
+  - operand: -7
+absoluteResult: [_absoluteNegativeSeven, result]
+
+_truthZero:
+  - [Builtin, PythonOperator, Truth]
+  - operand: 0
+truthFalseResult: [_truthZero, result]
+
+_truthOne:
+  - [Builtin, PythonOperator, Truth]
+  - operand: 1
+truthTrueResult: [_truthOne, result]
+
+_logicalNotTrue:
+  - [Builtin, PythonOperator, LogicalNot]
+  - operand: true
+logicalNotResult: [_logicalNotTrue, result]
+
+# Bitwise
+_bitwiseAndResult:
+  - [Builtin, PythonOperator, BitwiseAnd]
+  - operand0: 0b1100
+    operand1: 0b1010
+bitwiseAndResult: [_bitwiseAndResult, result]
+
+_bitwiseOrResult:
+  - [Builtin, PythonOperator, BitwiseOr]
+  - operand0: 0b1100
+    operand1: 0b1010
+bitwiseOrResult: [_bitwiseOrResult, result]
+
+_leftShiftResult:
+  - [Builtin, PythonOperator, LeftShift]
+  - operand0: 1
+    operand1: 4
+leftShiftResult: [_leftShiftResult, result]
+
+# Sequence
+_concatResult:
+  - [Builtin, PythonOperator, Concatenate]
+  - operand0: "hello "
+    operand1: "world"
+concatResult: [_concatResult, result]
+
+# Higher-order: AttributeGet
+_attributeGetResult:
+  - [Builtin, PythonOperator, AttributeGet]
+  - target: "hello"
+    attributeName: "__class__"
+attributeGetResult: [_attributeGetResult, result]
