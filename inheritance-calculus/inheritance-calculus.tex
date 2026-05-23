@@ -39,17 +39,6 @@
   morecomment=[l]{\#},
 }
 
-%% Conditional citation: hide self-citations under anonymous review.
-%% Use \@firstoftwo / \@secondoftwo so the unchosen branch is never
-%% expanded---preventing \cite from writing to the .aux file.
-\makeatletter
-\if@ACM@anonymous
-\newcommand{\selfcite}[2]{#2}%
-\else
-\newcommand{\selfcite}[2]{#1}%
-\fi
-\makeatother
-
 \newcommand{\Path}{\mathtt{Path}}
 \newcommand{\dom}{\mathtt{dom}}
 \newcommand{\properties}{\mathtt{properties}}
@@ -265,15 +254,9 @@ Guided by this observation, we set out to reduce the
 NixOS module system to a minimal set of primitives.
 The reduction produced MIXIN, an early implementation in Nix,
 and subsequently
-MIXINv2\selfcite{~\cite{mixin2025}}{~(included as supplementary
-material)}, now implemented in Python: a declarative programming
+MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now implemented in Python: a declarative programming
 language with only three constructs (record literals, definitions,
-and inheritance) and no functions or let-bindings.%
-\footnote{
-  The executable MIXINv2
-  implementation\selfcite{~\cite{mixin2025}}{~(supplementary
-  material)} contains every example in this paper.
-}
+and inheritance) and no functions or let-bindings.
 
 In developing real programs in MIXINv2, including boolean logic,
 natural number arithmetic, and a web application, several
@@ -670,8 +653,7 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   target; no properties are inherited.
   This is the most self-consistent semantics for the
   untyped calculus.
-  MIXINv2\selfcite{~\cite{mixin2025}}{~(supplementary
-  material)} is stricter: its resolver rejects
+  MIXINv2\anon[~(supplementary material)]{~\cite{mixin2025}} is stricter: its resolver rejects
   references whose frontier becomes empty, reporting a
   resolution error at compile time.
 }
@@ -1105,7 +1087,7 @@ and binary, in inheritance-calculus.%
 \footnote{
   The examples in this section are rendered in
   inheritance-calculus notation; the executable MIXINv2
-  sources\selfcite{~\cite{mixin2025}}{~(supplementary material)}
+  sources\anon[~(supplementary material)]{~\cite{mixin2025}}
   are available as supplementary material.
 }
 This section traces the unary Nat case in detail.
@@ -1413,8 +1395,7 @@ This is exactly the shape of a trie.%
   in a trie union, some $\mathrm{Successor}$ nodes along
   the list point to $\mathrm{Zero}$ (leaf nodes),
   so not every position in the list is occupied.
-  The\selfcite{ MIXINv2 source~\cite{mixin2025}}{
-  supplementary material} includes a binary natural number
+  The\anon[{} supplementary material]{{} MIXINv2 source~\cite{mixin2025}}{} includes a binary natural number
   (BinNat) arithmetic whose trie depth is logarithmic.
 }
 A scope that simultaneously inherits two Nat values is a trie union.
@@ -1487,7 +1468,7 @@ In developing real programs in MIXINv2, three phenomena manifested as off-label 
   nouns since the calculus has no methods.
 }
 They can be seen in the
-source code\selfcite{~\cite{mixin2025}}{~(supplementary material)}
+source code\anon[~(supplementary material)]{~\cite{mixin2025}}
 and the case study of Section~\ref{sec:case-study}.
 Below we explain why they arise from the three primitives.
 
@@ -1532,8 +1513,7 @@ Below we explain why they arise from the three primitives.
       the extensibility requirement of the Expression Problem but does
       not encounter its type-safety requirement.
       A typed language built on
-      inheritance-calculus\selfcite{~\cite{mixin2025}}{~(supplementary
-      material)} inherits the immunity to nonextensibility and need
+      inheritance-calculus\anon[~(supplementary material)]{~\cite{mixin2025}} inherits the immunity to nonextensibility and need
       only ensure that its type system does not introduce
       nonextensible constructs.
     }
@@ -1558,8 +1538,7 @@ Below we explain why they arise from the three primitives.
     Because the slot's color varies at assembly time without
     affecting the code that uses it, the same MIXINv2 file runs
     under both synchronous and asynchronous
-    runtimes\selfcite{~\cite{mixin2025}}{~(supplementary
-    material)}, an instance of function color
+    runtimes\anon[~(supplementary material)]{~\cite{mixin2025}}, an instance of function color
     blindness~\cite{nystrom2015-function-color}.
     The mechanism is dependency injection via inheritance:
     business logic declares empty slots, and the assembly
@@ -2323,7 +2302,7 @@ enable software extensibility through declarative inheritance. The
 symmetric, associative nature of inheritance established in Section~\ref{sec:mixin-trees} explains why such
 systems work: components can be inherited in any order without changing
 behavior.
-MIXINv2\selfcite{~\cite{mixin2025}}{~(supplementary material)}
+MIXINv2\anon[~(supplementary material)]{~\cite{mixin2025}}
 is itself a dependency injection framework:
 each scope declares its dependencies as named slots, and
 composition resolves them by name across scope boundaries,
@@ -2339,7 +2318,7 @@ inheritance is asymmetric, conflict resolution for scalar files
 is noncommutative, and there is no late-binding or dynamic
 dispatch across layers.
 We implemented inheritance-calculus directly as a union file
-system\selfcite{~\cite{ratarmount2025}}{~(included as supplementary material)},
+system\anon[~(included as supplementary material)]{~\cite{ratarmount2025}},
 obtaining late-binding semantics and dynamic dispatch for file lookups
 with no additional mechanism beyond the three primitives.
 In package managers, build systems, and OS distributions,
@@ -2352,8 +2331,7 @@ both the source program and the compilation target.
 \section{Future Work}
 \label{sec:future-work}
 
-\selfcite{MIXINv2~\cite{mixin2025}}{The supplementary
-implementation} is an executable implementation of inheritance-calculus
+\anon[The supplementary implementation]{MIXINv2~\cite{mixin2025}}{} is an executable implementation of inheritance-calculus
 that already goes beyond the untyped calculus presented here:
 it includes compile-time checking that all references resolve to
 valid paths in the mixin tree, and a foreign-function interface (FFI)
@@ -2504,6 +2482,18 @@ blindness~\cite{nystrom2015-function-color}.
 
 Inheritance is not a mechanism for organizing functions.
 Functions are syntactic sugar for inheritance.
+
+\section{Data Availability Statement}
+
+The executable implementation (MIXINv2) and all examples from
+this paper are openly available as open-source software under
+the MIT license\anon[{} (URL omitted for anonymous review)]{~\cite{mixin2025}}.
+The ratarmount patch discussed in
+Section~\ref{sec:practical-union-fs} is
+\anon[also openly available (URL omitted for anonymous review)]{available as an open pull
+request~\cite{ratarmount2025}}.
+\anon[Both are also included as supplementary material, together
+with a test suite that reproduces every example in this paper.]{}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
@@ -4506,7 +4496,7 @@ $\head(p)$ resolves the head reference of an application:
     & \text{if } \mathtt{node}(p) = \mathrm{App}(r_h,\, \_) \\[4pt]
     \varnothing
     & \text{if } \mathtt{node}(p) \in
-      \mathrm{Abstraction} \cup \mathrm{Body}
+    \mathrm{Abstraction} \cup \mathrm{Body}
   \end{cases}
 \end{equation}
 
@@ -4519,7 +4509,7 @@ $\argument(p)$ resolves the argument reference:
     & \text{if } \mathtt{node}(p) = \mathrm{App}(\_,\, r_a) \\[4pt]
     \varnothing
     & \text{if } \mathtt{node}(p) \in
-      \mathrm{Abstraction} \cup \mathrm{Body}
+    \mathrm{Abstraction} \cup \mathrm{Body}
   \end{cases}
 \end{equation}
 
@@ -4568,8 +4558,8 @@ and $s \in \resolveref(r_1,\, s')$ contributes:
 The full set of calling contexts:
 \begin{equation}\label{eq:lambda-contexts}
   \contexts(s) =
-    \letcontexts(s) \;\cup\;
-    \tailcontexts(s)
+  \letcontexts(s) \;\cup\;
+  \tailcontexts(s)
 \end{equation}
 The caller scope and caller argument are obtained by
 projecting $(s',\; \_)$ and $(\_,\; s_a)$ from
@@ -4756,8 +4746,7 @@ systematic encoding of Datalog into inheritance-calculus.
 The encoding uses no extensions to the calculus; it is
 expressible in the three primitives of Section~\ref{sec:syntax}.
 All examples in this appendix have executable MIXINv2
-implementations\selfcite{~\cite{mixin2025}}{~(supplementary
-material)}.
+implementations\anon[~(supplementary material)]{~\cite{mixin2025}}.
 There are three ingredients to keep separate.
 First, relations are stored as tries, so tuple lookup is indexed
 by prefixes rather than by scanning a flat set of facts.
@@ -4886,7 +4875,7 @@ the expression-problem property.
 As a running example, we use the executable two-hop encoding
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 from
-\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)}.
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}.
 Its top-level scopes are named after the stages of the
 encoding: \texttt{\_XAcceptance} iterates the first column,
 \texttt{\_YAcceptance} performs the shared-variable join,
@@ -4958,7 +4947,7 @@ skeleton:
 Consider the simplest join:
 $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$.
 The executable self-join instance of this pattern is
-\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
 whose scope names are shown in parentheses below.
 This is the right place to see the division of labour from the
 section introduction: visitor dispatch provides the control flow,
@@ -5088,7 +5077,7 @@ constants that actually match between both relations
 contribute to the output.
 For the concrete instance
 $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$, as encoded in
-\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
 Level~1 selects $a$, Level~2 matches $b$, Level~3 confirms
 that $\mathrm{edge}(a,b)$ ends in $\mathrm{Nil}$, Level~4
 iterates $\mathrm{edge}.\mathrm{TailMap}.b$ and selects $c$,
@@ -5135,7 +5124,7 @@ scope to only $b$'s data.
 $\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
 combines both mechanisms.
 The executable MIXINv2 encoding is
-\selfcite{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalConstant.mixin.yaml}~(supplementary material)}.
+\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}.
 The encoding iterates $\mathrm{edge}$ for $X$ (Level~1),
 then checks for constant $b$ in $X$'s row with a
 hand-crafted $\mathrm{VisitorMap}$ (Level~2), navigates
@@ -5179,7 +5168,7 @@ combines a variable join on $Y$, a constant match on $b$
 and direct navigation via $\mathrm{edge}.\mathrm{TailMap}.b$
 for $W$.
 The corresponding executable MIXINv2 file is
-\selfcite{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)}.
+\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}.
 
 \subsection{Multi-Variable Join}
 
@@ -5196,7 +5185,7 @@ joining on another column pair.
 $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 shares both $X$ and $Y$.
 The executable MIXINv2 encoding is
-\selfcite{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(supplementary material)}.
+\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}.
 The outer $\mathrm{Acceptance}$ joins $r$'s and $s$'s first
 columns (variable $X$) using combined
 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$.
@@ -5327,7 +5316,7 @@ $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y
 produces exactly $3$ pairs:
 $\{(a,c),\; (b,a),\; (c,b)\}$, matching standard Datalog.
 This is the behavior exhibited by
-\selfcite{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)}.
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}.
 When the $Y$-join matches constant $b$ (present in both
   $\mathrm{edge}$'s second column from $(a,b)$ and
 $\mathrm{edge}$'s first column), the $\mathrm{Visitor}$ for
@@ -5340,7 +5329,7 @@ $\mathrm{Replacement}$ operates on $\mathrm{TailMap}.d$
 (the per-constant sub-trie) rather than on the merged
 trie.
 The same point is visible in
-the repeated-visitor self-join regression example\selfcite{~\cite{mixin2025}}{~(supplementary material)},
+the repeated-visitor self-join regression example\anon[~(supplementary material)]{~\cite{mixin2025}},
 where repeated visitor dispatch prevents witnesses from
 different constants from being merged spuriously.
 Although $\bases$ (equation~\ref{eq:bases}) still computes
