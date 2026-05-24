@@ -1636,6 +1636,12 @@ def test_compute(snapshot: SnapshotAssertion):
 ```
 
 
+## Documentation Writing Style
+
+### No dashes in prose
+
+**Do NOT** use dashes as punctuation in documentation prose (Markdown and the English inside LaTeX). This covers the em dash (`—`), punctuation en dashes (`–`), and the double-hyphen (`--`). Use a comma, colon, parentheses, or split into two sentences instead. Hyphens in compound words (`Church-encoded`) and numeric ranges (`pages 10–20`) are fine. Use a dash only when the user explicitly asks; never introduce one autonomously.
+
 ## LaTeX Style (inheritance-calculus paper)
 
 ### Heading capitalization
