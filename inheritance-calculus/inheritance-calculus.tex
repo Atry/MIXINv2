@@ -838,6 +838,8 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   resolution error at compile time.
 }
 
+This completes the chain of definitions needed to compute $\properties(p)$.
+
 The frontier $S$ is a \emph{set} so that $\this$ can resolve to several
 targets at once, rather than rejecting the situation where more than one
 inheritance route reaches the definition site, which Scala~3 and the NixOS
@@ -847,8 +849,6 @@ Appendix~\ref{app:evaluation-trace} works through how such a multi-target
 resolution is computed.
 We defer the design-space rationale for this choice, alongside the other
 semantic alternatives, to Section~\ref{sec:semantic-variants}.
-
-This completes the chain of definitions needed to compute $\properties(p)$.
 
 \subsection{Recursive Evaluation}
 The six equations~(\ref{eq:properties})--(\ref{eq:this})
