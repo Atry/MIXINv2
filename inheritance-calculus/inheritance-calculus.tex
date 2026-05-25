@@ -51,12 +51,17 @@
 }
 
 \newcommand{\Path}{\mathtt{Path}}
+\newcommand{\Label}{\mathtt{Label}}
 \newcommand{\dom}{\mathtt{dom}}
 \newcommand{\properties}{\mathtt{properties}}
 \newcommand{\overrides}{\mathtt{overrides}}
 \newcommand{\supers}{\mathtt{supers}}
 \newcommand{\inherits}{\mathtt{inherits}}
 \newcommand{\defines}{\mathtt{defines}}
+\newcommand{\Node}{\mathtt{Node}}
+\newcommand{\defs}{\mathtt{defs}}
+\newcommand{\refs}{\mathtt{refs}}
+\newcommand{\ASTroot}{\mathtt{root}}
 \newcommand{\bases}{\mathtt{bases}}
 \newcommand{\resolve}{\mathtt{resolve}}
 \newcommand{\this}{\mathtt{this}}
@@ -639,15 +644,50 @@ at each path.
 
 \paragraph{AST}
 An expression $e$ from Section~\ref{sec:syntax} is parsed into an AST.
-The AST provides two primitive functions at each path $p$:
-\begin{itemize}
-  \item $\defines(p)$: the set of labels $\ell$ for which $p$
-    contains a definition $\ell \mapsto e$.
-  \item $\inherits(p)$: the set of reference pairs
-    $(n,\; \ell_{\mathrm{down},*})$,
-    where $n$ is the de~Bruijn index
-    and $\ell_{\mathrm{down},*}$ is the list of downward projections.
-\end{itemize}
+We give the AST in two equivalent styles: first an algebraic
+datatype that fixes its shape, then two derived projections that
+the semantic functions in the rest of this section consume.
+
+The \emph{algebraic-datatype style} treats the AST as an inductive
+type $\Node$ with a single record constructor:
+\begin{equation}\label{eq:ast-adt}
+  \Node \quad ::= \quad
+  \bigl\langle\;
+    \defs : \Label \rightharpoonup \Node,\;\;
+    \refs : \mathcal{P}(\mathbb{N} \times \Label^{*})
+  \;\bigr\rangle
+\end{equation}
+where $\Label \rightharpoonup \Node$ is a finite partial map from
+labels to child nodes (one entry per definition $\ell \mapsto e$),
+and $\refs$ is the set of inheritance sources, each a pair
+$(n,\; \ell_{\mathrm{down},*})$ of a de~Bruijn index $n$ and a list
+of downward projections $\ell_{\mathrm{down},*}$.
+The whole program is a single global variable $\ASTroot : \Node$,
+the AST of the top-level record.
+
+The \emph{coalgebraic style} replaces the global tree by two
+primitive functions indexed by a path $p$, observing one node at a
+time. They are derived from $\ASTroot$ by navigating along $p$:
+starting at $\ASTroot$ and following the $\defs$ map at each label
+of $p$ reaches the node at $p$, and the two projections read off its
+fields.
+\begin{align}
+  \defines(p) &= \operatorname{dom}\bigl(
+    \ASTroot.\defs(\ell_1).\defs(\ell_2)\cdots\defs(\ell_n).\defs
+  \bigr)
+  \label{eq:defines}\\
+  \inherits(p) &= \ASTroot.\defs(\ell_1).\defs(\ell_2)\cdots\defs(\ell_n).\refs
+  \label{eq:inherits}
+\end{align}
+for $p = (\ell_1, \ldots, \ell_n)$, so that $\defines(p)$ is the set
+of labels $\ell$ for which $p$ contains a definition $\ell \mapsto e$,
+and $\inherits(p)$ is the set of reference pairs
+$(n,\; \ell_{\mathrm{down},*})$ at $p$.
+At the root path $()$ the navigation is empty, giving
+$\defines(()) = \operatorname{dom}(\ASTroot.\defs)$ and
+$\inherits(()) = \ASTroot.\refs$.
+The semantic functions below use only $\defines$ and $\inherits$,
+so either style may be taken as primitive.
 
 During parsing, all three syntactic forms are resolved to
 de~Bruijn index pairs $(n,\; \ell_{\mathrm{down},*})$.
@@ -672,15 +712,10 @@ $\ell_{\mathrm{down},*} = (\ell_{\mathrm{down},1}, \ldots, \ell_{\mathrm{down},k
 All three forms produce the same representation; the semantic functions
 below operate only on de~Bruijn index pairs.
 
-Parsing populates $\defines$ and $\inherits$ from each
-element of a record.
-A definition $\ell \mapsto e$
-contributes $\ell$ to $\defines(p)$.
-A reference contributes $(n,\; \ell_{\mathrm{down},*})$ to $\inherits(p)$.
-Both $\defines$ and $\inherits$ are pure data; they are not functions
+The AST is pure data, fixed by the program text and not a function
 of runtime state.
-Given these two primitives, we can now answer the question
-posed at the beginning of this section:
+Given the two primitives $\defines$ and $\inherits$, we can now answer
+the question posed at the beginning of this section:
 whether a label $\ell$ is a property at a given position $p$.
 
 \paragraph{Properties}
