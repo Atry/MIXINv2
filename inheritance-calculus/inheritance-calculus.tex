@@ -489,9 +489,7 @@ and $k$ a nonnegative integer serving as the length of a downward projection.
 
 \begin{align*}
   e \quad ::= \quad & \{c_1,\; \ldots,\; c_m\}
-  && \text{(} m \ge 0 \text{)} \\
-  \mid\quad & c
-  && \text{(sugar for } \{c\} \text{)} \\[6pt]
+  && \text{(} m \ge 0 \text{)} \\[6pt]
   c \quad ::= \quad & \ell \mapsto e
   && \text{(definition)} \\
   \mid\quad & (\qualifiedthis{\ell_{\mathrm{up}}} \mid \dbi{n}).\;\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
@@ -1021,9 +1019,9 @@ in the translated mixin tree.
   \small
   \begin{tabular}{l@{\quad$\longrightarrow$\quad}l}
     $x$ \text{\scriptsize($\lambda$-bound, index $n'$)} &
-    $\dbi{n'}.\mathrm{argument}$ \\[4pt]
+    $\{\dbi{n'}.\mathrm{argument}\}$ \\[4pt]
     $x$ \text{\scriptsize(let-bound)} &
-    $x.\mathrm{result}$ \\[4pt]
+    $\{x.\mathrm{result}\}$ \\[4pt]
     $\lambda x.\, M$ &
     $\{\mathrm{argument} \mapsto \{\},\;
     \mathrm{result} \mapsto \mathcal{T}(M)\}$ \\[4pt]
@@ -1039,7 +1037,7 @@ in the translated mixin tree.
     $V_1\; V_2$ \text{\scriptsize(tail call)} &
     $\{\mathrm{tailCall} \mapsto \{\mathcal{T}(V_1),\;
       \mathrm{argument} \mapsto \mathcal{T}(V_2)\},$ \\
-    & $\;\mathrm{result} \mapsto \mathrm{tailCall}.\mathrm{result}\}$
+    & $\;\mathrm{result} \mapsto \{\mathrm{tailCall}.\mathrm{result}\}\}$
   \end{tabular}
 \end{center}
 \medskip
@@ -1181,8 +1179,8 @@ further iteration.
 For example,
 $\mathbf{let}\; x = x \;\mathbf{in}\; x$
 diverges under $\beta$-reduction, but its translation
-$\{x \mapsto \{\mathrm{result} \mapsto x.\mathrm{result}\},\;
-\mathrm{result} \mapsto x.\mathrm{result}\}$
+$\{x \mapsto \{\mathrm{result} \mapsto \{x.\mathrm{result}\}\},\;
+\mathrm{result} \mapsto \{x.\mathrm{result}\}\}$
 stabilizes under $\mathrm{lfp}(T_P)$:%
 \footnote{
   This simple cycle could also be resolved by a
@@ -2557,7 +2555,7 @@ encodings within the existing framework.
 Inheritance-calculus is \emph{open by default}: inheritance
 can freely merge any two mixins, and a value may simultaneously
 inhabit multiple data constructors (e.g.,
-$\{\mathrm{Zero},\; \mathrm{Odd},\; \mathrm{half} \mapsto \mathrm{Zero}\}$).
+$\{\mathrm{Zero},\; \mathrm{Odd},\; \mathrm{half} \mapsto \{\mathrm{Zero}\}\}$).
 This is the natural trie semantics of the
 calculus, and the basis for solving the Expression Problem
 in Section~\ref{sec:expression-problem}.
@@ -3055,7 +3053,7 @@ single-target resolution.
       \{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto
       \mathcal{T}(V_2)\},\;
       \mathrm{result} \mapsto
-  \mathrm{tailCall}.\mathrm{result}\}$}
+  \{\mathrm{tailCall}.\mathrm{result}\}\}$}
   Identical to the $\mathbf{let}$-binding case: the outer record
   has own properties $\{\mathrm{tailCall}, \mathrm{result}\}$
   with no inheritance sources at the outer level, and the
@@ -3063,8 +3061,9 @@ single-target resolution.
   source.
 
   \paragraph{Case $\mathcal{T}(x)
-  = \dbi{n}.\mathrm{argument}$}
-  This is a reference, not a record.
+  = \{\dbi{n}.\mathrm{argument}\}$}
+  This is a record with a single inheritance source and no
+  definitions.
   The $\this$ function walks up $n$ steps from the enclosing scope.
   By the compositionality argument above, every scope level
   encountered during the walk, including inherited subtrees
@@ -3124,7 +3123,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = x$}
   Then $\mathcal{T}(x) =
-  \dbi{n}.\mathrm{argument}$ (where $n$ is the de~Bruijn index
+  \{\dbi{n}.\mathrm{argument}\}$ (where $n$ is the de~Bruijn index
   of $x$), and
   $C \snoc \mathrm{result}$ contains this reference.
   In the inherited tree $C$, $\resolve$ and $\this$ resolve the reference by
@@ -3144,7 +3143,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
   $\lambda$-bound}
-  Then $\mathcal{T}(y) = \dbi{m}.\mathrm{argument}$ where $m$
+  Then $\mathcal{T}(y) = \{\dbi{m}.\mathrm{argument}\}$ where $m$
   is the de~Bruijn index of~$y$.
   This walks up to the scope that binds~$y$, which is different
   from the scope that binds~$x$, so the inheritance with
@@ -3154,7 +3153,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
   let-bound}
-  Then $\mathcal{T}(y) = y.\mathrm{result}$.
+  Then $\mathcal{T}(y) = \{y.\mathrm{result}\}$.
   This is a lexical reference to the sibling property~$y$ in the
   enclosing record, so the inherited tree~$C$ does not alter its
   resolution.
@@ -3254,7 +3253,7 @@ We make this precise.
       \{\mathcal{T}(\lambda x.\, M),\;
       \mathrm{argument} \mapsto \mathcal{T}(V)\},\;
       \mathrm{result} \mapsto
-    \mathrm{tailCall}.\mathrm{result}\}
+    \{\mathrm{tailCall}.\mathrm{result}\}\}
   \]
   The $\mathrm{result}$ label at the root is defined as
   $\mathrm{tailCall}.\mathrm{result}$, so
@@ -3828,10 +3827,10 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
       ($x$ with de~Bruijn index $n'$).
       This is a nullary construct and therefore has no subexpressions.
       The syntactic abstraction is the constant
-      $A = \dbi{n'}.\mathrm{argument}$.
+      $A = \{\dbi{n'}.\mathrm{argument}\}$.
     \item \emph{Let-bound variable} ($x$).
       Nullary.
-      $A = x.\mathrm{result}$.
+      $A = \{x.\mathrm{result}\}$.
     \item \emph{$\lambda$-abstraction}, denoted $\lambda x.\, M$.
       Unary in the body~$M$.
       $A(\cdot_1) = \{\mathrm{argument} \mapsto \{\},\;
@@ -3857,7 +3856,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
         \{\cdot_1,\;
         \mathrm{argument} \mapsto \cdot_2\},\;
         \mathrm{result} \mapsto
-      \mathrm{tailCall}.\mathrm{result}\}$.
+      \{\mathrm{tailCall}.\mathrm{result}\}\}$.
   \end{enumerate}
   In each case the syntactic abstraction~$A_F$ is a fixed
   inheritance-calculus context whose holes are filled
@@ -3977,15 +3976,15 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
       & \mathrm{eqFalse} \mapsto
       \{\mathrm{eq}.\mathrm{result},\;
         \mathrm{argument} \mapsto
-      f_1.\mathrm{result}\}, \\
+      \{f_1.\mathrm{result}\}\}, \\
       & f_2 \mapsto \{\mathrm{result} \mapsto
       \mathcal{T}(\mathrm{false})\}, \\
       & \mathrm{tailCall} \mapsto
       \{\mathrm{eqFalse}.\mathrm{result},\;
         \mathrm{argument} \mapsto
-      f_2.\mathrm{result}\}, \\
+      \{f_2.\mathrm{result}\}\}, \\
       & \mathrm{result} \mapsto
-      \mathrm{tailCall}.\mathrm{result}
+      \{\mathrm{tailCall}.\mathrm{result}\}
     \;\}
   \end{align*}
   and symmetrically for $N$ with $\mathrm{true}$ in place
@@ -4023,7 +4022,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
           \mathrm{result} \mapsto \{
             \mathrm{repr} \mapsto \{
               \mathrm{firstOperand}
-              \mapsto \dbi{2}.\mathrm{argument}
+              \mapsto \{\dbi{2}.\mathrm{argument}\}
     \}\}\}\}\} \\
     & \mathbf{in}\;
     \mathrm{extended}.\mathrm{tailCall}.\mathrm{repr}.\mathrm{firstOperand}
@@ -4062,7 +4061,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   at the $\lambda b$ scope level propagates through
   the inheritance chain to $\mathrm{tailCall}$.
   In $C[M]$: the $\mathrm{eqFalse}$ binding supplies
-  $\mathrm{argument} \mapsto f_1.\mathrm{result}$
+  $\mathrm{argument} \mapsto \{f_1.\mathrm{result}\}$
   (that is, $\mathrm{false}$) to the $\lambda a$ scope, so
   $\mathrm{firstOperand}$ evaluates to
   $\mathrm{false} = \lambda t.\,\lambda f.\, f$.
@@ -4219,7 +4218,7 @@ The equivalent inheritance-calculus definition is:
 \begin{align*}
   \{ \quad \mathrm{MyOuter} &\mapsto \{
       \mathrm{MyInner} \mapsto \{
-    \mathrm{outer} \mapsto \qualifiedthis{\mathrm{MyOuter}}\}\}, \\
+    \mathrm{outer} \mapsto \{\qualifiedthis{\mathrm{MyOuter}}\}\}\}, \\
     \mathrm{Object1} &\mapsto \{\mathrm{MyOuter}\}, \\
     \mathrm{Object2} &\mapsto \{\mathrm{MyOuter}\}, \\
     \mathrm{HasMultipleOuters} &\mapsto \{
