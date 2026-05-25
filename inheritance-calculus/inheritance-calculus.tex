@@ -29,6 +29,17 @@
   columns=flexible,
 }
 
+\lstdefinestyle{python}{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  showstringspaces=false,
+  columns=flexible,
+  commentstyle=\upshape\color[gray]{0.5},
+  keywordstyle=\upshape,
+  stringstyle=\upshape,
+}
+
 \lstdefinestyle{nix}{
   language=,
   basicstyle=\ttfamily\small,
@@ -209,35 +220,67 @@ mechanism exhibits.
 The $\lambda$-calculus serves as the foundational computational model for
 functional programming. No analogous calculus exists for declarative
 programming. This gap matters because the two paradigms differ in
-fundamental ways.
-The configuration languages above all compose by extending
-existing structure from outside; their values are immutable;
-and they have no first-class functions.
-Note that a function body is closed: its internal structure
-cannot be extended without modifying the definition---the
-opposite of composition by extending from outside.
-At first glance, Turing completeness appears incompatible
-with these constraints. The three classical models of computation each
-violate at least one of them:
+fundamental ways, which raises a question:
+
+\begin{quote}
+  Can configuration alone be practical general-purpose programming?
+\end{quote}
+
+\noindent
+To make the question precise, we operationalize it with four
+\emph{opinionated} proxies, grouped under its two notions.
+
+\begin{itemize}
+  \item Immutable and first-order is our proxy for
+    \emph{configuration}. A configuration is read, not a function that
+    reads an argument. The configuration languages above all compose by
+    extending existing structure from outside, their values are immutable,
+    and they have no first-class functions; a function body, by contrast,
+    is closed, and its internal structure cannot be extended without
+    modifying the definition.
+  \item Turing-completeness together with extensibility is our proxy for
+    \emph{practical general-purpose} programming. Turing-completeness alone
+    only means a language can in principle compute anything; it does not
+    make the language practical. Software cost is dominated by
+    growth~\cite{brooks1987-no-silver-bullet}, so a practical language must
+    also scale by adding code rather than rewriting it; this is the
+    Expression Problem~\cite{wadler1998-expression-problem}. We therefore
+    require both: a Turing-complete language whose programs are extensible.
+    This is the sense in which Prolog, though Turing-complete, is not a
+    practical general-purpose language: it extends only by adding disjuncts
+    to existing predicates.
+\end{itemize}
+
+\noindent
+Each classical model satisfies some of these proxies but fails at least
+one:
 
 \begin{table}[h]
   \centering
-  \begin{tabular}{lccc}
-    \textbf{Model} & \textbf{Turing complete} & \textbf{Immutable} & \textbf{No $\lambda$} \\
+  \small
+  \begin{tabular}{lcccl}
+    \textbf{Model} & \textbf{Immutable} & \textbf{First-order} & \textbf{Turing complete} & \textbf{Extensibility} \\
     \hline
-    Turing Machine     & $\checkmark$ & $\times$     & $\checkmark$ \\
-    $\lambda$-calculus & $\checkmark$ & $\checkmark$ & $\times$ \\
-    RAM Machine        & $\checkmark$ & $\times$     & $\checkmark$ \\
+    Turing Machine        & $\times$     & $\checkmark$ & $\checkmark$ & $\times$ \\
+    $\lambda$-calculus    & $\checkmark$ & $\times$     & $\checkmark$ & opt-in \\
+    RAM Machine           & $\times$     & $\checkmark$ & $\checkmark$ & $\times$ \\
+    Prolog / Horn clauses & $\checkmark$ & $\checkmark$ & $\checkmark$ & disjunct-only \\
   \end{tabular}
-  \caption{Classical computational models and the declarative gap.}
+  \caption{The question operationalized as four proxies: immutable and
+    first-order (configuration) versus Turing-complete and extensible
+    (practical general-purpose). No classical model satisfies all four.}
   \label{tab:computational-models}
 \end{table}
 
 \noindent
-The Turing Machine and RAM Machine require mutable state;
-the $\lambda$-calculus requires first-class functions.
-No known computational model is simultaneously Turing complete,
-immutable, and function-free.
+The Turing Machine and RAM Machine require mutable state and have no native
+extension mechanism;
+the $\lambda$-calculus is first-order-free and its extensibility is opt-in,
+since a closed function body cannot be extended without rewriting it;
+Prolog meets the other three proxies but is extensible only by adding
+disjuncts to existing predicates, not by composing new observations onto
+existing values.
+No known computational model satisfies all four proxies simultaneously.
 
 The Nix ecosystem already suggests that such a model may exist:
 its inheritance-based composition over recursive records, without
@@ -258,13 +301,163 @@ MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now impl
 language with only three constructs (record literals, definitions,
 and inheritance) and no functions or let-bindings.
 
+
+\begin{figure*}
+  \centering
+  \begin{minipage}[t]{0.34\textwidth}
+    \textbf{Python}\par
+\begin{lstlisting}[style=python]
+# complex_module.py
+from builtins import *
+from math import *
+from operator import *
+from dataclasses import *
+@dataclass(kw_only=True)
+class Complex:
+    re: float
+    im: float
+    def plus(self, *,
+             other: "Complex"):
+        sumRe = add(
+            self.re,
+            other.re)
+        sumIm = add(
+            self.im,
+            other.im)
+        return Complex(
+            re=sumRe,
+            im=sumIm)
+a = Complex(
+    re=pi,
+    im=e)
+b = Complex(
+    re=tau,
+    im=pi)
+total = a.plus(
+    other=b)
+\end{lstlisting}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.65\textwidth}
+    \textbf{Inheritance-calculus}\par\smallskip
+    {\small\(
+    \begin{array}{@{}l@{\hspace{2.5em}}l@{}}
+      \mathrm{ComplexModule} \mapsto \{ &
+      \text{\scriptsize module} \\
+      \quad \mathrm{BuiltIns}, &
+      \text{\scriptsize import} \\
+      \quad \mathrm{Math}, &
+      \text{\scriptsize import} \\
+      \quad \mathrm{Operator}, &
+      \text{\scriptsize import} \\
+      \quad \mathrm{Complex} \mapsto \{ &
+      \text{\scriptsize class} \\
+      \quad\quad \mathrm{re} \mapsto \{ &
+      \text{\scriptsize field} \\
+      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
+      \text{\scriptsize imported type} \\
+      \quad\quad \mathrm{im} \mapsto \{ &
+      \text{\scriptsize field} \\
+      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
+      \text{\scriptsize imported type} \\
+      \quad\quad \mathrm{Plus} \mapsto \{ &
+      \text{\scriptsize method} \\
+      \quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{Complex} \}, &
+      \text{\scriptsize parameter} \\
+      \quad\quad\quad \mathrm{\_sumReCall} \mapsto \{ &
+      \text{\scriptsize function application} \\
+      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
+      \text{\scriptsize imported function} \\
+      \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad\quad\quad \mathrm{\_sumRe} \mapsto \{ \mathrm{\_sumReCall}.\mathrm{result} \}, &
+      \text{\scriptsize local} \\
+      \quad\quad\quad \mathrm{\_sumImCall} \mapsto \{ &
+      \text{\scriptsize function application} \\
+      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
+      \text{\scriptsize imported function} \\
+      \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad\quad\quad \mathrm{\_sumIm} \mapsto \{ \mathrm{\_sumImCall}.\mathrm{result} \}, &
+      \text{\scriptsize local} \\
+      \quad\quad\quad \mathrm{result} \mapsto \{ &
+      \text{\scriptsize return} \\
+      \quad\quad\quad\quad \mathrm{Complex}, &
+      \text{\scriptsize new instance} \\
+      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \mathrm{\_sumRe} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \mathrm{\_sumIm} \} \}\}\}, &
+      \text{\scriptsize keyword argument} \\
+      \quad \mathrm{a} \mapsto \{ \mathrm{Complex}, &
+      \text{\scriptsize new instance} \\
+      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \}, &
+      \text{\scriptsize imported constant} \\
+      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \} \}, &
+      \text{\scriptsize imported constant} \\
+      \quad \mathrm{b} \mapsto \{ \mathrm{Complex}, &
+      \text{\scriptsize new instance} \\
+      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \}, &
+      \text{\scriptsize imported constant} \\
+      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \} \}, &
+      \text{\scriptsize imported constant} \\
+      \quad \mathrm{\_TotalCall} \mapsto \{ &
+      \text{\scriptsize method application} \\
+      \quad\quad\quad\quad \mathrm{a}.\mathrm{Plus}, &
+      \text{\scriptsize method reference} \\
+      \quad\quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{b} \} \}, &
+      \text{\scriptsize keyword argument} \\
+      \quad \mathrm{total} \mapsto \{ \mathrm{\_TotalCall}.\mathrm{result} \} \} &
+      \text{\scriptsize module-level variable} \\
+    \end{array}
+    \)}
+  \end{minipage}
+  \caption{A first look at inheritance-calculus (right), beside Python
+    (left): the same complex-number class with an addition method.
+    Python uses distinct language features for module, import, class,
+    field, method, local, and object; inheritance-calculus uses one
+    record of definitions composed by inheritance for all of them.
+    Both add via Python's \texttt{operator.add} rather than a native
+    operator, and both draw their constants from the host
+    \texttt{math} module rather than writing literals: inheritance-calculus
+    has no literals and borrows scalars and primitive operations from the
+    host through a foreign-function interface (Section~\ref{sec:syntax}),
+    so the figure computes $(\pi+\tau) + (e+\pi)i$ on both sides.}
+  \label{fig:cheatsheet}
+\end{figure*}
+
 In developing real programs in MIXINv2, including boolean logic,
 natural number arithmetic, and a web application, several
 phenomena manifested as off-label use of the adopted
 design patterns.
-Section~\ref{sec:mixin-trees} shows how the three constructs
-give rise to a single abstraction that simultaneously serves as
-module, class, object, method, field, and local binding.
+Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
+beside Python: the same complex-number class with an addition method,
+written both ways.
+The roles a working programmer reaches for, module,
+import, class, field, method, local, and object, are the everyday
+vocabulary of a general-purpose language, and the figure shows
+inheritance-calculus expressing all of them.
+Where Python spends a distinct language feature on
+each, inheritance-calculus spends one: every role is the same record of
+definitions composed by inheritance.
+This is the sense in which
+configuration alone reaches general-purpose programming, not by adding
+functions back, but because the single immutable, first-order construct
+already plays every part.
+Where the NixOS module system unifies user
+environments, macOS, and Kubernetes under one merge, inheritance-calculus
+unifies the language's own constructs under the same one.
+The remaining
+axes of Table~\ref{tab:computational-models}, Turing-completeness and
+extensibility, are discharged in Sections~\ref{sec:forward-translation}
+and~\ref{sec:case-study}; here we only make the claim concrete.
+
+
+Section~\ref{sec:mixin-trees} expands this first look into the full
+semantics.
 The linearization problem of mixin-based
 systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
 did not arise: inheritance is inherently commutative, idempotent,
@@ -408,7 +601,8 @@ Inheritance-calculus has a single abstraction, the
   Section~\ref{sec:related-work}.
 }
 which can simultaneously serve as module, class, object, method, field, and
-local binding, because there are no opaque methods: every value is
+local binding, as Figure~\ref{fig:cheatsheet} illustrated, because there
+are no opaque methods: every value is
 a transparent record, and inheritance always performs a deep
 merge of subtrees.
 We call the resulting structure a \emph{mixin tree}.
