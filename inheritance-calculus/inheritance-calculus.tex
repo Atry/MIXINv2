@@ -1019,9 +1019,9 @@ in the translated mixin tree.
   \small
   \begin{tabular}{l@{\quad$\longrightarrow$\quad}l}
     $x$ \text{\scriptsize($\lambda$-bound, index $n'$)} &
-    $\{\dbi{n'}.\mathrm{argument}\}$ \\[4pt]
+    $\dbi{n'}.\mathrm{argument}$ \\[4pt]
     $x$ \text{\scriptsize(let-bound)} &
-    $\{x.\mathrm{result}\}$ \\[4pt]
+    $x.\mathrm{result}$ \\[4pt]
     $\lambda x.\, M$ &
     $\{\mathrm{argument} \mapsto \{\},\;
     \mathrm{result} \mapsto \mathcal{T}(M)\}$ \\[4pt]
@@ -3061,9 +3061,8 @@ single-target resolution.
   source.
 
   \paragraph{Case $\mathcal{T}(x)
-  = \{\dbi{n}.\mathrm{argument}\}$}
-  This is a record with a single inheritance source and no
-  definitions.
+  = \dbi{n}.\mathrm{argument}$}
+  This is a reference, not a record.
   The $\this$ function walks up $n$ steps from the enclosing scope.
   By the compositionality argument above, every scope level
   encountered during the walk, including inherited subtrees
@@ -3123,7 +3122,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = x$}
   Then $\mathcal{T}(x) =
-  \{\dbi{n}.\mathrm{argument}\}$ (where $n$ is the de~Bruijn index
+  \dbi{n}.\mathrm{argument}$ (where $n$ is the de~Bruijn index
   of $x$), and
   $C \snoc \mathrm{result}$ contains this reference.
   In the inherited tree $C$, $\resolve$ and $\this$ resolve the reference by
@@ -3143,7 +3142,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
   $\lambda$-bound}
-  Then $\mathcal{T}(y) = \{\dbi{m}.\mathrm{argument}\}$ where $m$
+  Then $\mathcal{T}(y) = \dbi{m}.\mathrm{argument}$ where $m$
   is the de~Bruijn index of~$y$.
   This walks up to the scope that binds~$y$, which is different
   from the scope that binds~$x$, so the inheritance with
@@ -3153,7 +3152,7 @@ substitution.  We make this precise.
 
   \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
   let-bound}
-  Then $\mathcal{T}(y) = \{y.\mathrm{result}\}$.
+  Then $\mathcal{T}(y) = y.\mathrm{result}$.
   This is a lexical reference to the sibling property~$y$ in the
   enclosing record, so the inherited tree~$C$ does not alter its
   resolution.
@@ -3827,10 +3826,10 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
       ($x$ with de~Bruijn index $n'$).
       This is a nullary construct and therefore has no subexpressions.
       The syntactic abstraction is the constant
-      $A = \{\dbi{n'}.\mathrm{argument}\}$.
+      $A = \dbi{n'}.\mathrm{argument}$.
     \item \emph{Let-bound variable} ($x$).
       Nullary.
-      $A = \{x.\mathrm{result}\}$.
+      $A = x.\mathrm{result}$.
     \item \emph{$\lambda$-abstraction}, denoted $\lambda x.\, M$.
       Unary in the body~$M$.
       $A(\cdot_1) = \{\mathrm{argument} \mapsto \{\},\;
@@ -4249,6 +4248,9 @@ $\mathrm{HasMultipleOuters}.\mathrm{outer}$ yields the
 $\properties$ of $\mathrm{MyOuter}$ regardless of which
 route is taken.
 Because attribute resolution aggregates results via set union (which is an intrinsically idempotent operation), identical property definitions from the two routes merge without conflict. Thus, the calculus eliminates the need for any artificial route-priority or linearization rules.
+Appendix~\ref{app:evaluation-trace} gives the complete step-by-step
+evaluation trace of this query, generated mechanically from the
+implementation.
 
 \subsection*{NixOS Module System}
 
@@ -5518,6 +5520,102 @@ cross-joins at the primitive level, the encoding routes
 computation through per-constant $\mathrm{TailMap}$ entries
 before any merging occurs, achieving the same effect as
 standard Datalog's tuple-level evaluation.
+
+\section{Evaluation Trace of Multi-Target \texorpdfstring{$\this$}{this} Resolution}
+\label{app:evaluation-trace}
+
+This appendix gives a step-by-step evaluation trace of the program of
+Appendix~\ref{app:scala-multi-target}, computing
+$\properties((\text{``HasMultipleOuters''},\, \text{``outer''}))$ by the six
+functions of Section~\ref{sec:definitions}
+(equations~\ref{eq:properties} to~\ref{eq:this}).
+Every call to $\overrides$, $\bases$, $\resolve$, $\this$, and $\supers$
+is shown with its arguments and returned set.
+The trace lives in the metalanguage: every argument and result is a
+\emph{path}, that is, a sequence of labels
+$(\ell_1, \ldots, \ell_n)$ identifying a position in the tree
+(Section~\ref{sec:definitions}), not an inheritance-calculus expression.
+To keep labels distinct from the metalanguage variables of
+Section~\ref{sec:definitions} (the italic $p$, $\ell$, $n$, $S$), we
+quote each concrete label, so a path is written as a parenthesized,
+comma-separated sequence of quoted labels.
+Thus $(\text{``HasMultipleOuters''}, \text{``outer''})$ is the path that
+the inheritance-calculus projection
+$\mathrm{HasMultipleOuters}.\mathrm{outer}$ identifies, and the root path
+is the empty sequence $()$.
+
+\paragraph{Program}
+\begin{align*}
+  \{ \quad \mathrm{MyOuter} &\mapsto \{
+      \mathrm{MyInner} \mapsto \{
+    \mathrm{outer} \mapsto \{\qualifiedthis{\mathrm{MyOuter}}\}\}\}, \\
+    \mathrm{Object1} &\mapsto \{\mathrm{MyOuter}\}, \\
+    \mathrm{Object2} &\mapsto \{\mathrm{MyOuter}\}, \\
+    \mathrm{HasMultipleOuters} &\mapsto \{
+      \mathrm{Object1}.\mathrm{MyInner},\;
+    \mathrm{Object2}.\mathrm{MyInner}\}
+  \quad \}
+\end{align*}
+
+\paragraph{AST primitives}
+Parsing populates $\defines$ and $\inherits$
+(Section~\ref{sec:definitions}):
+\begin{align*}
+  \defines(()) &= \{
+    \text{``MyOuter''},\;
+    \text{``Object1''},\;
+    \text{``Object2''},\;
+  \text{``HasMultipleOuters''}\}, \\
+  \defines((\text{``MyOuter''})) &= \{\text{``MyInner''}\}, \\
+  \defines((\text{``MyOuter''}, \text{``MyInner''})) &= \{\text{``outer''}\}, \\
+  \inherits((\text{``MyOuter''}, \text{``MyInner''}, \text{``outer''})) &=
+    \{(1,\, ())\}, \\
+  \inherits((\text{``Object1''})) = \inherits((\text{``Object2''})) &=
+    \{(0,\, (\text{``MyOuter''}))\}, \\
+  \inherits((\text{``HasMultipleOuters''})) &=
+    \{(0,\, (\text{``Object1''}, \text{``MyInner''})),\;
+      (0,\, (\text{``Object2''}, \text{``MyInner''}))\}.
+\end{align*}
+All other $\defines$ and $\inherits$ are empty.
+Each $\inherits$ entry is a reference pair $(n,\, \ell_{\mathrm{down},*})$,
+where $n$ is the number of upward steps and $\ell_{\mathrm{down},*}$ the
+downward projection (Section~\ref{sec:definitions}).
+
+\paragraph{Trace}
+We present the trace as a numbered list of semantic-function calls in
+dependency order: a call appears after the calls it depends on, and each
+item states, in English, which earlier items it uses, how it computes, and
+what it yields. Each distinct call is listed once, so a single item may be
+used by several later items, the reuse that an implementation could realize
+by tabling~\cite{tamaki1986-tabled-resolution}.
+The arguments and results are metalanguage values: a label is a quoted
+string such as $\text{``outer''}$, and a path is a tuple of labels such as
+$(\text{``HasMultipleOuters''}, \text{``outer''})$, with the root path
+written $()$.
+The query is
+$\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
+
+\input{generated-evaluation-trace.tex}
+
+\begin{remark}
+  The crux is the $\this$ step (item~\ref{trace:this-Has-MyOuter-MyInner-1}).
+  The inheritance reference at
+  $(\text{``MyOuter''}, \text{``MyInner''}, \text{``outer''})$ takes one step
+  upward, so $\this$ moves one step up from
+  $(\text{``MyOuter''}, \text{``MyInner''})$ and yields the frontier
+  $\{(\text{``Object1''}), (\text{``Object2''})\}$, the two inheritance
+  sites that incorporated $\text{``MyInner''}$. This is precisely the
+  multi-target situation that Scala~3 and the NixOS module system reject
+  (Appendix~\ref{app:scala-multi-target}): there $\this$ would have to
+  select a single site. Reaching the properties of $(\text{``MyOuter''})$
+  then happens because both $(\text{``Object1''})$ and
+  $(\text{``Object2''})$ have $(\text{``MyOuter''})$ as a base, so the final
+  $\supers$ contains $(\text{``MyOuter''})$ through both routes; since
+  attribute resolution aggregates by set union, the two routes collapse to
+  the single answer
+  $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))
+  = \{\text{``MyInner''}\} = \properties((\text{``MyOuter''}))$.
+\end{remark}
 
 \begin{acks}
   Claude Code, GitHub Copilot, Gemini Code Assist, and Codex were utilized to generate sections of this Work,

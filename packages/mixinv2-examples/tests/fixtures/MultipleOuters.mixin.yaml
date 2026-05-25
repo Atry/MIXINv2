@@ -1,0 +1,24 @@
+# TEMPORARY scaffolding for generating the evaluation-trace appendix.
+# Equivalent to the Scala multi-target example (paper Appendix
+# app:scala-multi-target):
+#
+#   class MyOuter:
+#     trait MyInner:
+#       def outer = MyOuter.this
+#   object Object1 extends MyOuter
+#   object Object2 extends MyOuter
+#   object HasMultipleOuters extends Object1.MyInner with Object2.MyInner
+#
+# Query: HasMultipleOuters.outer should resolve through both Object1 and
+# Object2 to the properties of MyOuter (multi-target qualified-this).
+MyOuter:
+  MyInner:
+    outer:
+      - [MyOuter, ~]
+Object1:
+  - [MyOuter]
+Object2:
+  - [MyOuter]
+HasMultipleOuters:
+  - [Object1, MyInner]
+  - [Object2, MyInner]

@@ -1,0 +1,16 @@
+# generated-evaluation-trace.tex is mechanically generated, not hand-written.
+# It contains the numbered evaluation trace \input by the appendix
+# "Evaluation Trace of Multi-Target this Resolution" in inheritance-calculus.tex.
+#
+# To regenerate it, run (from the repository root):
+#
+#   direnv exec . pytest \
+#     packages/mixinv2-examples/tests/test_evaluation_trace.py -p no:randomly
+#
+# The generator instruments the MIXINv2 semantic functions via the runtime
+# monkey patch in packages/mixinv2-examples/tests/_trace_patch.py (the library
+# source mixinv2/_core.py is not modified), evaluates the example program in
+# packages/mixinv2-examples/tests/fixtures/MultipleOuters.mixin.yaml, captures
+# the calls to overrides/bases/resolve/this/supers, and renders them as the
+# numbered list written to this file.
+generated-evaluation-trace.tex linguist-generated
