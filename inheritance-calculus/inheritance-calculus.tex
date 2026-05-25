@@ -420,18 +420,29 @@ total = a.plus(
     Python uses distinct language features for module, import, class,
     field, method, local, and object; inheritance-calculus uses one
     record of definitions composed by inheritance for all of them.
-    Both add via Python's \texttt{operator.add} rather than a native
-    operator, and both draw their constants from the host
-    \texttt{math} module rather than writing literals: inheritance-calculus
-    has no literals and borrows scalars and primitive operations from the
-    host through a foreign-function interface (Section~\ref{sec:syntax}),
-    so the figure computes $(\pi+\tau) + (e+\pi)i$ on both sides.}
+    Both sides, typing their components with \texttt{builtins.float},
+    drawing their constants from the \texttt{math} module, and adding with
+    \texttt{operator.add}, compute the complex
+    number $(\pi+\tau) + (e+\pi)i$.
+    Python brings these names in with \texttt{import}; for
+    inheritance-calculus the same \texttt{import} is just inheritance, so
+    \texttt{ComplexModule} inherits $\mathrm{BuiltIns}$, $\mathrm{Math}$, and
+    $\mathrm{Operator}$, and reaches each imported definition through
+    qualified $\this$, as in
+    $\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float}$ and
+    $\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}$.
+    The inheritance-calculus side is slightly longer because it does not
+    nest expressions: it is in A-normal
+    form~(ANF; Section~\ref{sec:translation}), so each
+    \texttt{operator.add} application is given a name (the
+    $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals) rather than
+    written inline.}
   \label{fig:cheatsheet}
 \end{figure*}
 
 
 
-In developing real programs in MIXINv2, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal  computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
+In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
 beside Python: the same complex-number class with an addition method,
 written both ways.
 Section~\ref{sec:mixin-trees} expands this first look into the full
