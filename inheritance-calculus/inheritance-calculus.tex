@@ -713,7 +713,15 @@ All three forms produce the same representation; the semantic functions
 below operate only on de~Bruijn index pairs.
 
 The AST is pure data, fixed by the program text and not a function
-of runtime state.
+of runtime state.%
+\footnote{
+  An implementation may parse the AST non-strictly: $\ASTroot$ need
+  not be materialized in full up front. Each $\Node$ keeps its source
+  text unparsed until a query observes it, so that reading
+  $\defines(p)$ or $\inherits(p)$ forces the subtree along $p$ on
+  demand. This affects only when parsing happens, not its result,
+  since the AST is referentially transparent.
+}
 Given the two primitives $\defines$ and $\inherits$, we can now answer
 the question posed at the beginning of this section:
 whether a label $\ell$ is a property at a given position $p$.
