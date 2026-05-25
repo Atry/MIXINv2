@@ -838,6 +838,14 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   resolution error at compile time.
 }
 
+The frontier $S$ is a \emph{set} so that $\this$ can resolve to several
+targets at once, rather than rejecting the situation where more than one
+inheritance route reaches the definition site, which Scala~3 and the NixOS
+module system both reject
+(Appendix~\ref{app:scala-multi-target});
+Appendix~\ref{app:evaluation-trace} works through how such a multi-target
+resolution is computed.
+
 This completes the chain of definitions needed to compute $\properties(p)$.
 
 \subsection{Recursive Evaluation}
@@ -4248,9 +4256,6 @@ $\mathrm{HasMultipleOuters}.\mathrm{outer}$ yields the
 $\properties$ of $\mathrm{MyOuter}$ regardless of which
 route is taken.
 Because attribute resolution aggregates results via set union (which is an intrinsically idempotent operation), identical property definitions from the two routes merge without conflict. Thus, the calculus eliminates the need for any artificial route-priority or linearization rules.
-Appendix~\ref{app:evaluation-trace} gives the complete step-by-step
-evaluation trace of this query, generated mechanically from the
-implementation.
 
 \subsection*{NixOS Module System}
 
