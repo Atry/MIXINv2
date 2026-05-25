@@ -429,33 +429,11 @@ total = a.plus(
   \label{fig:cheatsheet}
 \end{figure*}
 
-In developing real programs in MIXINv2, including boolean logic,
-natural number arithmetic, and a web application, several
-phenomena manifested as off-label use of the adopted
-design patterns.
-Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
+
+
+In developing real programs in MIXINv2, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal  computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
 beside Python: the same complex-number class with an addition method,
 written both ways.
-The roles a working programmer reaches for, module,
-import, class, field, method, local, and object, are the everyday
-vocabulary of a general-purpose language, and the figure shows
-inheritance-calculus expressing all of them.
-Where Python spends a distinct language feature on
-each, inheritance-calculus spends one: every role is the same record of
-definitions composed by inheritance.
-This is the sense in which
-configuration alone reaches general-purpose programming, not by adding
-functions back, but because the single immutable, first-order construct
-already plays every part.
-Where the NixOS module system unifies user
-environments, macOS, and Kubernetes under one merge, inheritance-calculus
-unifies the language's own constructs under the same one.
-The remaining
-axes of Table~\ref{tab:computational-models}, Turing-completeness and
-extensibility, are discharged in Sections~\ref{sec:forward-translation}
-and~\ref{sec:case-study}; here we only make the claim concrete.
-
-
 Section~\ref{sec:mixin-trees} expands this first look into the full
 semantics.
 The linearization problem of mixin-based
@@ -476,8 +454,6 @@ Section~\ref{sec:emergent-phenomena} discusses these and further
 emergent phenomena, including function color
 blindness~\cite{nystrom2015-function-color}.
 
-This paper distills these observations into \textbf{inheritance-calculus},
-a minimal computational model for declarative programming.
 Section~\ref{sec:mixin-trees} defines the semantics via six
 mutually recursive first-order functions on paths and sets of paths,
 with no function spaces, closures, or higher-order constructs;
