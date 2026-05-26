@@ -236,7 +236,21 @@ To make the question precise, we operationalize it with four
 \emph{opinionated} proxies, grouped under its two notions.
 
 \begin{itemize}
-  \item Immutable and first-order is our proxy for
+  \item Immutable and first-order%
+    \footnote{
+      In this paper, we use \emph{first-order} in three senses
+      simultaneously:
+      the semantic domain contains only data, with no function
+      spaces, closures, or
+      strategies~\cite{vanemden1976-predicate-logic-semantics};
+      the defining equations are first-order functions whose
+      inputs and outputs are data, never
+      functions~\cite{reynolds1972-definitional-interpreters};
+      and the semantics is given by first-order inductive
+      definitions~\cite{aczel1977-inductive-definitions} whose
+      quantifiers range over data, never over functions or predicates.
+    }
+    is our proxy for
     \emph{configuration}. A configuration is read, not a function that
     reads an argument. The configuration languages above all compose by
     extending existing structure from outside, their values are immutable,
@@ -601,21 +615,7 @@ inheritance-calculus program, one queries whether a
 label $\ell$ is a property at a given position $p$.
 
 This section defines the semantics via six mutually recursive
-first-order%
-\footnote{
-  First-order in three senses simultaneously:
-  the semantic domain contains only paths (finite
-  sequences of labels) and sets of paths, with no function
-  spaces, closures, or strategies~\cite{vanemden1976-predicate-logic-semantics};
-  the six equations are first-order functions whose
-  inputs and outputs are paths and sets of paths,
-  never functions~\cite{reynolds1972-definitional-interpreters};
-  and the judgments are first-order inductive
-  definitions~\cite{aczel1977-inductive-definitions} over paths
-  and labels, where quantifiers range over paths and labels,
-  never over functions or predicates.
-}
-functions on paths.
+first-order functions on paths.
 The six functions map object-oriented concepts to
 set-theoretic operations: $\properties$ and $\supers$
 generalize member lookup and inheritance chains,
