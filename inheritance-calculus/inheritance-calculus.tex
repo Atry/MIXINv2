@@ -504,19 +504,19 @@ Felleisen's sense~\cite{felleisen1991-expressive-power}.
 
 Let $e$ denote an expression,
 $\ell$ a label serving as a property name,
-and $k$ a nonnegative integer serving as the length of a downward projection.
+and $k$ a nonnegative integer giving the number of projections.
 
 \begin{align*}
   e \quad ::= \quad & \{c_1,\; \ldots,\; c_m\}
   && \text{(} m \ge 0 \text{)} \\[6pt]
   c \quad ::= \quad & \ell \mapsto e
   && \text{(definition)} \\
-  \mid\quad & (\qualifiedthis{\ell_{\mathrm{up}}} \mid \dbi{n}).\;\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
-  && \text{(inheritance: qualifier + downward path)} \\
-  \mid\quad & \qualifiedthis{\ell_{\mathrm{up}}} \mid \dbi{n}
+  \mid\quad & (\qualifiedthis{\ell_{\mathrm{qualifier}}} \mid \dbi{n}).\;\ell_{\mathrm{projection},1}.\ell_{\mathrm{projection},2}\ldots\ell_{\mathrm{projection},k}
+  && \text{(inheritance: qualifier + projections)} \\
+  \mid\quad & \qualifiedthis{\ell_{\mathrm{qualifier}}} \mid \dbi{n}
   && \text{(inheritance: qualifier only)} \\
-  \mid\quad & \ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}
-  && \text{(inheritance: downward path only)}
+  \mid\quad & \ell_{\mathrm{projection},1}.\ell_{\mathrm{projection},2}\ldots\ell_{\mathrm{projection},k}
+  && \text{(inheritance: projections only)}
 \end{align*}
 
 An expression is a \emph{set} of elements enclosed in braces.
@@ -539,19 +539,19 @@ properties downward. The upward navigation admits two equivalent
 notations:
 \begin{description}
   \item[Named form]
-    $\qualifiedthis{\ell_{\mathrm{up}}}.\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$,
+    $\qualifiedthis{\ell_{\mathrm{qualifier}}}.\ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$,
     analogous to Java's \texttt{Outer.this.field}.
     Each $\{\ldots\}$ record has a label in its enclosing scope;
-    $\ell_{\mathrm{up}}$ names the target enclosing scope.
+    $\ell_{\mathrm{qualifier}}$ names the target enclosing scope.
   \item[Indexed form]
-    $\dbi{n}.\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$,
+    $\dbi{n}.\ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$,
     where $n \ge 0$ is a de~Bruijn index~\cite{debruijn1972-nameless-dummies}:
     $n = 0$ refers to the reference's enclosing scope,
     and each increment of $n$ moves one scope level further out.
 \end{description}
 Both forms retrieve the target scope, that is, the fully inherited record
 after all inheritance has been applied, and then project properties
-$\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$ from it.
+$\ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$ from it.
 The named form desugars to the indexed form during parsing,
 as described in Section~\ref{sec:mixin-trees}.
 
@@ -581,8 +581,8 @@ Inheritance sources do not create additional scope levels.
 
 When the qualifier is unambiguous, it may be omitted:
 the shorthand
-$\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}$ ($k \ge 1$)
-resolves $\ell_{\mathrm{down},1}$ against the innermost enclosing
+$\ell_{\mathrm{projection},1}.\ell_{\mathrm{projection},2}\ldots\ell_{\mathrm{projection},k}$ ($k \ge 1$)
+resolves $\ell_{\mathrm{projection},1}$ against the innermost enclosing
 scope whose $\defines$ contains it,
 and desugars to the corresponding indexed form.
 Since this uses $\defines$, the shorthand can only access
@@ -651,7 +651,7 @@ the semantic functions in the rest of this section consume.
 The \emph{algebraic-datatype style} treats the AST as an inductive
 type $\Node$ with a single record constructor:
 \begin{equation}\label{eq:ast-adt}
-  \Node \quad ::= \quad
+  \Node \quad \cong \quad
   \bigl\langle\;
     \defs : \Label \rightharpoonup \Node,\;\;
     \refs : \mathcal{P}(\mathbb{N} \times \Label^{*})
@@ -660,8 +660,8 @@ type $\Node$ with a single record constructor:
 where $\Label \rightharpoonup \Node$ is a finite partial map from
 labels to child nodes (one entry per definition $\ell \mapsto e$),
 and $\refs$ is the set of inheritance sources, each a pair
-$(n,\; \ell_{\mathrm{down},*})$ of a de~Bruijn index $n$ and a list
-of downward projections $\ell_{\mathrm{down},*}$.
+$(n,\; \ell_{\mathrm{projection},*})$ of a de~Bruijn index $n$ and a list
+of projections $\ell_{\mathrm{projection},*}$.
 The whole program is a single global variable $\ASTroot : \Node$,
 the AST of the top-level record.
 
@@ -682,7 +682,7 @@ fields.
 for $p = (\ell_1, \ldots, \ell_n)$, so that $\defines(p)$ is the set
 of labels $\ell$ for which $p$ contains a definition $\ell \mapsto e$,
 and $\inherits(p)$ is the set of reference pairs
-$(n,\; \ell_{\mathrm{down},*})$ at $p$.
+$(n,\; \ell_{\mathrm{projection},*})$ at $p$.
 At the root path $()$ the navigation is empty, giving
 $\defines(()) = \operatorname{dom}(\ASTroot.\defs)$ and
 $\inherits(()) = \ASTroot.\refs$.
@@ -690,25 +690,25 @@ The semantic functions below use only $\defines$ and $\inherits$,
 so either style may be taken as primitive.
 
 During parsing, all three syntactic forms are resolved to
-de~Bruijn index pairs $(n,\; \ell_{\mathrm{down},*})$.
+de~Bruijn index pairs $(n,\; \ell_{\mathrm{projection},*})$.
 The \emph{indexed form}
-$\dbi{n}.\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$
+$\dbi{n}.\ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$
 already carries the de~Bruijn index $n$ directly;
 no resolution is needed.
 A \emph{named reference}
-$\qualifiedthis{\ell_{\mathrm{up}}}.\ell_{\mathrm{down},1}\ldots\ell_{\mathrm{down},k}$
+$\qualifiedthis{\ell_{\mathrm{qualifier}}}.\ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$
 at path $p$ is resolved by finding the last occurrence of
-$\ell_{\mathrm{up}}$ among the labels of $p$.
+$\ell_{\mathrm{qualifier}}$ among the labels of $p$.
 Let $p_{\mathrm{target}}$ be the prefix of $p$ up to and including
 that occurrence.
 The de~Bruijn index is $n = |p| - |p_{\mathrm{target}}| - 1$
 and the projections are
-$\ell_{\mathrm{down},*} = (\ell_{\mathrm{down},1}, \ldots, \ell_{\mathrm{down},k})$.
-A \emph{lexical reference} $\ell_{\mathrm{down},1}.\ell_{\mathrm{down},2}\ldots\ell_{\mathrm{down},k}$ at path $p$
+$\ell_{\mathrm{projection},*} = (\ell_{\mathrm{projection},1}, \ldots, \ell_{\mathrm{projection},k})$.
+A \emph{lexical reference} $\ell_{\mathrm{projection},1}.\ell_{\mathrm{projection},2}\ldots\ell_{\mathrm{projection},k}$ at path $p$
 is resolved by finding the nearest prefix $p'$ of $p$
-such that $\ell_{\mathrm{down},1} \in \defines(p')$.
+such that $\ell_{\mathrm{projection},1} \in \defines(p')$.
 The de~Bruijn index is $n = |p| - |p'| - 1$ and the projections are
-$\ell_{\mathrm{down},*} = (\ell_{\mathrm{down},1}, \ldots, \ell_{\mathrm{down},k})$.
+$\ell_{\mathrm{projection},*} = (\ell_{\mathrm{projection},1}, \ldots, \ell_{\mathrm{projection},k})$.
 All three forms produce the same representation; the semantic functions
 below operate only on de~Bruijn index pairs.
 
@@ -803,8 +803,8 @@ $p$'s $\overrides$ one step:
   \left\{\; p_{\mathrm{target}} \;\left|\;
     \begin{aligned}
       &p_{\mathrm{override}} \in \overrides(p), \\
-      &(n,\; \ell_{\mathrm{down},*}) \in \inherits(p_{\mathrm{override}}), \\
-      &p_{\mathrm{target}} \in \resolve(\init(p),\; p_{\mathrm{override}},\; n,\; \ell_{\mathrm{down},*})
+      &(n,\; \ell_{\mathrm{projection},*}) \in \inherits(p_{\mathrm{override}}), \\
+      &p_{\mathrm{target}} \in \resolve(\init(p),\; p_{\mathrm{override}},\; n,\; \ell_{\mathrm{projection},*})
     \end{aligned}
   \right.\right\}
 \end{equation}
@@ -816,18 +816,18 @@ set of paths it points to in the fully inherited tree.
 It takes an inheritance-site path $p_{\mathrm{site}}$,
 a definition-site path $p_{\mathrm{def}}$,
 a de~Bruijn index $n$,
-and downward projections $\ell_{\mathrm{down},*}$.
+and the projections $\ell_{\mathrm{projection},*}$.
 Resolution proceeds in two phases:
 $\this$ performs $n$ upward steps
 starting from the enclosing scope $\init(p_{\mathrm{def}})$,
 mapping the definition-site path to inheritance-site paths;
-then the downward projections $\ell_{\mathrm{down},*}$ are appended:
+then the downward projections $\ell_{\mathrm{projection},*}$ are appended:
 \begin{multline}\label{eq:resolve}
-  \resolve(p_{\mathrm{site}},\; p_{\mathrm{def}},\; n,\; \ell_{\mathrm{down},*})
+  \resolve(p_{\mathrm{site}},\; p_{\mathrm{def}},\; n,\; \ell_{\mathrm{projection},*})
   = \\
   \bigl\{\;
-    p_{\mathrm{current}} \snoc \ell_{\mathrm{down},1} \snoc \cdots \snoc \ell_{\mathrm{down},k}
-    \;\big|\;
+    p_{\mathrm{current}} \snoc \ell_{\mathrm{projection},1} \snoc \cdots \snoc \ell_{\mathrm{projection},k}
+    \;\big|
     p_{\mathrm{current}} \in
     \this(\{p_{\mathrm{site}}\},\; \init(p_{\mathrm{def}}),\; n)
   \;\bigr\}
@@ -5627,9 +5627,9 @@ Parsing populates $\defines$ and $\inherits$
       (0,\, (\text{``Object2''}, \text{``MyInner''}))\}.
 \end{align*}
 All other $\defines$ and $\inherits$ are empty.
-Each $\inherits$ entry is a reference pair $(n,\, \ell_{\mathrm{down},*})$,
-where $n$ is the number of upward steps and $\ell_{\mathrm{down},*}$ the
-downward projection (Section~\ref{sec:definitions}).
+Each $\inherits$ entry is a reference pair $(n,\, \ell_{\mathrm{projection},*})$,
+where $n$ is the number of upward steps and $\ell_{\mathrm{projection},*}$ the
+downward projections (Section~\ref{sec:definitions}).
 
 \paragraph{Trace}
 We present the trace as a numbered list of semantic-function calls in
