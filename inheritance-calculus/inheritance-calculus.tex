@@ -948,14 +948,12 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
 
 This completes the chain of definitions needed to compute $\properties(p)$.
 
-Appendix~\ref{app:evaluation-trace} works through a concrete example,
-evaluating the six equations step by step.
-We chose this example to show how the frontier $S$ lets $\this$ resolve
-to several targets at once, so that a program rejected by the Scala~3
-and NixOS module systems works here
+Appendix~\ref{app:evaluation-trace} applies the six equations step by
+step to an example highlighting the set-valued nature of $\resolve$,
+where the frontier $S$ carries multiple targets that
+$\this$ resolves to simultaneously rather than the single target
+seen in object-oriented languages such as Scala~3 and NixOS modules
 (Appendix~\ref{app:scala-multi-target}).
-We defer the design-space rationale for this choice, alongside the other
-semantic alternatives, to Section~\ref{sec:semantic-variants}.
 
 \subsection{Recursive Evaluation}
 The six equations~(\ref{eq:properties})--(\ref{eq:this})
@@ -1829,29 +1827,24 @@ Below we explain why they arise from the three primitives.
 
   \item[Function color blindness]
     \label{sec:practical-function-color}
-    Business logic in MIXINv2 declares abstract property slots;
-    different assemblies fill them with synchronous or
-    asynchronous implementations via inheritance.
-    Because the slot's color varies at assembly time without
-    affecting the code that uses it, the same MIXINv2 file runs
-    under both synchronous and asynchronous
-    runtimes\anon[~(supplementary material)]{~\cite{mixin2025}}, an instance of function color
-    blindness~\cite{nystrom2015-function-color}.
-    The mechanism is dependency injection via inheritance:
-    business logic declares empty slots, and the assembly
-    inherits an FFI module that fills them, so the same
-    business logic accepts implementations of any color.%
+    We observed that the same MIXINv2 file runs under both synchronous
+    and asynchronous runtimes\anon[~(supplementary material)]{~\cite{mixin2025}},
+    an instance of function color
+    blindness~\cite{nystrom2015-function-color}.%
     \footnote{
+      The mechanism is dependency injection via inheritance: business
+      logic declares empty slots, and the assembly inherits an FFI
+      module that fills them with a synchronous or asynchronous
+      implementation, so the slot's color varies at assembly time
+      without affecting the code that uses it.
       Function color~\cite{nystrom2015-function-color} arises when
       effectful functions have signatures $a \to f\,b$ (Kleisli
       arrows), requiring monadic bind to compose and making the
       effect $f$ visible at every call site.
       Because inheritance-calculus composes program structure
       rather than executing effects, this type distinction does
-      not arise at the calculus level.
-      The color is determined at assembly time by the choice of
-      inherited implementation, and effect execution is delegated
-      to the host language.
+      not arise at the calculus level, and effect execution is
+      delegated to the host language.
       Unstructured control flow, such as capturing and resuming
       continuations as in \texttt{call/cc}, cannot be abstracted
       this way, as it requires a global CPS transformation that
