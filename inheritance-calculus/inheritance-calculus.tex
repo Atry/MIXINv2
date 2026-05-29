@@ -1509,12 +1509,22 @@ $\mathrm{BooleanData}$ defines the output sort:
 \paragraph{NatEquality}
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
-$\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
+$\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$, using each as a module,
 and adds an $\mathrm{Equal}$ operation to each data constructor.
+Inheriting then serves as importing:
+because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
+the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach the members
+defined in $\mathrm{BooleanData}$, so $\mathrm{Equal}$ returns a boolean with a
+reference like $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}$,
+reading $\mathrm{False}$ as a static member of the $\mathrm{BooleanFactory}$ class
+that this import of $\mathrm{BooleanData}$ brings in.
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$;
 $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$
 with an equal predecessor.
-Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
+Inheriting then also serves as case analysis:
+inheriting $\mathrm{other}.\mathrm{Acceptance}$ reads as
+$\mathbf{match}\;\mathrm{other}\;\{\,\mathbf{case}\;\mathrm{Zero}\dots\;\mathbf{case}\;\mathrm{Successor}\dots\}$,
+dispatching on the constructor that built $\mathrm{other}$:
 {\small
   \[
     \mathrm{NatEquality} \mapsto \left\{
