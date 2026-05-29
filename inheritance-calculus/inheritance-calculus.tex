@@ -1415,7 +1415,7 @@ The name $\mathrm{NatData}$ is the top-level scope:
       \mathrm{Successor} \mapsto \{
         \mathrm{Product},\;
     \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\}\},\\
-    &\mathrm{Nat} \mapsto \{\mathrm{NatFactory},\;
+    &\mathrm{Nat} \mapsto \{
   \mathrm{NatFactory}.\mathrm{Product}\}\}
 \end{align*}
 
@@ -1437,6 +1437,7 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
       \mathrm{sum} \mapsto \{\mathrm{addend}\}\}\},\\[2pt]
       &\quad \mathrm{Successor} \mapsto \{\mathrm{Plus} \mapsto \{
           \mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+          \intertext{\scriptsize\quad recursive case $\mathrm{S}(n_0)+m = n_0 + \mathrm{S}(m)$: increment the addend, then add to the predecessor}
           &\qquad
           \mathrm{\_increasedAddend} \mapsto \{
             \mathrm{Successor},\;
@@ -1482,7 +1483,7 @@ $\mathrm{BooleanData}$ defines the output sort:
       \mathrm{Product} \mapsto \{\},\;
       \mathrm{True} \mapsto \{\mathrm{Product}\},\;
     \mathrm{False} \mapsto \{\mathrm{Product}\}\},\\
-    &\mathrm{Boolean} \mapsto \{\mathrm{BooleanFactory},\;
+    &\mathrm{Boolean} \mapsto \{
   \mathrm{BooleanFactory}.\mathrm{Product}\}\}
 \end{align*}
 \paragraph{NatEquality}
@@ -1506,54 +1507,56 @@ Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
         \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\[2pt]
         &\quad \mathrm{Zero} \mapsto \{\mathrm{Equal} \mapsto \{
             \mathrm{other} \mapsto \{\mathrm{Product}\},\\
+            \intertext{\scriptsize\qquad case analysis on $\mathrm{other}$ via its $\mathrm{Acceptance}$: $\mathrm{Zero}$ branch yields $\mathrm{True}$, $\mathrm{Successor}$ branch yields $\mathrm{False}$}
             &\qquad
-            \mathrm{OtherAcceptance} \mapsto \{
+            \mathrm{\_OtherAcceptance} \mapsto \{
               \mathrm{other}.\mathrm{Acceptance},\\
               &\qquad\;
               \mathrm{VisitorMap} \mapsto \{
                 \mathrm{ZeroVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{True}\}\},\\
+                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
                 &\qquad\;\quad
                 \mathrm{SuccessorVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\}\},\\
+              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}\},\\
               &\qquad\;
               \mathrm{Accepted} \mapsto \{
                 \mathrm{equal} \mapsto \{
             \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
             &\qquad
             \mathrm{equal} \mapsto \{
-        \mathrm{OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\},\\[2pt]
+        \mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\},\\[2pt]
         &\quad \mathrm{Successor} \mapsto \{\mathrm{Equal} \mapsto \{
             \mathrm{other} \mapsto \{
               \mathrm{Product},\;
             \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\},\\
+            \intertext{\scriptsize\qquad recurse on the two predecessors: $\mathrm{S}(a) = \mathrm{S}(b)$ iff $a = b$ (the $\mathrm{Successor}$ branch below reads this result)}
             &\qquad
-            \mathrm{RecursiveEquality} \mapsto \{
+            \mathrm{\_recursiveEquality} \mapsto \{
               \qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
               &\qquad\;
               \mathrm{other} \mapsto \{
             \qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}\},\\
             &\qquad
-            \mathrm{OtherAcceptance} \mapsto \{
+            \mathrm{\_OtherAcceptance} \mapsto \{
               \mathrm{other}.\mathrm{Acceptance},\\
               &\qquad\;
               \mathrm{VisitorMap} \mapsto \{
                 \mathrm{ZeroVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{False}\}\},\\
+                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
                 &\qquad\;\quad
                 \mathrm{SuccessorVisitor} \mapsto \{
                   \mathrm{equal} \mapsto \{
-              \mathrm{RecursiveEquality}.\mathrm{equal}\}\}\},\\
+              \mathrm{\_recursiveEquality}.\mathrm{equal}\}\}\},\\
               &\qquad\;
               \mathrm{Accepted} \mapsto \{
                 \mathrm{equal} \mapsto \{
             \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
             &\qquad
             \mathrm{equal} \mapsto \{
-    \mathrm{OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\}\}\}
+    \mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\}\}\}
 \end{align*}}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
 %%
@@ -1622,15 +1625,19 @@ The arithmetic test inherits $\mathrm{NatConstants}$ together with the operation
 \begin{align*}
   \mathrm{Test} \mapsto \{\;&
     \mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
-    &\mathrm{Addition} \mapsto \{
+    &\mathrm{TwoPlusThree} \mapsto \{
       \qualifiedthis{\mathrm{Test}}.\mathrm{Two}.\mathrm{Plus},\;
     \mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{Test}}.\mathrm{Three}\}\},\\
-    &\mathrm{Test2plus3} \mapsto \{
+    &\mathrm{FiveEqualTwoPlusThree} \mapsto \{
       \qualifiedthis{\mathrm{Test}}.\mathrm{Five}.\mathrm{Equal},\;
-  \mathrm{other} \mapsto \{\mathrm{Addition}.\mathrm{sum}\}\}\}
+  \mathrm{other} \mapsto \{\mathrm{TwoPlusThree}.\mathrm{sum}\}\}\}
 \end{align*}
-The path $\mathrm{Test}.\mathrm{Test2plus3}.\mathrm{equal}$
-inherits $\mathrm{True}$.
+The path $\mathrm{Test}.\mathrm{FiveEqualTwoPlusThree}.\mathrm{equal}$
+inherits $\mathrm{True}$.%
+\footnote{
+  Reading a result requires either the FFI to print it or a
+  metalanguage observation that invokes $\supers$ on the path.
+}
 No existing mixin was modified.
 $\mathrm{NatEquality}$, a new operation, and $\mathrm{Boolean}$,
 a new data type, each required only a new mixin: extensibility in both
