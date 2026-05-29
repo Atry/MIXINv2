@@ -1382,7 +1382,8 @@ and binary, in inheritance-calculus.%
   sources\anon[~(supplementary material)]{~\cite{mixin2025}}
   are available as supplementary material.
 }
-This section traces the unary Nat case in detail.
+This section traces the unary Nat case in detail: its data representation,
+addition, and equality.
 The implementation follows Gang-of-Four design
 patterns~\cite{gamma1994-design-patterns} in a declarative
 object-oriented style:
@@ -1522,9 +1523,11 @@ $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$;
 $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$
 with an equal predecessor.
 Inheriting then also serves as case analysis:
-inheriting $\mathrm{other}.\mathrm{Acceptance}$ reads as
-$\mathbf{match}\;\mathrm{other}\;\{\,\mathbf{case}\;\mathrm{Zero}\dots\;\mathbf{case}\;\mathrm{Successor}\dots\}$,
-dispatching on the constructor that built $\mathrm{other}$:
+inheriting $\mathrm{other}.\mathrm{Acceptance}$ dispatches on whether $\mathrm{other}$
+was built by $\mathrm{Zero}$ or $\mathrm{Successor}$.
+Inheriting likewise serves as a type annotation:
+in $\mathrm{Accepted}$, $\mathrm{equal}$ inherits $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$,
+declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\mathrm{BooleanData}$:
 {\small
   \[
     \mathrm{NatEquality} \mapsto \left\{
@@ -5131,12 +5134,15 @@ $\mathrm{TailMap}.d$:
 Multiple facts for the same relation are accumulated by
 inheritance (trie union).
 Adding $R(b, c)$:
-\begin{align*}
-  R \mapsto \{a,\; b,\;
-    \mathrm{TailMap} \mapsto \{&
-      a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
-  &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}\}\}
-\end{align*}
+\[
+  R \mapsto \left\{\begin{aligned}
+    &a,\; b,\\
+    &\mathrm{TailMap} \mapsto \left\{\begin{aligned}
+      &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+      &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
+    \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
 The point of the trie representation is not merely that it is a
 tree-shaped encoding.
 It also provides the indexing structure used by the subsequent
@@ -5308,15 +5314,15 @@ We present each level as a named sub-scope.
 \paragraph{Level~1: iterate $X$ from $\alpha$}
 (Executable scope: \texttt{\_XAcceptance}.)
 {\small
-  \begin{align*}
-    &\mathrm{xAcc} \mapsto \{
-      \alpha.\mathrm{Acceptance},\;
-      \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
-      &\quad \mathrm{Visitor} \mapsto \{
-        \_X \mapsto \{\mathrm{VisiteeTail}\},\;
-        \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{xAcc} \mapsto \left\{\begin{aligned}
+      &\alpha.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
+      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
+        &\_X \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+        &\mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}
+      \end{aligned}\right\}
+    \end{aligned}\right\}
+  \]}
 
 \paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
 
@@ -5328,19 +5334,17 @@ $\_X.\mathrm{WithVisiteeTail}$, producing an entry for
 constant $d$ only if $d$ appears in both $\alpha$'s
 second column (via $\_X$) and $\beta$'s first column.
 {\small
-  \begin{align*}
-    &\mathrm{yAcc} \mapsto \{
-      \_X.\mathrm{Acceptance},\\
-      &\quad \mathrm{VisitorMap} \mapsto \{
-        \beta.\mathrm{WithVisitorTail},\;
-      \_X.\mathrm{WithVisiteeTail}\},\\
-      &\quad \mathrm{Visitor} \mapsto \{
-        \_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\;
-        \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
-        &\qquad
-        \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{yAcc} \mapsto \left\{\begin{aligned}
+      &\_X.\mathrm{Acceptance},\\
+      &\mathrm{VisitorMap} \mapsto \{\beta.\mathrm{WithVisitorTail},\; \_X.\mathrm{WithVisiteeTail}\},\\
+      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
+        &\_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\; \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
+        &\ldots,\\
+        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}
+      \end{aligned}\right\}
+    \end{aligned}\right\}
+  \]}
 
 \paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
 
@@ -5351,46 +5355,43 @@ fact (its trie path terminates at $\mathrm{Nil}$ after $Y$).
 Inside the $\mathrm{Nil}$ branch, the encoding proceeds to
 iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
 {\small
-  \begin{align*}
-    &\mathrm{nilAcc}_0 \mapsto \{
-      \_Y_0.\mathrm{Acceptance},\;
-      \mathrm{VisitorMap} \mapsto \{
-        \mathrm{Nil} \mapsto \{\ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{nilAcc}_0 \mapsto \left\{\begin{aligned}
+      &\_Y_0.\mathrm{Acceptance},\\
+      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
+        &\ldots,\\
+        &\mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}
+      \end{aligned}\right\}\right\}
+    \end{aligned}\right\}
+  \]}
 
 \paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
 (Executable scope: \texttt{\_ZAcceptance}.)
 {\small
-  \begin{align*}
-    &\mathrm{zAcc} \mapsto \{
-      \mathrm{VisitorTail}.\mathrm{Acceptance},\;
-      \mathrm{VisitorMap} \mapsto \{
-      \mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
-      &\quad \mathrm{Visitor} \mapsto \{
-        \_Z \mapsto \{\mathrm{VisiteeTail}\},\;
-        \ldots,\;
-    \mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{zAcc} \mapsto \left\{\begin{aligned}
+      &\mathrm{VisitorTail}.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
+      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
+        &\_Z \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}
+      \end{aligned}\right\}
+    \end{aligned}\right\}
+  \]}
 
 \paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
 (Executable scope: \texttt{\_NilAcceptance1}, with
 \texttt{\_ZReplacement} and \texttt{\_XReplacement}.)
 {\small
-  \begin{align*}
-    &\mathrm{nilAcc}_1 \mapsto \{
-      \mathrm{VisiteeTail}.\mathrm{Acceptance},\;
-      \mathrm{VisitorMap} \mapsto \{
-        \mathrm{Nil} \mapsto \{\\
-          &\quad
-          \mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\;
-          \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
-          &\quad
-          \mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\;
-          \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
-          &\quad
-    \mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{nilAcc}_1 \mapsto \left\{\begin{aligned}
+      &\mathrm{VisiteeTail}.\mathrm{Acceptance},\\
+      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
+        &\mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
+        &\mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
+        &\mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}
+      \end{aligned}\right\}\right\}
+    \end{aligned}\right\}
+  \]}
 
 \paragraph{Final result}
 \[
