@@ -1426,31 +1426,32 @@ exposing a $\mathrm{sum}$ field.
 The base case is $0 + m = m$; the recursive case reduces
 $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
 by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
-\begin{align*}
-  \mathrm{NatPlus} \mapsto \{\;&
-    \mathrm{NatData},\\
-    &\mathrm{NatFactory} \mapsto \{\\
-      &\quad \mathrm{Product} \mapsto \{\mathrm{Plus} \mapsto \{
-      \mathrm{sum} \mapsto \{\mathrm{Product}\}\}\},\\[2pt]
-      &\quad \mathrm{Zero} \mapsto \{\mathrm{Plus} \mapsto \{
-          \mathrm{addend} \mapsto \{\mathrm{Product}\},\;
-      \mathrm{sum} \mapsto \{\mathrm{addend}\}\}\},\\[2pt]
-      &\quad \mathrm{Successor} \mapsto \{\mathrm{Plus} \mapsto \{
-          \mathrm{addend} \mapsto \{\mathrm{Product}\},\\
-          \intertext{\scriptsize\quad recursive case $\mathrm{S}(n_0)+m = n_0 + \mathrm{S}(m)$: increment the addend, then add to the predecessor}
-          &\qquad
-          \mathrm{\_increasedAddend} \mapsto \{
-            \mathrm{Successor},\;
-          \mathrm{predecessor} \mapsto \{\mathrm{addend}\}\},\\
-          &\qquad
-          \mathrm{\_recursiveAddition} \mapsto \{
-            \qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Plus},\\
-            &\qquad\quad
-          \mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}\},\\
-          &\qquad
-          \mathrm{sum} \mapsto \{
-  \mathrm{\_recursiveAddition}.\mathrm{sum}\}\}\}\}\}
-\end{align*}
+\[
+  \mathrm{NatPlus} \mapsto \left\{\begin{aligned}
+    &\mathrm{NatData},\\
+    &\mathrm{NatFactory} \mapsto \left\{\begin{aligned}
+      &\mathrm{Product} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\mathrm{sum} \mapsto \{\mathrm{Product}\}\right\}\right\},\\
+      &\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\begin{aligned}
+        &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+        &\mathrm{sum} \mapsto \{\mathrm{addend}\}
+      \end{aligned}\right\}\right\},\\
+      &\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\begin{aligned}
+        &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+        &\mathrm{\_increasedAddend} \mapsto  \\
+        &\left\{\begin{aligned}
+          &\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\mathrm{addend}\}
+        \end{aligned}\right\},\\
+        &\mathrm{\_recursiveAddition} \mapsto \\
+        &\left\{\begin{aligned}
+          &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Plus},\\
+          &\mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}
+        \end{aligned}\right\},\\
+        &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
+      \end{aligned}\right\}\right\}
+    \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
 
 \paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
