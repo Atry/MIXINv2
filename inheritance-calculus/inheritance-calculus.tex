@@ -287,7 +287,7 @@ one:
   \end{tabular}
   \caption{The question operationalized as four proxies: immutable and
     first-order (configuration) versus Turing-complete and extensible
-    (practical general-purpose). No classical model satisfies all four.}
+  (practical general-purpose). No classical model satisfies all four.}
   \label{tab:computational-models}
 \end{table}
 
@@ -319,7 +319,6 @@ and subsequently
 MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now implemented in Python: a declarative programming
 language with only three constructs (record literals, definitions,
 and inheritance) and no functions or let-bindings.
-
 
 \begin{figure*}
   \centering
@@ -360,78 +359,78 @@ total = a.plus(
   \begin{minipage}[t]{0.65\textwidth}
     \textbf{Inheritance-calculus}\par\smallskip
     {\small\(
-    \begin{array}{@{}l@{\hspace{2.5em}}l@{}}
-      \mathrm{ComplexModule} \mapsto \{ &
-      \text{\scriptsize module} \\
-      \quad \mathrm{BuiltIns}, &
-      \text{\scriptsize import} \\
-      \quad \mathrm{Math}, &
-      \text{\scriptsize import} \\
-      \quad \mathrm{Operator}, &
-      \text{\scriptsize import} \\
-      \quad \mathrm{Complex} \mapsto \{ &
-      \text{\scriptsize class} \\
-      \quad\quad \mathrm{re} \mapsto \{ &
-      \text{\scriptsize field} \\
-      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-      \text{\scriptsize imported type} \\
-      \quad\quad \mathrm{im} \mapsto \{ &
-      \text{\scriptsize field} \\
-      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-      \text{\scriptsize imported type} \\
-      \quad\quad \mathrm{Plus} \mapsto \{ &
-      \text{\scriptsize method} \\
-      \quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{Complex} \}, &
-      \text{\scriptsize parameter} \\
-      \quad\quad\quad \mathrm{\_sumReCall} \mapsto \{ &
-      \text{\scriptsize function application} \\
-      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-      \text{\scriptsize imported function} \\
-      \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad\quad\quad \mathrm{\_sumRe} \mapsto \{ \mathrm{\_sumReCall}.\mathrm{result} \}, &
-      \text{\scriptsize local} \\
-      \quad\quad\quad \mathrm{\_sumImCall} \mapsto \{ &
-      \text{\scriptsize function application} \\
-      \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-      \text{\scriptsize imported function} \\
-      \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad\quad\quad \mathrm{\_sumIm} \mapsto \{ \mathrm{\_sumImCall}.\mathrm{result} \}, &
-      \text{\scriptsize local} \\
-      \quad\quad\quad \mathrm{result} \mapsto \{ &
-      \text{\scriptsize return} \\
-      \quad\quad\quad\quad \mathrm{Complex}, &
-      \text{\scriptsize new instance} \\
-      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \mathrm{\_sumRe} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \mathrm{\_sumIm} \} \}\}\}, &
-      \text{\scriptsize keyword argument} \\
-      \quad \mathrm{a} \mapsto \{ \mathrm{Complex}, &
-      \text{\scriptsize new instance} \\
-      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \}, &
-      \text{\scriptsize imported constant} \\
-      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \} \}, &
-      \text{\scriptsize imported constant} \\
-      \quad \mathrm{b} \mapsto \{ \mathrm{Complex}, &
-      \text{\scriptsize new instance} \\
-      \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \}, &
-      \text{\scriptsize imported constant} \\
-      \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \} \}, &
-      \text{\scriptsize imported constant} \\
-      \quad \mathrm{\_TotalCall} \mapsto \{ &
-      \text{\scriptsize method application} \\
-      \quad\quad\quad\quad \mathrm{a}.\mathrm{Plus}, &
-      \text{\scriptsize method reference} \\
-      \quad\quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{b} \} \}, &
-      \text{\scriptsize keyword argument} \\
-      \quad \mathrm{total} \mapsto \{ \mathrm{\_TotalCall}.\mathrm{result} \} \} &
-      \text{\scriptsize module-level variable} \\
-    \end{array}
+        \begin{array}{@{}l@{\hspace{2.5em}}l@{}}
+          \mathrm{ComplexModule} \mapsto \{ &
+            \text{\scriptsize module} \\
+            \quad \mathrm{BuiltIns}, &
+            \text{\scriptsize import} \\
+            \quad \mathrm{Math}, &
+            \text{\scriptsize import} \\
+            \quad \mathrm{Operator}, &
+            \text{\scriptsize import} \\
+            \quad \mathrm{Complex} \mapsto \{ &
+              \text{\scriptsize class} \\
+              \quad\quad \mathrm{re} \mapsto \{ &
+                \text{\scriptsize field} \\
+              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
+              \text{\scriptsize imported type} \\
+              \quad\quad \mathrm{im} \mapsto \{ &
+                \text{\scriptsize field} \\
+              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
+              \text{\scriptsize imported type} \\
+              \quad\quad \mathrm{Plus} \mapsto \{ &
+                \text{\scriptsize method} \\
+                \quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{Complex} \}, &
+                \text{\scriptsize parameter} \\
+                \quad\quad\quad \mathrm{\_sumReCall} \mapsto \{ &
+                  \text{\scriptsize function application} \\
+                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
+                  \text{\scriptsize imported function} \\
+                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \}, &
+                  \text{\scriptsize keyword argument} \\
+                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \} \}, &
+                \text{\scriptsize keyword argument} \\
+                \quad\quad\quad \mathrm{\_sumRe} \mapsto \{ \mathrm{\_sumReCall}.\mathrm{result} \}, &
+                \text{\scriptsize local} \\
+                \quad\quad\quad \mathrm{\_sumImCall} \mapsto \{ &
+                  \text{\scriptsize function application} \\
+                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
+                  \text{\scriptsize imported function} \\
+                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \}, &
+                  \text{\scriptsize keyword argument} \\
+                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \} \}, &
+                \text{\scriptsize keyword argument} \\
+                \quad\quad\quad \mathrm{\_sumIm} \mapsto \{ \mathrm{\_sumImCall}.\mathrm{result} \}, &
+                \text{\scriptsize local} \\
+                \quad\quad\quad \mathrm{result} \mapsto \{ &
+                  \text{\scriptsize return} \\
+                  \quad\quad\quad\quad \mathrm{Complex}, &
+                  \text{\scriptsize new instance} \\
+                  \quad\quad\quad\quad \mathrm{re} \mapsto \{ \mathrm{\_sumRe} \}, &
+                  \text{\scriptsize keyword argument} \\
+            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \mathrm{\_sumIm} \} \}\}\}, &
+            \text{\scriptsize keyword argument} \\
+            \quad \mathrm{a} \mapsto \{ \mathrm{Complex}, &
+              \text{\scriptsize new instance} \\
+              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \}, &
+              \text{\scriptsize imported constant} \\
+            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \} \}, &
+            \text{\scriptsize imported constant} \\
+            \quad \mathrm{b} \mapsto \{ \mathrm{Complex}, &
+              \text{\scriptsize new instance} \\
+              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \}, &
+              \text{\scriptsize imported constant} \\
+            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \} \}, &
+            \text{\scriptsize imported constant} \\
+            \quad \mathrm{\_TotalCall} \mapsto \{ &
+              \text{\scriptsize method application} \\
+              \quad\quad\quad\quad \mathrm{a}.\mathrm{Plus}, &
+              \text{\scriptsize method reference} \\
+            \quad\quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{b} \} \}, &
+            \text{\scriptsize keyword argument} \\
+          \quad \mathrm{total} \mapsto \{ \mathrm{\_TotalCall}.\mathrm{result} \} \} &
+          \text{\scriptsize module-level variable} \\
+        \end{array}
     \)}
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
@@ -458,11 +457,9 @@ total = a.plus(
     ANF~\cite{flanagan1993-essence-compiling-continuations}, so each
     function application is given a name (the
     $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals) rather than
-    written inline.}
+  written inline.}
   \label{fig:cheatsheet}
 \end{figure*}
-
-
 
 In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
 beside Python: the same complex-number class with an addition method,
@@ -1405,19 +1402,18 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$;
 a $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
 exposes a $\mathrm{predecessor}$ field.
 The name $\mathrm{NatData}$ is the top-level scope:
-\begin{align*}
-  \mathrm{NatData} \mapsto \{\;&
-    \mathrm{NatFactory} \mapsto \{
-      \mathrm{Product} \mapsto \{\},\\
-      &\quad
-      \mathrm{Zero} \mapsto \{\mathrm{Product}\},\\
-      &\quad
-      \mathrm{Successor} \mapsto \{
-        \mathrm{Product},\;
-    \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\}\},\\
-    &\mathrm{Nat} \mapsto \{
-  \mathrm{NatFactory}.\mathrm{Product}\}\}
-\end{align*}
+\[
+  \mathrm{NatData} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatFactory} \mapsto \left\{
+        \begin{aligned}
+          &\mathrm{Product} \mapsto \{\},\\
+          &\mathrm{Zero} \mapsto \{\mathrm{Product}\},\\
+          &\mathrm{Successor} \mapsto \left\{\mathrm{Product},\; \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\right\}
+      \end{aligned}\right\},\\
+      &\mathrm{Nat} \mapsto \{\mathrm{NatFactory}.\mathrm{Product}\}
+  \end{aligned}\right\}
+\]
 
 \paragraph{NatPlus}
 Addition is a separate mixin that inherits $\mathrm{NatData}$
@@ -1427,29 +1423,35 @@ The base case is $0 + m = m$; the recursive case reduces
 $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
 by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 \[
-  \mathrm{NatPlus} \mapsto \left\{\begin{aligned}
-    &\mathrm{NatData},\\
-    &\mathrm{NatFactory} \mapsto \left\{\begin{aligned}
-      &\mathrm{Product} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\mathrm{sum} \mapsto \{\mathrm{Product}\}\right\}\right\},\\
-      &\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\begin{aligned}
-        &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
-        &\mathrm{sum} \mapsto \{\mathrm{addend}\}
-      \end{aligned}\right\}\right\},\\
-      &\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\begin{aligned}
-        &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
-        &\mathrm{\_increasedAddend} \mapsto  \\
-        &\left\{\begin{aligned}
-          &\mathrm{Successor},\\
-          &\mathrm{predecessor} \mapsto \{\mathrm{addend}\}
-        \end{aligned}\right\},\\
-        &\mathrm{\_recursiveAddition} \mapsto \\
-        &\left\{\begin{aligned}
-          &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Plus},\\
-          &\mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}
-        \end{aligned}\right\},\\
-        &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
-      \end{aligned}\right\}\right\}
-    \end{aligned}\right\}
+  \mathrm{NatPlus} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatData},\\
+      &\mathrm{NatFactory} \mapsto \left\{
+        \begin{aligned}
+          &\mathrm{Product} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\mathrm{sum} \mapsto \{\mathrm{Product}\}\right\}\right\},\\
+          &\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+              \begin{aligned}
+                &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+                &\mathrm{sum} \mapsto \{\mathrm{addend}\}
+          \end{aligned}\right\}\right\},\\
+          &\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+              \begin{aligned}
+                &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+                &\mathrm{\_increasedAddend} \mapsto  \\
+                &\left\{
+                  \begin{aligned}
+                    &\mathrm{Successor},\\
+                    &\mathrm{predecessor} \mapsto \{\mathrm{addend}\}
+                \end{aligned}\right\},\\
+                &\mathrm{\_recursiveAddition} \mapsto \\
+                &\left\{
+                  \begin{aligned}
+                    &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Plus},\\
+                    &\mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}
+                \end{aligned}\right\},\\
+                &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
+          \end{aligned}\right\}\right\}
+      \end{aligned}\right\}
   \end{aligned}\right\}
 \]
 
@@ -1460,33 +1462,50 @@ $\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to each data const
 containing a $\mathrm{VisitorMap}$ with the appropriate
 $\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch,
 and an $\mathrm{Accepted}$ field that delegates to the matching branch:
-\begin{align*}
-  \mathrm{NatVisitor} \mapsto \{\;&
-    \mathrm{NatData},\\
-    &\mathrm{NatFactory} \mapsto \{\\
-      &\quad \mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{
-      \mathrm{Accepted} \mapsto \{\}\}\},\\[2pt]
-      &\quad \mathrm{Zero} \mapsto \{\mathrm{Acceptance} \mapsto \{
-          \mathrm{VisitorMap} \mapsto \{
-          \mathrm{ZeroVisitor} \mapsto \{\}\},\\
-          &\qquad
-      \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}\}\},\\[2pt]
-      &\quad \mathrm{Successor} \mapsto \{\mathrm{Acceptance} \mapsto \{
-          \mathrm{VisitorMap} \mapsto \{
-          \mathrm{SuccessorVisitor} \mapsto \{\}\},\\
-          &\qquad
-  \mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}\}\}\}\}
-\end{align*}
+\[
+  \mathrm{NatVisitor} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatData},\\
+      &\mathrm{NatFactory} \mapsto \left\{
+        \begin{aligned}
+          &\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{Accepted} \mapsto \{\}\}\},\\
+          &\mathrm{Zero} \mapsto \left\{
+            \begin{aligned}
+              &\mathrm{Acceptance} \mapsto \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{VisitorMap} \mapsto \{\mathrm{ZeroVisitor} \mapsto \{\}\},\\
+                  &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}
+              \end{aligned}\right\}
+            \end{aligned}
+          \right\},\\
+          &\mathrm{Successor} \mapsto \left\{
+            \begin{aligned}
+              &\mathrm{Acceptance} \mapsto \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{VisitorMap} \mapsto \\
+                  &\{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
+                  &\mathrm{Accepted} \mapsto  \\
+                  &\{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}
+              \end{aligned}\right\}
+          \end{aligned}\right\}
+      \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
 $\mathrm{BooleanData}$ defines the output sort:
-\begin{align*}
-  \mathrm{BooleanData} \mapsto \{\;&
-    \mathrm{BooleanFactory} \mapsto \{
-      \mathrm{Product} \mapsto \{\},\;
-      \mathrm{True} \mapsto \{\mathrm{Product}\},\;
-    \mathrm{False} \mapsto \{\mathrm{Product}\}\},\\
-    &\mathrm{Boolean} \mapsto \{
-  \mathrm{BooleanFactory}.\mathrm{Product}\}\}
-\end{align*}
+\[
+  \mathrm{BooleanData} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{BooleanFactory} \mapsto \left\{
+        \begin{aligned}
+          &\mathrm{Product} \mapsto \{\},\\
+          &\mathrm{True} \mapsto \{\mathrm{Product}\},\\
+          &\mathrm{False} \mapsto \{\mathrm{Product}\}
+      \end{aligned}\right\},\\
+      &\mathrm{Boolean} \mapsto \{\mathrm{BooleanFactory}.\mathrm{Product}\}
+  \end{aligned}\right\}
+\]
 \paragraph{NatEquality}
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
@@ -1497,68 +1516,76 @@ $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$
 with an equal predecessor.
 Case analysis on $\mathrm{other}$ is done via its $\mathrm{Acceptance}$:
 {\small
-  \begin{align*}
-    \mathrm{NatEquality} \mapsto \{\;&
-      \mathrm{NatVisitor},\; \mathrm{BooleanData},\\
-      &\mathrm{NatFactory} \mapsto \{\\
-        &\quad \mathrm{Product} \mapsto \{\mathrm{Equal} \mapsto \{
-            \mathrm{other} \mapsto \{\mathrm{Product}\},\\
-            &\qquad
-            \mathrm{equal} \mapsto \{
-        \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\[2pt]
-        &\quad \mathrm{Zero} \mapsto \{\mathrm{Equal} \mapsto \{
-            \mathrm{other} \mapsto \{\mathrm{Product}\},\\
-            \intertext{\scriptsize\qquad case analysis on $\mathrm{other}$ via its $\mathrm{Acceptance}$: $\mathrm{Zero}$ branch yields $\mathrm{True}$, $\mathrm{Successor}$ branch yields $\mathrm{False}$}
-            &\qquad
-            \mathrm{\_OtherAcceptance} \mapsto \{
-              \mathrm{other}.\mathrm{Acceptance},\\
-              &\qquad\;
-              \mathrm{VisitorMap} \mapsto \{
-                \mathrm{ZeroVisitor} \mapsto \{
-                  \mathrm{equal} \mapsto \{
-                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
-                &\qquad\;\quad
-                \mathrm{SuccessorVisitor} \mapsto \{
-                  \mathrm{equal} \mapsto \{
-              \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}\},\\
-              &\qquad\;
-              \mathrm{Accepted} \mapsto \{
-                \mathrm{equal} \mapsto \{
-            \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
-            &\qquad
-            \mathrm{equal} \mapsto \{
-        \mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\},\\[2pt]
-        &\quad \mathrm{Successor} \mapsto \{\mathrm{Equal} \mapsto \{
-            \mathrm{other} \mapsto \{
-              \mathrm{Product},\;
-            \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\},\\
-            \intertext{\scriptsize\qquad recurse on the two predecessors: $\mathrm{S}(a) = \mathrm{S}(b)$ iff $a = b$ (the $\mathrm{Successor}$ branch below reads this result)}
-            &\qquad
-            \mathrm{\_recursiveEquality} \mapsto \{
-              \qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
-              &\qquad\;
-              \mathrm{other} \mapsto \{
-            \qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}\},\\
-            &\qquad
-            \mathrm{\_OtherAcceptance} \mapsto \{
-              \mathrm{other}.\mathrm{Acceptance},\\
-              &\qquad\;
-              \mathrm{VisitorMap} \mapsto \{
-                \mathrm{ZeroVisitor} \mapsto \{
-                  \mathrm{equal} \mapsto \{
-                \qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
-                &\qquad\;\quad
-                \mathrm{SuccessorVisitor} \mapsto \{
-                  \mathrm{equal} \mapsto \{
-              \mathrm{\_recursiveEquality}.\mathrm{equal}\}\}\},\\
-              &\qquad\;
-              \mathrm{Accepted} \mapsto \{
-                \mathrm{equal} \mapsto \{
-            \qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}\},\\
-            &\qquad
-            \mathrm{equal} \mapsto \{
-    \mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}\}\}\}\}
-\end{align*}}
+  \[
+    \mathrm{NatEquality} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{NatVisitor},\\
+        &\mathrm{BooleanData},\\
+        &\mathrm{NatFactory} \mapsto \left\{
+          \begin{aligned}
+            &\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
+                \begin{aligned}
+                  &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
+                  &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
+            \end{aligned}\right\}\right\},\\
+            &\mathrm{Zero} \mapsto \\
+            &\left\{
+              \begin{aligned}
+                &\mathrm{Equal} \mapsto \\
+                &\left\{
+                  \begin{aligned}
+                    &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
+                    &\mathrm{\_OtherAcceptance} \mapsto \\
+                    &\left\{
+                      \begin{aligned}
+                        &\mathrm{other}.\mathrm{Acceptance},\\
+                        &\mathrm{VisitorMap} \mapsto \\
+                        &\left\{
+                          \begin{aligned}
+                            &\mathrm{ZeroVisitor} \mapsto \\
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
+                            &\mathrm{SuccessorVisitor} \mapsto \\
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
+                        \end{aligned}\right\},\\
+                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}
+                    \end{aligned}\right\},\\
+                    &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
+                \end{aligned}\right\}
+            \end{aligned}\right\},\\
+            &\mathrm{Successor} \mapsto \\
+            &\left\{
+              \begin{aligned}
+                &\mathrm{Equal} \mapsto \\
+                &\left\{
+                  \begin{aligned}
+                    &\mathrm{other} \mapsto \left\{\mathrm{Product},\; \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\right\},\\
+                    &\mathrm{\_recursiveEquality} \mapsto \\
+                    &\left\{
+                      \begin{aligned}
+                        &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
+                        &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}
+                    \end{aligned}\right\},\\
+                    &\mathrm{\_OtherAcceptance} \mapsto \\
+                    &\left\{
+                      \begin{aligned}
+                        &\mathrm{other}.\mathrm{Acceptance},\\
+                        &\mathrm{VisitorMap} \mapsto \\
+                        &\left\{
+                          \begin{aligned}
+                            &\mathrm{ZeroVisitor} \mapsto \\
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
+                            &\mathrm{SuccessorVisitor} \mapsto \\
+                            &\{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
+                        \end{aligned}\right\},\\
+                        &\mathrm{Accepted} \mapsto \\
+                        &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}
+                    \end{aligned}\right\},\\
+                    &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
+                \end{aligned}\right\}
+            \end{aligned}\right\}
+        \end{aligned}\right\}
+    \end{aligned}\right\}
+\]}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
 %%
 %% NatEquality 的定义看起来比等价的 Haskell 或 ML 模式匹配更长，
@@ -1597,42 +1624,54 @@ inheriting both, with no modifications to either mixin, gives the
 resulting Nat values both $\mathrm{Plus}$ and $\mathrm{Equal}$
 automatically.
 The concrete numerals live in a shared mixin that inherits only $\mathrm{NatData}$:
-\begin{align*}
-  \mathrm{NatConstants} \mapsto \{\;&
-    \mathrm{NatData},\\
-    &\mathrm{One} \mapsto \{
-      \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
-      &\quad\quad
-      \mathrm{predecessor} \mapsto \{
-    \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Zero}\}\},\\
-    &\mathrm{Two} \mapsto \{
-      \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
-      &\quad\quad
-    \mathrm{predecessor} \mapsto \{\mathrm{One}\}\},\\
-    &\mathrm{Three} \mapsto \{
-      \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
-      &\quad\quad
-    \mathrm{predecessor} \mapsto \{\mathrm{Two}\}\},\\
-    &\mathrm{Four} \mapsto \{
-      \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
-      &\quad\quad
-    \mathrm{predecessor} \mapsto \{\mathrm{Three}\}\},\\
-    &\mathrm{Five} \mapsto \{
-      \qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
-      &\quad\quad
-  \mathrm{predecessor} \mapsto \{\mathrm{Four}\}\}\}
-\end{align*}
+\[
+  \mathrm{NatConstants} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatData},\\
+      &\mathrm{One} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Zero}\}
+      \end{aligned}\right\},\\
+      &\mathrm{Two} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\mathrm{One}\}
+      \end{aligned}\right\},\\
+      &\mathrm{Three} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\mathrm{Two}\}
+      \end{aligned}\right\},\\
+      &\mathrm{Four} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\mathrm{Three}\}
+      \end{aligned}\right\},\\
+      &\mathrm{Five} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
+          &\mathrm{predecessor} \mapsto \{\mathrm{Four}\}
+      \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
 The arithmetic test inherits $\mathrm{NatConstants}$ together with the operations it needs:
-\begin{align*}
-  \mathrm{Test} \mapsto \{\;&
-    \mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
-    &\mathrm{TwoPlusThree} \mapsto \{
-      \qualifiedthis{\mathrm{Test}}.\mathrm{Two}.\mathrm{Plus},\;
-    \mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{Test}}.\mathrm{Three}\}\},\\
-    &\mathrm{FiveEqualTwoPlusThree} \mapsto \{
-      \qualifiedthis{\mathrm{Test}}.\mathrm{Five}.\mathrm{Equal},\;
-  \mathrm{other} \mapsto \{\mathrm{TwoPlusThree}.\mathrm{sum}\}\}\}
-\end{align*}
+\[
+  \mathrm{Test} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
+      &\mathrm{TwoPlusThree} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{Test}}.\mathrm{Two}.\mathrm{Plus},\\
+          &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{Test}}.\mathrm{Three}\}
+      \end{aligned}\right\},\\
+      &\mathrm{FiveEqualTwoPlusThree} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{Test}}.\mathrm{Five}.\mathrm{Equal},\\
+          &\mathrm{other} \mapsto \{\mathrm{TwoPlusThree}.\mathrm{sum}\}
+      \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
 The path $\mathrm{Test}.\mathrm{FiveEqualTwoPlusThree}.\mathrm{equal}$
 inherits $\mathrm{True}$.%
 \footnote{
@@ -1705,22 +1744,16 @@ A scope that simultaneously inherits two Nat values is a trie union.
 The following test applies $\mathrm{Plus}$ to a trie union of $\{1,2\}$
 with addend a trie union of $\{3,4\}$, then compares the result to itself
 with $\mathrm{Equal}$:
-\begin{align*}
-  \mathrm{CartesianTest} \mapsto \{\;&
-    \mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
-    &\mathrm{OneOrTwo} \mapsto \{
-      \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{One},\;
-    \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Two}\},\\
-    &\mathrm{ThreeOrFour} \mapsto \{
-      \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Three},\;
-    \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Four}\},\\
-    &\mathrm{Result} \mapsto \{
-      \mathrm{OneOrTwo}.\mathrm{Plus},\;
-    \mathrm{addend} \mapsto \{\mathrm{ThreeOrFour}\}\},\\
-    &\mathrm{Check} \mapsto \{
-      \mathrm{Result}.\mathrm{sum}.\mathrm{Equal},\;
-  \mathrm{other} \mapsto \{\mathrm{Result}.\mathrm{sum}\}\}\}
-\end{align*}
+\[
+  \mathrm{CartesianTest} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
+      &\mathrm{OneOrTwo} \mapsto \left\{\qualifiedthis{\mathrm{CartesianTest}}.\mathrm{One},\; \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Two}\right\},\\
+      &\mathrm{ThreeOrFour} \mapsto \left\{\qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Three},\; \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Four}\right\},\\
+      &\mathrm{Result} \mapsto \left\{\mathrm{OneOrTwo}.\mathrm{Plus},\; \mathrm{addend} \mapsto \{\mathrm{ThreeOrFour}\}\right\},\\
+      &\mathrm{Check} \mapsto \left\{\mathrm{Result}.\mathrm{sum}.\mathrm{Equal},\; \mathrm{other} \mapsto \{\mathrm{Result}.\mathrm{sum}\}\right\}
+  \end{aligned}\right\}
+\]
 $\mathrm{Result}.\mathrm{sum}$ evaluates to the trie $\{4,5,6\}$, the set of all pairwise sums.
 $\mathrm{Equal}$ then applies to every pair drawn from $\{4,5,6\} \times \{4,5,6\}$;
 the path $\mathrm{CartesianTest}.\mathrm{Check}.\mathrm{equal}$
@@ -5684,12 +5717,12 @@ Parsing populates $\defines$ and $\inherits$
   \defines((\text{``MyOuter''})) &= \{\text{``MyInner''}\}, \\
   \defines((\text{``MyOuter''}, \text{``MyInner''})) &= \{\text{``outer''}\}, \\
   \inherits((\text{``MyOuter''}, \text{``MyInner''}, \text{``outer''})) &=
-    \{(1,\, ())\}, \\
+  \{(1,\, ())\}, \\
   \inherits((\text{``Object1''})) = \inherits((\text{``Object2''})) &=
-    \{(0,\, (\text{``MyOuter''}))\}, \\
+  \{(0,\, (\text{``MyOuter''}))\}, \\
   \inherits((\text{``HasMultipleOuters''})) &=
-    \{(0,\, (\text{``Object1''}, \text{``MyInner''})),\;
-      (0,\, (\text{``Object2''}, \text{``MyInner''}))\}.
+  \{(0,\, (\text{``Object1''}, \text{``MyInner''})),\;
+  (0,\, (\text{``Object2''}, \text{``MyInner''}))\}.
 \end{align*}
 All other $\defines$ and $\inherits$ are empty.
 Each $\inherits$ entry is a reference pair $(n,\, w)$,
