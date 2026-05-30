@@ -841,12 +841,12 @@ branch $p_{\mathrm{branch}}$ of $\init(p)$ that also defines $\last(p)$:
     \{p\} & \text{if } p = ()  \\[6pt]
     \{p\}
     \;\cup\;
-    \left\{\; p_{\mathrm{branch}} \snoc \last(p) \;\left|\;
+    \left\{\; p_{\mathrm{branch}} \snoc \last(p) \;\middle|\;
       \begin{aligned}
         &(\_,\; p_{\mathrm{branch}}) \in \supers(\init(p)), \\
         &\text{s.t.}\; \last(p) \in \defines(p_{\mathrm{branch}})
       \end{aligned}
-    \right.\right\}
+    \right\}
     & \text{if } p \neq ()
   \end{cases}
 \end{equation}
@@ -860,13 +860,13 @@ Concretely, $\bases$ resolves every reference in
 $p$'s $\overrides$ one step:
 \begin{equation}\label{eq:bases}
   \bases(p) =
-  \left\{\; p_{\mathrm{target}} \;\left|\;
+  \left\{\; p_{\mathrm{target}} \;\middle|\;
     \begin{aligned}
       &p_{\mathrm{override}} \in \overrides(p), \\
       &(n,\; w) \in \inherits(p_{\mathrm{override}}), \\
       &p_{\mathrm{target}} \in \resolve(\init(p),\; p_{\mathrm{override}},\; n,\; w)
     \end{aligned}
-  \right.\right\}
+  \right\}
 \end{equation}
 The $\bases$ formula calls the reference resolution function $\resolve$, which we define next.
 
@@ -913,14 +913,14 @@ After $n$ steps the frontier contains the answer:
     \begin{cases}
       S & \text{if } n = 0 \\[6pt]
       \this\!\left(
-        \left\{\; p_{\mathrm{site}} \;\left|\;
+        \left\{\; p_{\mathrm{site}} \;\middle|\;
           \begin{aligned}
             &p_{\mathrm{current}} \in S, \\
             &(p_{\mathrm{site}},\; p_{\mathrm{override}})
             \in \supers(p_{\mathrm{current}}), \\
             &\text{s.t.}\; p_{\mathrm{override}} = p_{\mathrm{def}}
           \end{aligned}
-        \right.\right\},\;
+        \right\},\;
         \init(p_{\mathrm{def}}),\;
         n - 1
       \right)
@@ -4819,12 +4819,12 @@ body references its argument (see \emph{Calling context} below).
 %%   \visiblebindings(p) =
 %%   \begin{cases}
 %%     B \;\cup\;
-%%     \left\{\; b \;\left|\;
+%%     \left\{\; b \;\middle|\;
 %%       \begin{aligned}
 %%         &p' \in \result(p),\\
 %%         &b \in \visiblebindings(p')
 %%       \end{aligned}
-%%     \right.\right\}
+%%     \right\}
 %%     & \text{if } \mathtt{node}(p) = \_(B,\, \_) \\[6pt]
 %%     \varnothing
 %%     & \text{if } \mathtt{node}(p) \in \mathrm{App}
@@ -4874,14 +4874,14 @@ and a binding name $x \in B$, the application
 $s' \snoc x$ contributes:
 \begin{equation}\label{eq:lambda-let-contexts}
   \letcontexts(s) =
-  \left\{\; (s',\; s_a) \;\left|\;
+  \left\{\; (s',\; s_a) \;\middle|\;
     \begin{aligned}
       &\mathtt{node}(s') = \_(B,\, \_),\;
       x \in B,\\
       &s \in \head(s' \snoc x),\\
       &s_a \in \argument(s' \snoc x)
     \end{aligned}
-  \right.\right\}
+  \right\}
 \end{equation}
 
 \emph{Tail-call contexts.}\;
@@ -4890,13 +4890,13 @@ $\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2))$
 and $s \in \resolveref(r_1,\, s')$ contributes:
 \begin{equation}\label{eq:lambda-tail-contexts}
   \tailcontexts(s) =
-  \left\{\; (s',\; s_a) \;\left|\;
+  \left\{\; (s',\; s_a) \;\middle|\;
     \begin{aligned}
       &\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2)),\\
       &s \in \resolveref(r_1,\, s'),\\
       &s_a \in \resolveref(r_2,\, s')
     \end{aligned}
-  \right.\right\}
+  \right\}
 \end{equation}
 
 The full set of calling contexts:
@@ -4923,21 +4923,21 @@ $\resolveref$ resolves any reference to a set of scope nodes:
 \begin{equation}\label{eq:lambda-resolve-ref}
   \resolveref(r,\; s) =
   \begin{cases}
-    \left\{\; s_a \;\left|\;
+    \left\{\; s_a \;\middle|\;
       \begin{aligned}
         &s' \in \scoperesolution(n,\, s),\\
         &(\_,\; s_a) \in \contexts(s')
       \end{aligned}
-    \right.\right\}
+    \right\}
     & \text{if } r = \mathrm{ArgRef}(n) \\[6pt]
-    \left\{\; s_h \;\left|\;
+    \left\{\; s_h \;\middle|\;
       \begin{aligned}
         &s' \in \scoperesolution(n,\, s),\\
         &\mathtt{node}(s') = \_(B,\, \_),\;
         x \in B,\\
         &s_h \in \head(s' \snoc x)
       \end{aligned}
-    \right.\right\}
+    \right\}
     & \text{if } r = \mathrm{BindingRef}(n,\, x) \\[6pt]
     \{s_{\lambda}\}
     & \text{if } r = \mathrm{InlineLambda}(M)
@@ -4967,12 +4967,12 @@ application $\mathbf{let}$-bindings and tail calls do not.
   \scoperesolution(n,\; s) =
   \begin{cases}
     \{s\} & \text{if } n = 0 \\[6pt]
-    \left\{\; s'' \;\left|\;
+    \left\{\; s'' \;\middle|\;
       \begin{aligned}
         &(s',\; \_) \in \contexts(s),\\
         &s'' \in \scoperesolution(n - 1,\; s')
       \end{aligned}
-    \right.\right\}
+    \right\}
     & \text{if } n > 0
   \end{cases}
 \end{equation}
