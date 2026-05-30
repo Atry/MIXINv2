@@ -2,9 +2,4 @@ NumberFactory: []
 NatFactory:
   - [NumberFactory]
   - Product: []
-    Zero:
-      - [Product]
-    Successor:
-      - [Product]
-      - predecessor: [Product]
 Nat: [NatFactory, Product]

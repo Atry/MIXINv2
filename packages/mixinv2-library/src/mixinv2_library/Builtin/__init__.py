@@ -21,7 +21,10 @@ class _BinNatScope(Protocol):
 
 
 @public
-@extend(LexicalReference(path=("NatData",)))
+@extend(
+    LexicalReference(path=("NatDataZero",)),
+    LexicalReference(path=("NatDataSuccessor",)),
+)
 @scope
 class NatToPython:
     @public

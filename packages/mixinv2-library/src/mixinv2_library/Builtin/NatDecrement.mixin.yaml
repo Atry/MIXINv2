@@ -1,4 +1,5 @@
-- [NatData]
+- [NatDataZero]
+- [NatDataSuccessor]
 - NatFactory:
     Product:
       Decrement:

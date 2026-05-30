@@ -1,0 +1,16 @@
+- [NatVisitorZero]
+- [NatEquality]
+- NatFactory:
+    Zero:
+      Equal:
+        other: [NatEqualityZero, ~, NatFactory, Product]
+        _OtherAcceptance:
+          - [other, Acceptance]
+          - VisitorMap:
+              ZeroVisitor:
+                equal: [NatEqualityZero, ~, BooleanFactory, "True"]
+              SuccessorVisitor:
+                equal: [NatEqualityZero, ~, BooleanFactory, "False"]
+            Accepted:
+              equal: [NatEqualityZero, ~, Boolean]
+        equal: [_OtherAcceptance, Accepted, equal]

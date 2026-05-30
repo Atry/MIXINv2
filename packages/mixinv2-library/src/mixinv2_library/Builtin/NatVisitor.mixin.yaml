@@ -4,16 +4,3 @@
       Acceptance:
         VisitorMap: []
         Accepted: []
-    Zero:
-      Acceptance:
-        VisitorMap:
-          ZeroVisitor: []
-        Accepted: [VisitorMap, ZeroVisitor]
-
-    Successor:
-      predecessor: [Product]
-
-      Acceptance:
-        VisitorMap:
-          SuccessorVisitor: []
-        Accepted: [VisitorMap, SuccessorVisitor]

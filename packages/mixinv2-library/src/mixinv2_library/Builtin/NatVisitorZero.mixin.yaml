@@ -1,0 +1,8 @@
+- [NatDataZero]
+- [NatVisitor]
+- NatFactory:
+    Zero:
+      Acceptance:
+        VisitorMap:
+          ZeroVisitor: []
+        Accepted: [VisitorMap, ZeroVisitor]

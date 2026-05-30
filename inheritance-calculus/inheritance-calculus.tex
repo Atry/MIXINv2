@@ -1386,8 +1386,16 @@ This section traces the unary Nat case in detail: its data representation,
 addition, and equality.
 The implementation follows Gang-of-Four design
 patterns~\cite{gamma1994-design-patterns} in a declarative
-object-oriented style:
-each concern is one top-level mixin;
+object-oriented style, with each concern split along two axes.
+Along the operation axis, every operation is a separate mixin, which is
+the extension dimension of the Expression Problem.
+Along the constructor axis, each operation is split again into an
+\emph{interface} mixin that declares the operation on the abstract
+$\mathrm{Product}$ type, and one \emph{implementation} mixin per data
+constructor ($\mathrm{Zero}$ and $\mathrm{Successor}$).
+The interface keeps the concern's name (such as $\mathrm{NatPlus}$),
+while the implementations append the constructor name (such as
+$\mathrm{NatPlusZero}$ and $\mathrm{NatPlusSuccessor}$).
 UpperCamelCase names serve as data constructors and operations;
 lowerCamelCase names serve as fields and parameters;
 and since there are no methods, all names are nouns or adjectives: $\mathrm{Plus}$
@@ -1397,47 +1405,72 @@ Operations expose their result through a projection field (e.g., $\mathrm{sum}$)
 \paragraph{NatData}
 The data representation (Zero/Successor) is a Peano
 encoding, an initial algebra of the functor $F(X) = 1 + X$.
-Following this convention, we define a factory containing the abstract product type and two
-labels that serve as data constructors.
-A $\mathrm{Zero}$ value inherits $\mathrm{Product}$;
-a $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
-exposes a $\mathrm{predecessor}$ field.
-The name $\mathrm{NatData}$ is the top-level scope:
+The interface mixin $\mathrm{NatData}$ declares only the abstract product
+type and the $\mathrm{Nat}$ alias:
 \[
   \mathrm{NatData} \mapsto \left\{
     \begin{aligned}
-      &\mathrm{NatFactory} \mapsto \left\{
-        \begin{aligned}
-          &\mathrm{Product} \mapsto \{\},\\
-          &\mathrm{Zero} \mapsto \{\mathrm{Product}\},\\
-          &\mathrm{Successor} \mapsto \left\{\mathrm{Product},\; \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\right\}
-      \end{aligned}\right\},\\
+      &\mathrm{NatFactory} \mapsto \{\mathrm{Product} \mapsto \{\}\},\\
       &\mathrm{Nat} \mapsto \{\mathrm{NatFactory}.\mathrm{Product}\}
+  \end{aligned}\right\}
+\]
+Each data constructor is a separate implementation mixin that inherits
+$\mathrm{NatData}$.
+A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
+\[
+  \mathrm{NatDataZero} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatData},\\
+      &\mathrm{NatFactory} \mapsto \{\mathrm{Zero} \mapsto \{\qualifiedthis{\mathrm{NatDataZero}}.\mathrm{NatFactory}.\mathrm{Product}\}\}
+  \end{aligned}\right\}
+\]
+A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
+exposes a $\mathrm{predecessor}$ field:
+\[
+  \mathrm{NatDataSuccessor} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatData},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{
+        \begin{aligned}
+          &\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
+          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
+      \end{aligned}\right\}\right\}
   \end{aligned}\right\}
 \]
 
 \paragraph{NatPlus}
-Addition is a separate mixin that inherits $\mathrm{NatData}$
-and extends each data constructor with a $\mathrm{Plus}$ operation
-exposing a $\mathrm{sum}$ field.
-The base case is $0 + m = m$; the recursive case reduces
-$\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
-by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
+Addition exposes a $\mathrm{sum}$ field.
+Its interface mixin $\mathrm{NatPlus}$ inherits $\mathrm{NatData}$ and
+declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
 \[
   \mathrm{NatPlus} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \left\{
-        \begin{aligned}
-          &\mathrm{Product} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\mathrm{sum} \mapsto \{\mathrm{Product}\}\right\}\right\},\\
-          &\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Plus} \mapsto \left\{\mathrm{sum} \mapsto \{\mathrm{Product}\}\right\}\right\}\right\}
+  \end{aligned}\right\}
+\]
+The base case is $0 + m = m$: $\mathrm{NatPlusZero}$ inherits the $\mathrm{Zero}$
+data and the $\mathrm{Plus}$ interface, and returns the addend directly:
+\[
+  \mathrm{NatPlusZero} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+          \begin{aligned}
+            &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusZero}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+            &\mathrm{sum} \mapsto \{\mathrm{addend}\}
+      \end{aligned}\right\}\right\}\right\}
+  \end{aligned}\right\}
+\]
+The recursive case reduces $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
+by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
+\[
+  \mathrm{NatPlusSuccessor} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatDataSuccessor},\; \mathrm{NatPlus},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
-                &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
-                &\mathrm{sum} \mapsto \{\mathrm{addend}\}
-          \end{aligned}\right\}\right\},\\
-          &\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
-              \begin{aligned}
-                &\mathrm{addend} \mapsto \{\mathrm{Product}\},\\
+                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
                 &\left\{
                   \begin{aligned}
@@ -1451,47 +1484,51 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
                     &\mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}
                 \end{aligned}\right\},\\
                 &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
-          \end{aligned}\right\}\right\}
-      \end{aligned}\right\}
+          \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
 \]
 
 \paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
 visitor pattern.
-$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to each data constructor,
-containing a $\mathrm{VisitorMap}$ with the appropriate
-$\mathrm{ZeroVisitor}$ or $\mathrm{SuccessorVisitor}$ branch,
-and an $\mathrm{Accepted}$ field that delegates to the matching branch:
+$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation that contains a
+$\mathrm{VisitorMap}$ with the appropriate $\mathrm{ZeroVisitor}$ or
+$\mathrm{SuccessorVisitor}$ branch and an $\mathrm{Accepted}$ field that
+delegates to the matching branch.
+The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product}$:
 \[
   \mathrm{NatVisitor} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \left\{
-        \begin{aligned}
-          &\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{Accepted} \mapsto \{\}\}\},\\
-          &\mathrm{Zero} \mapsto \left\{
-            \begin{aligned}
-              &\mathrm{Acceptance} \mapsto \\
-              &\left\{
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{VisitorMap} \mapsto \{\},\; \mathrm{Accepted} \mapsto \{\}\}\}\right\}
+  \end{aligned}\right\}
+\]
+The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch:
+\[
+  \mathrm{NatVisitorZero} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatDataZero},\; \mathrm{NatVisitor},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Acceptance} \mapsto \left\{
                 \begin{aligned}
                   &\mathrm{VisitorMap} \mapsto \{\mathrm{ZeroVisitor} \mapsto \{\}\},\\
                   &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}
-              \end{aligned}\right\}
-            \end{aligned}
-          \right\},\\
-          &\mathrm{Successor} \mapsto \left\{
+              \end{aligned}\right\}\right\}\right\}
+  \end{aligned}\right\}
+\]
+The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ branch:
+\[
+  \mathrm{NatVisitorSuccessor} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatDataSuccessor},\; \mathrm{NatVisitor},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{
             \begin{aligned}
-              &\mathrm{Acceptance} \mapsto \\
-              &\left\{
+              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatVisitorSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+              &\mathrm{Acceptance} \mapsto \left\{
                 \begin{aligned}
-                  &\mathrm{VisitorMap} \mapsto \\
-                  &\{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
-                  &\mathrm{Accepted} \mapsto  \\
-                  &\{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}
+                  &\mathrm{VisitorMap} \mapsto \{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
+                  &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}
               \end{aligned}\right\}
-          \end{aligned}\right\}
-      \end{aligned}\right\}
+          \end{aligned}\right\}\right\}
   \end{aligned}\right\}
 \]
 $\mathrm{BooleanData}$ defines the output sort:
@@ -1510,8 +1547,8 @@ $\mathrm{BooleanData}$ defines the output sort:
 \paragraph{NatEquality}
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
-$\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$, using each as a module,
-and adds an $\mathrm{Equal}$ operation to each data constructor.
+The interface mixin $\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$, using each as a module,
+and declares an $\mathrm{Equal}$ operation on $\mathrm{Product}$ that the per-constructor implementations provide.
 Inheriting then serves as importing:
 because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
 the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach the members
@@ -1519,35 +1556,34 @@ defined in $\mathrm{BooleanData}$, so $\mathrm{Equal}$ returns a boolean with a
 reference like $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}$,
 reading $\mathrm{False}$ as a static member of the $\mathrm{BooleanFactory}$ class
 that this import of $\mathrm{BooleanData}$ brings in.
-$\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$;
-$\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$
-with an equal predecessor.
 Inheriting then also serves as case analysis:
 inheriting $\mathrm{other}.\mathrm{Acceptance}$ dispatches on whether $\mathrm{other}$
 was built by $\mathrm{Zero}$ or $\mathrm{Successor}$.
 Inheriting likewise serves as a type annotation:
 in $\mathrm{Accepted}$, $\mathrm{equal}$ inherits $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$,
 declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\mathrm{BooleanData}$:
+\[
+  \mathrm{NatEquality} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatVisitor},\; \mathrm{BooleanData},\\
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
+          \begin{aligned}
+            &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
+            &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
+      \end{aligned}\right\}\right\}\right\}
+  \end{aligned}\right\}
+\]
+$\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$, so its implementation
+dispatches on $\mathrm{other}$ and returns $\mathrm{True}$ on the
+$\mathrm{ZeroVisitor}$ branch and $\mathrm{False}$ otherwise:
 {\small
   \[
-    \mathrm{NatEquality} \mapsto \left\{
+    \mathrm{NatEqualityZero} \mapsto \left\{
       \begin{aligned}
-        &\mathrm{NatVisitor},\\
-        &\mathrm{BooleanData},\\
-        &\mathrm{NatFactory} \mapsto \left\{
-          \begin{aligned}
-            &\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
-                \begin{aligned}
-                  &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
-                  &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
-            \end{aligned}\right\}\right\},\\
-            &\mathrm{Zero} \mapsto \\
-            &\left\{
-              \begin{aligned}
-                &\mathrm{Equal} \mapsto \\
-                &\left\{
+        &\mathrm{NatVisitorZero},\; \mathrm{NatEquality},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
                   \begin{aligned}
-                    &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
+                    &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
                     &\mathrm{\_OtherAcceptance} \mapsto \\
                     &\left\{
                       \begin{aligned}
@@ -1556,22 +1592,31 @@ declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\
                         &\left\{
                           \begin{aligned}
                             &\mathrm{ZeroVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
                             &\mathrm{SuccessorVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
                         \end{aligned}\right\},\\
-                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}
+                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}\}\}
                     \end{aligned}\right\},\\
                     &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}
-            \end{aligned}\right\},\\
-            &\mathrm{Successor} \mapsto \\
-            &\left\{
-              \begin{aligned}
-                &\mathrm{Equal} \mapsto \\
-                &\left\{
+                \end{aligned}\right\}\right\}\right\}
+    \end{aligned}\right\}
+\]}
+$\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$ with an equal
+predecessor, so its implementation recurses through
+$\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
+{\small
+  \[
+    \mathrm{NatEqualitySuccessor} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{NatVisitorSuccessor},\; \mathrm{NatEquality},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
                   \begin{aligned}
-                    &\mathrm{other} \mapsto \left\{\mathrm{Product},\; \mathrm{predecessor} \mapsto \{\mathrm{Product}\}\right\},\\
+                    &\mathrm{other} \mapsto \left\{
+                      \begin{aligned}
+                        &\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
+                        &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
+                    \end{aligned}\right\},\\
                     &\mathrm{\_recursiveEquality} \mapsto \\
                     &\left\{
                       \begin{aligned}
@@ -1586,17 +1631,15 @@ declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\
                         &\left\{
                           \begin{aligned}
                             &\mathrm{ZeroVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
+                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
                             &\mathrm{SuccessorVisitor} \mapsto \\
                             &\{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
                         \end{aligned}\right\},\\
                         &\mathrm{Accepted} \mapsto \\
-                        &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}\}
+                        &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{Boolean}\}\}
                     \end{aligned}\right\},\\
                     &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}
-            \end{aligned}\right\}
-        \end{aligned}\right\}
+                \end{aligned}\right\}\right\}\right\}
     \end{aligned}\right\}
 \]}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
@@ -1632,15 +1675,16 @@ declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\
 %% 正如 ANF 变换本身是机械化的。但这是表面语法的选择，
 %% 不影响演算本身的语义。
 %% ================================================================
-Composing $\mathrm{NatPlus}$ with $\mathrm{NatEquality}$ by
-inheriting both, with no modifications to either mixin, gives the
+Composing the $\mathrm{Plus}$ and $\mathrm{Equal}$ implementations by
+inheriting them, with no modifications to any mixin, gives the
 resulting Nat values both $\mathrm{Plus}$ and $\mathrm{Equal}$
 automatically.
-The concrete numerals live in a shared mixin that inherits only $\mathrm{NatData}$:
+The concrete numerals live in a shared mixin that inherits only the
+two data constructors:
 \[
   \mathrm{NatConstants} \mapsto \left\{
     \begin{aligned}
-      &\mathrm{NatData},\\
+      &\mathrm{NatDataZero},\; \mathrm{NatDataSuccessor},\\
       &\mathrm{One} \mapsto \left\{
         \begin{aligned}
           &\qualifiedthis{\mathrm{NatConstants}}.\mathrm{NatFactory}.\mathrm{Successor},\\
@@ -1672,7 +1716,8 @@ The arithmetic test inherits $\mathrm{NatConstants}$ together with the operation
 \[
   \mathrm{Test} \mapsto \left\{
     \begin{aligned}
-      &\mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
+      &\mathrm{NatConstants},\; \mathrm{NatPlusZero},\; \mathrm{NatPlusSuccessor},\\
+      &\mathrm{NatEqualityZero},\; \mathrm{NatEqualitySuccessor},\\
       &\mathrm{TwoPlusThree} \mapsto \left\{
         \begin{aligned}
           &\qualifiedthis{\mathrm{Test}}.\mathrm{Two}.\mathrm{Plus},\\
@@ -1714,11 +1759,11 @@ operations do not automatically enrich each other's return types;
 additional boilerplate or type-class machinery is required.
 
 Multi-target qualified $\this$ (equation~\ref{eq:this}) is essential.
-In the test mixin above, $\mathrm{NatPlus}.\mathrm{Successor}$ and
-$\mathrm{NatEquality}.\mathrm{Successor}$ both inherit
-$\mathrm{NatData}.\mathrm{Successor}$.
+In the test mixin above, $\mathrm{NatPlusSuccessor}$ and
+$\mathrm{NatEqualitySuccessor}$ both inherit
+$\mathrm{NatDataSuccessor}$.
 When the two operations are composed, the resulting
-$\mathrm{Successor}$ inherits the $\mathrm{NatData}$ schema
+$\mathrm{Successor}$ inherits the $\mathrm{NatDataSuccessor}$ schema
 through two independent routes.
 The reference
 $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}$
@@ -1760,7 +1805,8 @@ with $\mathrm{Equal}$:
 \[
   \mathrm{CartesianTest} \mapsto \left\{
     \begin{aligned}
-      &\mathrm{NatConstants},\; \mathrm{NatPlus},\; \mathrm{NatEquality},\\
+      &\mathrm{NatConstants},\; \mathrm{NatPlusZero},\; \mathrm{NatPlusSuccessor},\\
+      &\mathrm{NatEqualityZero},\; \mathrm{NatEqualitySuccessor},\\
       &\mathrm{OneOrTwo} \mapsto \left\{\qualifiedthis{\mathrm{CartesianTest}}.\mathrm{One},\; \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Two}\right\},\\
       &\mathrm{ThreeOrFour} \mapsto \left\{\qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Three},\; \qualifiedthis{\mathrm{CartesianTest}}.\mathrm{Four}\right\},\\
       &\mathrm{Result} \mapsto \left\{\mathrm{OneOrTwo}.\mathrm{Plus},\; \mathrm{addend} \mapsto \{\mathrm{ThreeOrFour}\}\right\},\\

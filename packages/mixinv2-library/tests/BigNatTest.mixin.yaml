@@ -1,5 +1,6 @@
 NatArithmetic:
-  - [Builtin, NatPlus]
+  - [Builtin, NatPlusZero]
+  - [Builtin, NatPlusSuccessor]
   - [Builtin, NatToPython]
   - [Builtin, BooleanToPython]
 

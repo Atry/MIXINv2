@@ -1,4 +1,5 @@
-- [Builtin, NatData]
+- [Builtin, NatDataZero]
+- [Builtin, NatDataSuccessor]
 
 - Zero:
     - [NatConstants, ~, NatFactory, Zero]

@@ -1,6 +1,8 @@
 - [NatConstants]
-- [Builtin, NatEquality]
-- [Builtin, NatPlus]
+- [Builtin, NatEqualityZero]
+- [Builtin, NatEqualitySuccessor]
+- [Builtin, NatPlusZero]
+- [Builtin, NatPlusSuccessor]
 - [Builtin, NatToPython]
 - [Builtin, BooleanToPython]
 
