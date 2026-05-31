@@ -1427,15 +1427,19 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
 A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
 exposes a $\mathrm{predecessor}$ field:
 \[
-  \mathrm{NatDataSuccessor} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatDataSuccessor} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{
+      &\mathrm{NatFactory} \mapsto \\
+      &\left\{\mathrm{Successor} \mapsto \left\{
         \begin{aligned}
           &\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
           &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
       \end{aligned}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 
 \paragraph{NatPlus}
@@ -1452,7 +1456,9 @@ declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
 The base case is $0 + m = m$: $\mathrm{NatPlusZero}$ inherits the $\mathrm{Zero}$
 data and the $\mathrm{Plus}$ interface, and returns the addend directly:
 \[
-  \mathrm{NatPlusZero} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatPlusZero} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
@@ -1461,14 +1467,18 @@ data and the $\mathrm{Plus}$ interface, and returns the addend directly:
             &\mathrm{sum} \mapsto \{\mathrm{addend}\}
       \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 The recursive case reduces $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
 by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 \[
-  \mathrm{NatPlusSuccessor} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatPlusSuccessor} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatDataSuccessor},\; \mathrm{NatPlus},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+      &\mathrm{NatFactory} \mapsto \\
+      &\left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
                 &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
@@ -1486,6 +1496,7 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
                 &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
           \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 
 \paragraph{NatVisitor}
@@ -1497,15 +1508,20 @@ $\mathrm{SuccessorVisitor}$ branch and an $\mathrm{Accepted}$ field that
 delegates to the matching branch.
 The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product}$:
 \[
-  \mathrm{NatVisitor} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatVisitor} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatData},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{VisitorMap} \mapsto \{\},\; \mathrm{Accepted} \mapsto \{\}\}\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch:
 \[
-  \mathrm{NatVisitorZero} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatVisitorZero} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatDataZero},\; \mathrm{NatVisitor},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Acceptance} \mapsto \left\{
@@ -1514,13 +1530,17 @@ The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch:
                   &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}
               \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ branch:
 \[
-  \mathrm{NatVisitorSuccessor} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatVisitorSuccessor} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatDataSuccessor},\; \mathrm{NatVisitor},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{
+      &\mathrm{NatFactory} \mapsto \\
+      &\left\{\mathrm{Successor} \mapsto \left\{
             \begin{aligned}
               &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatVisitorSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
               &\mathrm{Acceptance} \mapsto \left\{
@@ -1530,6 +1550,7 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
               \end{aligned}\right\}
           \end{aligned}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 $\mathrm{BooleanData}$ defines the output sort:
 \[
@@ -1563,7 +1584,9 @@ Inheriting likewise serves as a type annotation:
 in $\mathrm{Accepted}$, $\mathrm{equal}$ inherits $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$,
 declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\mathrm{BooleanData}$:
 \[
-  \mathrm{NatEquality} \mapsto \left\{
+  \begin{aligned}
+    &\mathrm{NatEquality} \mapsto \\
+    &\left\{
     \begin{aligned}
       &\mathrm{NatVisitor},\; \mathrm{BooleanData},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
@@ -1572,16 +1595,26 @@ declaring its type to be $\mathrm{Boolean}$, once more the type imported from $\
             &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
       \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
+  \end{aligned}
 \]
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$, so its implementation
 dispatches on $\mathrm{other}$ and returns $\mathrm{True}$ on the
 $\mathrm{ZeroVisitor}$ branch and $\mathrm{False}$ otherwise:
 {\small
   \[
-    \mathrm{NatEqualityZero} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatEqualityZero} \mapsto \\
+      &\left\{
       \begin{aligned}
         &\mathrm{NatVisitorZero},\; \mathrm{NatEquality},\\
-        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
+        &\mathrm{NatFactory} \mapsto \\
+        &\left\{
+        \begin{aligned}
+        &\mathrm{Zero} \mapsto \\
+        &\left\{
+        \begin{aligned}
+        &\mathrm{Equal} \mapsto \\
+        &\left\{
                   \begin{aligned}
                     &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
                     &\mathrm{\_OtherAcceptance} \mapsto \\
@@ -1591,34 +1624,43 @@ $\mathrm{ZeroVisitor}$ branch and $\mathrm{False}$ otherwise:
                         &\mathrm{VisitorMap} \mapsto \\
                         &\left\{
                           \begin{aligned}
-                            &\mathrm{ZeroVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
-                            &\mathrm{SuccessorVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
+                            &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
+                            &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
                         \end{aligned}\right\},\\
                         &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}\}\}
                     \end{aligned}\right\},\\
                     &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}\right\}\right\}
+                \end{aligned}\right\}
+        \end{aligned}\right\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
+    \end{aligned}
 \]}
 $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$ with an equal
 predecessor, so its implementation recurses through
 $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
 {\small
   \[
-    \mathrm{NatEqualitySuccessor} \mapsto \left\{
+    \begin{aligned}
+      &\mathrm{NatEqualitySuccessor} \mapsto \\
+      &\left\{
       \begin{aligned}
         &\mathrm{NatVisitorSuccessor},\; \mathrm{NatEquality},\\
-        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
+        &\mathrm{NatFactory} \mapsto \\
+        &\left\{
+        \begin{aligned}
+        &\mathrm{Successor} \mapsto \\
+        &\left\{
+        \begin{aligned}
+        &\mathrm{Equal} \mapsto \\
+        &\left\{
                   \begin{aligned}
                     &\mathrm{other} \mapsto \left\{
                       \begin{aligned}
                         &\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
                         &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
                     \end{aligned}\right\},\\
-                    &\mathrm{\_recursiveEquality} \mapsto \\
-                    &\left\{
+                    &\mathrm{\_recursiveEquality} \mapsto \left\{
                       \begin{aligned}
                         &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
                         &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}
@@ -1630,17 +1672,17 @@ $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
                         &\mathrm{VisitorMap} \mapsto \\
                         &\left\{
                           \begin{aligned}
-                            &\mathrm{ZeroVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
-                            &\mathrm{SuccessorVisitor} \mapsto \\
-                            &\{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
+                            &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
+                            &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
                         \end{aligned}\right\},\\
-                        &\mathrm{Accepted} \mapsto \\
-                        &\{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{Boolean}\}\}
+                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{Boolean}\}\}
                     \end{aligned}\right\},\\
                     &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}\right\}\right\}
+                \end{aligned}\right\}
+        \end{aligned}\right\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
+    \end{aligned}
 \]}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
 %%
