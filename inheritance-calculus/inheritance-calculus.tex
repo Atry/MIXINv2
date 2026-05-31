@@ -1403,10 +1403,8 @@ is a structure, not an action.
 Operations expose their result through a projection field (e.g., $\mathrm{sum}$).
 
 \paragraph{NatData}
-The data representation (Zero/Successor) is a Peano
-encoding, an initial algebra of the functor $F(X) = 1 + X$.
-The interface mixin $\mathrm{NatData}$ declares only the abstract product
-type and the $\mathrm{Nat}$ alias:
+The interface mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
+$\mathrm{NatFactory}$ is a factory whose abstract product type is aliased as $\mathrm{Nat}$:
 \[
   \mathrm{NatData} \mapsto \left\{
     \begin{aligned}
@@ -1445,6 +1443,10 @@ exposes a $\mathrm{predecessor}$ field:
   \end{aligned}\right\}
   \end{aligned}
 \]
+Together with $\mathrm{NatDataZero}$, this completes the Peano encoding of
+the natural numbers, the initial algebra of the functor $F(X) = 1 + X$,
+in an open way: the two constructors are added as independent mixins
+rather than fixed in a single closed datatype definition.
 
 \paragraph{NatPlus}
 Addition exposes a $\mathrm{sum}$ field.
