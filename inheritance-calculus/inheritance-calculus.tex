@@ -1403,7 +1403,7 @@ is a structure, not an action.
 Operations expose their result through a projection field (e.g., $\mathrm{sum}$).
 
 \paragraph{NatData}
-The interface mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
+The mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
 $\mathrm{NatFactory}$ is a factory whose abstract product type is aliased as $\mathrm{Nat}$:
 \[
   \mathrm{NatData} \mapsto \left\{
@@ -1427,7 +1427,7 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
 
 \paragraph{NatDataSuccessor}
 A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
-exposes a $\mathrm{predecessor}$ field:
+exposes a $\mathrm{predecessor}$ field whose type is $\mathrm{Product}$:
 \[
   \begin{aligned}
     &\mathrm{NatDataSuccessor} \mapsto \\
@@ -1450,8 +1450,10 @@ rather than fixed in a single closed datatype definition.
 
 \paragraph{NatPlus}
 Addition exposes a $\mathrm{sum}$ field.
-Its interface mixin $\mathrm{NatPlus}$ inherits $\mathrm{NatData}$ and
-declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
+The mixin $\mathrm{NatPlus}$ inherits $\mathrm{NatData}$ and
+declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$.
+Read in object-oriented terms, $\mathrm{Plus}$ is a method on
+$\mathrm{Product}$ whose return value is the $\mathrm{sum}$ field:
 \[
   \mathrm{NatPlus} \mapsto \left\{
     \begin{aligned}
@@ -1461,12 +1463,12 @@ declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
 \]
 
 \paragraph{NatPlusZero}
-The base case is $0 + m = m$: $\mathrm{NatPlusZero}$ inherits the $\mathrm{Zero}$
-data and the $\mathrm{Plus}$ interface, and returns the addend directly:
+The base case is $0 + m = m$. Here $\mathrm{NatPlusZero}$ acts as a module that
+imports other modules: it inherits the $\mathrm{Zero}$ data and the $\mathrm{Plus}$
+interface, and returns the addend directly:
 \[
   \begin{aligned}
-    &\mathrm{NatPlusZero} \mapsto \\
-    &\left\{
+    &\mathrm{NatPlusZero} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
@@ -1487,8 +1489,7 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
     &\left\{
     \begin{aligned}
       &\mathrm{NatDataSuccessor},\; \mathrm{NatPlus},\\
-      &\mathrm{NatFactory} \mapsto \\
-      &\left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
                 &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
@@ -1512,11 +1513,9 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 \paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
 visitor pattern.
-$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation that contains a
-$\mathrm{VisitorMap}$ with the appropriate $\mathrm{ZeroVisitor}$ or
-$\mathrm{SuccessorVisitor}$ branch and an $\mathrm{Accepted}$ field that
-delegates to the matching branch.
-The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product}$:
+$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to $\mathrm{Product}$.
+The mixin $\mathrm{NatVisitor}$ declares it empty, leaving a $\mathrm{VisitorMap}$ and an
+$\mathrm{Accepted}$ field for the per-constructor implementations to fill in:
 \[
   \begin{aligned}
     &\mathrm{NatVisitor} \mapsto \\
@@ -1529,7 +1528,14 @@ The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product
 \]
 
 \paragraph{NatVisitorZero}
-The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch:
+The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch.
+Although this acceptance machinery is isomorphic to the GoF visitor pattern,
+it escapes that pattern's characteristic rigidity: in GoF the set of data
+constructors is fixed once the $\mathrm{accept}$ interface is written, so a new
+constructor forces every existing visitor to be edited. Here each constructor
+is its own mixin that supplies its own branch, so adding a new data constructor
+is as modular as adding a new operation, neither requires touching the existing
+code:
 \[
   \begin{aligned}
     &\mathrm{NatVisitorZero} \mapsto \\
@@ -1584,18 +1590,15 @@ $\mathrm{BooleanData}$ defines the output sort:
 \paragraph{NatEquality}
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
-The interface mixin $\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$, using each as a module,
+The mixin $\mathrm{NatEquality}$ imports $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
 and declares an $\mathrm{Equal}$ operation on $\mathrm{Product}$ that the per-constructor implementations provide.
-Inheriting serves as importing:
-because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
-the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach the members
-defined in $\mathrm{BooleanData}$, so $\mathrm{Equal}$ declares its result
-$\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$,
-reading $\mathrm{Boolean}$ as a member imported from $\mathrm{BooleanData}$:
+Because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
+the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach $\mathrm{Boolean}$,
+so $\mathrm{Equal}$ declares its result
+$\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$:
 \[
   \begin{aligned}
-    &\mathrm{NatEquality} \mapsto \\
-    &\left\{
+    &\mathrm{NatEquality} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatVisitor},\; \mathrm{BooleanData},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
