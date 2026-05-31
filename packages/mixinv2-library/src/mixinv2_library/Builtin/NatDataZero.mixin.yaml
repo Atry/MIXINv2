@@ -1,4 +1,4 @@
 - [NatData]
 - NatFactory:
     Zero:
-      - [NatDataZero, ~, NatFactory, Product]
+      - [NatFactory, ~, Product]

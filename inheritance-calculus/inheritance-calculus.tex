@@ -1421,7 +1421,7 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
   \mathrm{NatDataZero} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \{\mathrm{Zero} \mapsto \{\qualifiedthis{\mathrm{NatDataZero}}.\mathrm{NatFactory}.\mathrm{Product}\}\}
+      &\mathrm{NatFactory} \mapsto \{\mathrm{Zero} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}\}
   \end{aligned}\right\}
 \]
 
@@ -1437,8 +1437,8 @@ exposes a $\mathrm{predecessor}$ field:
       &\mathrm{NatFactory} \mapsto \\
       &\left\{\mathrm{Successor} \mapsto \left\{
         \begin{aligned}
-          &\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
-          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatDataSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
+          &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
+          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
       \end{aligned}\right\}\right\}
   \end{aligned}\right\}
   \end{aligned}
@@ -1471,7 +1471,7 @@ data and the $\mathrm{Plus}$ interface, and returns the addend directly:
       &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
       &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
           \begin{aligned}
-            &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusZero}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+            &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
             &\mathrm{sum} \mapsto \{\mathrm{addend}\}
       \end{aligned}\right\}\right\}\right\}
   \end{aligned}\right\}
@@ -1490,7 +1490,7 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
       &\mathrm{NatFactory} \mapsto \\
       &\left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
-                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
                 &\left\{
                   \begin{aligned}
@@ -1556,7 +1556,7 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
       &\mathrm{NatFactory} \mapsto \\
       &\left\{\mathrm{Successor} \mapsto \left\{
             \begin{aligned}
-              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatVisitorSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
               &\mathrm{Acceptance} \mapsto \left\{
                 \begin{aligned}
                   &\mathrm{VisitorMap} \mapsto \{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
@@ -1633,7 +1633,7 @@ declaring its type to be $\mathrm{Boolean}$:
         &\mathrm{Equal} \mapsto \\
         &\left\{
                   \begin{aligned}
-                    &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+                    &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
                     &\mathrm{\_OtherAcceptance} \mapsto \\
                     &\left\{
                       \begin{aligned}
@@ -1676,8 +1676,8 @@ $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
                   \begin{aligned}
                     &\mathrm{other} \mapsto \left\{
                       \begin{aligned}
-                        &\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product},\\
-                        &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\}
+                        &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
+                        &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
                     \end{aligned}\right\},\\
                     &\mathrm{\_recursiveEquality} \mapsto \left\{
                       \begin{aligned}

@@ -2,7 +2,7 @@
 - [NatVisitor]
 - NatFactory:
     Successor:
-      predecessor: [NatVisitorSuccessor, ~, NatFactory, Product]
+      predecessor: [NatFactory, ~, Product]
       Acceptance:
         VisitorMap:
           SuccessorVisitor: []

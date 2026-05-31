@@ -7,8 +7,8 @@
           equal: [NatEqualitySuccessor, ~, Boolean]
       Equal:
         other:
-          - [NatEqualitySuccessor, ~, NatFactory, Product]
-          - predecessor: [NatEqualitySuccessor, ~, NatFactory, Product]
+          - [NatFactory, ~, Product]
+          - predecessor: [NatFactory, ~, Product]
         _recursiveEquality:
           - [Successor, ~, predecessor, Equal]
           - other: [Equal, ~, other, predecessor]

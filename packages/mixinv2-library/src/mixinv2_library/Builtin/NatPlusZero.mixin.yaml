@@ -3,5 +3,5 @@
 - NatFactory:
     Zero:
       Plus:
-        addend: [NatPlusZero, ~, NatFactory, Product]
+        addend: [NatFactory, ~, Product]
         sum: [addend]
