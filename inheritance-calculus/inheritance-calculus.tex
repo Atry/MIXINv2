@@ -632,12 +632,13 @@ In object-oriented programming, a
 \emph{mixin}~\cite{bracha1990-mixin-inheritance} is a fragment of behavior
 that can be composed onto a class via inheritance.
 Inheritance-calculus has a single abstraction, the
-\emph{deep-mergeable mixin},%
+\emph{deep-mergeable mixin}, whose members are
+\emph{deep-mergeable properties}.%
 \footnote{
-  Where no ambiguity arises, we write simply ``mixin.''
-  The distinction from the Bracha--Cook
-  mixin~\cite{bracha1990-mixin-inheritance} is detailed in
-  Section~\ref{sec:related-work}.
+  Where no ambiguity arises, we write simply ``mixin'' and ``property.''
+  As Figure~\ref{fig:cheatsheet} shows, each generalizes its namesake in prior
+  work: the Bracha--Cook mixin~\cite{bracha1990-mixin-inheritance} and the
+  property of object-oriented languages.
 }
 which can simultaneously serve as module, class, object, method, field, and
 local binding, as Figure~\ref{fig:cheatsheet} illustrated, because there
@@ -1384,23 +1385,12 @@ and binary, in inheritance-calculus.%
 }
 This section traces the unary Nat case in detail: its data representation,
 addition, and equality.
-The implementation follows Gang-of-Four design
-patterns~\cite{gamma1994-design-patterns} in a declarative
-object-oriented style, with each concern split along two axes.
-Along the operation axis, every operation is a separate mixin, which is
-the extension dimension of the Expression Problem.
-Along the constructor axis, each operation is split again into an
-\emph{interface} mixin that declares the operation on the abstract
-$\mathrm{Product}$ type, and one \emph{implementation} mixin per data
-constructor ($\mathrm{Zero}$ and $\mathrm{Successor}$).
-The interface keeps the concern's name (such as $\mathrm{NatPlus}$),
-while the implementations append the constructor name (such as
-$\mathrm{NatPlusZero}$ and $\mathrm{NatPlusSuccessor}$).
-UpperCamelCase names serve as data constructors and operations;
-lowerCamelCase names serve as fields and parameters;
-and since there are no methods, all names are nouns or adjectives: $\mathrm{Plus}$
-is a structure, not an action.
-Operations expose their result through a projection field (e.g., $\mathrm{sum}$).
+The implementation follows ordinary Gang-of-Four design
+patterns~\cite{gamma1994-design-patterns} in a declarative object-oriented
+style, with each concern split into mixins along two axes: operations and
+cases. Because the calculus has no methods of its own, every name is a noun or
+adjective: UpperCamelCase names play the roles of data constructors and methods,
+and lowerCamelCase names the roles of fields and parameters.
 
 \paragraph{NatData}
 The mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
@@ -1427,7 +1417,7 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
 
 \paragraph{NatDataSuccessor}
 A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
-exposes a $\mathrm{predecessor}$ field whose type is $\mathrm{Product}$:
+exposes a $\mathrm{predecessor}$ property whose type is $\mathrm{Product}$:
 \[
   \begin{aligned}
     &\mathrm{NatDataSuccessor} \mapsto \\
@@ -1449,11 +1439,17 @@ in an open way: the two constructors are added as independent mixins
 rather than fixed in a single closed datatype definition.
 
 \paragraph{NatPlus}
-Addition exposes a $\mathrm{sum}$ field.
-The mixin $\mathrm{NatPlus}$ inherits $\mathrm{NatData}$ and
-declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$.
-Read in object-oriented terms, $\mathrm{Plus}$ is a method on
-$\mathrm{Product}$ whose return value is the $\mathrm{sum}$ field:
+The addition operation is split along the case axis into an \emph{interface}
+mixin $\mathrm{NatPlus}$, which keeps the concern's name and declares the command
+on the abstract $\mathrm{Product}$, and one \emph{implementation} mixin per case,
+which appends the constructor name ($\mathrm{NatPlusZero}$ and
+$\mathrm{NatPlusSuccessor}$ below). $\mathrm{NatPlus}$ inherits
+$\mathrm{NatData}$. Where an
+object-oriented method would be named with a verb, the command
+pattern~\cite{gamma1994-design-patterns} reifies it as a noun-named command, so
+the addition method is named $\mathrm{Plus}$ rather than $\mathrm{Add}$, and it
+exposes its result through the projection property $\mathrm{sum}$, here typed but
+not yet computed:
 \[
   \mathrm{NatPlus} \mapsto \left\{
     \begin{aligned}
@@ -1512,10 +1508,11 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 
 \paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
-visitor pattern.
-$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation to $\mathrm{Product}$.
+visitor pattern~\cite{gamma1994-design-patterns}.
+$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ command to $\mathrm{Product}$,
+the noun form of the visitor pattern's $\mathrm{accept}$ method.
 The mixin $\mathrm{NatVisitor}$ declares it empty, leaving a $\mathrm{VisitorMap}$ and an
-$\mathrm{Accepted}$ field for the per-constructor implementations to fill in:
+$\mathrm{Accepted}$ property for the per-constructor implementations to fill in:
 \[
   \begin{aligned}
     &\mathrm{NatVisitor} \mapsto \\
@@ -1529,13 +1526,10 @@ $\mathrm{Accepted}$ field for the per-constructor implementations to fill in:
 
 \paragraph{NatVisitorZero}
 The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch.
-Although this acceptance machinery is isomorphic to the GoF visitor pattern,
-it escapes that pattern's characteristic rigidity: in GoF the set of data
-constructors is fixed once the $\mathrm{accept}$ interface is written, so a new
-constructor forces every existing visitor to be edited. Here each constructor
-is its own mixin that supplies its own branch, so adding a new data constructor
-is as modular as adding a new operation, neither requires touching the existing
-code:
+The visitor pattern here, unlike its formulation in
+\cite{gamma1994-design-patterns} where the data constructors are fixed by the
+$\mathrm{accept}$ interface, admits new constructors by composition, since each
+constructor contributes its own branch as a separate mixin:
 \[
   \begin{aligned}
     &\mathrm{NatVisitorZero} \mapsto \\
@@ -1591,7 +1585,7 @@ $\mathrm{BooleanData}$ defines the output sort:
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
 The mixin $\mathrm{NatEquality}$ imports $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
-and declares an $\mathrm{Equal}$ operation on $\mathrm{Product}$ that the per-constructor implementations provide.
+and declares an $\mathrm{Equal}$ command on $\mathrm{Product}$ that the per-constructor implementations provide.
 Because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
 the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach $\mathrm{Boolean}$,
 so $\mathrm{Equal}$ declares its result
@@ -1802,8 +1796,8 @@ inherits $\mathrm{True}$.%
 }
 No existing mixin was modified.
 $\mathrm{NatEquality}$, a new operation, and $\mathrm{Boolean}$,
-a new data type, each required only a new mixin: extensibility in both
-dimensions of the Expression Problem~\cite{wadler1998-expression-problem}.
+a new data type, each required only a new mixin: extensibility along both
+the operation axis and the case axis.
 
 \paragraph{Tree-level inheritance and return types}
 \label{sec:discussion-expression-problem}
@@ -1851,7 +1845,7 @@ accommodate.
 A Church-encoded Nat is a record whose structure mirrors the
 data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
-field pointing to a $\mathrm{Zero}$ record; and so on.
+property pointing to a $\mathrm{Zero}$ record; and so on.
 This is exactly the shape of a trie.%
 \footnote{
   The unary Nat trie can be viewed as a sparse linked list
@@ -2845,7 +2839,7 @@ An observer can test whether a particular data constructor is present,
 returning a Boolean; a second Boolean dispatch then branches on the
 result.
 By chaining such tests, a factory can validate that a value matches
-exactly one data constructor and carries the required fields.
+exactly one data constructor and carries the required properties.
 This does not restrict inheritance itself, which remains
 unconstrained, but provides a way to detect invariant violations
 before they propagate.
@@ -5759,7 +5753,7 @@ pattern: output construction ($\mathrm{Replacement}$)
 occurs inside each matched constant's $\mathrm{Visitor}$
 scope, operating on the \emph{individual} constant's data
 rather than on the merged scope.
-The $\mathrm{Accepted}$ field then collects all per-constant
+The $\mathrm{Accepted}$ property then collects all per-constant
 $\mathrm{Visited}$ results via trie union ($\supers$).
 
 For example, given $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$
