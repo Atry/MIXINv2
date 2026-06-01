@@ -3,7 +3,7 @@
 - NatFactory:
     Zero:
       Equal:
-        other: [NatEqualityZero, ~, NatFactory, Product]
+        other: [NatFactory, ~, Product]
         _OtherAcceptance:
           - [other, Acceptance]
           - VisitorMap:

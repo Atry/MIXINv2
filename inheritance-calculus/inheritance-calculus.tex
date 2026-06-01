@@ -7,6 +7,25 @@
 \usepackage{listings}
 \usepackage{multirow}
 \usepackage{graphicx}
+\usepackage{zref-savepos}
+
+%% Right-aligned annotations for a multi-line math display.
+%% Nested \left\{...\right\} groups cannot share a common alignment column,
+%% so each annotation is pinned to a single right edge via absolute page
+%% positions recorded by zref-savepos (resolved on the second compiler pass).
+%% \figureAnnotationAnchor records the display's left edge (call once just
+%% inside the math, before the outermost \begin{aligned}); \figureAnnotation
+%% lays out a zero-width box whose right end sits at (left edge + \linewidth),
+%% i.e. the enclosing minipage's right margin, regardless of nesting depth.
+\newcounter{figureAnnotationCounter}
+\newcommand{\figureAnnotationAnchor}{\zsavepos{figureAnnotationLeft}}
+\newcommand{\figureAnnotation}[1]{%
+  \stepcounter{figureAnnotationCounter}%
+  \zsavepos{figureAnnotation\the\value{figureAnnotationCounter}}%
+  \rlap{\hbox to
+    \dimexpr\zposx{figureAnnotationLeft}sp+\linewidth-\zposx{figureAnnotation\the\value{figureAnnotationCounter}}sp\relax
+  {\hfill\normalfont\text{\scriptsize #1}}}%
+}
 
 \AtBeginDocument{%
   \theoremstyle{acmdefinition}%
@@ -359,78 +378,73 @@ total = a.plus(
   \begin{minipage}[t]{0.65\textwidth}
     \textbf{Inheritance-calculus}\par\smallskip
     {\small\(
-        \begin{array}{@{}l@{\hspace{2.5em}}l@{}}
-          \mathrm{ComplexModule} \mapsto \{ &
-            \text{\scriptsize module} \\
-            \quad \mathrm{BuiltIns}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Math}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Operator}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Complex} \mapsto \{ &
-              \text{\scriptsize class} \\
-              \quad\quad \mathrm{re} \mapsto \{ &
-                \text{\scriptsize field} \\
-              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-              \text{\scriptsize imported type} \\
-              \quad\quad \mathrm{im} \mapsto \{ &
-                \text{\scriptsize field} \\
-              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-              \text{\scriptsize imported type} \\
-              \quad\quad \mathrm{Plus} \mapsto \{ &
-                \text{\scriptsize method} \\
-                \quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{Complex} \}, &
-                \text{\scriptsize parameter} \\
-                \quad\quad\quad \mathrm{\_sumReCall} \mapsto \{ &
-                  \text{\scriptsize function application} \\
-                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-                  \text{\scriptsize imported function} \\
-                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \}, &
-                  \text{\scriptsize keyword argument} \\
-                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \} \}, &
-                \text{\scriptsize keyword argument} \\
-                \quad\quad\quad \mathrm{\_sumRe} \mapsto \{ \mathrm{\_sumReCall}.\mathrm{result} \}, &
-                \text{\scriptsize local} \\
-                \quad\quad\quad \mathrm{\_sumImCall} \mapsto \{ &
-                  \text{\scriptsize function application} \\
-                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-                  \text{\scriptsize imported function} \\
-                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \}, &
-                  \text{\scriptsize keyword argument} \\
-                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \} \}, &
-                \text{\scriptsize keyword argument} \\
-                \quad\quad\quad \mathrm{\_sumIm} \mapsto \{ \mathrm{\_sumImCall}.\mathrm{result} \}, &
-                \text{\scriptsize local} \\
-                \quad\quad\quad \mathrm{result} \mapsto \{ &
-                  \text{\scriptsize return} \\
-                  \quad\quad\quad\quad \mathrm{Complex}, &
-                  \text{\scriptsize new instance} \\
-                  \quad\quad\quad\quad \mathrm{re} \mapsto \{ \mathrm{\_sumRe} \}, &
-                  \text{\scriptsize keyword argument} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \mathrm{\_sumIm} \} \}\}\}, &
-            \text{\scriptsize keyword argument} \\
-            \quad \mathrm{a} \mapsto \{ \mathrm{Complex}, &
-              \text{\scriptsize new instance} \\
-              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \}, &
-              \text{\scriptsize imported constant} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \} \}, &
-            \text{\scriptsize imported constant} \\
-            \quad \mathrm{b} \mapsto \{ \mathrm{Complex}, &
-              \text{\scriptsize new instance} \\
-              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \}, &
-              \text{\scriptsize imported constant} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \} \}, &
-            \text{\scriptsize imported constant} \\
-            \quad \mathrm{\_TotalCall} \mapsto \{ &
-              \text{\scriptsize method application} \\
-              \quad\quad\quad\quad \mathrm{a}.\mathrm{Plus}, &
-              \text{\scriptsize method reference} \\
-            \quad\quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{b} \} \}, &
-            \text{\scriptsize keyword argument} \\
-          \quad \mathrm{total} \mapsto \{ \mathrm{\_TotalCall}.\mathrm{result} \} \} &
-          \text{\scriptsize module-level variable} \\
-        \end{array}
+        \figureAnnotationAnchor
+        \begin{aligned}
+          &\mathrm{ComplexModule} \mapsto {} \figureAnnotation{module} \\
+          &\left\{
+            \begin{aligned}
+              &\mathrm{BuiltIns}, \figureAnnotation{import} \\
+              &\mathrm{Math}, \figureAnnotation{import} \\
+              &\mathrm{Operator}, \figureAnnotation{import} \\
+              &\mathrm{Complex} \mapsto {} \figureAnnotation{class} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{re} \mapsto {} \figureAnnotation{field} \\
+                  &\left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \right\}, \figureAnnotation{imported type} \\
+                  &\mathrm{im} \mapsto {} \figureAnnotation{field} \\
+                  &\left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \right\}, \figureAnnotation{imported type} \\
+                  &\mathrm{Plus} \mapsto {} \figureAnnotation{method} \\
+                  &\left\{
+                    \begin{aligned}
+                      &\mathrm{other} \mapsto \left\{ \mathrm{Complex} \right\}, \figureAnnotation{parameter} \\
+                      &\mathrm{\_sumReCall} \mapsto {} \figureAnnotation{function application} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, \figureAnnotation{imported function} \\
+                          &\mathrm{operand0} \mapsto \left\{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{operand1} \mapsto \left\{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\}, \\
+                      &\mathrm{\_sumRe} \mapsto \left\{ \mathrm{\_sumReCall}.\mathrm{result} \right\}, \figureAnnotation{local} \\
+                      &\mathrm{\_sumImCall} \mapsto {} \figureAnnotation{function application} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, \figureAnnotation{imported function} \\
+                          &\mathrm{operand0} \mapsto \left\{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{operand1} \mapsto \left\{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\}, \\
+                      &\mathrm{\_sumIm} \mapsto \left\{ \mathrm{\_sumImCall}.\mathrm{result} \right\}, \figureAnnotation{local} \\
+                      &\mathrm{result} \mapsto {} \figureAnnotation{return} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                          &\mathrm{re} \mapsto \left\{ \mathrm{\_sumRe} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{im} \mapsto \left\{ \mathrm{\_sumIm} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\} \\
+                  \end{aligned}\right\} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{a} \mapsto {} \figureAnnotation{module-level variable} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                  &\mathrm{re} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \right\}, \figureAnnotation{imported constant} \\
+                  &\mathrm{im} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \right\} \figureAnnotation{imported constant} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{b} \mapsto {} \figureAnnotation{module-level variable} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                  &\mathrm{re} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \right\}, \figureAnnotation{imported constant} \\
+                  &\mathrm{im} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \right\} \figureAnnotation{imported constant} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{\_TotalCall} \mapsto {} \figureAnnotation{method application} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{a}.\mathrm{Plus}, \figureAnnotation{method reference} \\
+                  &\mathrm{other} \mapsto \left\{ \mathrm{b} \right\} \figureAnnotation{keyword argument} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{total} \mapsto \left\{ \mathrm{\_TotalCall}.\mathrm{result} \right\} \figureAnnotation{module-level variable} \\
+          \end{aligned}\right\}
+        \end{aligned}
     \)}
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
@@ -438,26 +452,18 @@ total = a.plus(
     Where Python uses distinct language features for module, import,
     class, field, method, local, and object, inheritance-calculus uses
     only definitions and inheritance.
-    A module, a class, a method, and a field are all introduced by the
-    same definition syntax, one label bound to one record, despite their
-    differing naming conventions.
-    Every form of reuse is inheritance: an \texttt{import}, the
-    instantiation of a class, and a method call alike.
-    A function parameter and a constructor argument are alike, each
-    supplied as an ordinary definition added to the inherited record.
-    An imported type, function, or constant is reached through qualified
-    $\this$ into the enclosing module, whether it annotates a field,
-    is applied as a function, or is read as a constant.
+    Qualified $\this$ reaches into the enclosing module to access its
+    imported members.
     Both sides, typing their components with \texttt{builtins.float},
     drawing their constants from the \texttt{math} module, and adding with
     \texttt{operator.add}, compute the complex
     number $(\pi+\tau) + (e+\pi)i$.
-    The inheritance-calculus side is slightly longer because it does not
-    nest expressions: it is in
-    ANF~\cite{flanagan1993-essence-compiling-continuations}, so each
-    function application is given a name (the
-    $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals) rather than
-  written inline.}
+    The inheritance-calculus side is slightly longer because each function
+    application is encoded as a command pattern: a named record (the
+      $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals, in
+    ANF~\cite{flanagan1993-essence-compiling-continuations}) whose result
+    is read back from its $\mathrm{result}$ field, rather than nested
+  inline.}
   \label{fig:cheatsheet}
 \end{figure*}
 
@@ -632,12 +638,13 @@ In object-oriented programming, a
 \emph{mixin}~\cite{bracha1990-mixin-inheritance} is a fragment of behavior
 that can be composed onto a class via inheritance.
 Inheritance-calculus has a single abstraction, the
-\emph{deep-mergeable mixin},%
+\emph{deep-mergeable mixin}, whose members are
+\emph{deep-mergeable properties}.%
 \footnote{
-  Where no ambiguity arises, we write simply ``mixin.''
-  The distinction from the Bracha--Cook
-  mixin~\cite{bracha1990-mixin-inheritance} is detailed in
-  Section~\ref{sec:related-work}.
+  Where no ambiguity arises, we write simply ``mixin'' and ``property.''
+  As Figure~\ref{fig:cheatsheet} shows, each generalizes its namesake in prior
+  work: the Bracha--Cook mixin~\cite{bracha1990-mixin-inheritance} and the
+  property of object-oriented languages.
 }
 which can simultaneously serve as module, class, object, method, field, and
 local binding, as Figure~\ref{fig:cheatsheet} illustrated, because there
@@ -1320,9 +1327,9 @@ $M{\Downarrow}_\lambda$ implies
 $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
 but not conversely.
 This establishes a convergence hierarchy
-\begin{equation}\label{eq:convergence-hierarchy}
+\[
   \text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}
-\end{equation}
+\]
 among $\lambda$-calculi sharing the same syntax.%
 \footnote{
   Appendix~\ref{app:bohm-tree-proofs},
@@ -1384,29 +1391,17 @@ and binary, in inheritance-calculus.%
 }
 This section traces the unary Nat case in detail: its data representation,
 addition, and equality.
-The implementation follows Gang-of-Four design
-patterns~\cite{gamma1994-design-patterns} in a declarative
-object-oriented style, with each concern split along two axes.
-Along the operation axis, every operation is a separate mixin, which is
-the extension dimension of the Expression Problem.
-Along the constructor axis, each operation is split again into an
-\emph{interface} mixin that declares the operation on the abstract
-$\mathrm{Product}$ type, and one \emph{implementation} mixin per data
-constructor ($\mathrm{Zero}$ and $\mathrm{Successor}$).
-The interface keeps the concern's name (such as $\mathrm{NatPlus}$),
-while the implementations append the constructor name (such as
-$\mathrm{NatPlusZero}$ and $\mathrm{NatPlusSuccessor}$).
-UpperCamelCase names serve as data constructors and operations;
-lowerCamelCase names serve as fields and parameters;
-and since there are no methods, all names are nouns or adjectives: $\mathrm{Plus}$
-is a structure, not an action.
-Operations expose their result through a projection field (e.g., $\mathrm{sum}$).
+The implementation follows ordinary Gang-of-Four design
+patterns~\cite{gamma1994-design-patterns} in a declarative object-oriented
+style, with each concern split into mixins along two axes: operations and
+cases. Because the calculus has no methods of its own, every name is a noun or
+adjective: UpperCamelCase names play the roles of modules, types, data
+constructors, and methods, and lowerCamelCase names the roles of fields and
+parameters.
 
 \paragraph{NatData}
-The data representation (Zero/Successor) is a Peano
-encoding, an initial algebra of the functor $F(X) = 1 + X$.
-The interface mixin $\mathrm{NatData}$ declares only the abstract product
-type and the $\mathrm{Nat}$ alias:
+The mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
+$\mathrm{NatFactory}$ is a factory whose abstract product type is aliased as $\mathrm{Nat}$:
 \[
   \mathrm{NatData} \mapsto \left\{
     \begin{aligned}
@@ -1423,13 +1418,13 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
   \mathrm{NatDataZero} \mapsto \left\{
     \begin{aligned}
       &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \{\mathrm{Zero} \mapsto \{\qualifiedthis{\mathrm{NatDataZero}}.\mathrm{NatFactory}.\mathrm{Product}\}\}
+      &\mathrm{NatFactory} \mapsto \{\mathrm{Zero} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}\}
   \end{aligned}\right\}
 \]
 
 \paragraph{NatDataSuccessor}
 A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
-exposes a $\mathrm{predecessor}$ field:
+exposes a $\mathrm{predecessor}$ property whose type is $\mathrm{Product}$:
 \[
   \begin{aligned}
     &\mathrm{NatDataSuccessor} \mapsto \\
@@ -1445,11 +1440,23 @@ exposes a $\mathrm{predecessor}$ field:
   \end{aligned}\right\}
   \end{aligned}
 \]
+Together with $\mathrm{NatDataZero}$, this completes the Peano encoding of
+the natural numbers, the initial algebra of the functor $F(X) = 1 + X$,
+in an open way: the two constructors are added as independent mixins
+rather than fixed in a single closed datatype definition.
 
 \paragraph{NatPlus}
-Addition exposes a $\mathrm{sum}$ field.
-Its interface mixin $\mathrm{NatPlus}$ inherits $\mathrm{NatData}$ and
-declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
+The addition operation is split along the case axis into an \emph{interface}
+mixin $\mathrm{NatPlus}$, which keeps the concern's name and declares the command
+on the abstract $\mathrm{Product}$, and one \emph{implementation} mixin per case,
+which appends the constructor name ($\mathrm{NatPlusZero}$ and
+$\mathrm{NatPlusSuccessor}$ below). $\mathrm{NatPlus}$ inherits
+$\mathrm{NatData}$. Where an
+object-oriented method would be named with a verb, the command
+pattern~\cite{gamma1994-design-patterns} reifies it as a noun-named command, so
+the addition method is named $\mathrm{Plus}$ rather than $\mathrm{Add}$, and it
+exposes its result through the projection property $\mathrm{sum}$, here typed but
+not yet computed:
 \[
   \mathrm{NatPlus} \mapsto \left\{
     \begin{aligned}
@@ -1459,8 +1466,9 @@ declares the $\mathrm{Plus}$ operation on the abstract $\mathrm{Product}$:
 \]
 
 \paragraph{NatPlusZero}
-The base case is $0 + m = m$: $\mathrm{NatPlusZero}$ inherits the $\mathrm{Zero}$
-data and the $\mathrm{Plus}$ interface, and returns the addend directly:
+The base case is $0 + m = m$. Here $\mathrm{NatPlusZero}$ acts as a module that
+imports other modules: it inherits the $\mathrm{Zero}$ data and the $\mathrm{Plus}$
+interface, and returns the addend directly:
 \[
   \begin{aligned}
     &\mathrm{NatPlusZero} \mapsto \\
@@ -1488,7 +1496,7 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
       &\mathrm{NatFactory} \mapsto \\
       &\left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
-                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatPlusSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
                 &\left\{
                   \begin{aligned}
@@ -1509,12 +1517,11 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 
 \paragraph{NatVisitor}
 Equality requires case analysis on the data constructor; we use the
-visitor pattern.
-$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ operation that contains a
-$\mathrm{VisitorMap}$ with the appropriate $\mathrm{ZeroVisitor}$ or
-$\mathrm{SuccessorVisitor}$ branch and an $\mathrm{Accepted}$ field that
-delegates to the matching branch.
-The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product}$:
+visitor pattern~\cite{gamma1994-design-patterns}.
+$\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ command to $\mathrm{Product}$,
+the noun form of the visitor pattern's $\mathrm{accept}$ method.
+The mixin $\mathrm{NatVisitor}$ declares it empty, leaving a $\mathrm{VisitorMap}$ and an
+$\mathrm{Accepted}$ property for the per-constructor implementations to fill in:
 \[
   \begin{aligned}
     &\mathrm{NatVisitor} \mapsto \\
@@ -1527,7 +1534,11 @@ The interface mixin declares the empty $\mathrm{Acceptance}$ on $\mathrm{Product
 \]
 
 \paragraph{NatVisitorZero}
-The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch:
+The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch.
+The visitor pattern here, unlike its formulation in
+\cite{gamma1994-design-patterns} where the data constructors are fixed by the
+$\mathrm{accept}$ interface, admits new constructors by composition, since each
+constructor contributes its own branch as a separate mixin:
 \[
   \begin{aligned}
     &\mathrm{NatVisitorZero} \mapsto \\
@@ -1554,7 +1565,7 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
       &\mathrm{NatFactory} \mapsto \\
       &\left\{\mathrm{Successor} \mapsto \left\{
             \begin{aligned}
-              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatVisitorSuccessor}}.\mathrm{NatFactory}.\mathrm{Product}\},\\
+              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
               &\mathrm{Acceptance} \mapsto \left\{
                 \begin{aligned}
                   &\mathrm{VisitorMap} \mapsto \{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
@@ -1582,14 +1593,12 @@ $\mathrm{BooleanData}$ defines the output sort:
 \paragraph{NatEquality}
 \label{sec:nat-equality}
 To test that $2 + 3 = 5$, we needed equality on Nat values.
-The interface mixin $\mathrm{NatEquality}$ inherits $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$, using each as a module,
-and declares an $\mathrm{Equal}$ operation on $\mathrm{Product}$ that the per-constructor implementations provide.
-Inheriting serves as importing:
-because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
-the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach the members
-defined in $\mathrm{BooleanData}$, so $\mathrm{Equal}$ declares its result
-$\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$,
-reading $\mathrm{Boolean}$ as a member imported from $\mathrm{BooleanData}$:
+The mixin $\mathrm{NatEquality}$ imports $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
+and declares an $\mathrm{Equal}$ command on $\mathrm{Product}$ that the per-constructor implementations provide.
+Because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
+the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach $\mathrm{Boolean}$,
+so $\mathrm{Equal}$ declares its result
+$\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$:
 \[
   \begin{aligned}
     &\mathrm{NatEquality} \mapsto \\
@@ -1607,14 +1616,19 @@ reading $\mathrm{Boolean}$ as a member imported from $\mathrm{BooleanData}$:
 
 \paragraph{NatEqualityZero}
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$.
-Inheriting here serves as case analysis:
+Inheriting here performs case analysis:
 inheriting $\mathrm{other}.\mathrm{Acceptance}$ dispatches on whether $\mathrm{other}$
-was built by $\mathrm{Zero}$ or $\mathrm{Successor}$, returning
-$\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}$
-on the $\mathrm{ZeroVisitor}$ branch and $\mathrm{False}$ otherwise.
-Inheriting likewise serves as a type annotation:
-in $\mathrm{Accepted}$, $\mathrm{equal}$ inherits $\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}$,
-declaring its type to be $\mathrm{Boolean}$:
+was built by $\mathrm{Zero}$ or $\mathrm{Successor}$, returning $\mathrm{True}$
+on the $\mathrm{ZeroVisitor}$ branch and $\mathrm{False}$ otherwise, that is,
+$\mathrm{equal} = \{ \mathrm{True} \text{ if } \mathrm{other} = \mathrm{Zero},\; \mathrm{False} \text{ if } \mathrm{other} = \mathrm{Successor} \}$.
+Both $\mathrm{True}$ and $\mathrm{False}$ are data constructors of
+$\mathrm{BooleanFactory}$, which comes from $\mathrm{BooleanData}$, imported
+indirectly through the inherited $\mathrm{NatEquality}$, and is reached as
+$\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}$.
+The same inheritance mechanism also supplies the result type: in
+$\mathrm{Accepted}$, $\mathrm{equal}$ inherits
+$\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}$, declaring its type to
+be $\mathrm{Boolean}$:
 {\small
   \[
     \begin{aligned}
@@ -1797,8 +1811,8 @@ inherits $\mathrm{True}$.%
 }
 No existing mixin was modified.
 $\mathrm{NatEquality}$, a new operation, and $\mathrm{Boolean}$,
-a new data type, each required only a new mixin: extensibility in both
-dimensions of the Expression Problem~\cite{wadler1998-expression-problem}.
+a new data type, each required only a new mixin: extensibility along both
+the operation axis and the case axis.
 
 \paragraph{Tree-level inheritance and return types}
 \label{sec:discussion-expression-problem}
@@ -1846,7 +1860,7 @@ accommodate.
 A Church-encoded Nat is a record whose structure mirrors the
 data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
-field pointing to a $\mathrm{Zero}$ record; and so on.
+property pointing to a $\mathrm{Zero}$ record; and so on.
 This is exactly the shape of a trie.%
 \footnote{
   The unary Nat trie can be viewed as a sparse linked list
@@ -2840,7 +2854,7 @@ An observer can test whether a particular data constructor is present,
 returning a Boolean; a second Boolean dispatch then branches on the
 result.
 By chaining such tests, a factory can validate that a value matches
-exactly one data constructor and carries the required fields.
+exactly one data constructor and carries the required properties.
 This does not restrict inheritance itself, which remains
 unconstrained, but provides a way to detect invariant violations
 before they propagate.
@@ -5240,12 +5254,14 @@ Multiple facts for the same relation are accumulated by
 inheritance (trie union).
 Adding $R(b, c)$:
 \[
-  R \mapsto \left\{\begin{aligned}
-    &a,\; b,\\
-    &\mathrm{TailMap} \mapsto \left\{\begin{aligned}
-      &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
-      &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
-    \end{aligned}\right\}
+  R \mapsto \left\{
+    \begin{aligned}
+      &a,\; b,\\
+      &\mathrm{TailMap} \mapsto \left\{
+        \begin{aligned}
+          &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+          &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
+      \end{aligned}\right\}
   \end{aligned}\right\}
 \]
 The point of the trie representation is not merely that it is a
@@ -5420,14 +5436,16 @@ We present each level as a named sub-scope.
 (Executable scope: \texttt{\_XAcceptance}.)
 {\small
   \[
-    \mathrm{xAcc} \mapsto \left\{\begin{aligned}
-      &\alpha.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_X \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{xAcc} \mapsto \left\{
+      \begin{aligned}
+        &\alpha.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_X \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
 
@@ -5440,16 +5458,18 @@ constant $d$ only if $d$ appears in both $\alpha$'s
 second column (via $\_X$) and $\beta$'s first column.
 {\small
   \[
-    \mathrm{yAcc} \mapsto \left\{\begin{aligned}
-      &\_X.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \{\beta.\mathrm{WithVisitorTail},\; \_X.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\; \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
-        &\ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{yAcc} \mapsto \left\{
+      \begin{aligned}
+        &\_X.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \{\beta.\mathrm{WithVisitorTail},\; \_X.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\; \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
+            &\ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
 
@@ -5461,42 +5481,48 @@ Inside the $\mathrm{Nil}$ branch, the encoding proceeds to
 iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
 {\small
   \[
-    \mathrm{nilAcc}_0 \mapsto \left\{\begin{aligned}
-      &\_Y_0.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
-        &\ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}
-      \end{aligned}\right\}\right\}
+    \mathrm{nilAcc}_0 \mapsto \left\{
+      \begin{aligned}
+        &\_Y_0.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{
+            \begin{aligned}
+              &\ldots,\\
+              &\mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}
+        \end{aligned}\right\}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
 (Executable scope: \texttt{\_ZAcceptance}.)
 {\small
   \[
-    \mathrm{zAcc} \mapsto \left\{\begin{aligned}
-      &\mathrm{VisitorTail}.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_Z \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{zAcc} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{VisitorTail}.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_Z \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
 (Executable scope: \texttt{\_NilAcceptance1}, with
 \texttt{\_ZReplacement} and \texttt{\_XReplacement}.)
 {\small
   \[
-    \mathrm{nilAcc}_1 \mapsto \left\{\begin{aligned}
-      &\mathrm{VisiteeTail}.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
-        &\mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
-        &\mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
-        &\mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}
-      \end{aligned}\right\}\right\}
+    \mathrm{nilAcc}_1 \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{VisiteeTail}.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{
+            \begin{aligned}
+              &\mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
+              &\mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
+              &\mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}
+        \end{aligned}\right\}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Final result}
 \[
@@ -5754,7 +5780,7 @@ pattern: output construction ($\mathrm{Replacement}$)
 occurs inside each matched constant's $\mathrm{Visitor}$
 scope, operating on the \emph{individual} constant's data
 rather than on the merged scope.
-The $\mathrm{Accepted}$ field then collects all per-constant
+The $\mathrm{Accepted}$ property then collects all per-constant
 $\mathrm{Visited}$ results via trie union ($\supers$).
 
 For example, given $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$

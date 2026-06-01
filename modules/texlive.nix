@@ -2,7 +2,7 @@
   imports = [ ./dev.nix ];
   partitions.dev.module.perSystem = { pkgs, lib, ... }: {
     ml-ops.devcontainer.devenvShellModule = {
-      packages = [ pkgs.tex-fmt ];
+      packages = [ pkgs.tex-fmt pkgs.poppler-utils ];
       scripts.package-arxiv.exec = ''
         cd inheritance-calculus
         latexmk -pdf preprint.tex
@@ -49,6 +49,7 @@
             "preprint"
             "tex-gyre"
             "multirow"
+            "zref"
           ];
         };
       };

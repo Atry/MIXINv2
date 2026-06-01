@@ -4,9 +4,9 @@
     Successor:
       predecessor:
         Plus:
-          sum: [NatPlusSuccessor, ~, NatFactory, Product]
+          sum: [NatFactory, ~, Product]
       Plus:
-        addend: [NatPlusSuccessor, ~, NatFactory, Product]
+        addend: [NatFactory, ~, Product]
         _increasedAddend:
           - [Successor]
           - predecessor: [addend]
