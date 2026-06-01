@@ -7,6 +7,25 @@
 \usepackage{listings}
 \usepackage{multirow}
 \usepackage{graphicx}
+\usepackage{zref-savepos}
+
+%% Right-aligned annotations for a multi-line math display.
+%% Nested \left\{...\right\} groups cannot share a common alignment column,
+%% so each annotation is pinned to a single right edge via absolute page
+%% positions recorded by zref-savepos (resolved on the second compiler pass).
+%% \figureAnnotationAnchor records the display's left edge (call once just
+%% inside the math, before the outermost \begin{aligned}); \figureAnnotation
+%% lays out a zero-width box whose right end sits at (left edge + \linewidth),
+%% i.e. the enclosing minipage's right margin, regardless of nesting depth.
+\newcounter{figureAnnotationCounter}
+\newcommand{\figureAnnotationAnchor}{\zsavepos{figureAnnotationLeft}}
+\newcommand{\figureAnnotation}[1]{%
+  \stepcounter{figureAnnotationCounter}%
+  \zsavepos{figureAnnotation\the\value{figureAnnotationCounter}}%
+  \rlap{\hbox to
+    \dimexpr\zposx{figureAnnotationLeft}sp+\linewidth-\zposx{figureAnnotation\the\value{figureAnnotationCounter}}sp\relax
+  {\hfill\normalfont\text{\scriptsize #1}}}%
+}
 
 \AtBeginDocument{%
   \theoremstyle{acmdefinition}%
@@ -359,78 +378,73 @@ total = a.plus(
   \begin{minipage}[t]{0.65\textwidth}
     \textbf{Inheritance-calculus}\par\smallskip
     {\small\(
-        \begin{array}{@{}l@{\hspace{2.5em}}l@{}}
-          \mathrm{ComplexModule} \mapsto \{ &
-            \text{\scriptsize module} \\
-            \quad \mathrm{BuiltIns}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Math}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Operator}, &
-            \text{\scriptsize import} \\
-            \quad \mathrm{Complex} \mapsto \{ &
-              \text{\scriptsize class} \\
-              \quad\quad \mathrm{re} \mapsto \{ &
-                \text{\scriptsize field} \\
-              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-              \text{\scriptsize imported type} \\
-              \quad\quad \mathrm{im} \mapsto \{ &
-                \text{\scriptsize field} \\
-              \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \}, &
-              \text{\scriptsize imported type} \\
-              \quad\quad \mathrm{Plus} \mapsto \{ &
-                \text{\scriptsize method} \\
-                \quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{Complex} \}, &
-                \text{\scriptsize parameter} \\
-                \quad\quad\quad \mathrm{\_sumReCall} \mapsto \{ &
-                  \text{\scriptsize function application} \\
-                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-                  \text{\scriptsize imported function} \\
-                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \}, &
-                  \text{\scriptsize keyword argument} \\
-                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \} \}, &
-                \text{\scriptsize keyword argument} \\
-                \quad\quad\quad \mathrm{\_sumRe} \mapsto \{ \mathrm{\_sumReCall}.\mathrm{result} \}, &
-                \text{\scriptsize local} \\
-                \quad\quad\quad \mathrm{\_sumImCall} \mapsto \{ &
-                  \text{\scriptsize function application} \\
-                  \quad\quad\quad\quad \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, &
-                  \text{\scriptsize imported function} \\
-                  \quad\quad\quad\quad \mathrm{operand0} \mapsto \{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \}, &
-                  \text{\scriptsize keyword argument} \\
-                \quad\quad\quad\quad \mathrm{operand1} \mapsto \{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \} \}, &
-                \text{\scriptsize keyword argument} \\
-                \quad\quad\quad \mathrm{\_sumIm} \mapsto \{ \mathrm{\_sumImCall}.\mathrm{result} \}, &
-                \text{\scriptsize local} \\
-                \quad\quad\quad \mathrm{result} \mapsto \{ &
-                  \text{\scriptsize return} \\
-                  \quad\quad\quad\quad \mathrm{Complex}, &
-                  \text{\scriptsize new instance} \\
-                  \quad\quad\quad\quad \mathrm{re} \mapsto \{ \mathrm{\_sumRe} \}, &
-                  \text{\scriptsize keyword argument} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \mathrm{\_sumIm} \} \}\}\}, &
-            \text{\scriptsize keyword argument} \\
-            \quad \mathrm{a} \mapsto \{ \mathrm{Complex}, &
-              \text{\scriptsize new instance} \\
-              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \}, &
-              \text{\scriptsize imported constant} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \} \}, &
-            \text{\scriptsize imported constant} \\
-            \quad \mathrm{b} \mapsto \{ \mathrm{Complex}, &
-              \text{\scriptsize new instance} \\
-              \quad\quad\quad\quad \mathrm{re} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \}, &
-              \text{\scriptsize imported constant} \\
-            \quad\quad\quad\quad \mathrm{im} \mapsto \{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \} \}, &
-            \text{\scriptsize imported constant} \\
-            \quad \mathrm{\_TotalCall} \mapsto \{ &
-              \text{\scriptsize method application} \\
-              \quad\quad\quad\quad \mathrm{a}.\mathrm{Plus}, &
-              \text{\scriptsize method reference} \\
-            \quad\quad\quad\quad \mathrm{other} \mapsto \{ \mathrm{b} \} \}, &
-            \text{\scriptsize keyword argument} \\
-          \quad \mathrm{total} \mapsto \{ \mathrm{\_TotalCall}.\mathrm{result} \} \} &
-          \text{\scriptsize module-level variable} \\
-        \end{array}
+        \figureAnnotationAnchor
+        \begin{aligned}
+          &\mathrm{ComplexModule} \mapsto {} \figureAnnotation{module} \\
+          &\left\{
+            \begin{aligned}
+              &\mathrm{BuiltIns}, \figureAnnotation{import} \\
+              &\mathrm{Math}, \figureAnnotation{import} \\
+              &\mathrm{Operator}, \figureAnnotation{import} \\
+              &\mathrm{Complex} \mapsto {} \figureAnnotation{class} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{re} \mapsto {} \figureAnnotation{field} \\
+                  &\left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \right\}, \figureAnnotation{imported type} \\
+                  &\mathrm{im} \mapsto {} \figureAnnotation{field} \\
+                  &\left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float} \right\}, \figureAnnotation{imported type} \\
+                  &\mathrm{Plus} \mapsto {} \figureAnnotation{method} \\
+                  &\left\{
+                    \begin{aligned}
+                      &\mathrm{other} \mapsto \left\{ \mathrm{Complex} \right\}, \figureAnnotation{parameter} \\
+                      &\mathrm{\_sumReCall} \mapsto {} \figureAnnotation{function application} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, \figureAnnotation{imported function} \\
+                          &\mathrm{operand0} \mapsto \left\{ \qualifiedthis{\mathrm{Complex}}.\mathrm{re} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{operand1} \mapsto \left\{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\}, \\
+                      &\mathrm{\_sumRe} \mapsto \left\{ \mathrm{\_sumReCall}.\mathrm{result} \right\}, \figureAnnotation{local} \\
+                      &\mathrm{\_sumImCall} \mapsto {} \figureAnnotation{function application} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Add}, \figureAnnotation{imported function} \\
+                          &\mathrm{operand0} \mapsto \left\{ \qualifiedthis{\mathrm{Complex}}.\mathrm{im} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{operand1} \mapsto \left\{ \qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{im} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\}, \\
+                      &\mathrm{\_sumIm} \mapsto \left\{ \mathrm{\_sumImCall}.\mathrm{result} \right\}, \figureAnnotation{local} \\
+                      &\mathrm{result} \mapsto {} \figureAnnotation{return} \\
+                      &\left\{
+                        \begin{aligned}
+                          &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                          &\mathrm{re} \mapsto \left\{ \mathrm{\_sumRe} \right\}, \figureAnnotation{keyword argument} \\
+                          &\mathrm{im} \mapsto \left\{ \mathrm{\_sumIm} \right\} \figureAnnotation{keyword argument} \\
+                      \end{aligned}\right\} \\
+                  \end{aligned}\right\} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{a} \mapsto {} \figureAnnotation{module-level variable} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                  &\mathrm{re} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \right\}, \figureAnnotation{imported constant} \\
+                  &\mathrm{im} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{E} \right\} \figureAnnotation{imported constant} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{b} \mapsto {} \figureAnnotation{module-level variable} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Complex}, \figureAnnotation{new instance} \\
+                  &\mathrm{re} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \right\}, \figureAnnotation{imported constant} \\
+                  &\mathrm{im} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \right\} \figureAnnotation{imported constant} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{\_TotalCall} \mapsto {} \figureAnnotation{method application} \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{a}.\mathrm{Plus}, \figureAnnotation{method reference} \\
+                  &\mathrm{other} \mapsto \left\{ \mathrm{b} \right\} \figureAnnotation{keyword argument} \\
+              \end{aligned}\right\}, \\
+              &\mathrm{total} \mapsto \left\{ \mathrm{\_TotalCall}.\mathrm{result} \right\} \figureAnnotation{module-level variable} \\
+          \end{aligned}\right\}
+        \end{aligned}
     \)}
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
@@ -438,26 +452,18 @@ total = a.plus(
     Where Python uses distinct language features for module, import,
     class, field, method, local, and object, inheritance-calculus uses
     only definitions and inheritance.
-    A module, a class, a method, and a field are all introduced by the
-    same definition syntax, one label bound to one record, despite their
-    differing naming conventions.
-    Every form of reuse is inheritance: an \texttt{import}, the
-    instantiation of a class, and a method call alike.
-    A function parameter and a constructor argument are alike, each
-    supplied as an ordinary definition added to the inherited record.
-    An imported type, function, or constant is reached through qualified
-    $\this$ into the enclosing module, whether it annotates a field,
-    is applied as a function, or is read as a constant.
+    Qualified $\this$ reaches into the enclosing module to access its
+    imported members.
     Both sides, typing their components with \texttt{builtins.float},
     drawing their constants from the \texttt{math} module, and adding with
     \texttt{operator.add}, compute the complex
     number $(\pi+\tau) + (e+\pi)i$.
-    The inheritance-calculus side is slightly longer because it does not
-    nest expressions: it is in
-    ANF~\cite{flanagan1993-essence-compiling-continuations}, so each
-    function application is given a name (the
-    $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals) rather than
-  written inline.}
+    The inheritance-calculus side is slightly longer because each function
+    application is encoded as a command pattern: a named record (the
+      $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals, in
+    ANF~\cite{flanagan1993-essence-compiling-continuations}) whose result
+    is read back from its $\mathrm{result}$ field, rather than nested
+  inline.}
   \label{fig:cheatsheet}
 \end{figure*}
 
@@ -1321,9 +1327,9 @@ $M{\Downarrow}_\lambda$ implies
 $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
 but not conversely.
 This establishes a convergence hierarchy
-\begin{equation}\label{eq:convergence-hierarchy}
+\[
   \text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}
-\end{equation}
+\]
 among $\lambda$-calculi sharing the same syntax.%
 \footnote{
   Appendix~\ref{app:bohm-tree-proofs},
@@ -1422,15 +1428,15 @@ exposes a $\mathrm{predecessor}$ property whose type is $\mathrm{Product}$:
   \begin{aligned}
     &\mathrm{NatDataSuccessor} \mapsto \\
     &\left\{
-    \begin{aligned}
-      &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \\
-      &\left\{\mathrm{Successor} \mapsto \left\{
-        \begin{aligned}
-          &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
-          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
-      \end{aligned}\right\}\right\}
-  \end{aligned}\right\}
+      \begin{aligned}
+        &\mathrm{NatData},\\
+        &\mathrm{NatFactory} \mapsto \\
+        &\left\{\mathrm{Successor} \mapsto \left\{
+            \begin{aligned}
+              &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
+              &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
+        \end{aligned}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 Together with $\mathrm{NatDataZero}$, this completes the Peano encoding of
@@ -1465,14 +1471,14 @@ interface, and returns the addend directly:
 \[
   \begin{aligned}
     &\mathrm{NatPlusZero} \mapsto \left\{
-    \begin{aligned}
-      &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
-          \begin{aligned}
-            &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
-            &\mathrm{sum} \mapsto \{\mathrm{addend}\}
-      \end{aligned}\right\}\right\}\right\}
-  \end{aligned}\right\}
+      \begin{aligned}
+        &\mathrm{NatDataZero},\; \mathrm{NatPlus},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+              \begin{aligned}
+                &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
+                &\mathrm{sum} \mapsto \{\mathrm{addend}\}
+        \end{aligned}\right\}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1483,9 +1489,9 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
   \begin{aligned}
     &\mathrm{NatPlusSuccessor} \mapsto \\
     &\left\{
-    \begin{aligned}
-      &\mathrm{NatDataSuccessor},\; \mathrm{NatPlus},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{NatDataSuccessor},\; \mathrm{NatPlus},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Successor} \mapsto \left\{\mathrm{Plus} \mapsto \left\{
               \begin{aligned}
                 &\mathrm{addend} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
                 &\mathrm{\_increasedAddend} \mapsto  \\
@@ -1501,8 +1507,8 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
                     &\mathrm{addend} \mapsto \{\mathrm{\_increasedAddend}\}
                 \end{aligned}\right\},\\
                 &\mathrm{sum} \mapsto \{\mathrm{\_recursiveAddition}.\mathrm{sum}\}
-          \end{aligned}\right\}\right\}\right\}
-  \end{aligned}\right\}
+        \end{aligned}\right\}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1517,10 +1523,10 @@ $\mathrm{Accepted}$ property for the per-constructor implementations to fill in:
   \begin{aligned}
     &\mathrm{NatVisitor} \mapsto \\
     &\left\{
-    \begin{aligned}
-      &\mathrm{NatData},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{VisitorMap} \mapsto \{\},\; \mathrm{Accepted} \mapsto \{\}\}\}\right\}
-  \end{aligned}\right\}
+      \begin{aligned}
+        &\mathrm{NatData},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \{\mathrm{Acceptance} \mapsto \{\mathrm{VisitorMap} \mapsto \{\},\; \mathrm{Accepted} \mapsto \{\}\}\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1534,14 +1540,14 @@ constructor contributes its own branch as a separate mixin:
   \begin{aligned}
     &\mathrm{NatVisitorZero} \mapsto \\
     &\left\{
-    \begin{aligned}
-      &\mathrm{NatDataZero},\; \mathrm{NatVisitor},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Acceptance} \mapsto \left\{
-                \begin{aligned}
-                  &\mathrm{VisitorMap} \mapsto \{\mathrm{ZeroVisitor} \mapsto \{\}\},\\
-                  &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}
-              \end{aligned}\right\}\right\}\right\}
-  \end{aligned}\right\}
+      \begin{aligned}
+        &\mathrm{NatDataZero},\; \mathrm{NatVisitor},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Zero} \mapsto \left\{\mathrm{Acceptance} \mapsto \left\{
+              \begin{aligned}
+                &\mathrm{VisitorMap} \mapsto \{\mathrm{ZeroVisitor} \mapsto \{\}\},\\
+                &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{ZeroVisitor}\}
+        \end{aligned}\right\}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1551,10 +1557,10 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
   \begin{aligned}
     &\mathrm{NatVisitorSuccessor} \mapsto \\
     &\left\{
-    \begin{aligned}
-      &\mathrm{NatDataSuccessor},\; \mathrm{NatVisitor},\\
-      &\mathrm{NatFactory} \mapsto \\
-      &\left\{\mathrm{Successor} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{NatDataSuccessor},\; \mathrm{NatVisitor},\\
+        &\mathrm{NatFactory} \mapsto \\
+        &\left\{\mathrm{Successor} \mapsto \left\{
             \begin{aligned}
               &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
               &\mathrm{Acceptance} \mapsto \left\{
@@ -1562,8 +1568,8 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
                   &\mathrm{VisitorMap} \mapsto \{\mathrm{SuccessorVisitor} \mapsto \{\}\},\\
                   &\mathrm{Accepted} \mapsto \{\mathrm{VisitorMap}.\mathrm{SuccessorVisitor}\}
               \end{aligned}\right\}
-          \end{aligned}\right\}\right\}
-  \end{aligned}\right\}
+        \end{aligned}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1593,14 +1599,14 @@ $\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boo
 \[
   \begin{aligned}
     &\mathrm{NatEquality} \mapsto \left\{
-    \begin{aligned}
-      &\mathrm{NatVisitor},\; \mathrm{BooleanData},\\
-      &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
-          \begin{aligned}
-            &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
-            &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
-      \end{aligned}\right\}\right\}\right\}
-  \end{aligned}\right\}
+      \begin{aligned}
+        &\mathrm{NatVisitor},\; \mathrm{BooleanData},\\
+        &\mathrm{NatFactory} \mapsto \left\{\mathrm{Product} \mapsto \left\{\mathrm{Equal} \mapsto \left\{
+              \begin{aligned}
+                &\mathrm{other} \mapsto \{\mathrm{Product}\},\\
+                &\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}\}
+        \end{aligned}\right\}\right\}\right\}
+    \end{aligned}\right\}
   \end{aligned}
 \]
 
@@ -1619,35 +1625,35 @@ declaring its type to be $\mathrm{Boolean}$:
     \begin{aligned}
       &\mathrm{NatEqualityZero} \mapsto \\
       &\left\{
-      \begin{aligned}
-        &\mathrm{NatVisitorZero},\; \mathrm{NatEquality},\\
-        &\mathrm{NatFactory} \mapsto \\
-        &\left\{
         \begin{aligned}
-        &\mathrm{Zero} \mapsto \\
-        &\left\{
-        \begin{aligned}
-        &\mathrm{Equal} \mapsto \\
-        &\left\{
-                  \begin{aligned}
-                    &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
-                    &\mathrm{\_OtherAcceptance} \mapsto \\
-                    &\left\{
-                      \begin{aligned}
-                        &\mathrm{other}.\mathrm{Acceptance},\\
-                        &\mathrm{VisitorMap} \mapsto \\
-                        &\left\{
-                          \begin{aligned}
-                            &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
-                            &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
-                        \end{aligned}\right\},\\
-                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}\}\}
-                    \end{aligned}\right\},\\
-                    &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}
-        \end{aligned}\right\}
-        \end{aligned}\right\}
-    \end{aligned}\right\}
+          &\mathrm{NatVisitorZero},\; \mathrm{NatEquality},\\
+          &\mathrm{NatFactory} \mapsto \\
+          &\left\{
+            \begin{aligned}
+              &\mathrm{Zero} \mapsto \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Equal} \mapsto \\
+                  &\left\{
+                    \begin{aligned}
+                      &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\},\\
+                      &\mathrm{\_OtherAcceptance} \mapsto \\
+                      &\left\{
+                        \begin{aligned}
+                          &\mathrm{other}.\mathrm{Acceptance},\\
+                          &\mathrm{VisitorMap} \mapsto \\
+                          &\left\{
+                            \begin{aligned}
+                              &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{True}\}\},\\
+                              &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}.\mathrm{False}\}\}
+                          \end{aligned}\right\},\\
+                          &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}\}\}
+                      \end{aligned}\right\},\\
+                      &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
+                  \end{aligned}\right\}
+              \end{aligned}\right\}
+          \end{aligned}\right\}
+      \end{aligned}\right\}
     \end{aligned}
 \]}
 
@@ -1660,44 +1666,44 @@ $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
     \begin{aligned}
       &\mathrm{NatEqualitySuccessor} \mapsto \\
       &\left\{
-      \begin{aligned}
-        &\mathrm{NatVisitorSuccessor},\; \mathrm{NatEquality},\\
-        &\mathrm{NatFactory} \mapsto \\
-        &\left\{
         \begin{aligned}
-        &\mathrm{Successor} \mapsto \\
-        &\left\{
-        \begin{aligned}
-        &\mathrm{Equal} \mapsto \\
-        &\left\{
-                  \begin{aligned}
-                    &\mathrm{other} \mapsto \left\{
-                      \begin{aligned}
-                        &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
-                        &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
-                    \end{aligned}\right\},\\
-                    &\mathrm{\_recursiveEquality} \mapsto \left\{
-                      \begin{aligned}
-                        &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
-                        &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}
-                    \end{aligned}\right\},\\
-                    &\mathrm{\_OtherAcceptance} \mapsto \\
-                    &\left\{
-                      \begin{aligned}
-                        &\mathrm{other}.\mathrm{Acceptance},\\
-                        &\mathrm{VisitorMap} \mapsto \\
-                        &\left\{
-                          \begin{aligned}
-                            &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
-                            &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
-                        \end{aligned}\right\},\\
-                        &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{Boolean}\}\}
-                    \end{aligned}\right\},\\
-                    &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
-                \end{aligned}\right\}
-        \end{aligned}\right\}
-        \end{aligned}\right\}
-    \end{aligned}\right\}
+          &\mathrm{NatVisitorSuccessor},\; \mathrm{NatEquality},\\
+          &\mathrm{NatFactory} \mapsto \\
+          &\left\{
+            \begin{aligned}
+              &\mathrm{Successor} \mapsto \\
+              &\left\{
+                \begin{aligned}
+                  &\mathrm{Equal} \mapsto \\
+                  &\left\{
+                    \begin{aligned}
+                      &\mathrm{other} \mapsto \left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product},\\
+                          &\mathrm{predecessor} \mapsto \{\qualifiedthis{\mathrm{NatFactory}}.\mathrm{Product}\}
+                      \end{aligned}\right\},\\
+                      &\mathrm{\_recursiveEquality} \mapsto \left\{
+                        \begin{aligned}
+                          &\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal},\\
+                          &\mathrm{other} \mapsto \{\qualifiedthis{\mathrm{Equal}}.\mathrm{other}.\mathrm{predecessor}\}
+                      \end{aligned}\right\},\\
+                      &\mathrm{\_OtherAcceptance} \mapsto \\
+                      &\left\{
+                        \begin{aligned}
+                          &\mathrm{other}.\mathrm{Acceptance},\\
+                          &\mathrm{VisitorMap} \mapsto \\
+                          &\left\{
+                            \begin{aligned}
+                              &\mathrm{ZeroVisitor} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{BooleanFactory}.\mathrm{False}\}\},\\
+                              &\mathrm{SuccessorVisitor} \mapsto \{\mathrm{equal} \mapsto \{\mathrm{\_recursiveEquality}.\mathrm{equal}\}\}
+                          \end{aligned}\right\},\\
+                          &\mathrm{Accepted} \mapsto \{\mathrm{equal} \mapsto \{\qualifiedthis{\mathrm{NatEqualitySuccessor}}.\mathrm{Boolean}\}\}
+                      \end{aligned}\right\},\\
+                      &\mathrm{equal} \mapsto \{\mathrm{\_OtherAcceptance}.\mathrm{Accepted}.\mathrm{equal}\}
+                  \end{aligned}\right\}
+              \end{aligned}\right\}
+          \end{aligned}\right\}
+      \end{aligned}\right\}
     \end{aligned}
 \]}
 %% === 审稿人备忘：关于代码"冗长"的回应 ===
@@ -5239,12 +5245,14 @@ Multiple facts for the same relation are accumulated by
 inheritance (trie union).
 Adding $R(b, c)$:
 \[
-  R \mapsto \left\{\begin{aligned}
-    &a,\; b,\\
-    &\mathrm{TailMap} \mapsto \left\{\begin{aligned}
-      &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
-      &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
-    \end{aligned}\right\}
+  R \mapsto \left\{
+    \begin{aligned}
+      &a,\; b,\\
+      &\mathrm{TailMap} \mapsto \left\{
+        \begin{aligned}
+          &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+          &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
+      \end{aligned}\right\}
   \end{aligned}\right\}
 \]
 The point of the trie representation is not merely that it is a
@@ -5419,14 +5427,16 @@ We present each level as a named sub-scope.
 (Executable scope: \texttt{\_XAcceptance}.)
 {\small
   \[
-    \mathrm{xAcc} \mapsto \left\{\begin{aligned}
-      &\alpha.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_X \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{xAcc} \mapsto \left\{
+      \begin{aligned}
+        &\alpha.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\alpha.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_X \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{yAcc}.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
 
@@ -5439,16 +5449,18 @@ constant $d$ only if $d$ appears in both $\alpha$'s
 second column (via $\_X$) and $\beta$'s first column.
 {\small
   \[
-    \mathrm{yAcc} \mapsto \left\{\begin{aligned}
-      &\_X.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \{\beta.\mathrm{WithVisitorTail},\; \_X.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\; \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
-        &\ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{yAcc} \mapsto \left\{
+      \begin{aligned}
+        &\_X.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \{\beta.\mathrm{WithVisitorTail},\; \_X.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_Y_0 \mapsto \{\mathrm{VisiteeTail}\},\; \mathrm{VisitorTail} \mapsto \{\beta.\mathrm{Tail}\},\\
+            &\ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_0.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
 
@@ -5460,42 +5472,48 @@ Inside the $\mathrm{Nil}$ branch, the encoding proceeds to
 iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
 {\small
   \[
-    \mathrm{nilAcc}_0 \mapsto \left\{\begin{aligned}
-      &\_Y_0.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
-        &\ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}
-      \end{aligned}\right\}\right\}
+    \mathrm{nilAcc}_0 \mapsto \left\{
+      \begin{aligned}
+        &\_Y_0.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{
+            \begin{aligned}
+              &\ldots,\\
+              &\mathrm{Visited} \mapsto \{\mathrm{zAcc}.\mathrm{Accepted}\}
+        \end{aligned}\right\}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
 (Executable scope: \texttt{\_ZAcceptance}.)
 {\small
   \[
-    \mathrm{zAcc} \mapsto \left\{\begin{aligned}
-      &\mathrm{VisitorTail}.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
-      &\mathrm{Visitor} \mapsto \left\{\begin{aligned}
-        &\_Z \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
-        &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}
-      \end{aligned}\right\}
+    \mathrm{zAcc} \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{VisitorTail}.\mathrm{Acceptance},\; \mathrm{VisitorMap} \mapsto \{\mathrm{VisitorTail}.\mathrm{WithVisiteeTail}\},\\
+        &\mathrm{Visitor} \mapsto \left\{
+          \begin{aligned}
+            &\_Z \mapsto \{\mathrm{VisiteeTail}\},\; \ldots,\\
+            &\mathrm{Visited} \mapsto \{\mathrm{nilAcc}_1.\mathrm{Accepted}\}
+        \end{aligned}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
 (Executable scope: \texttt{\_NilAcceptance1}, with
 \texttt{\_ZReplacement} and \texttt{\_XReplacement}.)
 {\small
   \[
-    \mathrm{nilAcc}_1 \mapsto \left\{\begin{aligned}
-      &\mathrm{VisiteeTail}.\mathrm{Acceptance},\\
-      &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{\begin{aligned}
-        &\mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
-        &\mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
-        &\mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}
-      \end{aligned}\right\}\right\}
+    \mathrm{nilAcc}_1 \mapsto \left\{
+      \begin{aligned}
+        &\mathrm{VisiteeTail}.\mathrm{Acceptance},\\
+        &\mathrm{VisitorMap} \mapsto \left\{\mathrm{Nil} \mapsto \left\{
+            \begin{aligned}
+              &\mathrm{zR} \mapsto \{\_Z.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{Nil}\}\},\\
+              &\mathrm{xR} \mapsto \{\_X.\mathrm{Replacement},\; \mathrm{NewTail} \mapsto \{\mathrm{zR}.\mathrm{Replaced}\}\},\\
+              &\mathrm{Visited} \mapsto \{\mathrm{xR}.\mathrm{Replaced}\}
+        \end{aligned}\right\}\right\}
     \end{aligned}\right\}
-  \]}
+\]}
 
 \paragraph{Final result}
 \[
