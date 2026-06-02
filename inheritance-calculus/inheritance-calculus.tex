@@ -8,6 +8,8 @@
 \usepackage{multirow}
 \usepackage{graphicx}
 \usepackage{zref-savepos}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
 
 %% Right-aligned annotations for a multi-line math display.
 %% Nested \left\{...\right\} groups cannot share a common alignment column,
@@ -470,30 +472,53 @@ total = a.plus(
 
 \begin{figure*}
   \centering
-  {\small
-    \[
-      \renewcommand{\arraystretch}{1.2}
-      \begin{array}{c @{\quad} c c c c c}
-        \multirow{5}{*}{\rotatebox[origin=c]{90}{expressiveness $\longrightarrow$}}
-          & & & \text{lazy inheritance-calculus} & \subsetneq
-          & \text{inheritance-calculus} \\[2pt]
-        & & &
-          \rotatebox[origin=c]{90}{$\subsetneq$} & &
-          \rotatebox[origin=c]{90}{$\subsetneq$} \\[2pt]
-        & & & \lambda \text{ sublanguage of lazy inheritance-calculus} & \subsetneq
-          & \lambda \text{ sublanguage of inheritance-calculus} \\[2pt]
-        & & & \rotatebox[origin=c]{90}{$\cong$} & & \\[2pt]
-        & \lambda\text{-calculus} & \subsetneq
-          & \text{lazy } \lambda\text{-calculus} & \subsetneq
-          & \text{fixpoint } \lambda\text{-calculus}  \\[6pt]
-        & \multicolumn{5}{c}{\text{convergence} \longrightarrow} \\
-      \end{array}
-    \]
-  }
-  \caption{The calculi of this paper, arranged in a grid.
-    On the expressiveness axis, $A \subsetneq B$ means everything $A$
-    macro-expresses in Felleisen's sense $B$ macro-expresses, and strictly
-    more, and $A \cong B$ means $A$ and $B$ are fully abstract.}
+  \begin{tikzpicture}[
+      calc/.style={align=center, inner sep=2pt, font=\small},
+      more/.style={-{Stealth[length=2mm]}, semithick},
+      iso/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}, semithick},
+      elbl/.style={font=\scriptsize\itshape, midway, fill=white, inner sep=1pt},
+      x=1mm, y=1mm,
+    ]
+    % rows: bottom = lambda calculi, middle = lambda sublanguages, top = inheritance-calculi
+    % columns: eager (x=0), lazy (x=42), fixpoint (x=84)
+    \node[calc] (lam)  at (0,0)   {$\lambda$};
+    \node[calc] (llam) at (42,0)  {lazy $\lambda$};
+    \node[calc] (flam) at (84,0)  {fixpoint $\lambda$ (ours)};
+
+    \node[calc] (lsub) at (42,19)  {$\lambda$-lazy-IC (ours)};
+    \node[calc] (sub)  at (84,19)  {$\lambda$-IC (ours)};
+
+    \node[calc] (lic)  at (42,38)  {lazy IC (ours)};
+    \node[calc] (ic)   at (84,38)  {IC (ours)};
+
+    % horizontal edges (convergence): "more defined"
+    \draw[more] (lam)  -- node[elbl,below]{more defined} (llam);
+    \draw[more] (llam) -- node[elbl,below]{more defined} (flam);
+    \draw[more] (lsub) -- node[elbl,above]{more defined} (sub);
+    \draw[more] (lic)  -- node[elbl,above]{more defined} (ic);
+
+    % vertical edges (expressiveness): "strictly more expressive"
+    \draw[more] (lsub) -- node[elbl,left]{strictly more expressive} (lic);
+    \draw[more] (sub)  -- node[elbl,right]{strictly more expressive} (ic);
+
+    % full abstraction: vertical, in the lazy column
+    \draw[iso] (llam) -- node[elbl,left]{fully abstract} (lsub);
+  \end{tikzpicture}
+  \caption{The calculi of this paper; nodes marked
+    (ours) are contributions of this paper.
+    Abbreviations:
+    $\lambda$ is the $\lambda$-calculus;
+    the lazy prefix denotes the first-iteration approximation
+    $T_P\!\uparrow\!1$;
+    fixpoint $\lambda$ the fixpoint $\lambda$-calculus;
+    IC the inheritance-calculus;
+    and $\lambda$-IC and $\lambda$-lazy-IC the $\lambda$ sublanguages of
+    IC and of lazy IC, respectively.
+    Edge labels:
+    \emph{more defined} refers to convergence;
+    \emph{strictly more expressive} is meant in Felleisen's sense of
+    macro-expressibility;
+    and \emph{fully abstract} marks full abstraction.}
   \label{fig:calculi-matrix}
 \end{figure*}
 
