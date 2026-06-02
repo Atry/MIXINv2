@@ -259,17 +259,15 @@ To make the question precise, we operationalize it with four
 \begin{itemize}
   \item Immutable and first-order%
     \footnote{
-      In this paper, we use \emph{first-order} in three senses
-      simultaneously:
-      the semantic domain contains only data, with no function
-      spaces, closures, or
+      Here \emph{first-order} holds in three senses at once:
+      the semantic domain contains only data, no function spaces,
+      closures, or
       strategies~\cite{vanemden1976-predicate-logic-semantics};
-      the defining equations are first-order functions whose
-      inputs and outputs are data, never
-      functions~\cite{reynolds1972-definitional-interpreters};
-      and the semantics is given by first-order inductive
-      definitions~\cite{aczel1977-inductive-definitions} whose
-      quantifiers range over data, never over functions or predicates.
+      the defining equations map data to
+      data~\cite{reynolds1972-definitional-interpreters};
+      and the semantics is a first-order inductive
+      definition~\cite{aczel1977-inductive-definitions} whose
+      quantifiers range only over data.
     }
     is our proxy for
     \emph{configuration}. A configuration is read, not a function that
@@ -286,9 +284,6 @@ To make the question precise, we operationalize it with four
     also scale by adding code rather than rewriting it; this is the
     Expression Problem~\cite{wadler1998-expression-problem}. We therefore
     require both: a Turing-complete language whose programs are extensible.
-    This is the sense in which Prolog, though Turing-complete, is not a
-    practical general-purpose language: it extends only by adding disjuncts
-    to existing predicates.
 \end{itemize}
 
 \noindent
@@ -547,8 +542,8 @@ blindness~\cite{nystrom2015-function-color}.
   \label{fig:calculi-matrix}
 \end{figure*}
 
-The remainder of the paper establishes the landscape of calculi and
-their relationships shown in Figure~\ref{fig:calculi-matrix}.
+Figure~\ref{fig:calculi-matrix} situates inheritance-calculus among
+several related calculi developed below.
 Section~\ref{sec:definitions} defines the semantics via six
 mutually recursive first-order functions on paths and sets of paths,
 with no function spaces, closures, or higher-order constructs;
