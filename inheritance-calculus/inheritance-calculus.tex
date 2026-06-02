@@ -1417,13 +1417,7 @@ an existing definition without modifying it.
 \label{sec:expression-problem}
 
 We implemented boolean logic and natural number arithmetic, both unary
-and binary, in inheritance-calculus.%
-\footnote{
-  The examples in this section are rendered in
-  inheritance-calculus notation; the executable MIXINv2
-  sources\anon[~(supplementary material)]{~\cite{mixin2025}}
-  are available as supplementary material.
-}
+and binary, in inheritance-calculus.
 This section traces the unary Nat case in detail: its data representation,
 addition, and equality.
 The implementation follows ordinary Gang-of-Four design
@@ -2985,12 +2979,23 @@ Functions are syntactic sugar for inheritance.
 The executable implementation (MIXINv2) and all examples from
 this paper are openly available as open-source software under
 the MIT license\anon[{} (URL omitted for anonymous review)]{~\cite{mixin2025}}.
+Every example rendered in inheritance-calculus notation has a
+corresponding executable MIXINv2 source, and a test suite
+reproduces every example in the paper.
+The boolean logic and unary natural number arithmetic of the case
+study (Section~\ref{sec:case-study}), the Datalog encodings of
+Appendix~\ref{app:datalog-encoding} (including the two-hop,
+constant-join, and multi-variable-join relational programs and the
+repeated-visitor self-join regression example), and the synchronous
+and asynchronous runtime instances discussed in the
+function-color-blindness paragraph
+(Section~\ref{sec:practical-function-color}) are all included among
+these sources.
 The ratarmount patch discussed in
 Section~\ref{sec:practical-union-fs} is
 \anon[also openly available (URL omitted for anonymous review)]{available as an open pull
 request~\cite{ratarmount2025}}.
-\anon[Both are also included as supplementary material, together
-with a test suite that reproduces every example in this paper.]{}
+\anon[All of the above are also included as supplementary material.]{}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
