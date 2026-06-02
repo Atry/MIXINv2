@@ -470,6 +470,31 @@ total = a.plus(
 \end{figure*}
 
 
+
+In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
+beside Python: the same complex-number class with an addition method,
+written both ways.
+Section~\ref{sec:syntax} gives its formal syntax, and
+Section~\ref{sec:mixin-trees} expands this first look into the full
+semantics.
+The linearization problem of mixin-based
+systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
+did not arise: inheritance is inherently commutative, idempotent,
+and associative, and $\this$ naturally resolves to
+\emph{multiple targets} rather than one, where prior systems
+such as Scala and the NixOS module system reject the multi-target
+situation.
+Section~\ref{sec:case-study} traces how boolean logic and
+arithmetic, implemented as separate files, extend in both
+dimensions of the Expression
+Problem~\cite{wadler1998-expression-problem} without any dedicated
+mechanism, and how ordinary arithmetic yields the relational
+semantics of logic
+programming~\cite{vanemden1976-predicate-logic-semantics}.
+Section~\ref{sec:emergent-phenomena} discusses these and further
+emergent phenomena, including function color
+blindness~\cite{nystrom2015-function-color}.
+
 \begin{figure*}
   \centering
   \begin{tikzpicture}[
@@ -522,30 +547,8 @@ total = a.plus(
   \label{fig:calculi-matrix}
 \end{figure*}
 
-In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
-beside Python: the same complex-number class with an addition method,
-written both ways.
-Section~\ref{sec:syntax} gives its formal syntax, and
-Section~\ref{sec:mixin-trees} expands this first look into the full
-semantics.
-The linearization problem of mixin-based
-systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
-did not arise: inheritance is inherently commutative, idempotent,
-and associative, and $\this$ naturally resolves to
-\emph{multiple targets} rather than one, where prior systems
-such as Scala and the NixOS module system reject the multi-target
-situation.
-Section~\ref{sec:case-study} traces how boolean logic and
-arithmetic, implemented as separate files, extend in both
-dimensions of the Expression
-Problem~\cite{wadler1998-expression-problem} without any dedicated
-mechanism, and how ordinary arithmetic yields the relational
-semantics of logic
-programming~\cite{vanemden1976-predicate-logic-semantics}.
-Section~\ref{sec:emergent-phenomena} discusses these and further
-emergent phenomena, including function color
-blindness~\cite{nystrom2015-function-color}.
-
+The remainder of the paper establishes the landscape of calculi and
+their relationships shown in Figure~\ref{fig:calculi-matrix}.
 Section~\ref{sec:definitions} defines the semantics via six
 mutually recursive first-order functions on paths and sets of paths,
 with no function spaces, closures, or higher-order constructs;
