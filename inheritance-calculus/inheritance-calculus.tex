@@ -467,6 +467,36 @@ total = a.plus(
   \label{fig:cheatsheet}
 \end{figure*}
 
+
+\begin{figure*}
+  \centering
+  {\small
+    \[
+      \renewcommand{\arraystretch}{1.2}
+      \begin{array}{c @{\quad} c c c c c}
+        \multirow{5}{*}{\rotatebox[origin=c]{90}{expressiveness $\longrightarrow$}}
+          & & & \text{lazy inheritance-calculus} & \subsetneq
+          & \text{inheritance-calculus} \\[2pt]
+        & & &
+          \rotatebox[origin=c]{90}{$\subsetneq$} & &
+          \rotatebox[origin=c]{90}{$\subsetneq$} \\[2pt]
+        & & & \lambda \text{ sublanguage of lazy inheritance-calculus} & \subsetneq
+          & \lambda \text{ sublanguage of inheritance-calculus} \\[2pt]
+        & & & \rotatebox[origin=c]{90}{$\cong$} & & \\[2pt]
+        & \lambda\text{-calculus} & \subsetneq
+          & \text{lazy } \lambda\text{-calculus} & \subsetneq
+          & \text{fixpoint } \lambda\text{-calculus}  \\[6pt]
+        & \multicolumn{5}{c}{\text{convergence} \longrightarrow} \\
+      \end{array}
+    \]
+  }
+  \caption{The calculi of this paper, arranged in a grid.
+    On the expressiveness axis, $A \subsetneq B$ means everything $A$
+    macro-expresses in Felleisen's sense $B$ macro-expresses, and strictly
+    more, and $A \cong B$ means $A$ and $B$ are fully abstract.}
+  \label{fig:calculi-matrix}
+\end{figure*}
+
 In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
 beside Python: the same complex-number class with an addition method,
 written both ways.
