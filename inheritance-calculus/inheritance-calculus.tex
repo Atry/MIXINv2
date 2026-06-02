@@ -430,13 +430,13 @@ total = a.plus(
                   &\mathrm{re} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Tau} \right\}, \figureAnnotation{imported constant} \\
                   &\mathrm{im} \mapsto \left\{ \qualifiedthis{\mathrm{ComplexModule}}.\mathrm{PI} \right\} \figureAnnotation{imported constant} \\
               \end{aligned}\right\}, \\
-              &\mathrm{\_TotalCall} \mapsto {} \figureAnnotation{method application} \\
+              &\mathrm{\_totalCall} \mapsto {} \figureAnnotation{method application} \\
               &\left\{
                 \begin{aligned}
                   &\mathrm{a}.\mathrm{Plus}, \figureAnnotation{method reference} \\
                   &\mathrm{other} \mapsto \left\{ \mathrm{b} \right\} \figureAnnotation{keyword argument} \\
               \end{aligned}\right\}, \\
-              &\mathrm{total} \mapsto \left\{ \mathrm{\_TotalCall}.\mathrm{result} \right\} \figureAnnotation{module-level variable} \\
+              &\mathrm{total} \mapsto \left\{ \mathrm{\_totalCall}.\mathrm{result} \right\} \figureAnnotation{module-level variable} \\
           \end{aligned}\right\}
         \end{aligned}
     \)}
@@ -452,12 +452,10 @@ total = a.plus(
     drawing their constants from the \texttt{math} module, and adding with
     \texttt{operator.add}, compute the complex
     number $(\pi+\tau) + (e+\pi)i$.
-    The inheritance-calculus side is slightly longer because each function
-    application is encoded as a command pattern: a named record (the
-      $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ locals, in
-    ANF~\cite{flanagan1993-essence-compiling-continuations}) whose result
-    is read back from its $\mathrm{result}$ field, rather than nested
-  inline.}
+    $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ are function
+    applications, and $\mathrm{\_totalCall}$ a method application, each
+    encoded as a command pattern, their result read back from a
+    $\mathrm{result}$ field.}
   \label{fig:cheatsheet}
 \end{figure*}
 
@@ -674,7 +672,7 @@ the innermost enclosing scope that defines the leading projection's
 label directly in its record literal, and the source desugars to the
 corresponding indexed form.
 For example, $\mathrm{\_sumReCall}.\mathrm{result}$,
-$\mathrm{a}.\mathrm{Plus}$, and $\mathrm{\_TotalCall}.\mathrm{result}$
+$\mathrm{a}.\mathrm{Plus}$, and $\mathrm{\_totalCall}.\mathrm{result}$
 in Figure~\ref{fig:cheatsheet} are such qualifier-omitted shorthands.
 Because this search inspects only record-literal definitions, the
 shorthand can only access properties defined in record literals, not
