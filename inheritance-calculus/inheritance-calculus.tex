@@ -604,9 +604,9 @@ after removing the FFI.
 None of the examples in this paper uses the FFI or any scalar values.
 
 \paragraph{Inheritance}
-An inheritance is written as a reference
-that navigates the scope hierarchy upward and then projects
-properties downward. The upward navigation admits two equivalent
+An inheritance references a scope through a qualifier $q$ that
+navigates the scope hierarchy upward, then projects properties downward
+through a projection list $w$. The qualifier $q$ admits two equivalent
 notations:
 \begin{description}
   \item[Named form]
@@ -1939,11 +1939,7 @@ Cartesian product.
 
 The same $\mathrm{Plus}$ and $\mathrm{Equal}$ files that operate on
 single values thus produce, without modification, the relational
-semantics of logic programming:%
-\footnote{
-  Appendix~\ref{app:datalog-encoding} gives the systematic
-  encoding of Datalog into inheritance-calculus.
-}
+semantics of logic programming:
 $\overrides$ and $\supers$ collect all inheritance paths, and
 every operation distributes over them.
 
@@ -1952,83 +1948,60 @@ every operation distributes over them.
 \subsection{Emergent Phenomena}
 \label{sec:emergent-phenomena}
 
-In developing real programs in MIXINv2, three phenomena manifested as off-label use of the adopted design patterns.%
-\footnote{
-  MIXINv2 programs adopt two standard patterns:
-  data types follow a factory pattern isomorphic to Scala's
-  \texttt{sealed trait} with \texttt{case class}es;
-  pattern matching uses Scott encoding.
-  Both are named after Gang-of-Four
-  terminology~\cite{gamma1994-design-patterns}
-  (factory, visitor, acceptance), with verbs replaced by
-  nouns since the calculus has no methods.
-}
-They can be seen in the
-source code\anon[~(supplementary material)]{~\cite{mixin2025}}
-and the case study of Section~\ref{sec:case-study}.
-Below we explain why they arise from the three primitives.
+Developing real programs in MIXINv2 surfaced three phenomena, each an
+off-label use of an adopted design pattern beyond its original abilities.
 
 \begin{description}
   \item[Relational semantics]
-    Single-valued computation and set-valued computation are
-    the same mechanism.
-    The semantic equations of Section~\ref{sec:mixin-trees}
-    resolve every property to a set of paths, so operations
-    defined on single values automatically distribute over
-    all combinations of set-valued inputs,
-    as demonstrated in Section~\ref{sec:case-study}.
-    When a mixin tree is viewed as a trie, the correspondence
-    with relational algebra becomes precise.
-    The carrier is a trie rather than a flat relation, and
-    observation is coinductive: the observer drives computation
-    by querying progressively deeper paths.
-    This contrasts with
-    Datalog's bottom-up materialization, but the relational
-    structure of the computation is the same.
-    Appendix~\ref{app:datalog-encoding} makes this correspondence
-    precise with a systematic encoding of Datalog into
-    inheritance-calculus, demonstrating that variable joins,
-    constant matches, multi-body rules, and recursive rules are
-    all expressible using only the three primitives of
-    Section~\ref{sec:syntax}.
+    The Cartesian product in the case study of
+    Section~\ref{sec:case-study} arose because a trie is a set
+    structure, so deep merge over tries is set union and an operation
+    over the merged trie ranges over the product of its operands.
+    This is not specific to $\mathrm{Nat}$: any Datalog tuple encodes
+    as a linked list, and deep merge computes set operations over such
+    tuples, which we believe is Datalog semantics.
+    Appendix~\ref{app:datalog-encoding} encodes Datalog into
+    inheritance-calculus, expressing variable joins,
+    constant matches, multi-body rules, and recursive rules with
+    the three primitives of Section~\ref{sec:syntax} alone.
+    This logic-programming semantics emerged from an off-label use of
+    the factory pattern that encodes the case study's arithmetic.
 
   \item[Immunity to nonextensibility]\label{item:immunity}
-    It is structurally impossible to write a nonextensible program.
-    Every construct of inheritance-calculus
-    from Section~\ref{sec:syntax} is extensible via deep merge
-    (equation~\ref{eq:overrides}).
-    The case study of Section~\ref{sec:case-study} and the
-    expressive asymmetry of Section~\ref{sec:asymmetry}
-    (Theorem~\ref{thm:cartesian-nonexpressibility}) demonstrate
-    and formalize this: new operations and data types are added,
-    and new observable projections are introduced.
-    This is the extensibility that the
-    Expression Problem~\cite{wadler1998-expression-problem} demands.%
+    In the case study of Section~\ref{sec:case-study}, the
+    $\mathrm{Nat}$ encoding turned out to be an instance of the
+    untyped Expression
+    Problem~\cite{wadler1998-expression-problem}:%
     \footnote{
-      As an untyped calculus, inheritance-calculus cannot violate
-      the extensibility requirement of the Expression Problem but does
-      not encounter its type-safety requirement.
-      A typed language built on
-      inheritance-calculus\anon[~(supplementary material)]{~\cite{mixin2025}} inherits the immunity to nonextensibility and need
-      only ensure that its type system does not introduce
-      nonextensible constructs.
+      The Expression Problem has two requirements: extensibility along
+      both the operation and the data-constructor axis, and static
+      type safety. An untyped calculus cannot meet the type-safety
+      requirement, so we consider only the two-axis extensibility
+      requirement.
     }
-    Programming languages typically provide a mix of extensible and
-    nonextensible constructs, where extensibility is opt-in:
-    frameworks must encode nonextensible constructs into extensible
-    constructs using sophisticated
+    a new operation and a new data type were each added as a separate
+    mixin, extending along both the operation axis and the case axis,
+    with no existing mixin modified.
+    Elsewhere the visitor pattern admits new operations but not new
+    cases; here it admits both, because every construct of
+    Section~\ref{sec:syntax} is extensible via deep merge
+    (equation~\ref{eq:overrides}), so the nonextensible half cannot be
+    written, and Section~\ref{sec:asymmetry}
+    (Theorem~\ref{thm:cartesian-nonexpressibility}) formalizes the
+    asymmetry that makes this unconditional.
+    Recovering that second dimension elsewhere takes dedicated
     mechanisms~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types,
       swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras,
       kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads,
-    wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras},
-    and code that uses nonextensible constructs
-    cannot be extended unless rewritten in the framework.
+    wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}.
     Section~\ref{sec:semantic-variants} analyzes why deep merge
     is the only composition mechanism that achieves this.
+    This second extensibility dimension emerged from an off-label use
+    of the visitor pattern.
 
   \item[Function color blindness]
     \label{sec:practical-function-color}
-    We observed that the same MIXINv2 file runs under both synchronous
+    The same MIXINv2 file runs under both synchronous
     and asynchronous runtimes\anon[~(supplementary material)]{~\cite{mixin2025}},
     an instance of function color
     blindness~\cite{nystrom2015-function-color}.%
@@ -2051,6 +2024,8 @@ Below we explain why they arise from the three primitives.
       this way, as it requires a global CPS transformation that
       inheritance-calculus does not express.
     }
+    This color blindness emerged from an off-label use of dependency
+    injection via inheritance.
 \end{description}
 
 \subsection{Semantic Alternatives}
