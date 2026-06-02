@@ -1369,14 +1369,6 @@ the separating construction is itself a miniature instance of
 the Expression Problem, adding a new observable projection to
 an existing definition without modifying it.
 
-The underlying mechanism is open extension: mixin
-definitions compose via open extension, so existing
-definitions gain new observable properties without
-modification.  In the $\lambda$-calculus, a function's result
-is closed: there is no way to add new observable projections
-to an already-computed value without modifying the function's
-definition.
-
 \section{Case Study: Nat Arithmetic}
 \label{sec:case-study}
 \label{sec:expression-problem}
@@ -1851,9 +1843,8 @@ is single-valued and cannot resolve through multiple inheritance
 routes simultaneously.
 The Expression Problem can still be solved in Scala using
 object algebras or similar patterns, but composing independently
-defined operations inherently produces multi-target $\this$ resolution to
-shared schemas, which DOT's single-valued self variable cannot
-accommodate.
+defined operations inherently produces the multi-target $\this$
+resolution to shared schemas just described.
 
 \paragraph{Church-encoded Nats are tries}
 \label{sec:case-study-cartesian}
