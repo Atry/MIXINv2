@@ -1999,34 +1999,15 @@ off-label use of an adopted design pattern beyond its original abilities.
     This second extensibility dimension emerged from an off-label use
     of the visitor pattern.
 
-  \item[Function color blindness]
-    \label{sec:practical-function-color}
-    The same MIXINv2 file runs under both synchronous
-    and asynchronous runtimes\anon[~(supplementary material)]{~\cite{mixin2025}},
-    an instance of function color
-    blindness~\cite{nystrom2015-function-color}.%
-    \footnote{
-      The mechanism is dependency injection via inheritance: business
-      logic declares empty slots, and the assembly inherits an FFI
-      module that fills them with a synchronous or asynchronous
-      implementation, so the slot's color varies at assembly time
-      without affecting the code that uses it.
-      Function color~\cite{nystrom2015-function-color} arises when
-      effectful functions have signatures $a \to f\,b$ (Kleisli
-      arrows), requiring monadic bind to compose and making the
-      effect $f$ visible at every call site.
-      Because inheritance-calculus composes program structure
-      rather than executing effects, this type distinction does
-      not arise at the calculus level, and effect execution is
-      delegated to the host language.
-      Unstructured control flow, such as capturing and resuming
-      continuations as in \texttt{call/cc}, cannot be abstracted
-      this way, as it requires a global CPS transformation that
-      inheritance-calculus does not express.
-    }
-    This color blindness emerged from an off-label use of dependency
-    injection via inheritance.
 \end{description}
+
+\label{sec:practical-function-color}%
+Further phenomena rely on the FFI, which the examples in this paper
+exclude. One is function color
+blindness~\cite{nystrom2015-function-color}: the same MIXINv2 file runs
+under both synchronous and asynchronous runtimes, an off-label use of
+dependency injection via inheritance. The
+supplementary material\anon[]{~\cite{mixin2025}} gives the example.
 
 \subsection{Semantic Alternatives}
 \label{sec:semantic-variants}
