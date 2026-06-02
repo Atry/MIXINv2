@@ -11,6 +11,10 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc}
 
+%% Allow multi-line display math (align, etc.) to break across pages, so
+%% the long BNF grammars are not trapped as single unbreakable blocks.
+\allowdisplaybreaks
+
 %% Right-aligned annotations for a multi-line math display.
 %% Nested \left\{...\right\} groups cannot share a common alignment column,
 %% so each annotation is pinned to a single right edge via absolute page
@@ -270,20 +274,13 @@ To make the question precise, we operationalize it with four
       quantifiers range only over data.
     }
     is our proxy for
-    \emph{configuration}. A configuration is read, not a function that
-    reads an argument. The configuration languages above all compose by
-    extending existing structure from outside, their values are immutable,
-    and they have no first-class functions; a function body, by contrast,
-    is closed, and its internal structure cannot be extended without
-    modifying the definition.
+    \emph{configuration}: a configuration is read, not a function that
+    reads an argument.
   \item Turing-completeness together with extensibility is our proxy for
-    \emph{practical general-purpose} programming. Turing-completeness alone
-    only means a language can in principle compute anything; it does not
-    make the language practical. Software cost is dominated by
-    growth~\cite{brooks1987-no-silver-bullet}, so a practical language must
-    also scale by adding code rather than rewriting it; this is the
-    Expression Problem~\cite{wadler1998-expression-problem}. We therefore
-    require both: a Turing-complete language whose programs are extensible.
+    \emph{practical general-purpose} programming: a language must be able
+    to compute anything and to grow by adding code rather than rewriting
+    it, the Expression
+    Problem~\cite{wadler1998-expression-problem}.
 \end{itemize}
 
 \noindent
@@ -571,25 +568,25 @@ The empty string $\varepsilon$ is the empty element list.
   e \quad ::= \quad & \{\, s \,\}
   && \text{(record)} \\[6pt]
   s \quad ::= \quad & \varepsilon
-  && \text{(empty)} \\
+  && \text{(empty)} \\*
   \mid\quad & c
-  && \text{(one element)} \\
+  && \text{(one element)} \\*
   \mid\quad & c,\; s
   && \text{(element, then more)} \\[6pt]
   c \quad ::= \quad & \ell \mapsto e
-  && \text{(definition)} \\
+  && \text{(definition)} \\*
   \mid\quad & q.\, w
-  && \text{(inheritance: qualifier and projections)} \\
+  && \text{(inheritance: qualifier and projections)} \\*
   \mid\quad & q
-  && \text{(inheritance: qualifier only)} \\
+  && \text{(inheritance: qualifier only)} \\*
   \mid\quad & w
   && \text{(inheritance: projections only)} \\[6pt]
   q \quad ::= \quad & \qualifiedthis{\ell_{\mathrm{qualifier}}}
-  && \text{(named qualifier)} \\
+  && \text{(named qualifier)} \\*
   \mid\quad & \dbi{n}
   && \text{(indexed qualifier)} \\[6pt]
   w \quad ::= \quad & \ell_{\mathrm{projection}}
-  && \text{(one projection)} \\
+  && \text{(one projection)} \\*
   \mid\quad & \ell_{\mathrm{projection}}.\, w
   && \text{(projection, then more)}
 \end{align*}
@@ -752,15 +749,15 @@ $w$:
   N \quad ::= \quad & \langle\, d \,;\; b \,\rangle
   && \text{(node: definitions and references)} \\[6pt]
   d \quad ::= \quad & \varepsilon
-  && \text{(no definitions)} \\
+  && \text{(no definitions)} \\*
   \mid\quad & (\ell \mapsto N),\; d
   && \text{(definition, then more)} \\[6pt]
   b \quad ::= \quad & \varepsilon
-  && \text{(no references)} \\
+  && \text{(no references)} \\*
   \mid\quad & (n,\; w),\; b
   && \text{(reference, then more)} \\[6pt]
   w \quad ::= \quad & \varepsilon
-  && \text{(no projections)} \\
+  && \text{(no projections)} \\*
   \mid\quad & \ell.\, w
   && \text{(projection, then more)}
 \end{align*}
