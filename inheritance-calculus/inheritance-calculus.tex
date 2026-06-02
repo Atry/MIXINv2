@@ -443,9 +443,6 @@ total = a.plus(
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
     (left): the same complex-number class with an addition method.
-    Where Python uses distinct language features for module, import,
-    class, field, method, local, and object, inheritance-calculus uses
-    only definitions and inheritance.
     Qualified $\this$ reaches into the enclosing module to access its
     imported members.
     Both sides, typing their components with \texttt{builtins.float},
@@ -461,9 +458,7 @@ total = a.plus(
 
 
 
-In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}. Figure~\ref{fig:cheatsheet} is a first look at inheritance-calculus,
-beside Python: the same complex-number class with an addition method,
-written both ways.
+In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}, shown beside Python in Figure~\ref{fig:cheatsheet}.
 Section~\ref{sec:syntax} gives its formal syntax, and
 Section~\ref{sec:mixin-trees} expands this first look into the full
 semantics.
