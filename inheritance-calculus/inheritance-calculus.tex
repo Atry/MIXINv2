@@ -2888,8 +2888,7 @@ pure object-oriented programming,%
   inheritance, without functional abstractions such
   as~$\lambda$ or~$\beta$-reduction.
 }
-a minimal computational model for declarative programming
-that fills the empty cell of Table~\ref{tab:computational-models}.
+a minimal computational model for declarative programming.
 
 Since $\overrides$ merges subtrees rather than method bodies,
 functions are no longer primitive.
@@ -2927,8 +2926,18 @@ Section~\ref{sec:practical-function-color} exhibited
 function color
 blindness~\cite{nystrom2015-function-color}.
 
-Inheritance is not a mechanism for organizing functions.
-Functions are syntactic sugar for inheritance.
+A single mixin is at once data, program, configuration,
+function, relation, and object.
+It macro-expresses the $\lambda$-calculus and recovers the
+relational semantics of logic programming, while remaining
+immune to the nonextensibility that neither escapes.
+
+The introduction asked whether configuration alone can be
+practical general-purpose programming.
+It can.
+We propose inheritance-calculus as a foundation for practical
+general-purpose programming, one we believe better than any
+known computational model.
 
 \section{Data Availability Statement}
 
