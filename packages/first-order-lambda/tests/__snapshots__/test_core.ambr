@@ -11,9 +11,3 @@
 # name: test_kestrel_readout[kestrel]
   '(λ (λ v1))'
 # ---
-# name: test_unproductive_cycles_are_empty[omega_least_model]
-  '∅'
-# ---
-# name: test_unproductive_cycles_are_empty[omega_operational]
-  '⊥'
-# ---

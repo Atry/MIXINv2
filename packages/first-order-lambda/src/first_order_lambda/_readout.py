@@ -1,12 +1,16 @@
-"""The Berarducci tree readout (Definition ``def:btree``), parameterized by a ``reading``.
+"""The Berarducci tree readout (Definition ``def:btree``).
 
-``berarducci`` resolves each node's head via ``reading(node.shape)`` and descends, memoizing
-on node identity so the same position yields the same output node (interning by position).
-A guarded ``Mu`` cycle revisits the same node object, so the readout folds it into a finite
-rational graph: the output ``TreeNode`` graph is genuinely cyclic, and ``render`` prints it
-with back-reference labels. A copying term (``Y (cons 0)``, Omega) makes fresh nodes, never
-revisits, and so diverges (bounded by a reduction budget in tests). Beta-headed
+``berarducci`` resolves each position's head via its single-valued ``shape`` and descends,
+memoising on node identity so the same position yields the same output node (interning by
+position). A guarded cycle revisits the same node object, so the readout folds it into a
+finite rational graph: the output ``TreeNode`` graph is genuinely cyclic, and ``render``
+prints it with back-reference labels. The shape is single-valued, so the readout is not
+parameterised by any reading: a present shape reads out to its constructor, and ``BOTTOM`` (an
+unproductive cycle, or no weak-head normal form) reads out to the ``⊥`` leaf. Beta-headed
 applications are retained, not collapsed.
+
+The fold is taken only at CLOSED positions, so a folded back-reference never misreads a free
+de Bruijn variable; open subpositions are rebuilt (finitely, under a closed fold).
 """
 
 from __future__ import annotations
@@ -15,9 +19,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import final
 
-from first_order_lambda._ast import Node
+from first_order_lambda._ast import Node, ShapeBottom
 from first_order_lambda._shape import AppShape, LamShape, VarShape, shape_of
-from first_order_lambda._variants import Reading, Resolution
 
 
 @dataclass(kw_only=True, eq=False)
@@ -34,13 +37,7 @@ class VarLeaf(TreeNode):
 @final
 @dataclass(kw_only=True, eq=False)
 class BottomLeaf(TreeNode):
-    """The bottom leaf (``agg(empty) = bottom``, or disagreement under deduplicate-or-diverge)."""
-
-
-@final
-@dataclass(kw_only=True, eq=False)
-class EmptyLeaf(TreeNode):
-    """The empty-constructor leaf ``lambda a. lambda b. b`` (``agg(empty)`` under ``Semp``)."""
+    """The bottom leaf ``⊥``: an unproductive cycle, or a position with no weak-head shape."""
 
 
 @final
@@ -56,21 +53,19 @@ class AppTree(TreeNode):
     argument: TreeNode
 
 
-def berarducci(node: Node, reading: Reading) -> TreeNode:
-    return _read(node, reading, {}, {})
+def berarducci(node: Node) -> TreeNode:
+    return _read(node, {}, {})
 
 
 def _read(
     node: Node,
-    reading: Reading,
     memo: dict[int, TreeNode],
     in_progress: dict[int, TreeNode],
 ) -> TreeNode:
     # Fold (memoise / emit a back-reference) only at CLOSED positions. A position with free
     # de Bruijn variables means different things under different binder contexts, so folding
-    # it by node identity would misread those variables across the back-edge (a shallow,
-    # binding-unaware merge). Closed positions carry no free variable, so folding them is
-    # exact; open subpositions are rebuilt (finite under a closed fold).
+    # it by node identity would misread those variables across the back-edge. Closed positions
+    # carry no free variable, so folding them is exact; open subpositions are rebuilt.
     closed = node.loose_bound == 0
     node_id = id(node)
     if closed:
@@ -80,15 +75,10 @@ def _read(
         cached = memo.get(node_id)
         if cached is not None:
             return cached
-    head = reading(shape_of(node))
+    head = shape_of(node)
     match head:
-        case Resolution.BOTTOM:
+        case ShapeBottom.BOTTOM:
             leaf: TreeNode = BottomLeaf()
-            if closed:
-                memo[node_id] = leaf
-            return leaf
-        case Resolution.EMPTY_CONSTRUCTOR:
-            leaf = EmptyLeaf()
             if closed:
                 memo[node_id] = leaf
             return leaf
@@ -98,7 +88,7 @@ def _read(
             lam_tree = LamTree(body=BottomLeaf())
             if closed:
                 in_progress[node_id] = lam_tree
-            lam_tree.body = _read(body, reading, memo, in_progress)
+            lam_tree.body = _read(body, memo, in_progress)
             if closed:
                 del in_progress[node_id]
                 memo[node_id] = lam_tree
@@ -107,14 +97,14 @@ def _read(
             app_tree = AppTree(function=BottomLeaf(), argument=BottomLeaf())
             if closed:
                 in_progress[node_id] = app_tree
-            app_tree.function = _read(function, reading, memo, in_progress)
-            app_tree.argument = _read(argument, reading, memo, in_progress)
+            app_tree.function = _read(function, memo, in_progress)
+            app_tree.argument = _read(argument, memo, in_progress)
             if closed:
                 del in_progress[node_id]
                 memo[node_id] = app_tree
             return app_tree
         case _:
-            raise TypeError(f"Unknown aggregate result {head!r}")
+            raise TypeError(f"Unknown shape {head!r}")
 
 
 def _children(tree: TreeNode) -> tuple[TreeNode, ...]:
@@ -168,8 +158,6 @@ def render(tree: TreeNode) -> str:
                 return f"{prefix}v{index}"
             case BottomLeaf():
                 return f"{prefix}⊥"
-            case EmptyLeaf():
-                return f"{prefix}∅"
             case LamTree(body=body):
                 return f"{prefix}(λ {emit(body)})"
             case AppTree(function=function, argument=argument):

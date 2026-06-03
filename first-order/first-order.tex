@@ -29,7 +29,7 @@
 \newcommand{\Varsh}{\mathsf{Var}}
 \newcommand{\Btree}{\mathcal{B}}
 \newcommand{\Sbot}{\mathcal{S}_{\bot}}
-\newcommand{\Semp}{\mathcal{S}_{\emptyset}}
+\newcommand{\Semp}{\mathcal{S}_{\mathsf{lfp}}}
 \newcommand{\dlam}{\mathord{\downarrow}\lambda}
 \newcommand{\dhead}{\mathord{\downarrow}\mathsf{h}}
 \newcommand{\darg}{\mathord{\downarrow}\mathsf{a}}
@@ -59,20 +59,16 @@
 \begin{abstract}
 A $\lambda$-term's Berarducci tree is the readout of a single first-order
 relation: the weak-head \emph{shape} relation $\Sh$ over the positions of the
-term. The shape at a position is single-valued, so $\Sh$ has two resolutions. Read
-by head reduction it \emph{is} the Berarducci tree, unfolded; read as a
-\emph{least fixpoint} it is computed by merging partial Berarducci trees, partial
-trees carrying $\bot$ holes that the merge fills, ascending to the complete tree.
-Because positions are interned, so that structural equality is pointer equality, a
-guarded cyclic datum has finitely many positions: the least-fixpoint reading folds
-it into a finite rational tree and terminates, where head reduction unfolds forever.
-The least-fixpoint reading is therefore strictly more defined than the Berarducci
-tree, not a conservative extension of it: at an unproductive head cycle the
-Berarducci reading diverges ($\bot$) while the least fixpoint stabilizes at a
-definite empty value ($\emptyset$), so terms such as $\Omega$, which the Berarducci
-tree leaves meaningless, acquire a value. The two readings sit in a convergence
-hierarchy whose single knob is the value an unproductive cycle takes, $\bot$ or
-$\emptyset$.
+term. The shape at a position is single-valued, so the tree is the least fixpoint
+of $\Sh$. Head reduction computes it by unfolding; the least fixpoint computes it by
+\emph{merging partial Berarducci trees}, partial trees carrying $\bot$ holes that the
+merge fills, ascending to the complete tree. Because positions are interned, so that
+structural equality is pointer equality, a cyclic term has finitely many positions:
+the least-fixpoint computation folds it into a finite rational tree, and decides an
+unproductive cycle as $\bot$ in finite time, exactly where head reduction unfolds
+forever. The two agree as denotations, both being the Berarducci tree with $\bot$ at
+its meaningless positions, so the least fixpoint is a conservative and \emph{effective}
+reading: it yields the same tree but terminates where head reduction diverges.
 \end{abstract}
 
 % =====================================================================
@@ -86,27 +82,22 @@ in that it ranges over positions (graph nodes) and never over a function space.
 
 Once the tree is presented this way, two observations become immediate. First,
 $\Sh$'s clauses are positive, so the immediate-consequence operator that reads off
-the tree is monotone. Second, a monotone operator has two readings: the tree it
-unfolds by head reduction, and the \emph{least fixpoint} it reaches by merging
-partial trees from $\bot$ upward. These come apart only on positions whose sole
-support is an unproductive cycle. The head-reduction reading is the Berarducci
-tree. The least-fixpoint reading folds a cyclic datum into a finite rational tree
-where head reduction unfolds forever, and gives a defined (empty) value where head
-reduction diverges; it is therefore strictly more defined.
+the tree is monotone, and the Berarducci tree is its \emph{least fixpoint}. Second,
+there are two ways to compute that fixpoint. Head reduction unfolds it, and diverges
+on a cyclic or unproductive term. The least fixpoint reaches it by merging partial
+trees from $\bot$ upward: it folds a cyclic datum into a finite rational tree where
+head reduction unfolds forever, and it decides an unproductive cycle as $\bot$ in
+finite time where head reduction loops. The two agree as denotations; the least
+fixpoint simply terminates where head reduction diverges.
 
-The two readings are not separate constructions but one knob. The shape at a
-position is single-valued (a deterministic calculus exposes one weak-head
-constructor), so there is no set to aggregate: the denotation at a position is a
-\emph{partial} Berarducci tree, a tree with $\bot$ holes, and the least fixpoint
+The shape at a position is single-valued (a deterministic calculus exposes one
+weak-head constructor), so there is no set to aggregate: the denotation at a position
+is a \emph{partial} Berarducci tree, a tree with $\bot$ holes, and the least fixpoint
 \emph{merges} these partial trees, filling holes, until the tree stops growing. An
-unproductive head cycle has nothing to fill its hole, so it settles at an empty
-value. The only free decision is how that empty value reads out. Sending it to
-$\bot$ recovers the Berarducci reading; sending it to the term $\lambda a.\,\lambda
-b.\,b$, the second Scott constructor, gives the more-defined least-fixpoint reading.
-The whole paper is this single choice $\emptyset \mapsto \{\bot,\ \lambda
-a.\,\lambda b.\,b\}$: the two readings agree on every productive position and part
-only at unproductive cycles, and the first is the one for which Berarducci-tree
-equivalence is fully abstract.
+unproductive head cycle has nothing to fill its hole, so it settles at $\bot$, the
+same value head reduction diverges to, now decided in finite time. There is no extra
+leaf and no knob: the bottom is $\bot$, and Berarducci-tree equivalence is fully
+abstract for the resulting denotation.
 
 The reason any of this is effective is the word in the title. The merge must
 recognise when it has returned to a position it is already computing, both to fold
@@ -132,14 +123,13 @@ $\Sh$.
         equals the Berarducci tree, and the least-fixpoint reading $\Semp$, computed
         by merging partial Berarducci trees (Sections~\ref{sec:tworeadings},
         \ref{sec:grounding}, \ref{sec:valrec}).
-  \item A convergence hierarchy: $\Sbot$ and $\Semp$ agree on every productive
-        position and differ only at unproductive head cycles, where $\Sbot$ diverges
-        ($\bot$) and $\Semp$ stabilizes at $\emptyset$ (Section~\ref{sec:bridge}).
-        $\Semp$ is therefore strictly more defined than $\BeT$, not a conservative
-        extension: a self-applicative term such as $\Omega$, meaningless under the
-        Berarducci tree, acquires the value $\emptyset$. Once $\Sh$ is given its
+  \item Effectiveness: $\Semp = \Sbot = \BeT$ as denotations, but $\Semp$ terminates
+        where $\Sbot$ diverges (Section~\ref{sec:bridge}). It folds a cyclic datum into
+        a finite rational tree and decides an unproductive cycle as $\bot$ in finite
+        time, where head reduction unfolds forever; so $\Semp$ is a conservative
+        \emph{and} effective reading of the Berarducci tree. Once $\Sh$ is given its
         positive presentation (Remark~\ref{rem:positivity}), well-definedness of the
-        least fixpoint and the locus of difference are standard fixpoint facts.
+        least fixpoint is a standard fixpoint fact.
   \item As an application, structural computation over cyclic data
         (Section~\ref{sec:application}). Interning the positions folds a guarded
         cyclic datum into a finite rational tree, so an \emph{ordinary} recursive
@@ -162,15 +152,15 @@ the repeating cell its unfolding produces. Both return a finite rational tree, s
 structural computation over either terminates where head reduction diverges. The
 folded representations differ but the tree is the same.
 
-The two readings part only at an \emph{unproductive} cycle, a position that returns
-to itself before exposing any constructor. Head reduction diverges there ($\bot$);
-the least fixpoint stabilizes at $\emptyset$. Such a position is reached not only by
-a recursive binder ($\mathtt{letrec}\;x = x$) but by self-application:
-$\Omega = (\lambda x.x\,x)(\lambda x.x\,x)$ returns to the same interned position
-with no constructor exposed, so the least fixpoint gives $\Omega = \emptyset$ where
-its Berarducci tree is $\bot$. The least-fixpoint reading is thus strictly more
-defined, and the whole difference is the one knob: the value an unproductive cycle
-takes, $\bot$ or $\emptyset$.
+At an \emph{unproductive} cycle, a position that returns to itself before exposing
+any constructor, both readings give $\bot$: it is a meaningless position of the
+Berarducci tree. Head reduction diverges computing it; the least fixpoint settles the
+position at $\bot$ and \emph{decides} it in finite time. Such a position is reached
+not only by a recursive binder ($\mathtt{letrec}\;x = x$) but by self-application:
+$\Omega = (\lambda x.x\,x)(\lambda x.x\,x)$ returns to the same interned position with
+no constructor exposed, so $\Omega = \bot$ under both, but the least fixpoint reports
+it where head reduction loops. The whole difference between the two is termination,
+not value.
 
 % =====================================================================
 \section{Berarducci trees as the readout of a first-order shape relation}
@@ -278,8 +268,8 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 % =====================================================================
 $\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
 deterministic calculus exposes one weak-head constructor, so there is no set of
-shapes to collect and nothing to aggregate. $\Sh$ has two resolutions, and the
-difference between them is the only knob in this paper.
+shapes to collect and nothing to aggregate. $\Sh$ has two resolutions; they yield the
+same values and differ only in what they terminate on.
 
 \begin{definition}[Operational reading $\Sbot$]
 $\Sbot$ resolves $\Sh$ by head reduction. When computing $\Sh(n)$ returns to $n$
@@ -295,32 +285,32 @@ carrying $\bot$ holes; each step exposes one more constructor layer and the resu
 is merged into the accumulator, filling holes, until the tree stops growing. Because
 positions are interned, a position re-entered during its own computation is caught
 by a pointer test, so an unproductive head cycle, which exposes no constructor
-before returning, settles at the empty value $\emptyset$. Keeping a single
-partial-tree value per position, rather than a set, is what keeps the merge
-effective when a position could otherwise be reached in unboundedly many ways.
+before returning, settles at $\bot$. Keeping a single partial-tree value per
+position, rather than a set, is what keeps the merge effective when a position could
+otherwise be reached in unboundedly many ways.
 \end{definition}
 
 \begin{proposition}[Locus of difference]\label{prop:locus}
-$\Sbot$ and $\Semp$ agree on every node whose shape is either derivable in
-finitely many steps or undefined for a reason other than an unproductive head
-cycle. They differ exactly on nodes with an unproductive head cycle, where
-$\Sbot$ gives $\bot$ and $\Semp$ gives $\emptyset$.
+$\Sbot$ and $\Semp$ give the same value at every position: a constructor where the
+head is derivable in finitely many steps, and $\bot$ at an unproductive cycle. They
+differ only operationally: at an unproductive cycle $\Sbot$ loops while $\Semp$
+decides $\bot$ in finite time, and at a guarded cycle $\Semp$ returns a finite
+rational representation of the tree $\Sbot$ unfolds forever.
 \end{proposition}
 \begin{proof}[Proof sketch]
-This is the classical gap between SLD termination and least-model membership for
-definite programs \citeTODO{vanemden-kowalski}: an atom is in the least model iff
-it has a finite derivation; an unproductive cycle has no finite derivation
-(least-model value $\emptyset$) but the unmemoised operational search loops
-($\bot$). \TODO{state and prove precisely, fixing the notion of ``unproductive
-head cycle''.}
+This is the classical gap between operational (SLD) termination and least-fixpoint
+membership for a monotone recurrence \citeTODO{vanemden-kowalski}: the least fixpoint
+of an unproductive cycle is $\bot$ (no constructor is ever derivable), reached in
+finite time by the interned merge, whereas the unmemoised operational search loops.
+\TODO{state and prove precisely, fixing the notion of ``unproductive head cycle''.}
 \end{proof}
 
-\begin{remark}[Codomains]\label{rem:codomains}
-$\Sbot$ takes values in Berarducci trees with $\bot$. $\Semp$ takes values in
-Berarducci trees with \emph{two} bottom-like leaves, $\bot$ and $\emptyset$,
-which are distinct: $\bot$ is ``undefined / nonterminating'', $\emptyset$ is
-``defined, but the empty set of shapes''. The extra leaf $\emptyset$ is precisely
-where $\Semp$ exceeds $\BeT$.
+\begin{remark}[Codomain]\label{rem:codomains}
+Both $\Sbot$ and $\Semp$ take values in Berarducci trees with the single bottom leaf
+$\bot$. The shape is single-valued, so there is no second, set-flavoured leaf: an
+unproductive cycle is $\bot$, the ordinary meaningless leaf of the Berarducci tree.
+The two readings share this codomain and agree on it; $\Semp$ only computes it more
+often.
 \end{remark}
 
 % =====================================================================
@@ -370,8 +360,8 @@ returns to $n$ with no constructor exposed.
         $\Sbot$ would unfold; $\Semp$ differs only in computing a finite
         representation, and terminating.
   \item \textbf{Unproductive.} $\Sh(n)$ returns to $n$ with no constructor exposed;
-        its least fixpoint is $\emptyset$. Here $\Semp(n) = \emptyset$ whereas
-        $\Sbot(n) = \bot$.
+        its least fixpoint is $\bot$. Both readings give $\bot$ here; $\Sbot$ loops
+        computing it, while $\Semp$ decides $\bot$ in finite time.
 \end{itemize}
 
 \begin{example}[Guarded: the cyclic stream $Y\,(\mathtt{cons}\;0)$]\label{ex:cons}
@@ -393,134 +383,71 @@ that interning folds.
 
 \begin{example}[Unproductive: $\Omega$ and $Y\,(\lambda x.\,x)$]\label{ex:xx}
 $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head-reduces to itself with no
-constructor exposed, returning to the same interned position; so $\Sbot(\Omega) =
-\bot$ (head reduction loops) while $\Semp(\Omega) = \emptyset$ (the least fixpoint
-of a base-less self-supporting position). The same holds for
-$Y\,(\lambda x.\,x)$, the pure-$\lambda$ rendering of $\mathtt{letrec}\;x = x$.
-These are pure $\lambda$-terms, so the two readings differ already on the pure
-fragment: $\Semp$ is strictly more defined.
+constructor exposed, returning to the same interned position; so $\Omega = \bot$, the
+ordinary meaningless leaf of its Berarducci tree. Under $\Sbot$ head reduction loops
+forever; under $\Semp$ the re-entry on the interned position is caught and $\bot$ is
+reported in finite time. The same holds for $Y\,(\lambda x.\,x)$, the pure-$\lambda$
+rendering of $\mathtt{letrec}\;x = x$. The value is the same under both readings; only
+termination differs.
 \end{example}
 
 % =====================================================================
-\section{Convergence Hierarchy}\label{sec:bridge}
+\section{Effectiveness: \texorpdfstring{$\Semp = \BeT$}{S\_lfp = BeT}, Computed}\label{sec:bridge}
 % =====================================================================
-$\Semp$ does not conservatively extend the Berarducci tree; it is strictly more
-defined. The Berarducci reading $\Sbot$ and the least-fixpoint reading $\Semp$ sit
-in a convergence hierarchy, agreeing on productive positions and parting at
-unproductive cycles.
+$\Semp$ is not a different denotation from the Berarducci tree; it is the same tree,
+computed effectively. The Berarducci reading $\Sbot$ and the least-fixpoint reading
+$\Semp$ agree everywhere as values and differ only in termination.
 
-\begin{theorem}[Convergence hierarchy]\label{thm:bridge}
-$\Semp \sqsupseteq \Sbot$. The two agree on every productive position: where head
-reduction exposes a constructor, both read out the same Berarducci subtree, and
-where head reduction would unfold a guarded cycle forever, $\Semp$ returns the
-finite rational representation of that same tree. They differ exactly at
-unproductive cycles, where $\Sbot = \bot$ and $\Semp = \emptyset$. The difference is
-witnessed already on the pure fragment by $\Omega$ (Example~\ref{ex:xx}), whose
-Berarducci tree is $\bot$ but whose $\Semp$ value is $\emptyset$; so $\Semp$ is
-strictly more defined than $\BeT$, not a conservative extension of it.
+\begin{theorem}[Effectiveness]\label{thm:bridge}
+$\Semp = \Sbot = \BeT$ as denotations. At every position both give the same value: a
+constructor where the head is derivable in finitely many steps, and $\bot$ at an
+unproductive cycle. $\Semp$ differs only operationally. At a guarded cycle it returns
+a finite rational representation of the tree $\Sbot$ would unfold forever, and at an
+unproductive cycle it decides $\bot$ in finite time where $\Sbot$ loops. So $\Semp$
+is a conservative reading that terminates strictly more often than head reduction.
 \end{theorem}
 \begin{proof}[Proof sketch]
 On a productive position the head is a constructor in finitely many steps, so both
-readings expose it; a guarded re-entry folds under $\Semp$ to the finite
-representation of the tree $\Sbot$ unfolds (Proposition~\ref{prop:locus},
-Theorem~\ref{thm:adequacy}). The two part only at an unproductive re-entry, where
-$\Sbot$ loops ($\bot$) and the least fixpoint settles at $\emptyset$. $\Omega$ is
-such a term and is pure, so the gap is nonempty on the pure fragment.
-\TODO{state $\sqsubseteq$ on the tree domain precisely and prove the locus of
-difference is exactly the unproductive re-entries.}
+readings expose it (Theorem~\ref{thm:adequacy}); a guarded re-entry folds under
+$\Semp$ to the finite representation of the same tree, and an unproductive re-entry
+is caught on the interned position and reported as $\bot$, where $\Sbot$ loops
+(Proposition~\ref{prop:locus}).
+\TODO{state the tree domain precisely and prove $\Semp = \BeT$ pointwise.}
 \end{proof}
 
 \noindent
 Equivalently: the Berarducci tree is what head reduction \emph{unfolds}, and $\Semp$
 is what the merge \emph{folds}. Folding terminates on every rational structure and
-assigns the empty value to an unproductive cycle, so it converges strictly more
-often, which is why the hierarchy is proper.
+decides an unproductive cycle as $\bot$ in finite time, so it computes the same tree
+wherever head reduction does and terminates in cases where head reduction cannot.
 
 % =====================================================================
 \section{Applications}
 \label{sec:application}
 % =====================================================================
 
-\subsection{Reading the empty value back into the calculus}
-\label{sec:collector}
-The least fixpoint (Section~\ref{sec:tworeadings}) gives each position a single
-value: a shape, or $\emptyset$ at an unproductive cycle. To consume that inside the
-$\lambda$-calculus the only choice is how $\emptyset$ reads out; a present shape is
-forced to read out as itself. We encode $\emptyset$ as a first-class value, so that
-emptiness is case-analysable with no external $\mathtt{isNil}$ primitive, while a
-present value keeps its wrapper-free readout and so agrees with $\BeT$ on every
-productive position (Theorem~\ref{thm:bridge}).
+\subsection{Full Abstraction}\label{sec:variants}
+Observation through the readout, place a term in a closing context and watch whether
+the readout converges and exposes a head constructor, identifies two terms exactly
+when their Berarducci trees coincide. By Theorem~\ref{thm:adequacy} the denotation of
+a term is its Berarducci tree, so Berarducci-tree equivalence is \emph{fully
+abstract}: contextual equivalence equals tree equality. Soundness is the easy
+direction; the content is completeness, that a difference in the trees surfaces at
+some finite path and a context can drive the readout to it. \TODO{state the
+contextual-equivalence relation precisely and prove both directions; cite the
+B\"ohm-out technique adapted to the Berarducci setting.}
 
-\paragraph{$\emptyset$ is a distinct leaf, and why the merge is sound}
-Semantically $\emptyset$ is its own leaf, distinct from $\bot$ and from every
-$\lambda$-term (Remark~\ref{rem:codomains}). This distinctness is exactly what makes
-the least-fixpoint merge sound: its bottom is this fresh $\emptyset$, not a reused
-value, so a position still sitting at $\emptyset$ is never mistaken for one that has
-resolved. Were the bottom instead a genuine value such as the second Scott
-constructor $\lambda a.\,\lambda b.\,b$, the convergence test would become ambiguous
-(a position at the placeholder is indistinguishable from one that truly computed
-$\lambda a.\,\lambda b.\,b$) and a round could even read a dependency's placeholder
-as that real value and reach a \emph{wrong} fixed point. So $\Semp$ keeps
-$\emptyset$ as its own leaf, and the readout of a present shape is the value itself.
-
-\paragraph{An optional object-level encoding, under a side condition}
-To consume absence \emph{within} the calculus one may encode $\emptyset$ as
-$\lambda a.\,\lambda b.\,b$, so that the case analysis $w\;a\;b$ on a readout $w$
-selects $b$ exactly when $w$ is absent, with a present value occupying the first
-constructor ($\present = \lambda a.\,\lambda b.\,a$) and left unwrapped. This is the
-type-safe comma-ok idiom, but it is sound \emph{only} under a side condition: the
-term's present values must avoid the slot $\lambda a.\,\lambda b.\,b$, for otherwise
-a genuine $\lambda a.\,\lambda b.\,b$ and an empty cycle would be conflated and the
-false branch would fire for both. A query whose present values are a single marker
-$\present$ (reachability, Section~\ref{sec:reach}) satisfies it; in general
-$\emptyset$ is kept as the distinct leaf above. Either way there is no aggregate and
-no deduplication: the shape is single-valued, and the only test of identity, the one
-that lets the merge fold a cycle, is a pointer comparison of interned positions,
-not the undecidable $\beta$-equality of values.
-
-\paragraph{Agreement on productive positions}
-Because a present shape reads out as $v$ itself, with no wrapper, a term that
-converges to $v$ still reads out to $v$, so $\Semp$ agrees with $\BeT$ on every
-productive position (Theorem~\ref{thm:bridge}); the readings part only at the
-unproductive cycles, where $\Semp$ is the more defined.
-The empty readout $\lambda a.\,\lambda b.\,b$ appears only where $\Semp$ already
-differs from $\BeT$, namely at an unproductive cycle (Remark~\ref{rem:codomains});
-giving that extra leaf this object-level body chooses a representation for it, it
-does not introduce a new disagreement on the convergent fragment.
-
-\paragraph{The comma-ok idiom}
-The encoding is the type-safe form of the multiple-return convention of Go
-($v,\mathit{ok} := m[k]$) and Lua: absence is signalled in a secondary channel
-while the value itself is returned unwrapped. The difference is that a Scott case
-is a sum, not a product: when the result is $\lambda a.\,\lambda b.\,b$ there is no
-value at all, so the consumer is forced to handle the absent branch rather than
-silently reading a leftover zero value.
-
-\paragraph{The knob, and full abstraction}\label{sec:variants}
-The empty readout $\lambda a.\,\lambda b.\,b$ and the operational $\bot$ are the two
-values the empty cycle may take, and they are the whole knob: the readings agree on
-every present shape (each reads out as itself) and part only at $\emptyset$. The
-choice $\emptyset = \bot$ is the one that lands on a classical tree equivalence.
-Under it, by Theorem~\ref{thm:adequacy} the denotation of a term is its Berarducci
-tree, and observation through the readout---place a term in a closing context and
-watch whether the readout converges, exposing a head constructor---identifies two
-terms exactly when their Berarducci trees coincide. Berarducci-tree equivalence is
-thus \emph{fully abstract} for $\emptyset = \bot$: contextual equivalence equals tree
-equality. Soundness is the easy direction; the content is completeness, that a
-difference in the trees surfaces at some finite path and a context can drive the
-readout to it. \TODO{state the contextual-equivalence relation precisely and prove
-both directions; cite the B\"ohm-out technique adapted to the Berarducci setting.}
-
-The least-fixpoint reading is strictly finer. Taking $\emptyset = \lambda a.\,\lambda
-b.\,b$ tells an unproductive cycle (a value a context can case-split on) apart from
-genuine divergence ($\bot$), so it distinguishes terms whose Berarducci trees agree;
-hence $\Semp$ is \emph{not} fully abstract for Berarducci-tree equivalence. Full
-abstraction is exactly the property $\emptyset = \bot$ has and $\emptyset = \lambda
-a.\,\lambda b.\,b$ gives up, in exchange for the extra definedness of
-Section~\ref{sec:application}. Both readings agree on every productive position for
-the same reason: a present shape reads out unwrapped, so $\emptyset$ never arises
-there and the choice is invisible; they part only at the unproductive cycles, where
-$\Semp$ is strictly the more defined.
+\paragraph{Why the bottom is $\bot$, and why that is sound}
+The merge ascends from a bottom value, and that bottom must be a fresh $\bot$,
+distinct from every $\lambda$-term, not a reused value. Otherwise the convergence
+test would be ambiguous: a position still sitting at the bottom would be
+indistinguishable from one that genuinely computed that value, and a round could read
+a dependency's placeholder as a real value and reach a \emph{wrong} fixed point. With
+$\bot$ a fresh leaf the test is exact: a position is resolved precisely when its value
+is no longer $\bot$. There is no second, set-flavoured leaf and no aggregate; the
+shape is single-valued, and the only test of identity, the one that lets the merge
+fold a cycle, is a pointer comparison of interned positions, not the undecidable
+$\beta$-equality of values.
 
 \subsection{Structural computation over cyclic data}
 \label{sec:reach}
@@ -536,8 +463,9 @@ $\mathtt{reach}\;t$; because $r$ has finitely many interned positions, these
 applications intern to finitely many positions, so the least fixpoint folds the
 recursion. Head reduction, which interns nothing, builds a fresh application at every
 step and diverges; $\Semp$ folds at the repeated interned position and returns a
-definite value (here $\emptyset$, since no $\mathtt{nil}$ is ever reached). The query
-terminates for the same reason the readout does: finitely many interned positions.
+definite value (here $\bot$: no $\mathtt{nil}$ is ever reached, so the walk is itself
+an unproductive cycle). The query terminates for the same reason the readout does:
+finitely many interned positions.
 It is also memoised for free, since interning shares the repeated subcomputations.
 \TODO{give the explicit $\Semp$ derivation of $\mathtt{reach}\;r$ and a reachability
 variant that returns $\present$ by accumulating up a finite chain.}
@@ -557,9 +485,9 @@ repeated call; the higher-order view offers none, since value equality of functi
 is undecidable. The first-order reading replaces values by interned positions, whose
 identity is a pointer test, so it is the natural setting in which memoisation is
 even definable. On terminating computations memoisation is transparent; its only
-effect is on a computation that loops by revisiting a position, where it returns the
-least-fixpoint value rather than diverging, converging $\bot$ to $\emptyset$. This is
-exactly the difference between $\Sbot$, the Berarducci tree that head reduction
+effect is on a computation that loops by revisiting a position, where it decides the
+least-fixpoint value ($\bot$ at an unproductive cycle) in finite time rather than
+diverging. This is exactly the difference between $\Sbot$, the Berarducci tree that head reduction
 unfolds with no memoisation, and $\Semp$, the least fixpoint that interning memoises:
 $\Sbot$ is what you compute by remembering nothing, $\Semp$ what you compute by
 remembering every position.
@@ -639,20 +567,19 @@ data by cycle detection---is decades old in logic programming
 \citeTODO{amadio-cardelli, brandt-henglein}. What appears to be new is its
 position: it is obtained by interning the positions of the $\lambda$-calculus's own
 Berarducci-tree semantics and taking a least fixpoint, without leaving the calculus
-or adding primitives. That least fixpoint is strictly more defined than the tree
-(Section~\ref{sec:bridge}), terminating on every rational structure and assigning a
-value to unproductive cycles; the prior first-order settings, lacking
-$\beta$-reduction, have no comparable gap to open.
+or adding primitives. That least fixpoint is the same tree, computed effectively
+(Section~\ref{sec:bridge}): it terminates on every rational structure and decides an
+unproductive cycle as $\bot$ in finite time, where head reduction diverges.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % =====================================================================
 The Berarducci tree is the readout of a first-order shape relation. Head reduction
 unfolds that relation into the tree; the least fixpoint, computed by merging partial
-trees over interned positions, folds it. The least-fixpoint reading is strictly more
-defined: it terminates on every rational structure and assigns the empty value to an
-unproductive cycle, so the two readings sit in a convergence hierarchy whose single
-knob is the value an unproductive cycle takes.
+trees over interned positions, folds it. The two are the same tree, with $\bot$ at
+its meaningless positions, so the least fixpoint is a conservative reading; it is also
+an effective one, terminating on every rational structure and deciding an unproductive
+cycle as $\bot$ in finite time, where head reduction diverges.
 
 % =====================================================================
 \appendix
@@ -672,11 +599,12 @@ should be dispatched in a few lines.}
 \TODO{full coinductive proof; the root-active $\Leftrightarrow$ undefined-$\Sh$
 lemma.}
 
-\section{Convergence hierarchy (Theorem~\ref{thm:bridge})}
+\section{Effectiveness (Theorem~\ref{thm:bridge})}
 \label{app:bridge}
-\TODO{precise statement that $\Semp \sqsupseteq \Sbot$, agreeing on productive
-positions and differing exactly at unproductive cycles ($\bot$ versus $\emptyset$),
-with $\Omega$ as the pure-fragment witness.}
+\TODO{precise statement that $\Semp = \Sbot = \BeT$ pointwise (a constructor where
+the head is derivable, $\bot$ at an unproductive cycle), and that $\Semp$ differs only
+operationally: folding a guarded cycle to a finite rational representation and
+deciding an unproductive cycle as $\bot$ in finite time.}
 
 % =====================================================================
 \begin{thebibliography}{99}

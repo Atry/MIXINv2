@@ -1,15 +1,15 @@
 """The weak-head shape relation ``Sh`` (Definition ``def:sh``), single-valued.
 
 A deterministic calculus exposes exactly one weak-head constructor at a position, so ``Sh``
-is single-valued, not a set: there is no aggregate over a (potentially infinite) collection
-of shapes. ``compute_shape`` is the per-node clause body; ``Node.shape`` wraps it in a
-``fixpoint_cached_property`` whose digest re-evaluates until the value is stable (AngularJS
-1.x style), bounded by the TTL ``fixpoint_cached_property.max_fixpoint_iterations``. Reentry
-on the same node (an unproductive head cycle, only reachable via a ``Mu`` self-reference)
-stabilizes at ``EMPTY``.
+is single-valued, not a set: the value at a position is a shape or ``BOTTOM`` (no shape), not
+a set of shapes. ``compute_shape`` is the per-node clause body; ``Node.shape`` wraps it in a
+``fixpoint_cached_property`` resolved as a least fixpoint from ``BOTTOM`` upward. Because
+nodes are interned, a position reached again during its own computation is caught by a
+pointer test; an unproductive head cycle (such a reentry with no constructor exposed, as in
+``Omega`` or ``Y (lambda x. x)``) stabilizes at ``BOTTOM``.
 
-A reduction budget (a context variable) bounds beta-reduction so copying-divergent terms
-(Omega, ``Y (cons 0)``) surface as ``ReductionBudgetExceeded`` in tests instead of hanging.
+A reduction budget (a context variable) bounds beta-reduction so any genuinely non-rational
+reduction surfaces as ``ReductionBudgetExceeded`` in tests instead of hanging.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Iterator, cast, final
 
 from first_order_lambda._ast import (
-    EMPTY,
+    BOTTOM,
     App,
     Lam,
     Node,
@@ -108,8 +108,8 @@ def compute_shape(node: Node) -> Shape | ShapeBottom:
                     return shape_of(substitute(lambda_body, depth=0, argument=argument))
                 case VarShape() | AppShape():
                     return AppShape(function=function, argument=argument)
-                case ShapeBottom.EMPTY:
-                    return EMPTY
+                case ShapeBottom.BOTTOM:
+                    return BOTTOM
                 case _:
                     raise TypeError(f"Unknown head shape {head!r}")
         case _:

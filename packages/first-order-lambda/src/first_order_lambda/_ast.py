@@ -27,12 +27,12 @@ if TYPE_CHECKING:
 
 
 class ShapeBottom(Enum):
-    """The bottom of the shape lattice: no weak-head shape derivable (an unproductive cycle)."""
+    """The bottom of the shape lattice: no weak-head shape (bottom, an unproductive cycle)."""
 
-    EMPTY = auto()
+    BOTTOM = auto()
 
 
-EMPTY = ShapeBottom.EMPTY
+BOTTOM = ShapeBottom.BOTTOM
 
 
 @dataclass(kw_only=True, eq=False)
@@ -48,16 +48,16 @@ class Node(ABC):
         """One past the largest free de Bruijn index (``0`` iff the node is closed)."""
         return _loose_bound(self)
 
-    @fixpoint_cached_property(bottom=lambda: EMPTY)
+    @fixpoint_cached_property(bottom=lambda: BOTTOM)
     def shape(self) -> "Shape | ShapeBottom":
         """The weak-head shape relation ``Sh``, resolved as a least fixpoint.
 
         The shape is single-valued (a deterministic calculus exposes one weak-head
         constructor), so it is not a set. It is the least fixpoint of the shape recurrence,
-        computed by merging from the bottom ``EMPTY`` upward (``fixpoints``); because nodes
-        are interned, a position reached again during its own computation is caught by a
-        pointer test. An unproductive head cycle (such a reentry with no constructor exposed,
-        as in ``Omega`` or ``Y (lambda x. x)``) stabilizes at ``EMPTY``.
+        computed by merging from ``BOTTOM`` upward (``fixpoints``); because nodes are
+        interned, a position reached again during its own computation is caught by a pointer
+        test. An unproductive head cycle (such a reentry with no constructor exposed, as in
+        ``Omega`` or ``Y (lambda x. x)``) stabilizes at ``BOTTOM`` (bottom).
         """
         from first_order_lambda._shape import compute_shape
 
