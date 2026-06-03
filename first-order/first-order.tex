@@ -92,8 +92,8 @@ Berarducci tree, folding a guarded cycle into a finite rational graph. The least
 fixpoint is more defined than the first approximation exactly at guarded cycles.
 
 The shape at a position is single-valued (a deterministic calculus exposes one
-weak-head constructor), so there is no set to aggregate: the value at a position is a
-\emph{partial} Berarducci tree, a tree with $\bot$ holes, and each iterate fills the
+weak-head constructor), so there is no set of shapes to collect: the value at a
+position is a \emph{partial} Berarducci tree, a tree with $\bot$ holes, and each iterate fills the
 holes of the previous one until the tree stops growing. An unproductive cycle has
 nothing to fill its hole, so it stays $\bot$ under every iterate, the first
 approximation and the limit alike. There is no extra leaf and no knob: the bottom is
@@ -272,8 +272,8 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 \section{Two resolutions of the shape relation}\label{sec:tworeadings}
 % =====================================================================
 $\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
-deterministic calculus exposes one weak-head constructor, so there is no set of
-shapes to collect and nothing to aggregate. Its clauses are positive, so the
+deterministic calculus exposes one weak-head constructor, so each position has a
+single shape, not a set. Its clauses are positive, so the
 consequence operator $T_P$ is monotone, with a Kleene ascent
 $\bot = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
 \mathrm{lfp}(T_P)$. The two readings are two points of this ascent.
@@ -315,7 +315,7 @@ exactly the positions reachable only through a re-entry, i.e.\ the cyclic ones
 
 \begin{remark}[Single-valued codomain]\label{rem:codomains}
 Both readings take values in Berarducci trees with the single bottom leaf $\bot$. The
-shape is single-valued, so there is no second, set-flavoured leaf: an unproductive
+shape is single-valued, so $\bot$ is the only distinguished leaf: an unproductive
 cycle is $\bot$, the ordinary meaningless leaf of the Berarducci tree.
 \end{remark}
 
@@ -474,12 +474,18 @@ by cycle detection, a pointer comparison of positions
 \end{corollary}
 
 \begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
-The presentation incurs none of the machinery the higher-order reading would
-otherwise require: no powerdomain or aggregation (the shape is single-valued), no
-recursion binder (interning folds what $Y$ generates), no normal-form or
-administrative-redex bridge (positions are read off raw terms), no
-$\bot$-versus-$\emptyset$ ambiguity (a single fresh $\bot$), and no unsafe sharing
-primitive (sharing is already the identity of positions).
+Several problems that need added machinery in other settings do not arise here.
+Observing sharing or cyclicity in a pure language needs an observable-sharing
+primitive or a circular-program idiom \citeTODO{gill, bird}; here sharing is the
+identity of interned positions. Representing a cyclic structure needs an explicit
+recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here $Y$
+generates the repetition and interning folds it, with no binder added to the
+calculus. Deciding equality over cyclic structures needs a separate unification
+discipline or recursive-type system \citeTODO{colmerauer, amadio-cardelli,
+brandt-henglein}; here it is cycle detection over positions within the calculus
+(Corollary~\ref{cor:decidable}). Terminating a recursive query over a cyclic datum
+needs a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}; here the query's own
+applications intern and fold (Section~\ref{sec:reach}).
 \end{corollary}
 
 \paragraph{The first approximation and the ordinary tree}
@@ -503,8 +509,8 @@ test would be ambiguous: a position still sitting at the bottom would be
 indistinguishable from one that genuinely computed that value, and a round could read
 a dependency's placeholder as a real value and reach a \emph{wrong} fixed point. With
 $\bot$ a fresh leaf the test is exact: a position is resolved precisely when its value
-is no longer $\bot$. There is no second, set-flavoured leaf and no aggregate; the
-shape is single-valued, and the only test of identity, the one that lets the merge
+is no longer $\bot$. The shape is single-valued, so $\bot$ is the only distinguished
+leaf, and the only test of identity, the one that lets the merge
 fold a cycle, is a pointer comparison of interned positions, not the undecidable
 $\beta$-equality of values.
 
