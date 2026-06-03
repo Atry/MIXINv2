@@ -142,11 +142,11 @@ $\Sh$.
         least fixpoint and the locus of difference are standard fixpoint facts.
   \item As an application, structural computation over cyclic data
         (Section~\ref{sec:application}). Interning the positions folds a guarded
-        cyclic datum into a finite rational tree, so a property over it, computed by
-        the same least-fixpoint merge and keyed on node identity, terminates where
-        head reduction diverges. This is intrusive in that a new property
-        reconstructs the datum; the non-intrusive, composable form is left to future
-        work (Section~\ref{sec:future}).
+        cyclic datum into a finite rational tree, so an \emph{ordinary} recursive
+        query over it terminates where head reduction diverges, with nothing woven
+        into the data: the query's own recursive applications intern and fold. The
+        modular extension of operations and data is left to future work
+        (Section~\ref{sec:future}).
 \end{itemize}
 
 % =====================================================================
@@ -526,38 +526,38 @@ $\Semp$ is strictly the more defined.
 
 \subsection{Structural computation over cyclic data}
 \label{sec:reach}
-Once a cyclic datum folds to a finite rational tree (Section~\ref{sec:valrec}), a
-recursive property over it terminates by the same least fixpoint. Attach the
-property to the data constructors. Reachability, say, with
-$\mathtt{cons}.\mathtt{reach} = \{\mathtt{head}\} \cup \mathtt{tail}.\mathtt{reach}$
-and $\mathtt{nil}.\mathtt{reach} = \emptyset$. On the cyclic stream
-$r = \mathtt{cons}\;0\;r$ this is the self-referential equation
-$\mathtt{reach}(r) = \{0\} \cup \mathtt{reach}(r)$, whose least fixpoint is $\{0\}$,
-reached because the recurrence is keyed on the single interned position $r$ and the
-value domain is a finite ascending chain. A reachable position reads out as
-$\present$ and an unreachable one as the empty constructor, so the consumer needs no
-external $\mathtt{isNil}$. The property terminates for the same reason the readout
-does: finitely many interned positions. Head reduction, which interns nothing,
-unfolds the cycle and diverges.
-\TODO{give the concrete $\mathtt{reach}$ program over a Scott-encoded cyclic stream
-and the explicit $\Semp$ derivation.}
+A recursive query over cyclic data is an \emph{ordinary} $\lambda$-function; nothing
+need be woven into the data. Take the naive walk
+\[
+  \mathtt{reach} \;=\; Y\,\big(\lambda\mathit{self}.\,\lambda\mathit{lst}.\;
+    \mathit{lst}\;(\lambda h.\lambda t.\,\mathit{self}\;t)\;\present\big),
+\]
+which recurses down a Scott stream looking for $\mathtt{nil}$. Applied to the cyclic
+stream $r = \mathtt{cons}\;0\;r$, each recursive call builds the application
+$\mathtt{reach}\;t$; because $r$ has finitely many interned positions, these
+applications intern to finitely many positions, so the least fixpoint folds the
+recursion. Head reduction, which interns nothing, builds a fresh application at every
+step and diverges; $\Semp$ folds at the repeated interned position and returns a
+definite value (here $\emptyset$, since no $\mathtt{nil}$ is ever reached). The query
+terminates for the same reason the readout does: finitely many interned positions,
+and no constructor need be enriched.
+
+This is the point of interning. Under a node-identity reading the recursive
+$\mathtt{reach}\;t$ applications would be fresh at every step and the query would
+diverge like head reduction; one would then be forced to weave the property into the
+constructors. Structural interning removes that obstacle: the same query, written as
+a plain function, folds. It is also memoised for free, since interning shares the
+repeated subcomputations.
+\TODO{give the explicit $\Semp$ derivation of $\mathtt{reach}\;r$ and a reachability
+variant that returns $\present$ by accumulating up a finite chain.}
 
 \paragraph{Lazy, not eager}
-The property is computed by the least-fixpoint merge, not eagerly: building
-$\mathtt{reach}(r)$ eagerly would demand $\mathtt{reach}(r)$ before it exists. The
-same governs \emph{producing} a new cyclic datum. Mapping $r$ to a new stream
-isomorphic to it, with a transformed head and any new per-position fields, registers
-each new position before recursing into its tail, so the back-edge ties the knot to
-a finite cyclic result. This knot-tying is the lazy fixpoint the merge provides;
-interning supplies the table.
-
-\begin{remark}[Intrusive, for now]\label{rem:intrusive}
-This is \emph{intrusive}: the property is woven into the constructors, so a new
-query reconstructs the datum (one may leave the constructor algebra a polymorphic
-parameter and re-instantiate per query, but each query still rebuilds). Composing
-independently-developed properties onto the \emph{same} positions, without
-reconstruction, is the non-intrusive form deferred to Section~\ref{sec:future}.
-\end{remark}
+The fixpoint is lazy, not eager: the same discipline lets a query \emph{produce} a
+new cyclic datum. Mapping $r$ to a new stream isomorphic to it, with a transformed
+head and any new per-position fields, the merge registers each new position before
+recursing into its tail, so the result is a finite cyclic structure rather than an
+infinite unfolding. This knot-tying is exactly the lazy least fixpoint; interning
+supplies the table.
 
 \subsection{Memoising arbitrary programs}
 \label{sec:memo}
@@ -657,15 +657,15 @@ $\beta$-reduction, have no comparable gap to open.
 % =====================================================================
 \section{Future Work}\label{sec:future}
 % =====================================================================
-The application of Section~\ref{sec:reach} is \emph{intrusive}: a property is woven
-into the data constructors, so each new query reconstructs the datum
-(Remark~\ref{rem:intrusive}). Leaving the constructor algebra a polymorphic
-parameter and re-instantiating per query is a design-pattern form of extensibility,
-but it still rebuilds the datum for each property. The non-intrusive form would lift
-positions and properties into first-class, composable entities, so independently
-developed properties overlay onto the \emph{same} interned positions without
-reconstruction. That composable calculus, of which the present first-order reading
-is the semantic core, is the subject of ongoing work.
+A query over cyclic data is an ordinary $\lambda$-function (Section~\ref{sec:reach}),
+so adding an \emph{operation} is already free and non-intrusive. What the
+$\lambda$-calculus does not give modularly is the dual: adding a new data
+\emph{variant} so that existing operations extend to it, and composing
+independently-developed operations and variants without rewriting either, the
+expression problem. Lifting positions and properties into first-class, composable
+entities, so operations and variants overlay onto the same interned positions, is
+the natural next step; that composable calculus, of which the present first-order
+reading is the semantic core, is the subject of ongoing work.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
