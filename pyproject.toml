@@ -7,13 +7,13 @@ license = "MIT"
 requires-python = ">=3.13"
 authors = [{ name = "Yang, Bo", email = "yang-bo@yang-bo.com" }]
 keywords = ["mixinv2", "mixin", "composition", "dependency-injection"]
-dependencies = ["mixinv2", "mixinv2-library", "mixinv2-examples"]
+dependencies = ["mixinv2", "mixinv2-library", "mixinv2-examples", "first-order-lambda"]
 
 [project.urls]
 Repository = "https://github.com/Atry/MIXINv2"
 
 [tool.uv]
-sources = { mixinv2 = { workspace = true }, mixinv2-library = { workspace = true }, mixinv2-examples = { workspace = true }, overlay-language = { workspace = true }, overlay-library = { workspace = true }, fixpoints = { workspace = true } }
+sources = { mixinv2 = { workspace = true }, mixinv2-library = { workspace = true }, mixinv2-examples = { workspace = true }, overlay-language = { workspace = true }, overlay-library = { workspace = true }, fixpoints = { workspace = true }, first-order-lambda = { workspace = true } }
 cache-keys = [
     { file = "pyproject.toml" },
     { git = { commit = true, tags = true } },
@@ -63,4 +63,6 @@ include = [
     "packages/mixinv2-library/tests",
     "packages/fixpoints/src",
     "packages/fixpoints/tests",
+    "packages/first-order-lambda/src",
+    "packages/first-order-lambda/tests",
 ]

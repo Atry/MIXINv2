@@ -1,0 +1,22 @@
+# serializer version: 1
+# name: test_cyclic_zeros_folds_to_rational_tree[cyclic_zeros]
+  '#0=(λ (λ ((v1 (λ (λ v0))) #0)))'
+# ---
+# name: test_finite_list_readout[finite_list]
+  '(λ (λ ((v1 (λ (λ v0))) (λ (λ v0)))))'
+# ---
+# name: test_identity_readout[identity]
+  '(λ v0)'
+# ---
+# name: test_kestrel_readout[kestrel]
+  '(λ (λ v1))'
+# ---
+# name: test_unproductive_cycles_are_empty[omega_least_model]
+  '∅'
+# ---
+# name: test_unproductive_cycles_are_empty[omega_operational]
+  '⊥'
+# ---
+# name: test_y_cons_zero_folds_to_rational_tree[y_cons_zero]
+  '(λ (λ ((v1 (λ (λ v0))) #0=(λ (λ ((v1 (λ (λ v0))) #0))))))'
+# ---

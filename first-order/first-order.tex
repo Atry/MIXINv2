@@ -59,16 +59,18 @@
 \begin{abstract}
 A $\lambda$-term's Berarducci tree is the readout of a single first-order
 relation: the weak-head \emph{shape} relation $\Sh$ over the positions of the
-term. Read as a definite logic program, $\Sh$'s operational semantics
-\emph{is} the Berarducci tree, whereas its least Herbrand model conservatively
-extends the tree with value-recursion. The two readings differ at exactly one
-place---an unproductive head cycle, resolved as divergence ($\bot$) operationally
-and as the empty set ($\emptyset$) in the least model. Such cycles occur only in
-genuinely cyclic (shared) terms, never in pure $\lambda$-terms, so the least-model
-reading agrees with the Berarducci tree on the whole pure-$\lambda$ fragment and
-adds meaning only to cyclic structures. As an application, structural queries such
-as reachability over cyclic data terminate under the least-model reading---node
-identity supplies a visited set for free---where head reduction diverges.
+term. The shape at a position is single-valued, so $\Sh$ has two resolutions that
+differ at exactly one place. Resolved operationally by head reduction it
+\emph{is} the Berarducci tree; resolved by \emph{stabilization}, re-evaluating
+each position until its value stops changing in the manner of an AngularJS digest,
+it conservatively extends the tree. The two differ only at an unproductive head
+cycle, resolved as divergence ($\bot$) operationally and as a stabilized empty
+value ($\emptyset$) under the digest. Such cycles occur only in genuinely cyclic
+(shared) terms, never in pure $\lambda$-terms, so the stabilizing reading agrees
+with the Berarducci tree on the whole pure-$\lambda$ fragment and adds meaning only
+to cyclic structures. Because positions are interned, so that structural equality
+is pointer equality, a guarded cyclic datum folds into a finite rational tree, and
+structural computation over it terminates where head reduction diverges.
 \end{abstract}
 
 % =====================================================================
@@ -89,26 +91,28 @@ $\Sh$ is the Berarducci tree. The least-model reading is a value-recursion
 semantics: it gives a defined (empty) value where the operational reading
 diverges, and it terminates on cyclic data where head reduction unfolds forever.
 
-These two meanings are not separate constructions but one knob. The least model
-is set-valued---a position collects the shapes derivable there---so reading it
-back into the calculus is the choice of an \emph{aggregate function} on that set, and the only
-free decision is the value assigned to the \emph{empty} set. Sending it to $\bot$
-gives the operational reading; sending it to the term $\lambda a.\,\lambda b.\,b$,
-the second Scott constructor, gives the least-model reading. The whole paper is
-this single choice $\mathrm{agg}\,\emptyset \in \{\bot,\ \lambda a.\,\lambda b.\,b\}$: the two
-readings agree elsewhere, every other property (conservativity, full abstraction,
-terminating queries) tracks it, and the first reading is the one for which
-Berarducci-tree equivalence is fully abstract.
+These two meanings are not separate constructions but one knob. The shape at a
+position is single-valued (a deterministic calculus exposes one weak-head
+constructor), so there is no set to aggregate: the digest stabilizes each
+position, and an unproductive head cycle stabilizes at an empty value. The only
+free decision is how that empty value reads out. Sending it to $\bot$ gives the
+operational reading; sending it to the term $\lambda a.\,\lambda b.\,b$, the second
+Scott constructor, gives the stabilizing reading. The whole paper is this single
+choice $\emptyset \mapsto \{\bot,\ \lambda a.\,\lambda b.\,b\}$: the two readings
+agree elsewhere, conservativity and full abstraction track it, and the first
+reading is the one for which Berarducci-tree equivalence is fully abstract.
 
-The reason any of this is effective is the word in the title. The aggregate function must
-deduplicate---a hundred derivations of the same shape are one shape---and
-deduplication is a test of \emph{identity}. On a first-order domain identity is
-equality of positions, a comparison of finite paths decidable by a pointer test;
-on the higher-order values of the $\lambda$-calculus it is $\beta$-equality, which
-is undecidable. Reading the tree off a first-order relation is precisely what
-makes deduplication, memoisation, and the termination of cyclic queries
-computable; the higher-order view affords none of them. ``First-order'' is not a
-description of $\Sh$ but the mechanism that the results rest on.
+The reason any of this is effective is the word in the title. Stabilization must
+recognise when it has returned to a position it is already computing, both to fold
+a cycle and to memoise, and recognising a repeated position is a test of
+\emph{identity}. On a first-order domain identity is equality of positions, a
+comparison of finite paths decidable by a pointer test, and \emph{interning} the
+positions makes that pointer test exact; on the higher-order values of the
+$\lambda$-calculus identity is $\beta$-equality, which is undecidable. Reading the
+tree off a first-order relation is precisely what makes memoisation and the folding
+of cyclic structures computable; the higher-order view affords neither.
+``First-order'' is not a description of $\Sh$ but the mechanism that the results
+rest on.
 
 We never normalise to an intermediate form; in particular we do not use A-normal
 form. Positions are read directly off the term, and the dynamics live entirely in
@@ -119,24 +123,23 @@ $\Sh$.
   \item A presentation of the Berarducci tree as the readout of a first-order
         shape relation $\Sh$ (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
   \item Two resolutions of $\Sh$: the operational reading $\Sbot$, which we show
-        equals the Berarducci tree, and the least-Herbrand-model reading $\Semp$
+        equals the Berarducci tree, and the stabilizing reading $\Semp$, an
+        iterate-until-stable digest in the manner of AngularJS
         (Sections~\ref{sec:tworeadings}, \ref{sec:grounding}, \ref{sec:valrec}).
   \item A bridge theorem: $\Sbot$ and $\Semp$ differ only at unproductive head
         cycles, which are absent from pure $\lambda$-terms; hence $\Semp$ is a
         conservative extension of $\BeT$ (Section~\ref{sec:bridge}). Together with
         the previous item this part is light: once $\Sh$ is given its positive
-        presentation (Remark~\ref{rem:positivity}), well-definedness and soundness
-        of $\Semp$, and the locus of difference, are standard least-fixpoint /
-        logic-programming facts.
-  \item The core result: terminating recursive queries over cyclic data
-        (Section~\ref{sec:application}). The difficulty is real and is isolated in
-        Remark~\ref{rem:identity}: the node identity that grounds the bridge
-        theorem makes a query such as reachability diverge, while the value
-        identity that terminates it revives $\Omega = \emptyset$ and breaks
-        conservativity. The contribution is a two-level reconciliation---node
-        identity for $\Sh$, value/subtree keying for queries over the resulting
-        rational denotation---with an isolation lemma that the query layer does not
-        leak back into $\Sh$.
+        presentation (Remark~\ref{rem:positivity}), well-definedness of the digest's
+        limit and the locus of difference are standard least-fixpoint facts.
+  \item As an application, structural computation over cyclic data
+        (Section~\ref{sec:application}). Interning the positions folds a guarded
+        cyclic datum into a finite rational tree, so a property over it, computed by
+        the same stabilizing digest and keyed on node identity, terminates where
+        head reduction diverges; $\Omega$, having no shared cell, is untouched and
+        stays $\bot$. This is intrusive in that a new property reconstructs the
+        datum; the non-intrusive, composable form is left to future work
+        (Section~\ref{sec:future}).
 \end{itemize}
 
 % =====================================================================
@@ -264,10 +267,10 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 % =====================================================================
 \section{Two resolutions of the shape relation}\label{sec:tworeadings}
 % =====================================================================
-$\Sh$ in Definition~\ref{def:sh} is a definite (Horn) logic program: its clauses
-are positive, with nodes as terms and the shape constructors as predicates. A
-definite program has two standard semantics, and they are the only knob in this
-paper.
+$\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
+deterministic calculus exposes one weak-head constructor, so there is no set of
+shapes to collect and nothing to aggregate. $\Sh$ has two resolutions, and the
+difference between them is the only knob in this paper.
 
 \begin{definition}[Operational reading $\Sbot$]
 $\Sbot$ resolves $\Sh$ by head reduction. When computing $\Sh(n)$ returns to $n$
@@ -275,11 +278,16 @@ before exposing a constructor (an unproductive head cycle), the reduction loops;
 we read this as $\Sh(n)$ undefined, i.e.\ $\bot$.
 \end{definition}
 
-\begin{definition}[Least-model reading $\Semp$]
-$\Semp$ resolves $\Sh$ as its least Herbrand model (the least fixpoint of the
-immediate-consequence operator) \citeTODO{vanemden-kowalski}. An unproductive head
-cycle is a base-less self-supporting clause, whose least solution is the empty set
-$\emptyset$ (no shape derivable).
+\begin{definition}[Stabilizing reading $\Semp$]
+$\Semp$ resolves $\Sh$ by \emph{stabilization}: each position is re-evaluated, from
+the bottom value upward, until its shape stops changing, in the manner of an
+AngularJS digest (re-run the recurrence to a fixed point, bounded by a
+time-to-live). Because positions are interned, a return to a position already under
+computation is caught by a pointer test, so an unproductive head cycle stabilizes
+at the empty value $\emptyset$ (no constructor ever exposed). This limit is the
+least fixpoint of the shape recurrence \citeTODO{vanemden-kowalski}; computing it by
+iterate-until-stable, rather than as a set-valued least model, is what keeps it
+effective when a position could otherwise be reached in unboundedly many ways.
 \end{definition}
 
 \begin{proposition}[Locus of difference]\label{prop:locus}
@@ -428,66 +436,51 @@ either fold a rational tree or return $\emptyset$.
 \label{sec:application}
 % =====================================================================
 
-\subsection{Reading a least model back into the calculus: the empty constructor}
+\subsection{Reading the empty value back into the calculus}
 \label{sec:collector}
-The least model $\Semp$ is set-valued: at a position it collects every shape
-derivable there. To consume that result inside the $\lambda$-calculus we need a
-\emph{readout} from a finite set of values back to a single term. This readout is
-not forced: it is the choice of a strategy for reducing a set to a value, and
-different strategies give different semantics. We commit to one opinionated
-aggregate function below---deduplicate, and diverge on disagreement---and encode
-the empty set as a first-class value; Section~\ref{sec:variants} situates this
-choice within the family of readouts. What every member of the family shares, and
-what this section first establishes, is that the readout adds no wrapper to a
-present value (so it stays conservative over $\BeT$, Theorem~\ref{thm:bridge})
-while making emptiness a case-analysable value (so no external $\mathtt{isNil}$
-primitive is needed).
+Stabilization (Section~\ref{sec:tworeadings}) gives each position a single value: a
+shape, or $\emptyset$ at an unproductive cycle. To consume that inside the
+$\lambda$-calculus the only choice is how $\emptyset$ reads out; a present shape is
+forced to read out as itself. We encode $\emptyset$ as a first-class value, so that
+emptiness is case-analysable with no external $\mathtt{isNil}$ primitive, while a
+present value keeps its wrapper-free readout and so stays conservative over $\BeT$
+(Theorem~\ref{thm:bridge}).
 
-\paragraph{A collector with a Scott-encoded empty constructor}
-An aggregate function $\mathrm{agg}$ maps the set collected at a position to a
-single term. Our opinionated choice is \emph{deduplicate, else diverge}:
-\[
-  \mathrm{agg}\,\emptyset = \lambda a.\,\lambda b.\,b,\qquad
-  \mathrm{agg}\,\{x\} = x,\qquad
-  \mathrm{agg}\,\{x,\ldots,x\} = x,\qquad
-  \mathrm{agg}\,\mathit{xs} = \bot \;\;(\text{the elements of }\mathit{xs}\text{ are not all identical}) .
-\]
-A position holding several agreeing values reads out to that value; a position
-holding two distinct values diverges to $\bot$ rather than being silently merged.
-Here ``identical'' is itself a first-order test, and must be: it is equality of
-\emph{positions}, not of values. Two collected items are identical when they are
-the same shape atom $\Sh(p)=c$---the same path $p$ and the same constructor
-$c$---which is a comparison of finite paths (a pointer test), decidable
-regardless of whether the values are higher-order. Value equality ($\beta$- or
-tree-equality of $\lambda$-terms) is undecidable and would make the aggregate
-function uncomputable; reading $\mathrm{agg}$ off the first-order shape relation
-(Section~\ref{sec:firstorder}) is exactly what makes ``identical'', and hence the
-whole aggregate function, effective. The singleton equation is the load-bearing one: a
-one-element set reads out to the value \emph{itself}, with no wrapper, which is
-what keeps $\Semp = \BeT$ on the pure fragment. The empty set reads out to
-$\lambda a.\,\lambda b.\,b$, the second Scott constructor: a genuine $\lambda$-term
-that a program can scrutinise, since the case analysis $w\;a\;b$ on a readout $w$
-selects $b$ exactly when $w = \lambda a.\,\lambda b.\,b$. A present value occupies
-the first constructor ($\present = \lambda a.\,\lambda b.\,a$, or any
-first-projection value the query produces), and the empty set's readout occupies
-the second; presence and absence are then distinguished by a single Scott case,
-with the value left unwrapped.
+\paragraph{$\emptyset$ is a distinct leaf, and why the digest is sound}
+Semantically $\emptyset$ is its own leaf, distinct from $\bot$ and from every
+$\lambda$-term (Remark~\ref{rem:codomains}). This distinctness is exactly what makes
+the stabilizing digest sound: its bottom is this fresh $\emptyset$, not a reused
+value, so a position still sitting at $\emptyset$ is never mistaken for one that has
+resolved. Were the bottom instead a genuine value such as the second Scott
+constructor $\lambda a.\,\lambda b.\,b$, the stability test would become ambiguous (a
+position at the placeholder is indistinguishable from one that truly computed
+$\lambda a.\,\lambda b.\,b$) and a round could even read a dependency's placeholder
+as that real value and stabilize a \emph{wrong} fixed point. So $\Semp$ keeps
+$\emptyset$ as its own leaf, and the readout of a present shape is the value itself.
+
+\paragraph{An optional object-level encoding, under a side condition}
+To consume absence \emph{within} the calculus one may encode $\emptyset$ as
+$\lambda a.\,\lambda b.\,b$, so that the case analysis $w\;a\;b$ on a readout $w$
+selects $b$ exactly when $w$ is absent, with a present value occupying the first
+constructor ($\present = \lambda a.\,\lambda b.\,a$) and left unwrapped. This is the
+type-safe comma-ok idiom, but it is sound \emph{only} under a side condition: the
+term's present values must avoid the slot $\lambda a.\,\lambda b.\,b$, for otherwise
+a genuine $\lambda a.\,\lambda b.\,b$ and an empty cycle would be conflated and the
+false branch would fire for both. A query whose present values are a single marker
+$\present$ (reachability, Section~\ref{sec:reach}) satisfies it; in general
+$\emptyset$ is kept as the distinct leaf above. Either way there is no aggregate and
+no deduplication: the shape is single-valued, and the only test of identity, the one
+that lets the digest fold a cycle, is a pointer comparison of interned positions,
+not the undecidable $\beta$-equality of values.
 
 \paragraph{Conservativity is preserved}
-Because the singleton reads out as $v$ itself, with no wrapper, a pure
+Because a present shape reads out as $v$ itself, with no wrapper, a pure
 $\lambda$-term that converges to $v$ still reads out to $v$, so $\Semp = \BeT$
 there (Theorem~\ref{thm:bridge}).
 The empty readout $\lambda a.\,\lambda b.\,b$ appears only where $\Semp$ already
 differs from $\BeT$, namely at an unproductive cycle (Remark~\ref{rem:codomains});
 giving that extra leaf this object-level body chooses a representation for it, it
 does not introduce a new disagreement on the convergent fragment.
-
-\paragraph{When the readout is well-defined}
-Deduplicating ``one $\present$ and a hundred $\present$s'' to a single $\present$
-is the first-order test above at work. The readout is well-defined on a query
-whose collected values avoid the constructor slot $\lambda a.\,\lambda b.\,b$
-reserved for the empty readout; this is a condition on the query, and reachability
-below satisfies it.
 
 \paragraph{The comma-ok idiom}
 The encoding is the type-safe form of the multiple-return convention of Go
@@ -497,84 +490,31 @@ is a sum, not a product: when the result is $\lambda a.\,\lambda b.\,b$ there is
 value at all, so the consumer is forced to handle the absent branch rather than
 silently reading a leftover zero value.
 
-\paragraph{The family of readouts}\label{sec:variants}
-``Deduplicate, else diverge'' and the empty readout $\lambda a.\,\lambda b.\,b$
-are deliberate choices, not the only ones; they pick one point in a family of
-readouts indexed by the \emph{aggregate function} $\mathrm{agg}$ that maps a
-collected set to a value.
-The two readings this paper studies are the two values $\mathrm{agg}$ may assign to the
-\emph{empty} set: $\mathrm{agg}\,\emptyset = \bot$ is the operational reading $\Sbot$, where an
-unproductive cycle diverges; $\mathrm{agg}\,\emptyset = \lambda a.\,\lambda b.\,b$ is the
-least-model reading $\Semp$, where it reads out to the empty constructor. The two
-agree everywhere else (both take $\mathrm{agg}\,\{x\} = x$); they part only at $\mathrm{agg}\,\emptyset$,
-which is the single knob of Section~\ref{sec:tworeadings} seen as a choice of
-aggregate function.
+\paragraph{The knob, and full abstraction}\label{sec:variants}
+The empty readout $\lambda a.\,\lambda b.\,b$ and the operational $\bot$ are the two
+values the empty cycle may take, and they are the whole knob: the readings agree on
+every present shape (each reads out as itself) and part only at $\emptyset$. The
+choice $\emptyset = \bot$ is the one that lands on a classical tree equivalence.
+Under it, by Theorem~\ref{thm:adequacy} the denotation of a term is its Berarducci
+tree, and observation through the readout---place a term in a closing context and
+watch whether the readout converges, exposing a head constructor---identifies two
+terms exactly when their Berarducci trees coincide. Berarducci-tree equivalence is
+thus \emph{fully abstract} for $\emptyset = \bot$: contextual equivalence equals tree
+equality. Soundness is the easy direction; the content is completeness, that a
+difference in the trees surfaces at some finite path and a context can drive the
+readout to it. \TODO{state the contextual-equivalence relation precisely and prove
+both directions; cite the B\"ohm-out technique adapted to the Berarducci setting.}
 
-The choice $\mathrm{agg}\,\emptyset = \bot$ is the one that lands on a classical tree
-equivalence. Under it, by Theorem~\ref{thm:adequacy} the denotation of a term is
-its Berarducci tree, and observation through the readout---place a term in a
-closing context and watch whether the readout converges, exposing a head
-constructor---identifies two terms exactly when their Berarducci trees coincide.
-Berarducci-tree equivalence is thus \emph{fully abstract} for the aggregate function
-$\mathrm{agg}\,\emptyset = \bot$: contextual equivalence equals tree equality, with neither
-direction slack. Soundness is the easy direction (equal trees are observationally
-equal); the content is completeness, that no two terms with distinct Berarducci
-trees are contextually indistinguishable, which holds because a difference in the
-trees surfaces at some finite path and a context can drive the readout to it.
-\TODO{state the contextual-equivalence relation precisely and prove both
-directions; cite the standard B\"ohm-out technique adapted to the Berarducci
-setting.}
-
-The other reading is strictly finer, and this is the sharpest way to separate the
-two. Taking $\mathrm{agg}\,\emptyset = \lambda a.\,\lambda b.\,b$ distinguishes an
-unproductive cycle ($\Semp = \lambda a.\,\lambda b.\,b$, a value a context can
-case-split on) from genuine divergence ($\Sbot = \bot$), so it tells apart terms
-whose Berarducci trees agree. Hence $\Semp$ is \emph{not} fully abstract for
-Berarducci-tree equivalence: full abstraction is exactly the property
-$\mathrm{agg}\,\emptyset = \bot$ has and $\mathrm{agg}\,\emptyset = \lambda a.\,\lambda b.\,b$ gives up
-in exchange for the extra definedness (the empty constructor, terminating queries)
-of Section~\ref{sec:application}.
-
-Beyond these two, other points are equally available. The \emph{divergence}
-strategy extends $\mathrm{agg}\,\emptyset = \bot$ to every non-singleton, sending each
-re-entrant cycle to $\bot$; this is the bottom of the family. \emph{Set
-semantics} keeps a non-singleton set as a set rather than
-collapsing or rejecting it (the reading that underlies relational query answers),
-the top of the family---it needs an object-level encoding of multi-element sets,
-a Scott-encoded singly-linked list say, and stays conservative as long as that
-encoding leaves a singleton alone, returning $v$ rather than
-$\mathtt{cons}\;v\;\mathtt{nil}$; \emph{first witness} returns any one element of a
-non-singleton set; and a \emph{data-specific join} replaces idempotent
-deduplication by a join native to the collected values (a least upper bound, a
-logical \texttt{or}, a \texttt{max}), reading the empty set as that semilattice's
-bottom. ``Deduplicate, else diverge'' sits between $\bot$ and full set
-semantics: it keeps agreeing values, but on disagreement it diverges to $\bot$
-rather than retaining both. The strategies
-thus order by how much they define---$\bot \prec \text{first witness} \prec
-\text{deduplicate-or-diverge} \prec \text{set semantics}$---recovering the
-$\Sbot$/$\Semp$ opposition of Section~\ref{sec:tworeadings} and the memoisation
-spectrum of Section~\ref{sec:memo} as the two ends of one axis. Each strategy is a
-different opinionated commitment about what a position holding several shapes
-\emph{means}, and the value chosen for $\mathrm{agg}\,\emptyset$ (the leaf $\bot$, the empty
-constructor $\lambda a.\,\lambda b.\,b$, a bottom element) is part of that
-commitment.
-
-What the whole family shares is conservativity, and it has a single sufficient
-condition: \emph{the aggregate function returns a singleton unwrapped}, $\mathrm{agg}\,\{v\} = v$
-rather than any $\mathtt{cons}\;v\;\mathtt{nil}$, $\mathtt{just}\;v$, or other
-wrapper. Given that condition, conservativity is immediate: on a pure
-$\lambda$-term every collected set is a singleton (by the Single-Path property of
-the convergent fragment; cf.\ Theorem~\ref{thm:bridge}), so every strategy reads
-out the bare value there and agrees with $\BeT$. The strategies---and the
-encodings of non-singleton and empty sets---diverge only off that fragment, where
-$\Semp$ already exceeds $\BeT$ (Remark~\ref{rem:codomains}). Hence \emph{every}
-member of the family whose aggregate function respects $\mathrm{agg}\,\{v\} = v$ is a conservative extension
-of $\BeT$, whatever it does with multiplicity and emptiness: the choice of readout
-is invisible on the pure fragment and only assigns meaning to the cyclic and
-value-recursive structures outside it. \TODO{state the family as a parameter (the
-aggregate function $\mathrm{agg}$ plus its encoding) and prove the uniform conservativity
-lemma once: $\mathrm{agg}\,\{v\} = v$ on every aggregate function, singleton-only on the pure
-fragment, hence agreement with $\BeT$ there.}
+The stabilizing reading is strictly finer. Taking $\emptyset = \lambda a.\,\lambda
+b.\,b$ tells an unproductive cycle (a value a context can case-split on) apart from
+genuine divergence ($\bot$), so it distinguishes terms whose Berarducci trees agree;
+hence $\Semp$ is \emph{not} fully abstract for Berarducci-tree equivalence. Full
+abstraction is exactly the property $\emptyset = \bot$ has and $\emptyset = \lambda
+a.\,\lambda b.\,b$ gives up, in exchange for the extra definedness of
+Section~\ref{sec:application}. Both readings are conservative over $\BeT$ for the
+same reason: a present shape reads out unwrapped, and a pure $\lambda$-term has no
+unproductive cycle (Theorem~\ref{thm:bridge}), so $\emptyset$ never arises there and
+the choice is invisible on the convergent fragment.
 
 \subsection{Terminating recursive queries over cyclic data}
 \label{sec:reach}
