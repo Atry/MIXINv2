@@ -23,7 +23,6 @@ from first_order_lambda._ast import (
     EMPTY,
     App,
     Lam,
-    Mu,
     Node,
     ShapeBottom,
     Var,
@@ -101,8 +100,6 @@ def compute_shape(node: Node) -> Shape | ShapeBottom:
             return VarShape(index=index)
         case Lam(body=body):
             return LamShape(body=body)
-        case Mu(body=body):
-            return shape_of(substitute(body, depth=0, argument=node))
         case App(function=function, argument=argument):
             head = shape_of(function)
             match head:

@@ -23,7 +23,6 @@ from first_order_lambda._prelude import (
     KESTREL_TERM,
     LOOP,
     OMEGA,
-    Y_CONS_ZERO,
 )
 from first_order_lambda._readout import berarducci, render
 from first_order_lambda._variants import least_model, operational
@@ -56,15 +55,10 @@ def test_beta_redex_fires() -> None:
 
 
 def test_cyclic_zeros_folds_to_rational_tree(snapshot: SnapshotAssertion) -> None:
+    # The cyclic stream is written Y (cons 0) (no recursion binder); interning folds the
+    # structurally-repeating cell into a finite rational tree.
     folded = render(berarducci(CYCLIC_ZEROS, least_model))
     assert folded == snapshot(name="cyclic_zeros")
-
-
-def test_y_cons_zero_folds_to_rational_tree(snapshot: SnapshotAssertion) -> None:
-    # Under lfp(T_P) the acyclic copy Y (cons 0) also folds (more defined than beta), to the
-    # same infinite tree as r=cons 0 r though with a different finite representation.
-    folded = render(berarducci(Y_CONS_ZERO, least_model))
-    assert folded == snapshot(name="y_cons_zero")
 
 
 def test_unproductive_cycles_are_empty(snapshot: SnapshotAssertion) -> None:

@@ -50,14 +50,14 @@ class Node(ABC):
 
     @fixpoint_cached_property(bottom=lambda: EMPTY)
     def shape(self) -> "Shape | ShapeBottom":
-        """The weak-head shape relation ``Sh``, resolved by AngularJS-style stabilization.
+        """The weak-head shape relation ``Sh``, resolved as a least fixpoint.
 
         The shape is single-valued (a deterministic calculus exposes one weak-head
-        constructor), so it is not a set: the digest re-evaluates until the value is stable
-        (equality convergence), bounded by the TTL ``fixpoint_cached_property.
-        max_fixpoint_iterations``. An unproductive head cycle (reentry on the same node,
-        only reachable through a ``Mu`` self-reference) stabilizes at ``EMPTY``;
-        beta-reduction makes fresh nodes, so it never reenters and instead diverges.
+        constructor), so it is not a set. It is the least fixpoint of the shape recurrence,
+        computed by merging from the bottom ``EMPTY`` upward (``fixpoints``); because nodes
+        are interned, a position reached again during its own computation is caught by a
+        pointer test. An unproductive head cycle (such a reentry with no constructor exposed,
+        as in ``Omega`` or ``Y (lambda x. x)``) stabilizes at ``EMPTY``.
         """
         from first_order_lambda._shape import compute_shape
 
@@ -84,18 +84,11 @@ class App(Node):
     argument: Node
 
 
-@final
-@dataclass(kw_only=True, eq=False)
-class Mu(Node):
-    """A single-point recursion binder. ``body``'s ``Var(0)`` refers back to this ``Mu``."""
-
-    body: Node
-
-
 # Hash-consing: structurally-equal nodes (with already-interned children) become the SAME
 # object, so node identity is structural identity. This is what makes a cyclic structure a
-# finite set of positions: a self-reference, an Omega contractum, or a repeated stream cell
-# interns back to an existing node, so the shape fixpoint folds it (the IC lfp(T_P) reading).
+# finite set of positions: an Omega contractum, or a repeated stream cell produced by a Y
+# recursion, interns back to an existing node, so the least-fixpoint merge folds it. No
+# recursion binder is needed; Y suffices, since the calculus stays pure.
 _intern: dict[tuple[object, ...], Node] = {}
 
 
@@ -126,15 +119,11 @@ def make_app(function: Node, argument: Node) -> App:
     )
 
 
-def make_mu(body: Node) -> Mu:
-    return cast(Mu, _intern_node(("Mu", id(body)), lambda: Mu(body=body)))
-
-
 def _loose_bound(node: Node) -> int:
     match node:
         case Var(index=index):
             return index + 1
-        case Lam(body=body) | Mu(body=body):
+        case Lam(body=body):
             return max(0, body.loose_bound - 1)
         case App(function=function, argument=argument):
             return max(function.loose_bound, argument.loose_bound)
@@ -156,8 +145,6 @@ def shift(node: Node, *, cutoff: int, amount: int) -> Node:
             return make_var(index + amount)
         case Lam(body=body):
             return make_lam(shift(body, cutoff=cutoff + 1, amount=amount))
-        case Mu(body=body):
-            return make_mu(shift(body, cutoff=cutoff + 1, amount=amount))
         case App(function=function, argument=argument):
             return make_app(
                 shift(function, cutoff=cutoff, amount=amount),
@@ -184,8 +171,6 @@ def substitute(node: Node, *, depth: int, argument: Node) -> Node:
             return make_var(index - 1)
         case Lam(body=body):
             return make_lam(substitute(body, depth=depth + 1, argument=argument))
-        case Mu(body=body):
-            return make_mu(substitute(body, depth=depth + 1, argument=argument))
         case App(function=function, argument=app_argument):
             return make_app(
                 substitute(function, depth=depth, argument=argument),
