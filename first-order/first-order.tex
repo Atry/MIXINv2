@@ -57,7 +57,7 @@
 \begin{abstract}
 A $\lambda$-term's Berarducci tree is the readout of a single first-order
 relation: the weak-head \emph{shape} relation $\Sh$ over the positions of the
-term. The shape at a position is single-valued, and $\Sh$'s clauses are positive, so
+term. $\Sh$'s clauses are positive, so
 its consequence operator is monotone with a Kleene ascent $T_P\!\uparrow\!1 \sqsubseteq
 \cdots \sqsubseteq \mathrm{lfp}$. Two points of this ascent give two readings. The
 first iterate $T_P\!\uparrow\!1$ is the first approximation: a position whose value is
@@ -91,8 +91,8 @@ $\bot$, cutting a cycle to $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ is the
 Berarducci tree, folding a guarded cycle into a finite rational graph. The least
 fixpoint is more defined than the first approximation exactly at guarded cycles.
 
-The shape at a position is single-valued: a deterministic calculus exposes one
-weak-head constructor. The value at a position is therefore a \emph{partial}
+A deterministic calculus exposes one weak-head constructor at a position. The value
+at a position is therefore a \emph{partial}
 Berarducci tree, a tree with $\bot$ holes, and each iterate fills the holes of the
 previous one until the tree stops growing. An unproductive cycle has nothing to fill
 its hole, so it stays $\bot$ under every iterate, the first approximation and the
@@ -271,7 +271,7 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 % =====================================================================
 \section{Two resolutions of the shape relation}\label{sec:tworeadings}
 % =====================================================================
-$\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
+$\Sh$ in Definition~\ref{def:sh} assigns each position its weak-head shape: a
 deterministic calculus exposes one weak-head constructor. Its clauses are positive, so the
 consequence operator $T_P$ is monotone, with a Kleene ascent
 $\bot = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
@@ -312,10 +312,10 @@ exactly the positions reachable only through a re-entry, i.e.\ the cyclic ones
 ``unproductive'' re-entry.}
 \end{proof}
 
-\begin{remark}[Single-valued codomain]\label{rem:codomains}
-Both readings take values in Berarducci trees with the single bottom leaf $\bot$. The
-shape is single-valued, so $\bot$ is the only distinguished leaf: an unproductive
-cycle is $\bot$, the ordinary meaningless leaf of the Berarducci tree.
+\begin{remark}[Codomain]\label{rem:codomains}
+Both readings take values in the same Berarducci trees, whose meaningless leaf is
+$\bot$: an unproductive cycle is $\bot$, the ordinary meaningless leaf of the
+Berarducci tree.
 \end{remark}
 
 \begin{remark}[When a readout terminates]\label{rem:termination}
@@ -508,8 +508,7 @@ test would be ambiguous: a position still sitting at the bottom would be
 indistinguishable from one that genuinely computed that value, and a round could read
 a dependency's placeholder as a real value and reach a \emph{wrong} fixed point. With
 $\bot$ a fresh leaf the test is exact: a position is resolved precisely when its value
-is no longer $\bot$. The shape is single-valued, so $\bot$ is the only distinguished
-leaf, and the only test of identity, the one that lets the merge
+is no longer $\bot$. The only test of identity, the one that lets the merge
 fold a cycle, is a pointer comparison of interned positions, not the undecidable
 $\beta$-equality of values.
 
