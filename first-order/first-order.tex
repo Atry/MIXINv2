@@ -91,13 +91,13 @@ $\bot$, cutting a cycle to $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ is the
 Berarducci tree, folding a guarded cycle into a finite rational graph. The least
 fixpoint is more defined than the first approximation exactly at guarded cycles.
 
-The shape at a position is single-valued (a deterministic calculus exposes one
-weak-head constructor), so there is no set of shapes to collect: the value at a
-position is a \emph{partial} Berarducci tree, a tree with $\bot$ holes, and each iterate fills the
-holes of the previous one until the tree stops growing. An unproductive cycle has
-nothing to fill its hole, so it stays $\bot$ under every iterate, the first
-approximation and the limit alike. There is no extra leaf and no knob: the bottom is
-$\bot$, and Berarducci-tree equivalence is fully abstract for the limit.
+The shape at a position is single-valued: a deterministic calculus exposes one
+weak-head constructor. The value at a position is therefore a \emph{partial}
+Berarducci tree, a tree with $\bot$ holes, and each iterate fills the holes of the
+previous one until the tree stops growing. An unproductive cycle has nothing to fill
+its hole, so it stays $\bot$ under every iterate, the first approximation and the
+limit alike. The bottom is $\bot$, and Berarducci-tree equivalence is fully abstract
+for the limit.
 
 The reason any of this is effective is the word in the title. The merge must
 recognise when it has returned to a position it is already computing, both to fold
@@ -272,8 +272,7 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 \section{Two resolutions of the shape relation}\label{sec:tworeadings}
 % =====================================================================
 $\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
-deterministic calculus exposes one weak-head constructor, so each position has a
-single shape, not a set. Its clauses are positive, so the
+deterministic calculus exposes one weak-head constructor. Its clauses are positive, so the
 consequence operator $T_P$ is monotone, with a Kleene ascent
 $\bot = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
 \mathrm{lfp}(T_P)$. The two readings are two points of this ascent.
