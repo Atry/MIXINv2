@@ -69,7 +69,8 @@ infinite list, written with $Y$, becomes a node that points to itself. So the le
 fixpoint is more defined than the first approximation exactly at guarded cycles, and
 a single readout terminates iff the tree is rational (finitely many positions): an
 infinite but rational tree folds to a finite graph, while a non-rational one, the
-stream of all naturals, does not.
+stream of all naturals, does not. On the rational fragment, contextual equivalence
+is decidable.
 \end{abstract}
 
 % =====================================================================
@@ -177,7 +178,9 @@ equal positions are the same object, so identity is a pointer test, not a compar
 of structure. Interning is the mechanism the results rest on. It makes the
 recurrence for $\Sh$ a memoisable dynamic program keyed by position, and it makes a
 position a finite key on which $\mathrm{lfp}(T_P)$ folds a cycle: structural equality reduces to
-pointer equality. A term has finitely many positions exactly when its Berarducci
+pointer equality. This interning is the hash-consing a lazy runtime already
+performs, so computing the least fixpoint is what the implementation does anyway.
+A term has finitely many positions exactly when its Berarducci
 tree is \emph{rational} (finitely many distinct subtrees). A recursive definition
 produces such repetition directly, and so does a self-application, whose contractum
 interns back to an existing position. No recursion binder belongs to the calculus:
@@ -458,6 +461,17 @@ direction; the content is completeness, that a difference in the trees surfaces 
 some finite path and a context can drive the readout to it. \TODO{state the
 contextual-equivalence relation precisely and prove both directions; cite the
 B\"ohm-out technique adapted to the Berarducci setting.}
+
+\begin{corollary}[Decidable on the rational fragment]\label{cor:decidable}
+On the rational fragment, the terms whose Berarducci trees have finitely many
+distinct subtrees, contextual equivalence is decidable. By
+Theorem~\ref{thm:adequacy} two such terms are contextually equivalent iff their
+trees are equal; each tree is a finite rational graph over interned positions
+(Remark~\ref{rem:termination}), and equality of finite rational graphs is decided
+by cycle detection, a pointer comparison of positions
+(Section~\ref{sec:interning}).
+\TODO{the completeness half rests on the full-abstraction proof above.}
+\end{corollary}
 
 \paragraph{The first approximation and the ordinary tree}
 The statement above is about $\mathrm{lfp}(T_P)$, which folds a guarded cycle and so denotes
