@@ -7,7 +7,16 @@
 \usepackage{listings}
 \usepackage{multirow}
 \usepackage{graphicx}
-\usepackage{zref-savepos}
+%% \iflatexml is predefined as true by LaTeXML (the engine arXiv uses to
+%% render the HTML version). Under pdfLaTeX it is undefined, so we declare it
+%% here defaulting to false; LaTeXML preserves its own true value and ignores
+%% this reset. This lets us ship a PDF-only path (absolute page positions via
+%% zref-savepos) alongside an HTML fallback that needs no page coordinates.
+\newif\iflatexml
+\latexmlfalse
+\iflatexml\else
+  \usepackage{zref-savepos}
+\fi
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc}
 
@@ -24,14 +33,27 @@
 %% lays out a zero-width box whose right end sits at (left edge + \linewidth),
 %% i.e. the enclosing minipage's right margin, regardless of nesting depth.
 \newcounter{figureAnnotationCounter}
-\newcommand{\figureAnnotationAnchor}{\zsavepos{figureAnnotationLeft}}
-\newcommand{\figureAnnotation}[1]{%
-  \stepcounter{figureAnnotationCounter}%
-  \zsavepos{figureAnnotation\the\value{figureAnnotationCounter}}%
-  \rlap{\hbox to
-    \dimexpr\zposx{figureAnnotationLeft}sp+\linewidth-\zposx{figureAnnotation\the\value{figureAnnotationCounter}}sp\relax
-  {\hfill\normalfont\text{\scriptsize #1}}}%
-}
+\iflatexml
+  %% HTML fallback (LaTeXML / arXiv HTML): page-absolute positioning via
+  %% zref-savepos is unavailable, and the MathML output flows rather than being
+  %% laid out at fixed page coordinates, so a pixel-accurate right edge cannot
+  %% be reproduced. Instead, render each annotation as a small inline label that
+  %% trails the line it describes; the browser wraps it naturally. The anchor
+  %% becomes a no-op since no left edge needs to be recorded.
+  \newcommand{\figureAnnotationAnchor}{}
+  \newcommand{\figureAnnotation}[1]{%
+    \quad\normalfont\text{\scriptsize(#1)}%
+  }
+\else
+  \newcommand{\figureAnnotationAnchor}{\zsavepos{figureAnnotationLeft}}
+  \newcommand{\figureAnnotation}[1]{%
+    \stepcounter{figureAnnotationCounter}%
+    \zsavepos{figureAnnotation\the\value{figureAnnotationCounter}}%
+    \rlap{\hbox to
+      \dimexpr\zposx{figureAnnotationLeft}sp+\linewidth-\zposx{figureAnnotation\the\value{figureAnnotationCounter}}sp\relax
+    {\hfill\normalfont\text{\scriptsize #1}}}%
+  }
+\fi
 
 \AtBeginDocument{%
   \theoremstyle{acmdefinition}%
