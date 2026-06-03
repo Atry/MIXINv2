@@ -1,16 +1,21 @@
-"""The Berarducci tree readout (Definition ``def:btree``).
+"""The Berarducci tree readout (Definition ``def:btree``), as iterates of one monotone ascent.
 
-``berarducci`` resolves each position's head via its single-valued ``shape`` and descends,
-memoising on node identity so the same position yields the same output node (interning by
-position). A guarded cycle revisits the same node object, so the readout folds it into a
-finite rational graph: the output ``TreeNode`` graph is genuinely cyclic, and ``render``
-prints it with back-reference labels. The shape is single-valued, so the readout is not
-parameterised by any reading: a present shape reads out to its constructor, and ``BOTTOM`` (an
-unproductive cycle, or no weak-head normal form) reads out to the ``⊥`` leaf. Beta-headed
-applications are retained, not collapsed.
+``berarducci`` resolves each position's head via its single-valued ``shape`` and descends. It
+is the same readout under two re-entry policies, two points of the Kleene ascent of the
+shape operator:
 
-The fold is taken only at CLOSED positions, so a folded back-reference never misreads a free
-de Bruijn variable; open subpositions are rebuilt (finitely, under a closed fold).
+- ``fold_cycles=False`` is the first-iteration approximation ``T \\uparrow 1`` (``Sbot``): a
+  cyclic position re-entered during its own readout returns ``⊥`` (the demand is answered by
+  ``T \\uparrow 0 = \\bot``), so a guarded cycle is cut at ``⊥``.
+- ``fold_cycles=True`` is the least fixpoint ``lfp`` (``Semp``): the re-entry folds, so a
+  guarded cycle becomes a finite rational graph (the output is genuinely cyclic, and
+  ``render`` prints it with back-reference labels).
+
+``T \\uparrow 1 \\sqsubseteq lfp``: they agree on acyclic terms and on unproductive cycles
+(both ``⊥``), and ``lfp`` is more defined at a guarded cycle, where ``T \\uparrow 1`` has ``⊥``
+and ``lfp`` has the folded subtree. The fold is taken only at CLOSED positions, so a folded
+back-reference never misreads a free de Bruijn variable. Beta-headed applications are
+retained, not collapsed.
 """
 
 from __future__ import annotations
@@ -53,14 +58,21 @@ class AppTree(TreeNode):
     argument: TreeNode
 
 
-def berarducci(node: Node) -> TreeNode:
-    return _read(node, {}, {})
+def berarducci(node: Node, *, fold_cycles: bool = True) -> TreeNode:
+    """Read out the Berarducci tree of ``node``.
+
+    ``fold_cycles=True`` is the least fixpoint ``lfp`` (folds a guarded cycle into a finite
+    rational graph); ``fold_cycles=False`` is the first-iteration approximation ``T \\uparrow
+    1`` (cuts a cyclic position to ``⊥``).
+    """
+    return _read(node, {}, {}, fold_cycles)
 
 
 def _read(
     node: Node,
     memo: dict[int, TreeNode],
     in_progress: dict[int, TreeNode],
+    fold_cycles: bool,
 ) -> TreeNode:
     # Fold (memoise / emit a back-reference) only at CLOSED positions. A position with free
     # de Bruijn variables means different things under different binder contexts, so folding
@@ -71,7 +83,8 @@ def _read(
     if closed:
         folded = in_progress.get(node_id)
         if folded is not None:
-            return folded
+            # Re-entry: fold (lfp) or cut to bottom (the first-iteration approximation).
+            return folded if fold_cycles else BottomLeaf()
         cached = memo.get(node_id)
         if cached is not None:
             return cached
@@ -88,7 +101,7 @@ def _read(
             lam_tree = LamTree(body=BottomLeaf())
             if closed:
                 in_progress[node_id] = lam_tree
-            lam_tree.body = _read(body, memo, in_progress)
+            lam_tree.body = _read(body, memo, in_progress, fold_cycles)
             if closed:
                 del in_progress[node_id]
                 memo[node_id] = lam_tree
@@ -97,8 +110,8 @@ def _read(
             app_tree = AppTree(function=BottomLeaf(), argument=BottomLeaf())
             if closed:
                 in_progress[node_id] = app_tree
-            app_tree.function = _read(function, memo, in_progress)
-            app_tree.argument = _read(argument, memo, in_progress)
+            app_tree.function = _read(function, memo, in_progress, fold_cycles)
+            app_tree.argument = _read(argument, memo, in_progress, fold_cycles)
             if closed:
                 del in_progress[node_id]
                 memo[node_id] = app_tree

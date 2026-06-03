@@ -56,3 +56,17 @@ def test_unproductive_cycles_are_bottom() -> None:
     assert LOOP.shape is BOTTOM
     assert render(berarducci(OMEGA)) == "⊥"
     assert render(berarducci(LOOP)) == "⊥"
+
+
+def test_first_approximation_versus_lfp() -> None:
+    # T up 1 (fold_cycles=False) cuts a guarded cycle to bottom: a finite, back-reference-free
+    # tree with a bottom leaf. lfp (fold_cycles=True) folds it: a cyclic tree with a
+    # back-reference and no bottom. T up 1 is the less defined; both terminate.
+    approx = render(berarducci(CYCLIC_ZEROS, fold_cycles=False))
+    fixpoint = render(berarducci(CYCLIC_ZEROS, fold_cycles=True))
+    assert "⊥" in approx and "#" not in approx
+    assert "#" in fixpoint and "⊥" not in fixpoint
+    # On an acyclic term the two coincide (no re-entry to fold or cut).
+    assert render(berarducci(IDENTITY_TERM, fold_cycles=False)) == render(
+        berarducci(IDENTITY_TERM, fold_cycles=True)
+    )
