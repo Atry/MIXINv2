@@ -50,6 +50,7 @@ topLevel@{ ... }: {
           "mixinv2-examples"
           "overlay-language"
           "overlay-library"
+          "fixpoints"
         ];
 
         editableOverlay = workspace.mkEditablePyprojectOverlay {
@@ -132,6 +133,10 @@ topLevel@{ ... }: {
             ../packages/mixinv2-examples/tests
             ../packages/mixinv2-library/tests
             ../packages/mixinv2/tests
+            ../packages/fixpoints/src
+            ../packages/fixpoints/pyproject.toml
+            ../packages/fixpoints/README.md
+            ../packages/fixpoints/tests
             ../mixinv2.schema.json
             ../pyproject.toml
             ../uv.lock

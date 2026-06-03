@@ -13,9 +13,9 @@ fallback-version = "0.0.0.dev0"
 metadata = false
 
 [project]
-name = "mixinv2"
+name = "fixpoints"
 dynamic = ["version"]
-description = "A dependency injection framework with pytest-fixture syntax, plus a configuration language for declarative programming"
+description = "Least-fixpoint cached-property infrastructure for mutual recursion"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
@@ -26,17 +26,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
-dependencies = ["pyyaml>=6.0.3", "fixpoints"]
-
-[project.optional-dependencies]
-docs = ["sphinx>=9.1.0", "sphinx-mdinclude>=0.6.2"]
-
-[tool.uv]
-sources = { fixpoints = { workspace = true } }
+dependencies = []
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mixinv2"]
-only-include = ["src/mixinv2"]
+packages = ["src/fixpoints"]
+only-include = ["src/fixpoints"]
 sources = ["src"]
 
 [project.urls]

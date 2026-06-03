@@ -13,7 +13,7 @@ dependencies = ["mixinv2", "mixinv2-library", "mixinv2-examples"]
 Repository = "https://github.com/Atry/MIXINv2"
 
 [tool.uv]
-sources = { mixinv2 = { workspace = true }, mixinv2-library = { workspace = true }, mixinv2-examples = { workspace = true }, overlay-language = { workspace = true }, overlay-library = { workspace = true } }
+sources = { mixinv2 = { workspace = true }, mixinv2-library = { workspace = true }, mixinv2-examples = { workspace = true }, overlay-language = { workspace = true }, overlay-library = { workspace = true }, fixpoints = { workspace = true } }
 cache-keys = [
     { file = "pyproject.toml" },
     { git = { commit = true, tags = true } },
@@ -61,4 +61,6 @@ include = [
     "packages/mixinv2-examples/tests",
     "packages/mixinv2/tests",
     "packages/mixinv2-library/tests",
+    "packages/fixpoints/src",
+    "packages/fixpoints/tests",
 ]

@@ -653,7 +653,7 @@ def evaluate(
 
     To control fixpoint iteration, set the class-level ContextVar before calling::
 
-        from mixinv2._core import fixpoint_cached_property
+        from fixpoints._core import fixpoint_cached_property
         fixpoint_cached_property.max_fixpoint_iterations.set(0)   # single-pass
         fixpoint_cached_property.max_fixpoint_iterations.set(100) # bounded multi-pass
         fixpoint_cached_property.max_fixpoint_iterations.set(FixpointIterationSentinel.UNLIMITED) # unbounded (default)

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -8,6 +8,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "fixpoints",
     "mixinv2",
     "mixinv2-examples",
     "mixinv2-library",
@@ -595,6 +596,10 @@ sdist = { url = "https://files.pythonhosted.org/packages/20/b5/23b216d9d985a9566
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/a8/20d0723294217e47de6d9e2e40fd4a9d2f7c4b6ef974babd482a59743694/fastjsonschema-2.21.2-py3-none-any.whl", hash = "sha256:1c797122d0a86c5cace2e54bf4e819c36223b552017172f32c5c024a6b77e463", size = 24024, upload-time = "2025-08-14T18:49:34.776Z" },
 ]
+
+[[package]]
+name = "fixpoints"
+source = { editable = "packages/fixpoints" }
 
 [[package]]
 name = "fqdn"
@@ -1457,6 +1462,7 @@ wheels = [
 name = "mixinv2"
 source = { editable = "packages/mixinv2" }
 dependencies = [
+    { name = "fixpoints" },
     { name = "pyyaml" },
 ]
 
@@ -1468,6 +1474,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fixpoints", editable = "packages/fixpoints" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=9.1.0" },
     { name = "sphinx-mdinclude", marker = "extra == 'docs'", specifier = ">=0.6.2" },
@@ -1477,7 +1484,7 @@ provides-extras = ["docs"]
 [[package]]
 name = "mixinv2-examples"
 version = "0.0.0.dev0"
-source = { editable = "packages/mixinv2-examples" }
+source = { virtual = "packages/mixinv2-examples" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "mixinv2" },
@@ -1556,7 +1563,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "mixinv2", editable = "packages/mixinv2" },
-    { name = "mixinv2-examples", editable = "packages/mixinv2-examples" },
+    { name = "mixinv2-examples", virtual = "packages/mixinv2-examples" },
     { name = "mixinv2-library", editable = "packages/mixinv2-library" },
 ]
 
