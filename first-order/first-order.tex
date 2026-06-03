@@ -473,6 +473,15 @@ by cycle detection, a pointer comparison of positions
 \TODO{the completeness half rests on the full-abstraction proof above.}
 \end{corollary}
 
+\begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
+The presentation incurs none of the machinery the higher-order reading would
+otherwise require: no powerdomain or aggregation (the shape is single-valued), no
+recursion binder (interning folds what $Y$ generates), no normal-form or
+administrative-redex bridge (positions are read off raw terms), no
+$\bot$-versus-$\emptyset$ ambiguity (a single fresh $\bot$), and no unsafe sharing
+primitive (sharing is already the identity of positions).
+\end{corollary}
+
 \paragraph{The first approximation and the ordinary tree}
 The statement above is about $\mathrm{lfp}(T_P)$, which folds a guarded cycle and so denotes
 the rational Berarducci tree directly. The first approximation $T_P\!\uparrow\!1$ instead
