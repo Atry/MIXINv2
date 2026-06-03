@@ -144,8 +144,7 @@ $\Sh$.
         (Section~\ref{sec:application}). Interning the positions folds a guarded
         cyclic datum into a finite rational tree, so an \emph{ordinary} recursive
         query over it terminates where head reduction diverges: the query's own
-        recursive applications intern and fold. The modular extension of operations
-        and data is left to future work (Section~\ref{sec:future}).
+        recursive applications intern and fold.
 \end{itemize}
 
 % =====================================================================
@@ -646,19 +645,6 @@ value to unproductive cycles; the prior first-order settings, lacking
 $\beta$-reduction, have no comparable gap to open.
 
 % =====================================================================
-\section{Future Work}\label{sec:future}
-% =====================================================================
-A query over cyclic data is an ordinary $\lambda$-function (Section~\ref{sec:reach}),
-so adding an \emph{operation} is already free. What the $\lambda$-calculus does not
-give modularly is the dual: adding a new data \emph{variant} so that existing
-operations extend to it, and composing independently-developed operations and
-variants without rewriting either, the expression problem. Lifting positions and
-properties into first-class, composable entities, so operations and variants overlay
-onto the same interned positions, is the natural next step; that composable
-calculus, of which the present first-order reading is the semantic core, is the
-subject of ongoing work.
-
-% =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % =====================================================================
 The Berarducci tree is the readout of a first-order shape relation. Head reduction
@@ -666,9 +652,7 @@ unfolds that relation into the tree; the least fixpoint, computed by merging par
 trees over interned positions, folds it. The least-fixpoint reading is strictly more
 defined: it terminates on every rational structure and assigns the empty value to an
 unproductive cycle, so the two readings sit in a convergence hierarchy whose single
-knob is the value an unproductive cycle takes. The mechanism is not specific to the
-$\lambda$-calculus and extends to richer binding and data structures
-(Section~\ref{sec:future}).
+knob is the value an unproductive cycle takes.
 
 % =====================================================================
 \appendix
