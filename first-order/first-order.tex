@@ -28,8 +28,6 @@
 \newcommand{\Appsh}{\mathsf{App}}
 \newcommand{\Varsh}{\mathsf{Var}}
 \newcommand{\Btree}{\mathcal{B}}
-\newcommand{\Sbot}{\mathcal{S}_{\bot}}
-\newcommand{\Semp}{\mathcal{S}_{\mathsf{lfp}}}
 \newcommand{\dlam}{\mathord{\downarrow}\lambda}
 \newcommand{\dhead}{\mathord{\downarrow}\mathsf{h}}
 \newcommand{\darg}{\mathord{\downarrow}\mathsf{a}}
@@ -60,9 +58,9 @@
 A $\lambda$-term's Berarducci tree is the readout of a single first-order
 relation: the weak-head \emph{shape} relation $\Sh$ over the positions of the
 term. The shape at a position is single-valued, and $\Sh$'s clauses are positive, so
-its consequence operator is monotone with a Kleene ascent $T\!\uparrow\!1 \sqsubseteq
+its consequence operator is monotone with a Kleene ascent $T_P\!\uparrow\!1 \sqsubseteq
 \cdots \sqsubseteq \mathrm{lfp}$. Two points of this ascent give two readings. The
-first iterate $T\!\uparrow\!1$ is the first approximation: a position whose value is
+first iterate $T_P\!\uparrow\!1$ is the first approximation: a position whose value is
 demanded while it is still being computed (a re-entry) is answered by $\bot$, so a
 cycle is cut to $\bot$. The least fixpoint $\mathrm{lfp}$ is the Berarducci tree
 itself; because positions are interned, so that structural equality is pointer
@@ -84,11 +82,11 @@ relation $\Sh$, the \emph{weak-head shape} of a position, which is first-order
 in that it ranges over positions (graph nodes) and never over a function space.
 
 Once the tree is presented this way, two observations become immediate. First,
-$\Sh$'s clauses are positive, so the immediate-consequence operator $T$ that reads
-off the tree is monotone, with a Kleene ascent $\bot \sqsubseteq T\!\uparrow\!1
-\sqsubseteq \cdots \sqsubseteq \mathrm{lfp}(T)$. Second, two points of this ascent are
-the two readings. The first iterate $T\!\uparrow\!1$ answers a re-entrant demand with
-$\bot$, cutting a cycle to $\bot$; the least fixpoint $\mathrm{lfp}(T)$ is the
+$\Sh$'s clauses are positive, so the immediate-consequence operator $T_P$ that reads
+off the tree is monotone, with a Kleene ascent $\bot \sqsubseteq T_P\!\uparrow\!1
+\sqsubseteq \cdots \sqsubseteq \mathrm{lfp}(T_P)$. Second, two points of this ascent are
+the two readings. The first iterate $T_P\!\uparrow\!1$ answers a re-entrant demand with
+$\bot$, cutting a cycle to $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ is the
 Berarducci tree, folding a guarded cycle into a finite rational graph. The least
 fixpoint is more defined than the first approximation exactly at guarded cycles.
 
@@ -121,13 +119,13 @@ $\Sh$.
   \item A presentation of the Berarducci tree as the readout of a first-order
         shape relation $\Sh$ (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
   \item Two resolutions of $\Sh$, two points of the monotone ascent: the
-        first-iteration approximation $\Sbot = T\!\uparrow\!1$ and the least fixpoint
-        $\Semp = \mathrm{lfp}$, which we show is the Berarducci tree
+        first-iteration approximation $T_P\!\uparrow\!1$ and the least fixpoint
+        $\mathrm{lfp}(T_P)$, which we show is the Berarducci tree
         (Sections~\ref{sec:tworeadings}, \ref{sec:grounding}, \ref{sec:valrec}).
-  \item The ascent $\Sbot = T\!\uparrow\!1 \sqsubseteq \Semp = \mathrm{lfp} = \BeT$
+  \item The ascent $T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) = \BeT$
         (Section~\ref{sec:bridge}): the two agree on acyclic terms and on unproductive
-        cycles ($\bot$), and $\Semp$ is more defined exactly at a guarded cycle, where
-        $\Sbot$ cuts to $\bot$ and $\Semp$ folds into the rational subtree. Whether a
+        cycles ($\bot$), and $\mathrm{lfp}(T_P)$ is more defined exactly at a guarded cycle, where
+        $T_P\!\uparrow\!1$ cuts to $\bot$ and $\mathrm{lfp}(T_P)$ folds into the rational subtree. Whether a
         readout terminates is a separate matter, governed by rationality
         (Remark~\ref{rem:termination}): finitely many interned positions iff the tree
         is rational. Once $\Sh$ is given its positive presentation
@@ -151,7 +149,7 @@ enumerates this tree the same way in both cases, and never finishes.
 The least fixpoint folds it. Once positions are interned, structurally equal
 positions are one position, so the stream has finitely many distinct positions; the
 least fixpoint folds the tail back onto the repeating cell, a node that points to
-itself, a finite rational graph. The first approximation $T\!\uparrow\!1$ instead
+itself, a finite rational graph. The first approximation $T_P\!\uparrow\!1$ instead
 answers the re-entry with $\bot$, cutting the stream to $\mathtt{cons}\;0\;\bot$. Both
 terminate; head reduction, which interns nothing, enumerates the infinite tree
 forever. So at this guarded cycle the least fixpoint is the more defined of the two
@@ -178,7 +176,7 @@ reached while computing a shape. Positions are \emph{interned}: two structurally
 equal positions are the same object, so identity is a pointer test, not a comparison
 of structure. Interning is the mechanism the results rest on. It makes the
 recurrence for $\Sh$ a memoisable dynamic program keyed by position, and it makes a
-position a finite key on which $\Semp$ folds a cycle: structural equality reduces to
+position a finite key on which $\mathrm{lfp}(T_P)$ folds a cycle: structural equality reduces to
 pointer equality. A term has finitely many positions exactly when its Berarducci
 tree is \emph{rational} (finitely many distinct subtrees). A recursive definition
 produces such repetition directly, and so does a self-application, whose contractum
@@ -215,10 +213,10 @@ and there is no negation. In particular ``rigid'' must be read as the positive
 disjunction ``head is a $\Varsh$, or head is itself a root-stable $\Appsh$'', never
 as the negative ``head is not a $\Lamsh$''; a negation-as-failure reading would
 break positivity and forfeit the least-fixpoint semantics below. Positivity makes
-the immediate-consequence operator $T_{\Sh}$ monotone (indeed continuous), so by
+the immediate-consequence operator $T_P$ monotone (indeed continuous), so by
 Knaster--Tarski its least fixpoint exists and is unique, and the least-fixpoint
-reading $\Semp$ of Section~\ref{sec:tworeadings} is well-defined and sound by
-construction \citeTODO{vanemden-kowalski}. Soundness of $\Semp$ therefore costs
+reading $\mathrm{lfp}(T_P)$ of Section~\ref{sec:tworeadings} is well-defined and sound by
+construction \citeTODO{vanemden-kowalski}. Soundness of $\mathrm{lfp}(T_P)$ therefore costs
 nothing beyond fixing this positive presentation; the work of the paper is
 elsewhere (Sections~\ref{sec:grounding}, \ref{sec:application}).
 \end{remark}
@@ -273,19 +271,19 @@ Berarducci/L\'evy--Longo family rather than the B\"ohm family
 $\Sh$ in Definition~\ref{def:sh} assigns each position a \emph{single} shape: a
 deterministic calculus exposes one weak-head constructor, so there is no set of
 shapes to collect and nothing to aggregate. Its clauses are positive, so the
-consequence operator $T$ is monotone, with a Kleene ascent
-$\bot = T\!\uparrow\!0 \sqsubseteq T\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
-\mathrm{lfp}(T)$. The two readings are two points of this ascent.
+consequence operator $T_P$ is monotone, with a Kleene ascent
+$\bot = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
+\mathrm{lfp}(T_P)$. The two readings are two points of this ascent.
 
-\begin{definition}[First-iteration approximation $\Sbot$]
-$\Sbot$ is $T\!\uparrow\!1$. Each position is evaluated once, and a position whose
+\begin{definition}[First-iteration approximation $T_P\!\uparrow\!1$]
+$T_P\!\uparrow\!1$ evaluates each position once: a position whose
 shape is demanded while it is still being computed (a re-entry, as head reduction
-reaches it again) is answered by $\bot$, its $T\!\uparrow\!0$ value. A guarded cycle
+reaches it again) is answered by $\bot$, its $T_P\!\uparrow\!0$ value. A guarded cycle
 is therefore cut to $\bot$, and so is an unproductive cycle.
 \end{definition}
 
-\begin{definition}[Least-fixpoint reading $\Semp$]
-$\Semp$ is $\mathrm{lfp}(T)$, the limit of the ascent, computed by \emph{merging
+\begin{definition}[Least-fixpoint reading $\mathrm{lfp}(T_P)$]
+$\mathrm{lfp}(T_P)$ is the limit of the ascent, computed by \emph{merging
 partial Berarducci trees} from $\bot$ upward \citeTODO{vanemden-kowalski}. The value
 at a position is a partial tree carrying $\bot$ holes; each iterate fills the holes
 of the previous one, until the tree stops growing. Because positions are interned, a
@@ -297,16 +295,16 @@ otherwise be reached in unboundedly many ways.
 \end{definition}
 
 \begin{proposition}[The ascent]\label{prop:locus}
-$\Sbot = T\!\uparrow\!1 \sqsubseteq \Semp = \mathrm{lfp}(T)$. The two give the same
+$T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P)$. The two give the same
 value at every position with no guarded re-entry: a constructor where the head is
 derivable in finitely many steps, and $\bot$ at an unproductive cycle. They differ
-only at a guarded cycle, where $\Sbot$ has $\bot$ (the cycle cut at the first
-iterate) and $\Semp$ has the folded rational subtree (the limit). So $\Semp$ is more
-defined than $\Sbot$ exactly at guarded cycles; it is the Berarducci tree, while
-$\Sbot$ is its first approximation.
+only at a guarded cycle, where $T_P\!\uparrow\!1$ has $\bot$ (the cycle cut at the first
+iterate) and $\mathrm{lfp}(T_P)$ has the folded rational subtree (the limit). So $\mathrm{lfp}(T_P)$ is more
+defined than $T_P\!\uparrow\!1$ exactly at guarded cycles; it is the Berarducci tree, while
+$T_P\!\uparrow\!1$ is its first approximation.
 \end{proposition}
 \begin{proof}[Proof sketch]
-Monotonicity gives the chain; the gap between $T\!\uparrow\!1$ and the limit is
+Monotonicity gives the chain; the gap between $T_P\!\uparrow\!1$ and the limit is
 exactly the positions reachable only through a re-entry, i.e.\ the cyclic ones
 \citeTODO{vanemden-kowalski}. \TODO{state precisely, fixing ``guarded'' vs
 ``unproductive'' re-entry.}
@@ -322,8 +320,8 @@ cycle is $\bot$, the ordinary meaningless leaf of the Berarducci tree.
 A single readout terminates iff the term has finitely many distinct interned
 positions, that is, iff its Berarducci tree is \emph{rational}. An infinite but
 rational tree, the lazy cyclic list $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$
-written $Y\,(\mathtt{cons}\;0)$, folds under $\Semp$ to a node that points to itself,
-a finite cyclic graph; it is cut to $\bot$ after one cell under $\Sbot$. Either way
+written $Y\,(\mathtt{cons}\;0)$, folds under $\mathrm{lfp}(T_P)$ to a node that points to itself,
+a finite cyclic graph; it is cut to $\bot$ after one cell under $T_P\!\uparrow\!1$. Either way
 both terminate. A \emph{non-rational} infinite tree, the stream of all naturals
 $\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has unboundedly many distinct
 positions and hence no finite representation: the readout produces ever-new positions
@@ -332,13 +330,13 @@ not by the choice of reading.
 \end{remark}
 
 % =====================================================================
-\section{Grounding: \texorpdfstring{$\Semp = \BeT$}{S\_lfp = BeT}}
+\section{Grounding: \texorpdfstring{$\mathrm{lfp}(T_P) = \BeT$}{lfp(T\_P) = BeT}}
 \label{sec:grounding}
 % =====================================================================
 \begin{theorem}[Presentation adequacy]\label{thm:adequacy}
 For every term $M$, the least-fixpoint readout $\Btree(\subt{M}{\varepsilon})$ under
-$\Semp$ equals the Berarducci tree $\BeT(M)$. The first approximation $\Sbot =
-T\!\uparrow\!1$ agrees with $\BeT$ wherever head reduction exposes the tree without a
+$\mathrm{lfp}(T_P)$ equals the Berarducci tree $\BeT(M)$. The first approximation $T_P\!\uparrow\!1 =
+T_P\!\uparrow\!1$ agrees with $\BeT$ wherever head reduction exposes the tree without a
 guarded re-entry, and under-approximates it (cutting a guarded cycle to $\bot$)
 elsewhere.
 \end{theorem}
@@ -348,7 +346,7 @@ Definition~\ref{def:btree} are the three cases of the Berarducci tree constructi
 retaining $\bot$-headed applications matches Berarducci's treatment of root-stable
 applications with a meaningless head; and an undefined $\Sh$ (a re-entry with no
 constructor) is a root-active term, a $\bot$ leaf. The least fixpoint folds a guarded
-cycle into the rational representation of the same coinductive tree, so $\Semp =
+cycle into the rational representation of the same coinductive tree, so $\mathrm{lfp}(T_P) =
 \BeT$; the first iterate truncates it. \TODO{write out the coinductive argument;
 verify the root-active $\Leftrightarrow$ undefined-$\Sh$ correspondence against
 Berarducci's definition \citeTODO{berarducci}.}
@@ -356,15 +354,15 @@ Berarducci's definition \citeTODO{berarducci}.}
 
 \noindent
 Because we work on raw terms, there is no normal-form translation to justify and
-no administrative-redex bridge: $\Semp = \BeT$ holds essentially by construction,
+no administrative-redex bridge: $\mathrm{lfp}(T_P) = \BeT$ holds essentially by construction,
 and the only content is that Definitions~\ref{def:path}--\ref{def:btree} present
 weak head reduction faithfully.
 
 % =====================================================================
-\section{\texorpdfstring{$\Semp$}{S\_empty}: the least fixpoint by merging partial trees}
+\section{\texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)}: the least fixpoint by merging partial trees}
 \label{sec:valrec}
 % =====================================================================
-$\Semp$ is the least fixpoint of $\Sh$, computed by merging partial Berarducci
+$\mathrm{lfp}(T_P)$ is the least fixpoint of $\Sh$, computed by merging partial Berarducci
 trees from $\bot$ upward (Section~\ref{sec:tworeadings}). Because positions are
 interned, a position re-entered during the computation of its own shape is detected
 by a pointer test, and the behaviour splits on whether that re-entry is productive.
@@ -377,11 +375,11 @@ returns to $n$ with no constructor exposed.
 
 \begin{itemize}
   \item \textbf{Guarded.} $\Sh(n)$ is a constructor and the re-entry sits in a
-        child position. Under $\Semp$ the merge folds at the re-entry, yielding a
+        child position. Under $\mathrm{lfp}(T_P)$ the merge folds at the re-entry, yielding a
         \emph{rational} (regular) infinite tree, finitely represented as a node that
-        points to itself. Under $\Sbot = T\!\uparrow\!1$ the re-entry is cut to
-        $\bot$, the first approximation. So $\Semp$ is more defined here: it holds the
-        folded subtree where $\Sbot$ holds $\bot$.
+        points to itself. Under $T_P\!\uparrow\!1$ the re-entry is cut to
+        $\bot$, the first approximation. So $\mathrm{lfp}(T_P)$ is more defined here: it holds the
+        folded subtree where $T_P\!\uparrow\!1$ holds $\bot$.
   \item \textbf{Unproductive.} $\Sh(n)$ returns to $n$ with no constructor exposed;
         its least fixpoint is $\bot$. Both readings give $\bot$ here: the limit does
         not improve an unproductive cycle.
@@ -392,15 +390,15 @@ Write the cyclic stream of zeros $r = \mathtt{cons}\;0\;r$ as $Y\,(\mathtt{cons}
 with the Scott encoding $\mathtt{cons} = \lambda h.\lambda t.\lambda c.\lambda n.\,c\,h\,t$.
 Then $\Sh(r) = \lambda c.\lambda n.\,c\,0\,r'$, derived in finitely many steps
 without re-requiring the head $\Sh(r)$: the recursive occurrence enters only as
-data. The structurally repeating cell interns to one position. Under $\Semp$ the
+data. The structurally repeating cell interns to one position. Under $\mathrm{lfp}(T_P)$ the
 merge folds at the guarded re-entry,
 \[
   \rho \;=\; \lambda c.\,\lambda n.\,(c\cdot 0)\cdot \rho,
 \]
 the finite representation of the rational tree
 $\lambda c.\lambda n.\,(c\,0)\,(\lambda c.\lambda n.\,(c\,0)\,(\cdots))$, a node
-pointing to itself. Under $\Sbot = T\!\uparrow\!1$ the re-entry is cut:
-$\Sbot(r) = \lambda c.\lambda n.\,(c\,0)\,\bot$, the first approximation. No recursion
+pointing to itself. Under $T_P\!\uparrow\!1$ the re-entry is cut:
+$T_P\!\uparrow\!1(r) = \lambda c.\lambda n.\,(c\,0)\,\bot$, the first approximation. No recursion
 binder is needed; $Y$ produces the repetition that interning folds.
 \end{example}
 
@@ -408,7 +406,7 @@ binder is needed; $Y$ produces the repetition that interning folds.
 $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head-reduces to itself with no
 constructor exposed, returning to the same interned position; so $\Omega = \bot$, the
 ordinary meaningless leaf of its Berarducci tree. Both readings give $\bot$ and both
-terminate: $\Sbot = T\!\uparrow\!1$ answers the re-entry with $\bot$, and $\Semp$'s
+terminate: $T_P\!\uparrow\!1$ answers the re-entry with $\bot$, and $\mathrm{lfp}(T_P)$'s
 limit is $\bot$ as well, since there is no constructor for the merge to add. The same
 holds for $Y\,(\lambda x.\,x)$, the pure-$\lambda$ rendering of
 $\mathtt{letrec}\;x = x$. An unproductive cycle is the one place the two readings can
@@ -416,25 +414,25 @@ never differ.
 \end{example}
 
 % =====================================================================
-\section{The Ascent: \texorpdfstring{$\Sbot = T\!\uparrow\!1 \sqsubseteq \Semp = \BeT$}{S\_bot = T1 <= S\_lfp = BeT}}\label{sec:bridge}
+\section{The Ascent: \texorpdfstring{$T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) = \BeT$}{T\_P up 1 <= lfp(T\_P) = BeT}}\label{sec:bridge}
 % =====================================================================
 The two readings are the first iterate and the limit of one monotone ascent. The
 least fixpoint is the Berarducci tree; the first iterate is its first approximation.
 
 \begin{theorem}[The ascent]\label{thm:bridge}
-$\Sbot = T\!\uparrow\!1 \sqsubseteq \Semp = \mathrm{lfp}(T) = \BeT$. The two give the
+$T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) = \BeT$. The two give the
 same value at every position with no guarded re-entry: a constructor where the head
 is derivable in finitely many steps, and $\bot$ at an unproductive cycle. They differ
-only at a guarded cycle, where $\Sbot$ cuts the cycle to $\bot$ (the first
-approximation) and $\Semp$ folds it into the rational subtree (the limit, a node
-pointing to itself). So $\Semp$ is more defined exactly at guarded cycles.
+only at a guarded cycle, where $T_P\!\uparrow\!1$ cuts the cycle to $\bot$ (the first
+approximation) and $\mathrm{lfp}(T_P)$ folds it into the rational subtree (the limit, a node
+pointing to itself). So $\mathrm{lfp}(T_P)$ is more defined exactly at guarded cycles.
 \end{theorem}
 \begin{proof}[Proof sketch]
 Monotonicity gives the chain (Proposition~\ref{prop:locus}); the head at a productive
 position is a constructor in finitely many steps, so the first iterate already exposes
-it (Theorem~\ref{thm:adequacy}); the gap between $T\!\uparrow\!1$ and the limit is
-exactly the guarded re-entries, which $\Semp$ folds and $\Sbot$ cuts to $\bot$.
-\TODO{state the tree domain precisely and prove $\Semp = \BeT$ pointwise.}
+it (Theorem~\ref{thm:adequacy}); the gap between $T_P\!\uparrow\!1$ and the limit is
+exactly the guarded re-entries, which $\mathrm{lfp}(T_P)$ folds and $T_P\!\uparrow\!1$ cuts to $\bot$.
+\TODO{state the tree domain precisely and prove $\mathrm{lfp}(T_P) = \BeT$ pointwise.}
 \end{proof}
 
 \noindent
@@ -461,6 +459,20 @@ some finite path and a context can drive the readout to it. \TODO{state the
 contextual-equivalence relation precisely and prove both directions; cite the
 B\"ohm-out technique adapted to the Berarducci setting.}
 
+\paragraph{The first approximation and the ordinary tree}
+The statement above is about $\mathrm{lfp}(T_P)$, which folds a guarded cycle and so denotes
+the rational Berarducci tree directly. The first approximation $T_P\!\uparrow\!1$ instead
+cuts every re-entered cycle to $\bot$, so it does not coincide with the ordinary
+(unfolded) Berarducci tree on the nose: where the ordinary tree continues
+infinitely, $T_P\!\uparrow\!1$ places a $\bot$ leaf. The two agree, and $T_P\!\uparrow\!1$ becomes
+fully abstract for the ordinary Berarducci tree, exactly when $T_P\!\uparrow\!1$'s $\bot$ is
+mapped to non-termination. Under that reading a $\bot$ leaf is not a value
+distinct from the others but the observation that the readout at that position
+does not converge, which is what the ordinary tree records as a non-normalising
+subtree. With $\bot$ identified with non-termination, the operational reading
+$T_P\!\uparrow\!1$ and the standard infinitary Berarducci semantics induce the same
+contextual equivalence.
+
 \paragraph{Why the bottom is $\bot$, and why that is sound}
 The merge ascends from a bottom value, and that bottom must be a fresh $\bot$,
 distinct from every $\lambda$-term, not a reused value. Otherwise the convergence
@@ -486,12 +498,12 @@ stream $r = \mathtt{cons}\;0\;r$, each recursive call builds the application
 $\mathtt{reach}\;t$; because $r$ has finitely many interned positions, these
 applications intern to finitely many positions, so the least fixpoint folds the
 recursion. Head reduction, which interns nothing, builds a fresh application at every
-step and diverges; $\Semp$ folds at the repeated interned position and returns a
+step and diverges; $\mathrm{lfp}(T_P)$ folds at the repeated interned position and returns a
 definite value (here $\bot$: no $\mathtt{nil}$ is ever reached, so the walk is itself
 an unproductive cycle). The query terminates for the same reason the readout does:
 finitely many interned positions.
 It is also memoised for free, since interning shares the repeated subcomputations.
-\TODO{give the explicit $\Semp$ derivation of $\mathtt{reach}\;r$ and a reachability
+\TODO{give the explicit $\mathrm{lfp}(T_P)$ derivation of $\mathtt{reach}\;r$ and a reachability
 variant that returns $\present$ by accumulating up a finite chain.}
 
 \paragraph{Lazy, not eager}
@@ -503,15 +515,15 @@ knot-tying is exactly the lazy least fixpoint; interning supplies the table.
 
 \subsection{Memoising arbitrary programs}
 \label{sec:memo}
-More generally, $\Semp$ is the denotation of a \emph{memoised} run of any
+More generally, $\mathrm{lfp}(T_P)$ is the denotation of a \emph{memoised} run of any
 $\lambda$-program. Memoisation needs a comparable key on which to recognise a
 repeated call; the higher-order view offers none, since value equality of functions
 is undecidable. The first-order reading replaces values by interned positions, whose
 identity is a pointer test, so it is the natural setting in which memoisation is
 even definable. Interning is that memoisation: it is what lets a re-entry be
 recognised at all. Head reduction, which remembers nothing, unfolds a cyclic position
-forever; the first approximation $\Sbot = T\!\uparrow\!1$ recognises the re-entry and
-answers it with $\bot$; the least fixpoint $\Semp$ recognises it and folds, taking the
+forever; the first approximation $T_P\!\uparrow\!1$ recognises the re-entry and
+answers it with $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ recognises it and folds, taking the
 limit. The three are the unfolding, its one-step cut, and its limit, separated by how
 much they remember.
 
@@ -522,14 +534,14 @@ much they remember.
 The Berarducci, L\'evy--Longo, and B\"ohm trees form a hierarchy by their
 meaningless sets \citeTODO{berarducci, levy-longo, barendregt}; the infinitary
 $\lambda$-calculus framework \citeTODO{kennaway-klop-sleep-devries} situates them
-uniformly. Our $\Sbot$ is the Berarducci tree (weak-head observation, retained
+uniformly. Our $T_P\!\uparrow\!1$ is the Berarducci tree (weak-head observation, retained
 $\bot$-headed applications).
 
 \paragraph{Least Herbrand models and tabling.}
-$\Semp$ is the least Herbrand model of a definite program
-\citeTODO{vanemden-kowalski}; the difference from $\Sbot$ is the SLD-termination /
+$\mathrm{lfp}(T_P)$ is the least Herbrand model of a definite program
+\citeTODO{vanemden-kowalski}; the difference from $T_P\!\uparrow\!1$ is the SLD-termination /
 least-model gap, and a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}
-computes $\Semp$ by completing unproductive cycles instead of looping. Tabling is
+computes $\mathrm{lfp}(T_P)$ by completing unproductive cycles instead of looping. Tabling is
 the canonical mechanism for terminating left-recursive and cyclic fixpoint queries
 that plain resolution diverges on; our query application
 (Section~\ref{sec:reach}) is an instance of it transported into the
@@ -547,7 +559,7 @@ equality precisely by detecting cycles in the type's regular tree
 guarded-cycle case---a rational denotation with finitely many distinct
 subtrees---reached by different routes. The point of difference is one of
 position rather than capability: those approaches add machinery (a unification
-discipline, a separate type-level system), whereas $\Semp$ is a re-reading of the
+discipline, a separate type-level system), whereas $\mathrm{lfp}(T_P)$ is a re-reading of the
 $\lambda$-calculus's own tree semantics, obtained by interning its positions and
 taking a least fixpoint, with nothing added to the calculus
 (Theorem~\ref{thm:bridge}).
@@ -555,7 +567,7 @@ taking a least fixpoint, with nothing added to the calculus
 \paragraph{Cyclic $\lambda$-terms and recursion.}
 Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and the call-by-need
 $\lambda$-calculus \citeTODO{ariola-felleisen} provide the sharing on which the
-$\Semp$/$\Sbot$ difference rests; the guarded-cycle case yields rational trees,
+$\mathrm{lfp}(T_P)$/$T_P\!\uparrow\!1$ difference rests; the guarded-cycle case yields rational trees,
 and the productivity distinction is the standard one from infinitary rewriting.
 
 \paragraph{Sharing in functional languages.}
@@ -564,7 +576,7 @@ obstacle: a traversal of a cyclic structure diverges because referential
 transparency hides the repetition. Existing remedies \emph{add} something to the
 language, such as observable sharing \citeTODO{gill} or the deliberate use of
 laziness in circular programs \citeTODO{bird}. We add nothing to the calculus:
-interning the positions exposes the repetition, and $\Semp$ folds it.
+interning the positions exposes the repetition, and $\mathrm{lfp}(T_P)$ folds it.
 
 \paragraph{Higher-order model checking.}
 Deciding properties of the (possibly infinite) trees generated by higher-order
@@ -609,13 +621,13 @@ defined, the Berarducci tree itself.
 \appendix
 \section{Definitions}\label{app:defs}
 \TODO{collect the term syntax, $\Sh$, the path/subterm coinductive definition,
-and the readout for both $\Sbot$ and $\Semp$, including the merge that folds at
+and the readout for both $T_P\!\uparrow\!1$ and $\mathrm{lfp}(T_P)$, including the merge that folds at
 re-entered interned positions.}
 \TODO{write $\Sh$ as explicit definite clauses, giving ``rigid'' the positive
 definition of Remark~\ref{rem:positivity} (a $\Varsh$ head, or a root-stable
 $\Appsh$ head) so that no clause uses negation-as-failure. Then record the
-standard consequence: positivity $\Rightarrow$ $T_{\Sh}$ monotone/continuous
-$\Rightarrow$ $\Semp = \mathrm{lfp}(T_{\Sh})$ exists, is unique, and is sound
+standard consequence: positivity $\Rightarrow$ $T_P$ monotone/continuous
+$\Rightarrow$ $\mathrm{lfp}(T_P)$ exists, is unique, and is sound
 (Knaster--Tarski; van Emden--Kowalski). This is the cheap half of the paper and
 should be dispatched in a few lines.}
 
@@ -625,10 +637,10 @@ lemma.}
 
 \section{The Ascent (Theorem~\ref{thm:bridge})}
 \label{app:bridge}
-\TODO{precise statement that $\Sbot = T\!\uparrow\!1 \sqsubseteq \Semp =
+\TODO{precise statement that $T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) =
 \mathrm{lfp} = \BeT$: the two agree off guarded cycles (a constructor where the head
-is derivable, $\bot$ at an unproductive cycle), and at a guarded cycle $\Sbot$ cuts to
-$\bot$ while $\Semp$ folds to the rational subtree; plus the rationality criterion for
+is derivable, $\bot$ at an unproductive cycle), and at a guarded cycle $T_P\!\uparrow\!1$ cuts to
+$\bot$ while $\mathrm{lfp}(T_P)$ folds to the rational subtree; plus the rationality criterion for
 termination of a single readout.}
 
 % =====================================================================
