@@ -76,7 +76,9 @@ We give a first-order semantics for the $\lambda$-calculus over the domain of he
 % =====================================================================
 \section{Introduction}
 % =====================================================================
-Three examples expose three faces of the same obstacle.
+The tree of a $\lambda$-term (B\"ohm tree, L\'evy--Longo tree) is the coinductive normal form
+obtained by iterating head reduction at every exposed position. Head reduction itself is the
+shared engine, but three examples expose two obstacles that it cannot overcome alone.
 $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ diverges under head reduction; its tree
 should be $\bot$, but detecting that head reduction has returned to its starting position requires
 testing identity on values, and on a function space the only identity is
