@@ -456,8 +456,11 @@ For every term $M$, the term is rational ($\operatorname{Pos}(M)$ finite,
 Definition~\ref{def:rationalterm}) if and only if its readout halts, under
 $T_P\!\uparrow\!1$ and under $\mathrm{lfp}(T_P)$ alike; and in that case $\BeT(M)$ is a
 rational tree (Definition~\ref{def:rational}). The converse of the last implication
-fails in general: structurally distinct positions may share a Berarducci subtree, so
-tree rationality does not bound $\operatorname{Pos}(M)$. When $M$ is not rational the
+fails in general: positions are interned by syntactic identity, which is finer than
+Berarducci-tree equality, so syntactically distinct positions may share a subtree and
+tree rationality does not bound $\operatorname{Pos}(M)$ (Appendix~\ref{app:termination}
+gives a witness, a rational stream with infinitely many distinct tail positions). When
+$M$ is not rational the
 readout enumerates infinitely many distinct positions and diverges under both
 readings. Proof in Appendix~\ref{app:termination}.
 \end{theorem}
@@ -950,14 +953,20 @@ so neither halts.
 $\{R(\subt{M}{p})\}_p=\{R(n):n\in\operatorname{Pos}(M)\}$, finite, so $\BeT(M)$ is
 rational (Definition~\ref{def:rational}).
 
-\emph{Failure of the converse.} The map $n\mapsto R(n)$ need not be injective:
-$\beta$-distinct subterms can have equal Berarducci trees, since $(\lambda z.z)\,n$ and
-$n$ share a weak head normal form and hence a tree. So $\operatorname{Pos}(M)$ may be
-infinite while $\{R(n)\}$ is finite, and a rational $\BeT(M)$ does not entail finite
-$\operatorname{Pos}(M)$. \TODO{exhibit a concrete closed $M$ realising this: an
-infinite family of $\beta$-distinct interned positions sharing one Berarducci subtree,
-with $\operatorname{Pos}(M)$ infinite and $\BeT(M)$ rational. The mechanism (non-injective
-$n\mapsto R(n)$) is established; only a witnessing term is left to pin down.}
+\emph{Failure of the converse.} Interning identifies positions by \emph{syntactic}
+(de Bruijn) identity, which is strictly finer than Berarducci-tree equality, so the map
+$n\mapsto R(n)$ need not be injective: syntactically distinct positions can carry the
+same tree. A witness is $M=Y\,F\,\underline 0$ with
+$F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$. The head of every
+cell is the constant $0$, so $\BeT(M)$ is the rational stream
+$\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$ with finitely many distinct subtrees;
+but the tail positions $Y\,F\,\underline k$ (with $\underline k=\mathtt{succ}^{k}\,
+\underline 0$) are pairwise syntactically distinct and never intern together, since
+$\Sh$ does not reduce the $\mathtt{succ}^{k}\,\underline 0$ buried in the argument.
+Hence $\operatorname{Pos}(M)$ is infinite while $\{R(n)\}$ is finite, and the readout
+diverges on a rational tree. So tree rationality does not entail finite
+$\operatorname{Pos}(M)$: folding by position identity is strictly finer than folding by
+subtree.
 \end{proof}
 
 \section{The ascent chain (Theorem~\ref{thm:bridge})}\label{app:bridge}
