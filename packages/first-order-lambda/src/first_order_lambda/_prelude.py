@@ -2,7 +2,8 @@
 
 The combinators are HOAS ``Builder``s (compose with ``app``); the example terms are built
 ``Node``s ready to interpret. Includes pure-lambda combinators, Scott-encoded lists for cyclic
-data, and Church numerals with Peano arithmetic (succ, plus, mult, exp, predecessor,
+data with the ordinary singly-linked-list ``map`` (which folds a cyclic list into a finite
+circular list), and Church numerals with Peano arithmetic (succ, plus, mult, exp, predecessor,
 is-zero), factorial and Fibonacci via ``Y``.
 """
 
@@ -103,6 +104,32 @@ ZERO: Builder = lam(lambda s: lam(lambda z: z))  # = church 0, a closed element 
 
 def cons(head: Builder, tail: Builder) -> Builder:
     return app(app(SCOTT_CONS, head), tail)
+
+
+# The ordinary singly-linked-list map: nothing is cycle-aware. map f = Y (lambda self.
+# lambda lst. lst (lambda h. lambda t. cons (f h) (self t)) nil). The recursion is guarded
+# (a cons is exposed before the recursive call), so on a cyclic list the recursive
+# application self t re-enters the same closed position and the least fixpoint folds it into
+# a finite cyclic result, where head reduction would unfold the mapped stream forever.
+MAP: Builder = lam(
+    lambda f: app(
+        Y,
+        lam(lambda self_recursion: lam(lambda source: app(
+            app(
+                source,
+                lam(lambda head: lam(lambda tail: cons(
+                    app(f, head),
+                    app(self_recursion, tail),
+                ))),
+            ),
+            SCOTT_NIL,
+        ))),
+    )
+)
+
+
+def map_list(function: Builder, source: Builder) -> Builder:
+    return app(app(MAP, function), source)
 
 
 # Example terms (built de Bruijn nodes). The calculus is pure: cyclic and recursive data

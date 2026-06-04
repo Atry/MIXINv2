@@ -1,0 +1,4 @@
+# serializer version: 1
+# name: test_map_over_cyclic_list_folds_and_terminates[map_succ_cyclic]
+  '(λ (λ ((v1 (λ (λ (v1 v0)))) #0=(λ (λ ((v1 (λ (λ (v1 v0)))) #0))))))'
+# ---
