@@ -23,10 +23,11 @@ Two instances live here:
 
 from __future__ import annotations
 
+import contextvars
 from dataclasses import dataclass, field
 from typing import Callable, Final, Hashable, Protocol, final, runtime_checkable
 
-from first_order_lambda._ast import App, Lam, Node, ShapeBottom, Var
+from first_order_lambda._ast import App, Lam, Node, ShapeBottom, Var, clear_canonical_cache
 from first_order_lambda._shape import AppShape, LamShape, VarShape, shape_of
 
 
@@ -219,6 +220,32 @@ _DEAD_ARGUMENT: Final[tuple[str]] = ("dead-argument",)
 """The canonical placeholder a dead argument erases to, so two positions that differ only in a
 dead slot get the same key."""
 
+dead_argument_rules: contextvars.ContextVar[tuple[DeadArgumentRule, ...]] = contextvars.ContextVar(
+    "dead_argument_rules", default=()
+)
+"""The globally configured dead-argument rules for ``compute_canonical``. Set by
+``DeadSubtermCongruence.__post_init__`` or by the MIXINv2 ``@eager`` resource in ``_config``."""
+
+
+def compute_canonical(node: Node) -> Hashable:
+    """The dead-subterm canonical form of ``node``: syntax with every dead-argument slot erased.
+
+    Reads the active rules from ``dead_argument_rules``. Called by ``Node.canonical``
+    (a ``cached_property``), so each interned node is canonicalized at most once.
+    """
+    rules = dead_argument_rules.get()
+    match node:
+        case Var(index=index):
+            return ("var", index)
+        case Lam(body=body):
+            return ("lam", body.canonical)
+        case App(function=function, argument=argument):
+            if rules and any(rule.is_dead(node) for rule in rules):
+                return ("app", function.canonical, _DEAD_ARGUMENT)
+            return ("app", function.canonical, argument.canonical)
+        case _:
+            raise TypeError(f"Unknown node {node!r}")
+
 
 @runtime_checkable
 class DeadArgumentRule(Protocol):
@@ -326,50 +353,23 @@ class RecursionArgumentRule:
 
 
 @final
-@dataclass(kw_only=True, slots=True, weakref_slot=True, eq=False)
+@dataclass(kw_only=True, slots=True, frozen=True, weakref_slot=True)
 class DeadSubtermCongruence:
-    """Equality up to dead subterms (Method B): the key is the syntax with every dead-argument
-    slot erased to a canonical placeholder. A tree-preserving canonical map, so two positions that
-    differ only in dead subterms fold together; the ``Y F 0`` witness folds because its tail
-    positions differ only in a dead index.
+    """Equality up to dead subterms: the key is ``Node.canonical``, the syntax with every
+    dead-argument slot erased to a canonical placeholder. A tree-preserving canonical map, so two
+    positions that differ only in dead subterms fold together; the ``Y F 0`` witness folds because
+    its tail positions differ only in a dead index.
 
-    The fold is decided by a LIBRARY of sound ``rules``; the caller enables a subset. This sits
-    where neither e-graph reaches: it is not a congruence closure (it does not fold redex with
-    reduct) but a canonicalising erasure, so it captures the coinductive identity the witness
-    needs while staying a finite, terminating syntactic pass.
-
-    The canonical form of each node is cached by ``id(node)`` (safe because nodes are interned),
-    so repeated ``key()`` calls are ``O(1)`` after the first traversal.
+    Construction sets the ``dead_argument_rules`` context variable so that ``Node.canonical``
+    (a ``cached_property``) picks up the rules. The canonical form is cached per node, so
+    repeated ``key()`` calls are ``O(1)``.
     """
 
-    rules: Final[tuple[DeadArgumentRule, ...]]
-    _cache: Final[dict[int, Hashable]] = field(default_factory=dict)
+    rules: tuple[DeadArgumentRule, ...]
+
+    def __post_init__(self) -> None:
+        dead_argument_rules.set(self.rules)
+        clear_canonical_cache()
 
     def key(self, node: Node) -> Hashable:
-        node_id = id(node)
-        cached = self._cache.get(node_id)
-        if cached is not None:
-            return cached
-        result = self._canonical(node)
-        self._cache[node_id] = result
-        return result
-
-    def _canonical(self, node: Node) -> Hashable:
-        node_id = id(node)
-        cached = self._cache.get(node_id)
-        if cached is not None:
-            return cached
-        match node:
-            case Var(index=index):
-                result: Hashable = ("var", index)
-            case Lam(body=body):
-                result = ("lam", self._canonical(body))
-            case App(function=function, argument=argument):
-                if any(rule.is_dead(node) for rule in self.rules):
-                    result = ("app", self._canonical(function), _DEAD_ARGUMENT)
-                else:
-                    result = ("app", self._canonical(function), self._canonical(argument))
-            case _:
-                raise TypeError(f"Unknown node {node!r}")
-        self._cache[node_id] = result
-        return result
+        return node.canonical

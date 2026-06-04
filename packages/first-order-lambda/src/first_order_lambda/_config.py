@@ -40,7 +40,12 @@ if TYPE_CHECKING:
 
 @scope
 class FirstOrderLambda:
-    """Base configuration scope. Compose with rule-provider scopes to configure the congruence."""
+    """Base configuration scope. Compose with rule-provider scopes to configure the congruence.
+
+    Accessing ``root.congruence`` constructs the ``DeadSubtermCongruence``, whose
+    ``__post_init__`` sets the ``dead_argument_rules`` context variable so that
+    ``Node.canonical`` picks up the rules.
+    """
 
     @public
     @merge
