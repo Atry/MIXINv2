@@ -32,6 +32,7 @@
 \newcommand{\dhead}{\mathord{\downarrow}\mathsf{h}}
 \newcommand{\darg}{\mathord{\downarrow}\mathsf{a}}
 \newcommand{\subt}[2]{#1\!\downarrow\!#2}   % subterm of #1 at path #2
+\newcommand{\Posq}[1]{\operatorname{Pos}(#1)/{\approx}} % positions up to the congruence
 \newcommand{\reduces}{\twoheadrightarrow}
 \newcommand{\bred}{\rightarrow_{\beta}}
 \newcommand{\present}{\mathtt{present}}     % first Scott constructor (a value is present)
@@ -63,10 +64,12 @@ is monotone and the tree is its least fixpoint $\mathrm{lfp}(T_P)$. Because posi
 a guarded cycle into a finite rational graph: a lazy infinite list, written with $Y$, becomes a
 node that points to itself. So $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of
 head reduction: it agrees with the tree head reduction enumerates, and additionally terminates
-where head reduction diverges. A single readout terminates iff the tree is rational (finitely
-many positions): an infinite but rational tree folds to a finite graph, while a non-rational one,
-the stream of all naturals, does not. The development is parametric in the head-evaluation; the
-weak-head shape used throughout is one instance.
+where head reduction diverges. A single readout terminates iff the tree is rational up to the
+chosen identity of positions: an infinite but rational tree folds to a finite graph, while a
+non-rational one, the stream of all naturals, does not. The development is parametric in two
+choices, a monotone first-order head-evaluation and a sound \emph{position congruence}, the
+equality on which a cycle is folded; the weak-head shape and syntactic-identity interning used
+throughout are the respective finest instances, and a coarser congruence folds strictly more.
 \end{abstract}
 
 % =====================================================================
@@ -113,17 +116,23 @@ $\Sh$.
 \paragraph{Contributions.}
 \begin{itemize}
   \item A presentation of the tree of any monotone first-order head-evaluation as the readout of
-        a first-order shape relation $\Sh$, the weak-head shape being one instance
-        (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
+        a first-order shape relation $\Sh$, parametric in the head-evaluation and in a sound
+        \emph{position congruence} (Definition~\ref{def:congruence}), the weak-head shape and
+        syntactic-identity interning being the respective finest instances
+        (Sections~\ref{sec:firstorder}, \ref{sec:grounding}). The congruence sits on a spectrum
+        from syntactic identity to tree equality; soundness is the congruence law read
+        coinductively (Remark~\ref{rem:soundness}), so it costs nothing to fix.
   \item $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of head reduction
         (Sections~\ref{sec:grounding}, \ref{sec:valrec}): it is the tree
         (Theorem~\ref{thm:adequacy}), so it agrees with the tree head reduction enumerates, and
         because positions are interned it folds a guarded cycle into the rational subtree and
         terminates where head reduction diverges, deciding an unproductive cycle as $\bot$ in
         finite time. Whether a readout terminates is governed by rationality
-        (Theorem~\ref{thm:termination}): finitely many interned positions iff the tree is
-        rational. Once $\Sh$ is given its positive presentation (Remark~\ref{rem:positivity}),
-        well-definedness of the least fixpoint is a standard fixpoint fact.
+        (Theorem~\ref{thm:termination}): finitely many positions up to the congruence iff the tree
+        is rational up to it. A coarser sound congruence folds more, up to a dead-subterm cycle the
+        finest one cannot (Remark~\ref{rem:deadfold}). Once $\Sh$ is given its positive
+        presentation (Remark~\ref{rem:positivity}), well-definedness of the least fixpoint is a
+        standard fixpoint fact.
   \item As an application, structural computation over cyclic data
         (Section~\ref{sec:application}). Interning the positions folds a guarded
         cyclic datum into a finite rational tree, so an \emph{ordinary} recursive
@@ -161,16 +170,20 @@ governed by rationality.
 \subsection{Terms and interned positions}\label{sec:interning}
 We work with pure $\lambda$-terms in de Bruijn form (avoiding $\alpha$-renaming);
 a node is labelled $\Lamsh$, $\Appsh$, or $\Varsh$. A \emph{position} is a subterm
-reached while computing a shape. Positions are \emph{interned}: two structurally
-equal positions are the same object, so identity is a pointer test, not a comparison
-of structure. Interning is the mechanism the results rest on. It makes the
-recurrence for $\Sh$ a memoisable dynamic program keyed by position, and it makes a
+reached while computing a shape. Positions are identified by a position congruence
+$\approx$ (Definition~\ref{def:congruence}); throughout we take the finest instance,
+\emph{interning}, where two structurally equal positions are the same object, so identity is a
+pointer test, not a comparison of structure. Interning is the mechanism the results rest on. It
+makes the recurrence for $\Sh$ a memoisable dynamic program keyed by position, and it makes a
 position a finite key on which $\mathrm{lfp}(T_P)$ folds a cycle: structural equality reduces to
 pointer equality. This interning is the hash-consing a lazy runtime already
-performs, so computing the least fixpoint is what the implementation does anyway.
-A term has finitely many positions exactly when its
-tree is \emph{rational} (finitely many distinct subtrees). A recursive definition
-produces such repetition directly, and so does a self-application, whose contractum
+performs, so computing the least fixpoint is what the implementation does anyway. A coarser sound
+congruence (modulo a decidable theory, or up to dead subterms) folds strictly more, at the cost of
+a richer identity test than a pointer comparison.
+A term has finitely many positions up to $\approx$ when its
+tree is \emph{rational} (finitely many distinct subtrees); for the finest congruence this can
+fail, and a coarser sound congruence recovers it (Theorem~\ref{thm:termination}). A recursive
+definition produces such repetition directly, and so does a self-application, whose contractum
 interns back to an existing position. No recursion binder belongs to the calculus:
 the $Y$ combinator produces the repetition that interning folds
 (Section~\ref{sec:valrec}).
@@ -225,13 +238,16 @@ for each $n \in \operatorname{Pos}(M)$: if $n=\Lamsh(\lambda x.N)$ then $N \in
 \operatorname{Pos}(M)$; if $n=\Appsh(f,a)$ then $f,a \in \operatorname{Pos}(M)$; and
 if $n=\Appsh(f,a)$ with $\Sh(f)=\Lamsh(\lambda x.\,\mathit{body})$ then the
 contractum $\mathit{body}[x\mathbin{:=}a] \in \operatorname{Pos}(M)$. Positions are
-taken up to syntactic identity (\emph{interning}), and $\operatorname{Pos}(M)$ is
-generated simultaneously with $\Sh$ (Definition~\ref{def:shapeop}) as one least
-fixpoint.
+taken up to a position congruence $\approx$ (Definition~\ref{def:congruence}), the
+default being syntactic identity (\emph{interning}, the finest instance), and
+$\operatorname{Pos}(M)$ is generated simultaneously with $\Sh$
+(Definition~\ref{def:shapeop}) as one least fixpoint.
 \end{definition}
 
 \begin{definition}[Rational term]\label{def:rationalterm}
-$M$ is \emph{rational} if $\operatorname{Pos}(M)$ is finite.
+$M$ is \emph{rational with respect to $\approx$} if the quotient $\Posq{M}$ is finite.
+For the finest congruence this is $\operatorname{Pos}(M)$ finite; a coarser sound congruence can
+make rational a term the finest one does not (Theorem~\ref{thm:termination}).
 \end{definition}
 
 \subsection{The shape relation}
@@ -249,6 +265,48 @@ $\{n : \Sh(n)=\bot\}$ \emph{by definition}. The weak-head shape (Definition~\ref
 instance we use throughout; head reduction under $\lambda$ is another. Every definition, theorem,
 and proof below is stated for an arbitrary (H-fo) head-evaluation.
 \end{definition}
+
+A second ingredient is also a parameter, and the rest of the paper turns on it: the
+\emph{identity} of positions, the equality on which a re-entry is recognised and a cycle folded.
+Interning by syntactic identity (Section~\ref{sec:interning}) is one choice. We isolate the
+property it must have, exactly as we did for the head-evaluation.
+
+\begin{definition}[Position congruence]\label{def:congruence}
+A \emph{position congruence} is an equivalence relation $\approx$ on $\operatorname{Pos}(M)$ that
+respects the descent (Definition~\ref{def:path}): if $n \approx n'$ then $\Sh(n)$ and $\Sh(n')$
+carry the same outermost label of the full signature, counting $\bot$ as a label that must match
+and $\Varsh_i$ with its index, and their demanded sub-positions (the children of $\Sh(n)$, the
+readout descent, not the raw syntactic subterms) are pairwise $\approx$-related. Being a
+congruence, $\approx$ lifts the shape operator $T^{\Sh}$ (Definition~\ref{def:shapeop}) and the
+readout functional $\Psi$ (Definition~\ref{def:readoutfun}) to the quotient
+$\operatorname{Pos}(M)/{\approx}$, where they remain monotone, so the least fixpoints are computed
+over the quotient. Syntactic (de Bruijn) identity is the finest congruence and the default
+instance; tree equality (Definition~\ref{def:btree}) is the coarsest. Between them lie congruence
+modulo a decidable theory and bisimulation. Every definition, theorem, and proof below is stated
+for an arbitrary position congruence, with syntactic identity as the default.
+\end{definition}
+
+The congruence is on the \emph{demanded descent}, so two positions may be $\approx$-identified
+while differing in a subterm the readout never descends into. This is what lets a coarser
+congruence fold positions that syntactic identity keeps apart (Section~\ref{sec:valrec}).
+
+\begin{remark}[Soundness is the congruence law]\label{rem:soundness}
+A congruence is \emph{sound} when it is contained in tree equality: $n \approx n'$ implies
+$\Btree(n)=\Btree(n')$, so folding by $\approx$ never changes the denotation. Write tree equality
+as the greatest fixpoint $\nu\Phi$ of the behavioural operator $\Phi$ on relations, where
+$n\,\Phi(R)\,n'$ holds iff $\Sh(n),\Sh(n')$ share the outermost label and their demanded children
+are pairwise $R$-related; then $\Btree(n)=\Btree(n')$ unfolds coinductively to exactly $\nu\Phi$.
+The congruence law of Definition~\ref{def:congruence} \emph{is} $\approx\,\subseteq\,\Phi(\approx)$,
+so by coinduction $\approx\,\subseteq\,\nu\Phi$: a congruence stated over the full signature is
+sound by construction. The only load-bearing clause is that $\bot$ must match a non-$\bot$ only
+with itself; folding $\bot$ into the outermost label makes the congruence law and soundness
+coincide. Syntactic identity is sound because it is the trivial $\Phi$-invariant: $\Sh$ is a
+function, so equal positions have equal shapes and identical children. To establish a coarser
+$\approx$ one discharges the same $\Phi$-invariant, either by congruence-closing tree-equal
+generators (the inductive instances), by exhibiting a bisimulation (the coinductive instances), or
+by a tree-preserving canonical map whose kernel it is (the dead-subterm fold of
+Section~\ref{sec:valrec}).
+\end{remark}
 
 \begin{definition}[Weak-head shape, an (H-fo) instance]\label{def:sh}
 The \emph{weak-head} shape relation $\Sh$ assigns to a node its outermost constructor after weak
@@ -403,38 +461,59 @@ head-evaluation does not terminate.
 \end{remark}
 
 \begin{remark}[When a readout terminates]\label{rem:termination}
-A single readout terminates iff the term has finitely many distinct interned
-positions, that is, iff its tree is \emph{rational}. An infinite but
+A single readout terminates iff the term has finitely many distinct positions up to $\approx$,
+that is, iff its tree is \emph{rational} with respect to $\approx$. An infinite but
 rational tree, the lazy cyclic list $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$
 written $Y\,(\mathtt{cons}\;0)$, folds under $\mathrm{lfp}(T_P)$ to a node that points to itself,
-a finite cyclic graph, and terminates. A \emph{non-rational} infinite tree, the stream of all
-naturals $\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has unboundedly many distinct
-positions and hence no finite representation: the readout produces ever-new positions
-and does not terminate. Termination is governed by rationality.
+a finite cyclic graph, and terminates. Two failure modes are distinct. A \emph{non-rational}
+infinite tree, the stream of all naturals $\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has
+unboundedly many distinct subtrees and hence no finite representation under \emph{any} sound
+congruence; the readout produces ever-new positions and does not terminate. A rational tree may
+still diverge under the \emph{finest} congruence yet fold under a coarser one
+(Theorem~\ref{thm:termination}). Termination is governed by rationality relative to $\approx$.
 \end{remark}
 
 \begin{theorem}[Termination]\label{thm:termination}
-For every term $M$, the term is rational ($\operatorname{Pos}(M)$ finite,
-Definition~\ref{def:rationalterm}) if and only if its readout halts; and in that case
-$\lfpT(M)$ is a rational tree (Definition~\ref{def:rational}). The converse of the last
-implication fails in general: positions are interned by syntactic identity, which is finer than
-tree equality, so syntactically distinct positions may share a subtree and
-tree rationality does not bound $\operatorname{Pos}(M)$ (Appendix~\ref{app:termination}
-gives a witness, a rational stream with infinitely many distinct tail positions). When
-$M$ is not rational the
-readout enumerates infinitely many distinct positions and diverges. Proof in
+For every term $M$ and decidable sound congruence $\approx$, the term is rational with respect to
+$\approx$ ($\Posq{M}$ finite, Definition~\ref{def:rationalterm}) if and only if its readout halts;
+and in that case $\lfpT(M)$ is a rational tree (Definition~\ref{def:rational}). The converse of the
+last implication fails for the finest congruence, and the gap demonstrates the parameter's
+spectrum: syntactic identity is strictly finer than tree equality, so syntactically distinct
+positions may share a subtree, and tree rationality does not bound $\operatorname{Pos}(M)$
+(Appendix~\ref{app:termination} gives a witness, a rational stream with infinitely many distinct
+tail positions, on which interning diverges while a coarser sound congruence, in the limit tree
+equality, folds it to a finite quotient). When $M$ is not rational with respect to $\approx$ the
+readout enumerates infinitely many distinct classes and diverges. Proof in
 Appendix~\ref{app:termination}.
 \end{theorem}
+
+\begin{remark}[Folding the converse-failure witness]\label{rem:deadfold}
+The witness $M=Y\,F\,\underline 0$ with $F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$
+has a constant head and threads the index $n$ through an argument the readout never demands, so its
+tail positions $Y\,F\,\underline k$ are pairwise syntactically distinct yet all denote the one
+constant-$0$ stream. The coarser congruence that folds it identifies positions differing only in a
+\emph{dead} subterm, one occurring only in argument slots of the recursion (Remark~\ref{rem:soundness},
+the canonical-map route). It is sound because a dead subterm cannot reach the tree, strictly coarser
+than syntactic identity (it folds the witness), and strictly finer than tree equality (it folds only
+by deadness, never by deciding arbitrary tree equality). Recognising deadness exactly is the
+neededness problem and undecidable in general, but a conservative decidable analysis certifies it
+here, so this is a decidable sound congruence on which $M$ is rational. Neither congruence closure nor
+bisimulation reaches it: the identity $Y\,F\,\underline j \approx Y\,F\,\underline k$ is coinductive
+and the presentation is infinite, so the fold needs the dead subterm erased, a tree-preserving map,
+not a closure.
+\end{remark}
 
 % =====================================================================
 \section{Consistency: \texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)} is the tree}
 \label{sec:grounding}
 % =====================================================================
 \begin{theorem}[Consistency]\label{thm:adequacy}
-For every term $M$, the least-fixpoint readout $\mathrm{lfp}(T_P)(M)$
-(Definition~\ref{def:lfpreading}) is, in $D$, the tree of the (H-fo) head-evaluation
-(Definition~\ref{def:hfo}) at $M$: it agrees node for node with the coinductive readout that the
-head-evaluation enumerates. Proof in Appendix~\ref{app:adequacy}.
+For every term $M$ and sound position congruence $\approx$ (Definition~\ref{def:congruence}), the
+least-fixpoint readout $\mathrm{lfp}(T_P)(M)$ over $\Posq{M}$ (Definition~\ref{def:lfpreading}) is,
+in $D$, the tree of the (H-fo) head-evaluation (Definition~\ref{def:hfo}) at $M$: it agrees node
+for node with the coinductive readout that the head-evaluation enumerates. Soundness is what makes
+this hold over the quotient, since every position in a class then shares one tree. Proof in
+Appendix~\ref{app:adequacy}.
 \end{theorem}
 
 \noindent
@@ -615,9 +694,24 @@ guarded-cycle case---a rational denotation with finitely many distinct
 subtrees---reached by different routes. The point of difference is one of
 position rather than capability: those approaches add machinery (a unification
 discipline, a separate type-level system), whereas $\mathrm{lfp}(T_P)$ is a re-reading of the
-$\lambda$-calculus's own tree semantics, obtained by interning its positions and
-taking a least fixpoint, with nothing added to the calculus
+$\lambda$-calculus's own tree semantics, obtained by choosing a sound position congruence
+(interning is the finest) and taking a least fixpoint, with nothing added to the calculus
 (Theorem~\ref{thm:adequacy}).
+
+\paragraph{The spectrum of position congruences}
+The congruence parameter (Definition~\ref{def:congruence}) is bounded below by syntactic identity
+and above by tree equality, and the two ends have opposite fixpoint character. The inductive end is
+congruence closure of tree-equal generators, realised by e-graphs and equality saturation
+\citeTODO{nelson-oppen, egraphs}; it folds whatever finitely many sound equations generate, the
+tabled and least-Herbrand reading of Section~\ref{sec:reach} \citeTODO{tamaki-sato, tabling-slg}.
+The coinductive end is bisimulation, tree equality being its greatest fixpoint; deciding it on the
+rational fragment is exactly the cyclic-tree and equirecursive-type procedure
+\citeTODO{courcelle, amadio-cardelli, brandt-henglein}, and computing it during construction is
+coinductive resolution \citeTODO{simon-coinductive}. A congruence closure cannot reach a
+non-finitely-generated identity, so the converse-failure witness (Remark~\ref{rem:deadfold}) folds
+only by a third route, a tree-preserving canonical map that erases the dead subterm, certified by a
+neededness analysis. Interning is the finest, cheapest point on this line; the others trade a richer
+identity test for a larger rational fragment.
 
 \paragraph{Cyclic $\lambda$-terms and recursion.}
 Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and the call-by-need
@@ -737,6 +831,9 @@ terminate. For an (H-fo) head-evaluation (Definition~\ref{def:hfo}) this is the 
 diverges, so the identification is immediate and needs no external input.
 
 \begin{proof}[Proof of Theorem~\ref{thm:adequacy}]
+Fix a sound congruence $\approx$ (Definition~\ref{def:congruence}). By soundness every position in
+a class shares one tree (Remark~\ref{rem:soundness}), so the readout over $\Posq{M}$ and the
+per-position readout of Definition~\ref{def:btree} agree, and the induction below is verbatim.
 Let $R=\mathrm{lfp}(T_P)=\operatorname{lfp}(\Psi)$. Both $R$ and the tree the head-evaluation
 enumerates label a valid path $p$ by a function of $\Sh(\subt{M}{p})$: $\Varsh_i$, $\Lamsh$ (with
 child $p\,\dlam$), $\Appsh$ (with children $p\,\dhead,p\,\darg$), or $\bot$
@@ -753,19 +850,22 @@ The readout descends only through positions of $\operatorname{Pos}(M)$
 (Definition~\ref{def:positions}): the constructor children $N,f,a$ and, via the
 head-redex clause of $\Sh$, the contracta are exactly its generators.
 
-\emph{Rational $\Rightarrow$ halts.} If $\operatorname{Pos}(M)$ is finite, the
+Throughout, $\approx$ is a decidable sound congruence, so the tabling key (the $\approx$-class) is
+testable; the readout descends through classes of $\Posq{M}$.
+
+\emph{Rational $\Rightarrow$ halts.} If $\Posq{M}$ is finite, the
 $\mathrm{lfp}(T_P)$ computation tables over a finite set and halts.
 
-\emph{Halts $\Rightarrow$ rational.} Contrapositive: if $\operatorname{Pos}(M)$ is
-infinite then the descent reaches infinitely many distinct positions and the
+\emph{Halts $\Rightarrow$ rational.} Contrapositive: if $\Posq{M}$ is
+infinite then the descent reaches infinitely many distinct classes and the
 $\mathrm{lfp}(T_P)$ tabling never saturates, so it does not halt.
 
 \emph{Rational $\Rightarrow$ tree rational.} The subtrees of $R(M)$ are
-$\{R(\subt{M}{p})\}_p=\{R(n):n\in\operatorname{Pos}(M)\}$, finite, so $R(M)$ is
+$\{R(\subt{M}{p})\}_p=\{R(n):n\in\Posq{M}\}$, finite, so $R(M)$ is
 rational (Definition~\ref{def:rational}).
 
-\emph{Failure of the converse.} Interning identifies positions by \emph{syntactic}
-(de Bruijn) identity, which is strictly finer than tree equality, so the map
+\emph{Failure of the converse for the finest congruence.} Interning identifies positions by
+\emph{syntactic} (de Bruijn) identity, which is strictly finer than tree equality, so the map
 $n\mapsto R(n)$ need not be injective: syntactically distinct positions can carry the
 same tree. A witness is $M=Y\,F\,\underline 0$ with
 $F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$. The head of every
@@ -774,10 +874,12 @@ $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$ with finitely many distinct subtr
 but the tail positions $Y\,F\,\underline k$ (with $\underline k=\mathtt{succ}^{k}\,
 \underline 0$) are pairwise syntactically distinct and never intern together, since
 $\Sh$ does not reduce the $\mathtt{succ}^{k}\,\underline 0$ buried in the argument.
-Hence $\operatorname{Pos}(M)$ is infinite while $\{R(n)\}$ is finite, and the readout
-diverges on a rational tree. So tree rationality does not entail finite
-$\operatorname{Pos}(M)$: folding by position identity is strictly finer than folding by
-subtree.
+Hence $\operatorname{Pos}(M)$ is infinite while $\{R(n)\}$ is finite, and interning
+diverges on a rational tree. A coarser sound congruence identifying the tail positions (they differ
+only in the dead argument $\mathtt{succ}^{k}\,\underline 0$, so they are tree-equal) makes $\Posq{M}$
+finite and the readout halt (Remark~\ref{rem:deadfold}); in the limit tree equality always does. So
+tree rationality entails finite $\Posq{M}$ only as $\approx$ approaches tree equality: folding by the
+finest position identity is strictly finer than folding by subtree.
 \end{proof}
 
 % =====================================================================
