@@ -21,9 +21,10 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import final
+from typing import Hashable, final
 
 from first_order_lambda._ast import Node, ShapeBottom
+from first_order_lambda._congruence import IDENTITY_CONGRUENCE, Congruence
 from first_order_lambda._shape import AppShape, LamShape, VarShape, shape_of
 
 
@@ -65,35 +66,50 @@ class AppTree(TreeNode):
     argument: TreeNode
 
 
-def readout(node: Node, *, fold_cycles: bool = True) -> TreeNode:
+def readout(
+    node: Node,
+    *,
+    fold_cycles: bool = True,
+    congruence: Congruence = IDENTITY_CONGRUENCE,
+) -> TreeNode:
     """Read out the tree of ``node`` off the shape relation ``Sh``.
 
     ``fold_cycles=True`` is the least fixpoint ``lfp`` (the denotation; folds a guarded cycle
     into a finite rational graph). ``fold_cycles=False`` is the finite-budget first-iteration
     reading ``T \\uparrow 1`` (cuts a guarded cycle to the ``∅`` leaf, distinct from ``⊥``).
+
+    ``congruence`` is the position equality the fold keys on (Definition ``def:congruence``). The
+    default ``IDENTITY_CONGRUENCE`` is the finest instance (syntactic-identity interning, a pointer
+    test); a coarser sound congruence folds more, so a term with infinitely many finest-congruence
+    positions can still fold to a finite rational graph.
     """
-    return _read(node, {}, {}, fold_cycles)
+    return _read(node, {}, {}, fold_cycles, congruence)
 
 
 def _read(
     node: Node,
-    memo: dict[int, TreeNode],
-    in_progress: dict[int, TreeNode],
+    memo: dict[Hashable, TreeNode],
+    in_progress: dict[Hashable, TreeNode],
     fold_cycles: bool,
+    congruence: Congruence,
 ) -> TreeNode:
     # Fold (memoise / emit a back-reference) only at CLOSED positions. A position with free
     # de Bruijn variables means different things under different binder contexts, so folding
-    # it by node identity would misread those variables across the back-edge. Closed positions
-    # carry no free variable, so folding them is exact; open subpositions are rebuilt.
+    # it across the back-edge would misread those variables. Closed positions carry no free
+    # variable, so folding them is exact; open subpositions are rebuilt.
+    #
+    # WHICH closed positions count as "the same" is the congruence: the fold keys on
+    # ``congruence.key(node)`` rather than ``id(node)``. For the default IdentityCongruence the
+    # key IS ``id(node)``, so this is bit-for-bit the pure-interning readout.
     closed = node.loose_bound == 0
-    node_id = id(node)
+    key = congruence.key(node)
     if closed:
-        folded = in_progress.get(node_id)
+        folded = in_progress.get(key)
         if folded is not None:
             # Re-entry at a guarded position: fold (lfp) or cut to the guarded-cut leaf ∅
             # (the first-iteration reading), kept distinct from the meaningless ⊥.
             return folded if fold_cycles else CutLeaf()
-        cached = memo.get(node_id)
+        cached = memo.get(key)
         if cached is not None:
             return cached
     head = shape_of(node)
@@ -101,28 +117,28 @@ def _read(
         case ShapeBottom.BOTTOM:
             leaf: TreeNode = BottomLeaf()
             if closed:
-                memo[node_id] = leaf
+                memo[key] = leaf
             return leaf
         case VarShape(index=index):
             return VarLeaf(index=index)
         case LamShape(body=body):
             lam_tree = LamTree(body=BottomLeaf())
             if closed:
-                in_progress[node_id] = lam_tree
-            lam_tree.body = _read(body, memo, in_progress, fold_cycles)
+                in_progress[key] = lam_tree
+            lam_tree.body = _read(body, memo, in_progress, fold_cycles, congruence)
             if closed:
-                del in_progress[node_id]
-                memo[node_id] = lam_tree
+                del in_progress[key]
+                memo[key] = lam_tree
             return lam_tree
         case AppShape(function=function, argument=argument):
             app_tree = AppTree(function=BottomLeaf(), argument=BottomLeaf())
             if closed:
-                in_progress[node_id] = app_tree
-            app_tree.function = _read(function, memo, in_progress, fold_cycles)
-            app_tree.argument = _read(argument, memo, in_progress, fold_cycles)
+                in_progress[key] = app_tree
+            app_tree.function = _read(function, memo, in_progress, fold_cycles, congruence)
+            app_tree.argument = _read(argument, memo, in_progress, fold_cycles, congruence)
             if closed:
-                del in_progress[node_id]
-                memo[node_id] = app_tree
+                del in_progress[key]
+                memo[key] = app_tree
             return app_tree
         case _:
             raise TypeError(f"Unknown shape {head!r}")
