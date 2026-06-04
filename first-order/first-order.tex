@@ -511,6 +511,35 @@ $\beta$-equality of values.
 \label{sec:application}
 % =====================================================================
 
+\subsection{Decidability and dissolved problems}\label{sec:variants}
+On the rational fragment the tree is a finite graph, so its equality is decidable; and a cluster of
+problems that need added machinery in other settings does not arise here.
+
+\begin{corollary}[Decidable tree equality on the rational fragment]\label{cor:decidable}
+Restricted to rational terms (Definition~\ref{def:rationalterm}), equality of the trees
+$\mathrm{lfp}(T_P)(M) = \mathrm{lfp}(T_P)(N)$ is decidable. By Theorem~\ref{thm:termination} each
+tree is a finite rational graph over interned positions (Theorem~\ref{thm:adequacy}); these
+graphs are computable, since the head-evaluation terminates at each position
+(Proposition~\ref{prop:shwd}) and the position set closes after finitely many steps, while
+position identity is syntactic equality of interned terms. Equality of two rational trees given by
+finite graphs is then decided by the standard cycle-detecting bisimulation \citeTODO{courcelle}.
+\end{corollary}
+
+\begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
+Several problems that need added machinery in other settings do not arise here.
+Observing sharing or cyclicity in a pure language needs an observable-sharing
+primitive or a circular-program idiom \citeTODO{gill, bird}; here sharing is the
+identity of interned positions. Representing a cyclic structure needs an explicit
+recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here $Y$
+generates the repetition and interning folds it, with no binder added to the
+calculus. Deciding equality over cyclic structures needs a separate unification
+discipline or recursive-type system \citeTODO{colmerauer, amadio-cardelli,
+brandt-henglein}; here it is cycle detection over positions within the calculus
+(Corollary~\ref{cor:decidable}). Terminating a recursive query over a cyclic datum
+needs a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}; here the query's own
+applications intern and fold (Section~\ref{sec:reach}).
+\end{corollary}
+
 \subsection{Structural computation over cyclic data}
 \label{sec:reach}
 A recursive query over cyclic data is an ordinary $\lambda$-function. Take the naive
