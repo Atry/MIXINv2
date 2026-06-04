@@ -1,5 +1,5 @@
 % =====================================================================
-%  A First-Order Semantics for the lambda-Calculus
+%  First-Order Semantics for the lambda-Calculus
 % ---------------------------------------------------------------------
 %  Shared body. This file carries NO \documentclass: it is \input by two
 %  entry points that supply the class (mimicking ../inheritance-calculus):
@@ -63,20 +63,7 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-The tree semantics of a $\lambda$-term, for any tree presented by a monotone first-order
-head-evaluation, is the readout of a single first-order relation: the \emph{shape} relation
-$\Sh$ over the positions of the term. $\Sh$'s clauses are positive, so its consequence operator
-is monotone and the tree is its least fixpoint $\mathrm{lfp}(T_P)$. Because positions are
-identified up to a \emph{position congruence}, the least fixpoint \emph{folds}
-a guarded cycle into a finite rational graph: a lazy infinite list, written with $Y$, becomes a
-node that points to itself. So $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of
-head reduction: it agrees with the tree head reduction enumerates, and additionally terminates
-where head reduction diverges. A single readout terminates iff the tree is rational up to the
-chosen identity of positions: a guarded cyclic list folds to a finite graph, while the
-non-rational stream of all naturals does not. The development is parametric in two
-choices, a monotone first-order head-evaluation and a sound \emph{position congruence}, the
-equality on which a cycle is folded; the weak-head shape and syntactic identity used
-throughout are the respective finest instances, and a coarser congruence folds strictly more.
+We give first-order, monotone, least-fixpoint semantics for the $\lambda$-calculus over the domain of head reduction trees, as adequate refinements of head reduction. When evaluated by tabling, $\Omega$ terminates as $\bot$, and some other pure $\lambda$-terms converge to cyclic graphs.
 \end{abstract}
 
 \keywords{first-order semantics, least fixpoint, rational trees, position congruence,
@@ -101,7 +88,7 @@ Once the tree is presented this way, one observation becomes immediate:
 $\Sh$'s clauses are positive, so the immediate-consequence operator $T_P$ that reads
 off the tree is monotone, and the tree is its least fixpoint $\mathrm{lfp}(T_P)$
 (Knaster--Tarski). Because positions are taken up to a congruence, $\mathrm{lfp}(T_P)$ folds a guarded cycle
-into a finite rational graph, so it is a \emph{consistent monotone refinement} of head
+into a finite rational graph, so it is an \emph{adequate monotone refinement} of head
 reduction: it agrees with the tree head reduction enumerates, and additionally terminates where
 head reduction diverges, deciding an unproductive cycle as $\bot$ in finite time.
 
@@ -136,7 +123,7 @@ $\Sh$.
         (Sections~\ref{sec:firstorder}, \ref{sec:grounding}). The congruence sits on a spectrum
         from syntactic identity to tree equality; soundness is the congruence law read
         coinductively (Remark~\ref{rem:soundness}), so it costs nothing to fix.
-  \item $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of head reduction
+  \item $\mathrm{lfp}(T_P)$ is an \emph{adequate monotone refinement} of head reduction
         (Sections~\ref{sec:grounding}, \ref{sec:valrec}): it is the tree
         (Theorem~\ref{thm:adequacy}), so it agrees with the tree head reduction enumerates, and
         because positions are taken up to the congruence it folds a guarded cycle into the rational subtree and
@@ -551,10 +538,10 @@ still diverges on it.
 \end{remark}
 
 % =====================================================================
-\section{Consistency: \texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)} is the tree}
+\section{Adequacy: \texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)} is the tree}
 \label{sec:grounding}
 % =====================================================================
-\begin{theorem}[Consistency]\label{thm:adequacy}
+\begin{theorem}[Adequacy]\label{thm:adequacy}
 For every term $M$ and sound position congruence $\approx$ (Definition~\ref{def:congruence}), the
 least-fixpoint readout $\mathrm{lfp}(T_P)(M)$ over $\Posq{M}$ (Definition~\ref{def:lfpreading}) is,
 in $D$, the tree of the (H-fo) head-evaluation (Definition~\ref{def:hfo}) at $M$: it agrees node
@@ -835,7 +822,7 @@ the least fixpoint of its monotone consequence operator. Head reduction unfolds 
 diverges on a cyclic term; the least fixpoint, computed by merging partial trees over
 positions up to the congruence, folds it, so a lazy infinite list becomes a node that points to
 itself and the readout terminates on every tree rational with respect to that congruence. So
-$\mathrm{lfp}(T_P)$ is a consistent monotone refinement of head reduction: the same tree, computed
+$\mathrm{lfp}(T_P)$ is an adequate monotone refinement of head reduction: the same tree, computed
 effectively.
 
 % =====================================================================
@@ -894,7 +881,7 @@ iterations'', concluding $\Sh(n)=\bot$ iff the head-evaluation from $n$ diverges
 statement and both endpoints are fixed; only the bookkeeping of the measure remains.}
 \end{proof}
 
-\section{Consistency (Theorem~\ref{thm:adequacy})}\label{app:adequacy}
+\section{Adequacy (Theorem~\ref{thm:adequacy})}\label{app:adequacy}
 \begin{lemma}[Meaningless leaves]\label{lem:rootactive}
 $\Sh(n)=\bot$ iff the tree at $n$ is $\bot$.
 \end{lemma}
