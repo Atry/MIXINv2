@@ -244,6 +244,8 @@ def _applies_recursion(term: Node, recursion_node: Node) -> bool:
 
 def _is_free(term: Node, index: int) -> bool:
     """Whether de Bruijn ``index`` occurs free in ``term``."""
+    if term.loose_bound <= index:
+        return False
     match term:
         case Var(index=occurrence):
             return occurrence == index
@@ -275,6 +277,8 @@ def _parameter_dead(term: Node, *, dead_index: int, recursion_node: Node) -> boo
     identity since it is a closed interned position). Under that condition the parameter is never
     demanded: the recursion's output is independent of it, coinductively, so erasing it preserves
     the tree. A finite syntactic test of a greatest-fixpoint property."""
+    if term.loose_bound <= dead_index:
+        return True
     match term:
         case Var(index=index):
             return index != dead_index
@@ -322,7 +326,7 @@ class RecursionArgumentRule:
 
 
 @final
-@dataclass(kw_only=True, slots=True, frozen=True, weakref_slot=True)
+@dataclass(kw_only=True, slots=True, weakref_slot=True, eq=False)
 class DeadSubtermCongruence:
     """Equality up to dead subterms (Method B): the key is the syntax with every dead-argument
     slot erased to a canonical placeholder. A tree-preserving canonical map, so two positions that
@@ -333,22 +337,39 @@ class DeadSubtermCongruence:
     where neither e-graph reaches: it is not a congruence closure (it does not fold redex with
     reduct) but a canonicalising erasure, so it captures the coinductive identity the witness
     needs while staying a finite, terminating syntactic pass.
+
+    The canonical form of each node is cached by ``id(node)`` (safe because nodes are interned),
+    so repeated ``key()`` calls are ``O(1)`` after the first traversal.
     """
 
     rules: Final[tuple[DeadArgumentRule, ...]]
+    _cache: Final[dict[int, Hashable]] = field(default_factory=dict)
 
     def key(self, node: Node) -> Hashable:
-        return self._canonical(node)
+        node_id = id(node)
+        cached = self._cache.get(node_id)
+        if cached is not None:
+            return cached
+        result = self._canonical(node)
+        self._cache[node_id] = result
+        return result
 
     def _canonical(self, node: Node) -> Hashable:
+        node_id = id(node)
+        cached = self._cache.get(node_id)
+        if cached is not None:
+            return cached
         match node:
             case Var(index=index):
-                return ("var", index)
+                result: Hashable = ("var", index)
             case Lam(body=body):
-                return ("lam", self._canonical(body))
+                result = ("lam", self._canonical(body))
             case App(function=function, argument=argument):
                 if any(rule.is_dead(node) for rule in self.rules):
-                    return ("app", self._canonical(function), _DEAD_ARGUMENT)
-                return ("app", self._canonical(function), self._canonical(argument))
+                    result = ("app", self._canonical(function), _DEAD_ARGUMENT)
+                else:
+                    result = ("app", self._canonical(function), self._canonical(argument))
             case _:
                 raise TypeError(f"Unknown node {node!r}")
+        self._cache[node_id] = result
+        return result

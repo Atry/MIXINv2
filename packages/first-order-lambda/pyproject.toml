@@ -26,10 +26,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
-dependencies = ["fixpoints"]
+dependencies = ["fixpoints", "mixinv2"]
 
 [tool.uv]
-sources = { fixpoints = { workspace = true } }
+sources = { fixpoints = { workspace = true }, mixinv2 = { workspace = true } }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/first_order_lambda"]
