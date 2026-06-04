@@ -51,6 +51,7 @@ topLevel@{ ... }: {
           "overlay-language"
           "overlay-library"
           "fixpoints"
+          "first-order-lambda"
         ];
 
         editableOverlay = workspace.mkEditablePyprojectOverlay {
