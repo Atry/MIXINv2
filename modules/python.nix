@@ -115,6 +115,43 @@ topLevel@{ ... }: {
 
         # --- Supplementary material for double-blind review ---
 
+        # Identity anonymization shared by every supplementary bundle. The from/to pairs are
+        # rendered into substituteInPlace arguments; the leak check fails the build if any
+        # de-anonymized identity survives.
+        identityReplacements = [
+          { from = "yang-bo@yang-bo.com"; to = "anonymous@example.com"; }
+          { from = "Yang, Bo"; to = "Anonymous, Author"; }
+          { from = "Bo Yang"; to = "Anonymous Author"; }
+          { from = "Figure AI Inc."; to = "Anonymous Institution"; }
+          { from = "Figure AI"; to = "Anonymous Institution"; }
+          {
+            from = "github.com/Atry/MIXINv2";
+            to = "github.com/anonymous-author/anonymous-repo";
+          }
+        ];
+
+        mkReplaceArgs = replacements:
+          lib.concatMapStringsSep " "
+          (replacement: "--replace-warn '${replacement.from}' '${replacement.to}'")
+          replacements;
+
+        assertNoIdentityLeak = dir: ''
+          for identityNeedle in "Bo Yang" "yang-bo" "Figure AI"; do
+            if grep -rli "$identityNeedle" ${dir}; then
+              echo "FAIL: identity leak '$identityNeedle'" >&2; exit 1
+            fi
+          done
+          if grep -rl "Atry" ${dir}; then
+            echo "FAIL: identity leak 'Atry'" >&2; exit 1
+          fi
+        '';
+
+        # Positive check that anonymization ran: the author line 'Yang, Bo' becomes
+        # 'Anonymous, Author', which every bundle's package metadata carries.
+        assertAnonymized = dir: ''
+          grep -rl "Anonymous, Author" ${dir} > /dev/null
+        '';
+
         sphinxEnv = (pythonSet.mkVirtualEnv "sphinx-env"
           (builtins.removeAttrs workspace.deps.all
             [ "mixinv2-workspace" ])).overrideAttrs
@@ -268,12 +305,7 @@ topLevel@{ ... }: {
             substituteInPlace \
               **/*.py **/*.toml **/*.lock **/*.json **/*.md **/*.rst \
               **/*.cfg **/*.txt **/*.yaml **/*.yml **/*.ini \
-              --replace-warn 'yang-bo@yang-bo.com' 'anonymous@example.com' \
-              --replace-warn 'Yang, Bo' 'Anonymous, Author' \
-              --replace-warn 'Bo Yang' 'Anonymous Author' \
-              --replace-warn 'Figure AI Inc.' 'Anonymous Institution' \
-              --replace-warn 'Figure AI' 'Anonymous Institution' \
-              --replace-warn 'github.com/Atry/MIXINv2' 'github.com/anonymous-author/anonymous-repo' \
+              ${mkReplaceArgs identityReplacements} \
               --replace-warn 'github.com/Atry/overlay' 'github.com/anonymous-author/anonymous-repo' \
               --replace-warn 'github.com/Atry/MIXIN' 'github.com/anonymous-author/anonymous-repo' \
               --replace-warn "'Atry'" "'anonymous-author'" \
@@ -341,18 +373,7 @@ topLevel@{ ... }: {
             unzip $out -d $TMPDIR/verify
 
             # No identity leaks
-            if grep -rli "Bo Yang" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Bo Yang'" >&2; exit 1
-            fi
-            if grep -rli "yang-bo" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'yang-bo'" >&2; exit 1
-            fi
-            if grep -rli "Figure AI" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Figure AI'" >&2; exit 1
-            fi
-            if grep -rl "Atry" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Atry'" >&2; exit 1
-            fi
+            ${assertNoIdentityLeak "$TMPDIR/verify/supplementary-material/"}
             if grep -rl "2602.16291" $TMPDIR/verify/supplementary-material/; then
               echo "FAIL: Found arxiv self-reference '2602.16291'" >&2; exit 1
             fi
@@ -379,12 +400,115 @@ topLevel@{ ... }: {
             fi
 
             # Anonymization applied
-            grep -rl "Anonymous Author" $TMPDIR/verify/supplementary-material/ > /dev/null
+            ${assertAnonymized "$TMPDIR/verify/supplementary-material/"}
 
             # Integration test (uv sync + pytest) requires network access,
             # so it cannot run in the Nix sandbox. Run manually:
             #   cd /tmp && unzip result && cd supplementary-material
             #   uv sync && uv run pytest tests/ packages/mixinv2-examples/tests/
+          '';
+        };
+
+        # --- Supplementary material for the first-order-semantics paper ---
+        # A standalone bundle of first-order-lambda and its only workspace dependency,
+        # fixpoints, with a minimal virtual-workspace root so a reviewer can resolve and run
+        # it without the rest of MIXINv2.
+
+        firstOrderSupplementarySourceFiles = lib.fileset.toSource {
+          root = ../.;
+          fileset = lib.fileset.unions [
+            ../packages/first-order-lambda/src
+            ../packages/first-order-lambda/tests
+            ../packages/first-order-lambda/pyproject.toml
+            ../packages/first-order-lambda/README.md
+            ../packages/fixpoints/src
+            ../packages/fixpoints/pyproject.toml
+            ../packages/fixpoints/README.md
+            ../packages/fixpoints/tests
+            ../LICENSE
+          ];
+        };
+
+        firstOrderReviewerReadme = pkgs.writeText "README.md" ''
+          # First-Order Semantics for the lambda-Calculus -- Supplementary Material
+
+          This archive contains `first-order-lambda`, an executable first-order-shape-relation
+          interpreter for the pure lambda-calculus, together with its only dependency
+          `fixpoints`.
+
+          ## Directory structure
+
+          - `packages/first-order-lambda/src/first_order_lambda/` -- the interpreter: the
+            weak-head shape relation `Sh`, the least-fixpoint readout, and four pluggable
+            position congruences.
+          - `packages/first-order-lambda/tests/` -- the paper's examples as tests, including the
+            cyclic stream `Y (cons 0)`, the unproductive cycles `Omega` and `Y (lambda x. x)`,
+            the naive walk, and the ordinary `map` folding a cyclic list.
+          - `packages/fixpoints/src/fixpoints/` -- least-fixpoint cached-property infrastructure.
+
+          ## Running tests
+
+          Requires Python >= 3.13 and [uv](https://docs.astral.sh/uv/).
+
+          ```
+          uv sync
+          uv run pytest packages/first-order-lambda/tests packages/fixpoints/tests
+          ```
+        '';
+
+        firstOrderWorkspacePyproject = pkgs.writeText "pyproject.toml" ''
+          [tool.uv.workspace]
+          members = ["packages/first-order-lambda", "packages/fixpoints"]
+        '';
+
+        firstOrderSupplementaryMaterial = pkgs.stdenv.mkDerivation {
+          name = "first-order-supplementary-material.zip";
+          src = firstOrderSupplementarySourceFiles;
+          nativeBuildInputs = [ pkgs.zip pkgs.unzip ];
+
+          buildPhase = ''
+            cd ..
+            mv source first-order-supplementary-material
+            cd first-order-supplementary-material
+
+            # A minimal virtual-workspace root over just the two packages, and a
+            # reviewer-oriented README. No uv.lock: the reviewer locks the two-package
+            # workspace fresh, avoiding references to the absent MIXINv2 members.
+            cp ${firstOrderWorkspacePyproject} pyproject.toml
+            cp ${firstOrderReviewerReadme} README.md
+
+            # Anonymize identity in the package metadata (authors, repository URL).
+            shopt -s globstar nullglob
+            substituteInPlace \
+              **/*.py **/*.toml **/*.md **/*.rst **/*.txt **/*.cfg \
+              ${mkReplaceArgs identityReplacements}
+            shopt -u globstar nullglob
+
+            cd ..
+            zip -r --latest-time \
+              $TMPDIR/first-order-supplementary-material.zip \
+              first-order-supplementary-material
+          '';
+
+          installPhase = ''
+            cp $TMPDIR/first-order-supplementary-material.zip $out
+          '';
+
+          doInstallCheck = true;
+          installCheckPhase = ''
+            unzip $out -d $TMPDIR/verify
+            base=$TMPDIR/verify/first-order-supplementary-material
+
+            # No identity leaks.
+            ${assertNoIdentityLeak "$base"}
+
+            # Both packages present.
+            test -d $base/packages/first-order-lambda/src/first_order_lambda
+            test -d $base/packages/first-order-lambda/tests
+            test -d $base/packages/fixpoints/src/fixpoints
+
+            # Anonymization applied.
+            ${assertAnonymized "$base"}
           '';
         };
       in {
@@ -394,6 +518,7 @@ topLevel@{ ... }: {
           (old: { venvIgnoreCollisions = [ "*" ]; });
         packages.mixinv2-dev-env = mixinv2-dev-env;
         packages.supplementary-material = supplementaryMaterial;
+        packages.first-order-supplementary-material = firstOrderSupplementaryMaterial;
 
         ml-ops.devcontainer.devenvShellModule = {
           packages = [ mixinv2-dev-env pkgs.uv ];
