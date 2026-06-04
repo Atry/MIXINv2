@@ -23,8 +23,6 @@ from typing import TYPE_CHECKING, Callable, cast, final
 from fixpoints._core import fixpoint_cached_property
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable
-
     from first_order_lambda._shape import Shape
 
 
@@ -49,18 +47,6 @@ class Node(ABC):
     def loose_bound(self) -> int:
         """One past the largest free de Bruijn index (``0`` iff the node is closed)."""
         return _loose_bound(self)
-
-    @cached_property
-    def canonical(self) -> "Hashable":
-        """The dead-subterm canonical form: syntax with every dead-argument slot erased.
-
-        Reads the globally configured ``dead_argument_rules`` (set by
-        ``DeadSubtermCongruence.__post_init__`` or by a MIXINv2 ``@eager`` resource). Cached
-        per node; the cache is valid for one rule configuration per session.
-        """
-        from first_order_lambda._congruence import compute_canonical
-
-        return compute_canonical(self)
 
     @fixpoint_cached_property(bottom=lambda: BOTTOM)
     def shape(self) -> "Shape | ShapeBottom":
@@ -131,12 +117,6 @@ def make_app(function: Node, argument: Node) -> App:
             lambda: App(function=function, argument=argument),
         ),
     )
-
-
-def clear_canonical_cache() -> None:
-    """Invalidate every node's ``canonical`` cache. Called when ``dead_argument_rules`` changes."""
-    for node in _intern.values():
-        node.__dict__.pop("canonical", None)
 
 
 def _loose_bound(node: Node) -> int:

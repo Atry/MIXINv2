@@ -603,10 +603,14 @@ name = "first-order-lambda"
 source = { editable = "packages/first-order-lambda" }
 dependencies = [
     { name = "fixpoints" },
+    { name = "mixinv2" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "fixpoints", editable = "packages/fixpoints" }]
+requires-dist = [
+    { name = "fixpoints", editable = "packages/fixpoints" },
+    { name = "mixinv2", editable = "packages/mixinv2" },
+]
 
 [[package]]
 name = "fixpoints"
