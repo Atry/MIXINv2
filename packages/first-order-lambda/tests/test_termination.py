@@ -1,4 +1,4 @@
-"""When a single readout terminates: iff the Berarducci tree is rational.
+"""When a single readout terminates: iff the tree is rational.
 
 An infinite singly-linked list is representable when it is *rational* (finitely many distinct
 interned positions): a cyclic list folds to a finite representation and the readout
@@ -21,7 +21,7 @@ from fixpoints._core import FixpointRecursionError, fixpoint_cached_property
 
 from first_order_lambda._dsl import app, build, lam
 from first_order_lambda._prelude import IDENTITY, SUCC, Y, ZERO, cons
-from first_order_lambda._readout import berarducci, render
+from first_order_lambda._readout import readout, render
 from first_order_lambda._shape import ReductionBudgetExceeded, reduction_budget
 
 # An infinite RATIONAL singly-linked list: cons 0 (cons 0 (...)), finitely many positions.
@@ -33,7 +33,7 @@ NATS = build(app(app(Y, lam(lambda self_: lam(lambda n: cons(n, app(self_, app(S
 
 def test_infinite_cyclic_list_is_representable() -> None:
     # Infinite but rational: the readout folds it into a finite cyclic representation.
-    assert "#" in render(berarducci(CYCLIC_LIST))
+    assert "#" in render(readout(CYCLIC_LIST))
 
 
 def test_infinite_non_rational_list_does_not_terminate() -> None:
@@ -42,7 +42,7 @@ def test_infinite_non_rational_list_does_not_terminate() -> None:
     # RuntimeError subclasses.
     with reduction_budget(50_000):
         with pytest.raises((ReductionBudgetExceeded, RecursionError)):
-            berarducci(NATS)
+            readout(NATS)
 
 
 def test_fixpoints_iteration_budget_bounds_a_reentrant_cycle() -> None:

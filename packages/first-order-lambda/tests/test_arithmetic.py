@@ -1,8 +1,8 @@
 """Classic lambda-calculus computations: Church numerals, Peano arithmetic, factorial, Fibonacci.
 
 Each is a normalizing pure-lambda term; the interpreter reduces it and the readout is the
-Berarducci tree of the normal form, so a computed numeral reads out identically to the
-literal Church numeral it equals.
+tree of the normal form, so a computed numeral reads out identically to the literal Church
+numeral it equals.
 """
 
 from __future__ import annotations
@@ -22,16 +22,16 @@ from first_order_lambda._prelude import (
     TRUE,
     church,
 )
-from first_order_lambda._readout import berarducci, render
+from first_order_lambda._readout import readout, render
 
 
 def _reads_as(term, expected) -> bool:
-    return render(berarducci(build(term))) == render(berarducci(build(expected)))
+    return render(readout(build(term))) == render(readout(build(expected)))
 
 
 def test_church_numeral_shape() -> None:
     # church 3 = lambda s. lambda z. s (s (s z)).
-    assert render(berarducci(build(church(3)))) == "(λ (λ (v1 (v1 (v1 v0)))))"
+    assert render(readout(build(church(3)))) == "(λ (λ (v1 (v1 (v1 v0)))))"
 
 
 @pytest.mark.parametrize("n", [0, 1, 2, 5])
@@ -52,7 +52,7 @@ def test_mult(m: int, n: int) -> None:
 
 
 # exp m n = n m. For n = 0 it gives lambda z. z (the identity I), which is eta-equal to
-# church 1 but beta-distinct, and the Berarducci tree is beta, not eta; so test n >= 2.
+# church 1 but beta-distinct, and the tree is beta, not eta; so test n >= 2.
 @pytest.mark.parametrize("m, n", [(2, 2), (2, 3), (3, 2)])
 def test_exp(m: int, n: int) -> None:
     assert _reads_as(app(app(EXP, church(m)), church(n)), church(m**n))
@@ -65,8 +65,8 @@ def test_pred(n: int) -> None:
 
 def test_is_zero() -> None:
     assert _reads_as(app(IS_ZERO, church(0)), TRUE)
-    assert render(berarducci(build(app(IS_ZERO, church(3))))) == render(
-        berarducci(build(app(IS_ZERO, church(2))))
+    assert render(readout(build(app(IS_ZERO, church(3))))) == render(
+        readout(build(app(IS_ZERO, church(2))))
     )  # both False
 
 

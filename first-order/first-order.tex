@@ -23,7 +23,7 @@
 
 % --- notation ----------------------------------------------------------
 \newcommand{\Sh}{\mathsf{Sh}}
-\newcommand{\BeT}{\mathrm{BeT}}
+\newcommand{\lfpT}{\mathrm{lfp}(T_P)}
 \newcommand{\Lamsh}{\mathsf{Lam}}
 \newcommand{\Appsh}{\mathsf{App}}
 \newcommand{\Varsh}{\mathsf{Var}}
@@ -47,7 +47,7 @@
 \newtheorem{example}{Example}
 \newtheorem{remark}{Remark}
 
-\title{A First-Order Semantics for the $\lambda$-Calculus}
+\title{First-Order Semantics for the $\lambda$-Calculus}
 \author{\TODO{author / affiliation}}
 \date{Draft --- \today}
 
@@ -55,49 +55,44 @@
 \maketitle
 
 \begin{abstract}
-A $\lambda$-term's Berarducci tree is the readout of a single first-order
-relation: the weak-head \emph{shape} relation $\Sh$ over the positions of the
-term. $\Sh$'s clauses are positive, so
-its consequence operator is monotone with a Kleene ascent $T_P\!\uparrow\!1 \sqsubseteq
-\cdots \sqsubseteq \mathrm{lfp}$. Two points of this ascent give two readings. The
-first iterate $T_P\!\uparrow\!1$ is the first approximation: a position whose value is
-demanded while it is still being computed (a re-entry) is answered by $\bot$, so a
-cycle is cut to $\bot$. The least fixpoint $\mathrm{lfp}$ is the Berarducci tree
-itself; because positions are interned, so that structural equality is pointer
-equality, it \emph{folds} a guarded cycle into a finite rational graph: a lazy
-infinite list, written with $Y$, becomes a node that points to itself. So the least
-fixpoint is more defined than the first approximation exactly at guarded cycles, and
-a single readout terminates iff the tree is rational (finitely many positions): an
-infinite but rational tree folds to a finite graph, while a non-rational one, the
-stream of all naturals, does not. On the rational fragment, contextual equivalence
-is decidable.
+The tree semantics of a $\lambda$-term, for any tree presented by a monotone first-order
+head-evaluation, is the readout of a single first-order relation: the \emph{shape} relation
+$\Sh$ over the positions of the term. $\Sh$'s clauses are positive, so its consequence operator
+is monotone and the tree is its least fixpoint $\mathrm{lfp}(T_P)$. Because positions are
+\emph{interned}, so that structural equality is pointer equality, the least fixpoint \emph{folds}
+a guarded cycle into a finite rational graph: a lazy infinite list, written with $Y$, becomes a
+node that points to itself. So $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of
+head reduction: it agrees with the tree head reduction enumerates, and additionally terminates
+where head reduction diverges. A single readout terminates iff the tree is rational (finitely
+many positions): an infinite but rational tree folds to a finite graph, while a non-rational one,
+the stream of all naturals, does not. The development is parametric in the head-evaluation; the
+weak-head shape used throughout is one instance.
 \end{abstract}
 
 % =====================================================================
 \section{Introduction}
 % =====================================================================
 The $\lambda$-calculus is the higher-order calculus, yet its tree semantics
-factors through a \emph{first-order} relation. We make this precise: the
-Berarducci tree $\BeT(M)$ of a term $M$ is the coinductive readout of a single
-relation $\Sh$, the \emph{weak-head shape} of a position, which is first-order
-in that it ranges over positions (graph nodes) and never over a function space.
+factors through a \emph{first-order} relation. We make this precise for any tree presented by a
+monotone first-order head-evaluation (Section~\ref{sec:firstorder}): the tree
+$\lfpT(M)$ of a term $M$ is the coinductive readout of a single
+relation $\Sh$, the \emph{shape} of a position, which is first-order
+in that it ranges over positions (graph nodes) and never over a function space. The weak-head
+shape we use throughout is one instance.
 
-Once the tree is presented this way, two observations become immediate. First,
+Once the tree is presented this way, one observation becomes immediate:
 $\Sh$'s clauses are positive, so the immediate-consequence operator $T_P$ that reads
-off the tree is monotone, with a Kleene ascent $\bot \sqsubseteq T_P\!\uparrow\!1
-\sqsubseteq \cdots \sqsubseteq \mathrm{lfp}(T_P)$. Second, two points of this ascent are
-the two readings. The first iterate $T_P\!\uparrow\!1$ answers a re-entrant demand with
-$\bot$, cutting a cycle to $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ is the
-Berarducci tree, folding a guarded cycle into a finite rational graph. The least
-fixpoint is more defined than the first approximation exactly at guarded cycles.
+off the tree is monotone, and the tree is its least fixpoint $\mathrm{lfp}(T_P)$
+(Knaster--Tarski). Because positions are interned, $\mathrm{lfp}(T_P)$ folds a guarded cycle
+into a finite rational graph, so it is a \emph{consistent monotone refinement} of head
+reduction: it agrees with the tree head reduction enumerates, and additionally terminates where
+head reduction diverges, deciding an unproductive cycle as $\bot$ in finite time.
 
-A deterministic calculus exposes one weak-head constructor at a position. The value
+A deterministic calculus exposes one constructor at a position. The value
 at a position is therefore a \emph{partial}
-Berarducci tree, a tree with $\bot$ holes, and each iterate fills the holes of the
-previous one until the tree stops growing. An unproductive cycle has nothing to fill
-its hole, so it stays $\bot$ under every iterate, the first approximation and the
-limit alike. The bottom is $\bot$, and Berarducci-tree equivalence is fully abstract
-for the limit.
+tree, a tree with $\bot$ holes, and the least-fixpoint ascent fills the holes
+until the tree stops growing. An unproductive cycle has nothing to fill
+its hole, so it stays $\bot$. The bottom is $\bot$.
 
 The reason any of this is effective is the word in the title. The merge must
 recognise when it has returned to a position it is already computing, both to fold
@@ -117,21 +112,18 @@ $\Sh$.
 
 \paragraph{Contributions.}
 \begin{itemize}
-  \item A presentation of the Berarducci tree as the readout of a first-order
-        shape relation $\Sh$ (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
-  \item Two resolutions of $\Sh$, two points of the monotone ascent: the
-        first-iteration approximation $T_P\!\uparrow\!1$ and the least fixpoint
-        $\mathrm{lfp}(T_P)$, which we show is the Berarducci tree
-        (Sections~\ref{sec:tworeadings}, \ref{sec:grounding}, \ref{sec:valrec}).
-  \item The ascent $T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) = \BeT$
-        (Section~\ref{sec:bridge}): the two agree on acyclic terms and on unproductive
-        cycles ($\bot$), and $\mathrm{lfp}(T_P)$ is more defined exactly at a guarded cycle, where
-        $T_P\!\uparrow\!1$ cuts to $\bot$ and $\mathrm{lfp}(T_P)$ folds into the rational subtree. Whether a
-        readout terminates is a separate matter, governed by rationality
-        (Remark~\ref{rem:termination}): finitely many interned positions iff the tree
-        is rational. Once $\Sh$ is given its positive presentation
-        (Remark~\ref{rem:positivity}), well-definedness of the least fixpoint is a
-        standard fixpoint fact.
+  \item A presentation of the tree of any monotone first-order head-evaluation as the readout of
+        a first-order shape relation $\Sh$, the weak-head shape being one instance
+        (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
+  \item $\mathrm{lfp}(T_P)$ is a \emph{consistent monotone refinement} of head reduction
+        (Sections~\ref{sec:grounding}, \ref{sec:valrec}): it is the tree
+        (Theorem~\ref{thm:adequacy}), so it agrees with the tree head reduction enumerates, and
+        because positions are interned it folds a guarded cycle into the rational subtree and
+        terminates where head reduction diverges, deciding an unproductive cycle as $\bot$ in
+        finite time. Whether a readout terminates is governed by rationality
+        (Theorem~\ref{thm:termination}): finitely many interned positions iff the tree is
+        rational. Once $\Sh$ is given its positive presentation (Remark~\ref{rem:positivity}),
+        well-definedness of the least fixpoint is a standard fixpoint fact.
   \item As an application, structural computation over cyclic data
         (Section~\ref{sec:application}). Interning the positions folds a guarded
         cyclic datum into a finite rational tree, so an \emph{ordinary} recursive
@@ -143,30 +135,26 @@ $\Sh$.
 \section{Overview}\label{sec:overview}
 % =====================================================================
 Consider a cyclic stream of zeros, written $r = \mathtt{cons}\;0\;r$, and the pure
-$\lambda$-term $Y\,(\mathtt{cons}\;0)$, which has the \emph{same} Berarducci tree
+$\lambda$-term $Y\,(\mathtt{cons}\;0)$, which has the \emph{same} tree
 (the infinite stream $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$). Head reduction
 enumerates this tree the same way in both cases, and never finishes.
 
 The least fixpoint folds it. Once positions are interned, structurally equal
 positions are one position, so the stream has finitely many distinct positions; the
 least fixpoint folds the tail back onto the repeating cell, a node that points to
-itself, a finite rational graph. The first approximation $T_P\!\uparrow\!1$ instead
-answers the re-entry with $\bot$, cutting the stream to $\mathtt{cons}\;0\;\bot$. Both
-terminate; head reduction, which interns nothing, enumerates the infinite tree
-forever. So at this guarded cycle the least fixpoint is the more defined of the two
-readings, and both are finite where head reduction is not.
+itself, a finite rational graph. Head reduction, which interns nothing, enumerates the infinite
+tree forever, so at this guarded cycle $\mathrm{lfp}(T_P)$ terminates where head reduction does
+not, while denoting the same tree.
 
 At an \emph{unproductive} cycle, a position that returns to itself before exposing
-any constructor, there is nothing to fold, so the first approximation and the least
-fixpoint agree on $\bot$. Such a position is reached not only by a recursive binder
-($\mathtt{letrec}\;x = x$) but by self-application:
-$\Omega = (\lambda x.x\,x)(\lambda x.x\,x)$ returns to the same interned position with
-no constructor exposed, so $\Omega = \bot$ under both. The two readings thus differ
-only at guarded cycles, and only in definedness; whether a readout terminates is
-governed not by the reading but by rationality.
+any constructor, there is nothing to fold, so the least fixpoint settles at $\bot$. Such a
+position is reached not only by a recursive binder ($\mathtt{letrec}\;x = x$) but by
+self-application: $\Omega = (\lambda x.x\,x)(\lambda x.x\,x)$ returns to the same interned
+position with no constructor exposed, so $\Omega = \bot$. Whether a readout terminates is
+governed by rationality.
 
 % =====================================================================
-\section{Berarducci trees as the readout of a first-order shape relation}
+\section{Tree semantics as the readout of a first-order shape relation}
 \label{sec:firstorder}
 % =====================================================================
 
@@ -180,14 +168,14 @@ recurrence for $\Sh$ a memoisable dynamic program keyed by position, and it make
 position a finite key on which $\mathrm{lfp}(T_P)$ folds a cycle: structural equality reduces to
 pointer equality. This interning is the hash-consing a lazy runtime already
 performs, so computing the least fixpoint is what the implementation does anyway.
-A term has finitely many positions exactly when its Berarducci
+A term has finitely many positions exactly when its
 tree is \emph{rational} (finitely many distinct subtrees). A recursive definition
 produces such repetition directly, and so does a self-application, whose contractum
 interns back to an existing position. No recursion binder belongs to the calculus:
 the $Y$ combinator produces the repetition that interning folds
 (Section~\ref{sec:valrec}).
 
-\subsection{The Berarducci-tree domain}\label{sec:domain}
+\subsection{The tree domain}\label{sec:domain}
 We fix the codomain of the readout, and the order along which the fixpoints below
 ascend, before introducing the relation that drives them. The codomain is the usual
 domain of finite-and-infinite trees with a bottom element; the order is information
@@ -201,8 +189,8 @@ and $\bot$. The descent alphabet $\Delta = \{\dlam,\dhead,\darg\}$
 $\dhead,\darg$ under $\Appsh$.
 \end{definition}
 
-\begin{definition}[Berarducci trees]\label{def:domain}
-A \emph{Berarducci tree} is a map $t \colon \operatorname{dom}(t) \to \Sigma$ whose
+\begin{definition}[Trees]\label{def:domain}
+A \emph{tree} is a map $t \colon \operatorname{dom}(t) \to \Sigma$ whose
 domain $\operatorname{dom}(t) \subseteq \Delta^{*}$ is prefix-closed and
 arity-respecting: for each $p \in \operatorname{dom}(t)$ the children of $p$ in
 $\operatorname{dom}(t)$ are exactly $\{p\,\dlam\}$ if $t(p)=\Lamsh$, $\{p\,\dhead,
@@ -247,9 +235,24 @@ $M$ is \emph{rational} if $\operatorname{Pos}(M)$ is finite.
 \end{definition}
 
 \subsection{The shape relation}
-\begin{definition}[Weak-head shape]\label{def:sh}
-The relation $\Sh$ assigns to a node its outermost constructor after weak head
-reduction:
+The development is parametric in a \emph{head-evaluation}, presented as a first-order operator on
+the positions of a term. We isolate the property it must have, then fix the weak-head instance
+used throughout.
+
+\begin{definition}[(H-fo) head-evaluation]\label{def:hfo}
+A \emph{first-order head-evaluation} assigns to each node either a single outermost
+$\Sigma$-constructor, with its children named among the node's sub-positions, or the shape of one
+sub-position (a head redex). It is \emph{(H-fo)} when these clauses are \emph{positive}
+(Remark~\ref{rem:positivity}), so the induced operator $T^{\Sh}$ (Definition~\ref{def:shapeop}) is
+monotone and $\Sh := \operatorname{lfp}(T^{\Sh})$ exists; the tree's meaningless set is then
+$\{n : \Sh(n)=\bot\}$ \emph{by definition}. The weak-head shape (Definition~\ref{def:sh}) is the
+instance we use throughout; head reduction under $\lambda$ is another. Every definition, theorem,
+and proof below is stated for an arbitrary (H-fo) head-evaluation.
+\end{definition}
+
+\begin{definition}[Weak-head shape, an (H-fo) instance]\label{def:sh}
+The \emph{weak-head} shape relation $\Sh$ assigns to a node its outermost constructor after weak
+head reduction:
 \[
 \begin{aligned}
   \Sh(\Appsh(f,a)) &= \Sh(\,\mathit{body}[x \mathbin{:=} a]\,)
@@ -310,11 +313,11 @@ Define $\Sh := \operatorname{lfp}(T^{\Sh})$.
 \begin{proposition}[Shape is well-defined]\label{prop:shwd}
 $T^{\Sh}$ is monotone and $\omega$-continuous under the pointwise order, so by Kleene
 $\Sh = \bigsqcup_{k\in\mathbb{N}} (T^{\Sh})^{k}(\bot)$ exists and is its least
-fixpoint, and $\Sh(n)=\bot$ exactly when weak head reduction from $n$ does not
-terminate. Proof in Appendix~\ref{app:shape}.
+fixpoint, and $\Sh(n)=\bot$ exactly when the head-evaluation from $n$ does not
+terminate (here, weak head reduction). Proof in Appendix~\ref{app:shape}.
 \end{proposition}
 
-\subsection{Positions are Berarducci-tree addresses}
+\subsection{Positions are tree addresses}
 \begin{definition}[Path]\label{def:path}
 The descent alphabet is $\Delta = \{\dlam,\dhead,\darg\}$. A \emph{path} is a word
 in $\Delta^{*}$. The valid paths of $M$ and the subterm $\subt{M}{p}$ at a valid
@@ -344,31 +347,29 @@ positions exist, where divergence occurs) are delegated to $\Sh$.
   \bot & \Sh(\subt{M}{p}) \text{ undefined.}
 \end{cases}
 \]
-The application case is retained even when the head subtree is $\bot$
-(a $\bot$-headed application node is kept, not collapsed).
 \end{definition}
 
 \begin{remark}
-Definitions~\ref{def:sh}--\ref{def:btree} are the Berarducci tree
-\citeTODO{berarducci}, re-presented as the readout of $\Sh$. Two design points are
-load-bearing: $\Sh$ observes a \emph{weak} head normal form (it stops at the
-outermost $\lambda$), not a head normal form; and the readout \emph{retains}
-$\bot$-headed applications. The first places the construction in the
-Berarducci/L\'evy--Longo family rather than the B\"ohm family
-\citeTODO{barendregt, levy-longo}; the second pins it to Berarducci specifically.
+Definitions~\ref{def:sh}--\ref{def:btree} present the tree of the chosen (H-fo) head-evaluation as
+the readout of $\Sh$. The design point is load-bearing: a $\bot$-headed application collapses to
+$\bot$ (Definition~\ref{def:shapeop}), so the meaningless set is exactly the least-fixpoint
+$\bot$. This places the construction in the \emph{collapsing} family: with the weak head reduction
+used here it is the L\'evy--Longo tree, and with head reduction under $\lambda$ it is the B\"ohm
+tree \citeTODO{barendregt, levy-longo}. The Berarducci tree, which \emph{retains} $\bot$-headed
+applications, is \emph{not} (H-fo): retaining them is non-monotone, so it has no least-fixpoint
+$\Sh$ (Section~\ref{sec:related}).
 \end{remark}
 
 % =====================================================================
-\section{Two resolutions of the shape relation}\label{sec:tworeadings}
+\section{The least-fixpoint reading of the shape relation}\label{sec:tworeadings}
 % =====================================================================
-$\Sh$ in Definition~\ref{def:sh} assigns each position its weak-head shape: a
-deterministic calculus exposes one weak-head constructor. Its clauses are positive, so the
-consequence operator $T_P$ is monotone, with a Kleene ascent
-$\bot = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq \cdots \sqsubseteq
-\mathrm{lfp}(T_P)$. The two readings are two points of this ascent.
+$\Sh$ assigns each position its shape: a deterministic calculus exposes one constructor. The
+readout reads one constructor off $\Sh$ and defers to its children; its functional $\Psi$
+(Definition~\ref{def:readoutfun}) is monotone, and the tree is the least fixpoint
+$\mathrm{lfp}(T_P) = \operatorname{lfp}(\Psi)$, the limit of the Kleene ascent that fills
+$\bot$-holes from $\bot$ upward (Definition~\ref{def:lfpreading}).
 
-The two readings are made precise as the least fixpoint of one readout functional and
-as the first nontrivial point of its ascent.
+The reading is made precise as the least fixpoint of one readout functional.
 
 \begin{definition}[Readout functional]\label{def:readoutfun}
 The \emph{readout functional} $\Psi\colon (\operatorname{Pos}(M)\to D) \to
@@ -391,104 +392,62 @@ pointed $\omega$-CPO and $\Psi$ is monotone and $\omega$-continuous.
 The \emph{least-fixpoint reading} is
 $\mathrm{lfp}(T_P)(M) := \operatorname{lfp}(\Psi)(M) =
 \bigsqcup_{k\in\mathbb{N}} \Psi^{k}(\lambda n.\,\bot_D)(M)$. It merges partial
-Berarducci trees from $\bot$ upward: each iterate fills the $\bot$-holes of the
+trees from $\bot$ upward: each iterate fills the $\bot$-holes of the
 previous one, and because positions are interned a guarded re-entry folds into the
 finite rational representation of the subtree it generates.
 \end{definition}
 
-\begin{definition}[The ascent and the first approximation]\label{def:ascent}
-For $k\in\mathbb{N}$ let $T_P\!\uparrow\!k(M) := \tau_k(M,\mathbf{0})$, where the
-budgeted traversal $\tau_k\colon \operatorname{Pos}(M)\times
-\mathbb{N}^{\operatorname{Pos}(M)} \to D$ allows each position at most $k$
-occurrences on a root-to-node path: writing $S(n)$ for the number of times $n$
-already occurs on the path and $S{+}n$ for its increment,
-\[
-\tau_k(n,S) =
-\begin{cases}
-  \bot & S(n)\ge k \ \text{or}\ \Sh(n)=\bot\\
-  \Varsh_i & \Sh(n)=\Varsh_i\\
-  \Lamsh\big(\tau_k(N,S{+}n)\big) & \Sh(n)=\Lamsh(\lambda x.N)\\
-  \Appsh\big(\tau_k(f,S{+}n),\tau_k(a,S{+}n)\big) & \Sh(n)=\Appsh(f,a).
-\end{cases}
-\]
-Then $T_P\!\uparrow\!0(M)=\bot_D$, and the \emph{first approximation}
-$T_P\!\uparrow\!1$ enters each position at most once, so every re-entry, guarded or
-unproductive, is cut to $\bot$.
-\end{definition}
-
-\begin{proposition}[The ascent converges]\label{prop:ascentconv}
-$\bot_D = T_P\!\uparrow\!0 \sqsubseteq T_P\!\uparrow\!1 \sqsubseteq
-T_P\!\uparrow\!2 \sqsubseteq \cdots$ is an $\omega$-chain in $D$ with
-$\bigsqcup_{k\in\mathbb{N}} T_P\!\uparrow\!k(M) = \mathrm{lfp}(T_P)(M)$. Proof in
-Appendix~\ref{app:ascent}.
-\end{proposition}
-
-\begin{proposition}[Locus of the gap]\label{prop:locus}
-$T_P\!\uparrow\!1(M) \sqsubseteq \mathrm{lfp}(T_P)(M)$, with equality at every position
-that is not guarded cyclic (Definition~\ref{def:guarded}). The two readings agree on
-a constructor wherever the head is derivable in finitely many steps, and on $\bot$ at
-every unproductive cycle; they differ only at a guarded cyclic position, where
-$T_P\!\uparrow\!1$ is $\bot$ and $\mathrm{lfp}(T_P)$ is the folded rational subtree.
-Proof in Appendix~\ref{app:ascent}.
-\end{proposition}
-
-\begin{remark}[Codomain]\label{rem:codomains}
-Both readings take values in the same Berarducci trees, whose meaningless leaf is
-$\bot$: an unproductive cycle is $\bot$, the ordinary meaningless leaf of the
-Berarducci tree.
+\begin{remark}[Meaningless leaf]\label{rem:codomains}
+The tree's meaningless leaf is $\bot$: an unproductive cycle is $\bot$, a position whose
+head-evaluation does not terminate.
 \end{remark}
 
 \begin{remark}[When a readout terminates]\label{rem:termination}
 A single readout terminates iff the term has finitely many distinct interned
-positions, that is, iff its Berarducci tree is \emph{rational}. An infinite but
+positions, that is, iff its tree is \emph{rational}. An infinite but
 rational tree, the lazy cyclic list $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$
 written $Y\,(\mathtt{cons}\;0)$, folds under $\mathrm{lfp}(T_P)$ to a node that points to itself,
-a finite cyclic graph; it is cut to $\bot$ after one cell under $T_P\!\uparrow\!1$. Either way
-both terminate. A \emph{non-rational} infinite tree, the stream of all naturals
-$\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has unboundedly many distinct
+a finite cyclic graph, and terminates. A \emph{non-rational} infinite tree, the stream of all
+naturals $\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has unboundedly many distinct
 positions and hence no finite representation: the readout produces ever-new positions
-and does not terminate, under either reading. Termination is governed by rationality,
-not by the choice of reading.
+and does not terminate. Termination is governed by rationality.
 \end{remark}
 
 \begin{theorem}[Termination]\label{thm:termination}
 For every term $M$, the term is rational ($\operatorname{Pos}(M)$ finite,
-Definition~\ref{def:rationalterm}) if and only if its readout halts, under
-$T_P\!\uparrow\!1$ and under $\mathrm{lfp}(T_P)$ alike; and in that case $\BeT(M)$ is a
-rational tree (Definition~\ref{def:rational}). The converse of the last implication
-fails in general: positions are interned by syntactic identity, which is finer than
-Berarducci-tree equality, so syntactically distinct positions may share a subtree and
+Definition~\ref{def:rationalterm}) if and only if its readout halts; and in that case
+$\lfpT(M)$ is a rational tree (Definition~\ref{def:rational}). The converse of the last
+implication fails in general: positions are interned by syntactic identity, which is finer than
+tree equality, so syntactically distinct positions may share a subtree and
 tree rationality does not bound $\operatorname{Pos}(M)$ (Appendix~\ref{app:termination}
 gives a witness, a rational stream with infinitely many distinct tail positions). When
 $M$ is not rational the
-readout enumerates infinitely many distinct positions and diverges under both
-readings. Proof in Appendix~\ref{app:termination}.
+readout enumerates infinitely many distinct positions and diverges. Proof in
+Appendix~\ref{app:termination}.
 \end{theorem}
 
 % =====================================================================
-\section{Grounding: \texorpdfstring{$\mathrm{lfp}(T_P) = \BeT$}{lfp(T\_P) = BeT}}
+\section{Consistency: \texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)} is the tree}
 \label{sec:grounding}
 % =====================================================================
-\begin{theorem}[Presentation adequacy]\label{thm:adequacy}
-For every term $M$, $\;\mathrm{lfp}(T_P)(M) = \BeT(M)$ in $D$, where $\BeT(M)$ is the
-Berarducci tree of $M$ \citeTODO{berarducci} and $\mathrm{lfp}(T_P)(M)$ is the
-least-fixpoint readout (Definition~\ref{def:lfpreading}). Consequently
-$T_P\!\uparrow\!1(M) \sqsubseteq \BeT(M)$ (Proposition~\ref{prop:locus}), with
-equality iff $M$ has no guarded cyclic position (Definition~\ref{def:guarded}).
-Proof in Appendix~\ref{app:adequacy}.
+\begin{theorem}[Consistency]\label{thm:adequacy}
+For every term $M$, the least-fixpoint readout $\mathrm{lfp}(T_P)(M)$
+(Definition~\ref{def:lfpreading}) is, in $D$, the tree of the (H-fo) head-evaluation
+(Definition~\ref{def:hfo}) at $M$: it agrees node for node with the coinductive readout that the
+head-evaluation enumerates. Proof in Appendix~\ref{app:adequacy}.
 \end{theorem}
 
 \noindent
 Because we work on raw terms, there is no normal-form translation to justify and
-no administrative-redex bridge: $\mathrm{lfp}(T_P) = \BeT$ holds essentially by construction,
+no administrative-redex bridge: $\mathrm{lfp}(T_P)$ is the tree essentially by construction,
 and the only content is that Definitions~\ref{def:path}--\ref{def:btree} present
-weak head reduction faithfully.
+the head-evaluation faithfully.
 
 % =====================================================================
 \section{\texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)}: the least fixpoint by merging partial trees}
 \label{sec:valrec}
 % =====================================================================
-$\mathrm{lfp}(T_P)$ is the least fixpoint of $\Sh$, computed by merging partial Berarducci
+$\mathrm{lfp}(T_P)$ is the least fixpoint of $\Sh$, computed by merging partial
 trees from $\bot$ upward (Section~\ref{sec:tworeadings}). Because positions are
 interned, a position re-entered during the computation of its own shape is detected
 by a pointer test, and the behaviour splits on whether that re-entry is productive.
@@ -498,7 +457,7 @@ A position $n \in \operatorname{Pos}(M)$ is \emph{cyclic} if it occurs strictly 
 itself on some readout path, i.e.\ $n = \subt{n}{p}$ for some non-empty valid path
 $p$ (Definition~\ref{def:path}). A cyclic $n$ is \emph{guarded} if $\Sh(n) \in
 \{\Lamsh(\cdot),\Appsh(\cdot,\cdot)\}$, so a constructor is exposed at $n$ before the
-re-entry, and \emph{unproductive} if $\Sh(n)=\bot$, so the weak head reduction of $n$
+re-entry, and \emph{unproductive} if $\Sh(n)=\bot$, so the head-evaluation of $n$
 returns to $n$ with no constructor exposed.
 \end{definition}
 
@@ -506,12 +465,9 @@ returns to $n$ with no constructor exposed.
   \item \textbf{Guarded.} $\Sh(n)$ is a constructor and the re-entry sits in a
         child position. Under $\mathrm{lfp}(T_P)$ the merge folds at the re-entry, yielding a
         \emph{rational} (regular) infinite tree, finitely represented as a node that
-        points to itself. Under $T_P\!\uparrow\!1$ the re-entry is cut to
-        $\bot$, the first approximation. So $\mathrm{lfp}(T_P)$ is more defined here: it holds the
-        folded subtree where $T_P\!\uparrow\!1$ holds $\bot$.
+        points to itself, where head reduction would unfold forever.
   \item \textbf{Unproductive.} $\Sh(n)$ returns to $n$ with no constructor exposed;
-        its least fixpoint is $\bot$. Both readings give $\bot$ here: the limit does
-        not improve an unproductive cycle.
+        its least fixpoint is $\bot$: the limit does not improve an unproductive cycle.
 \end{itemize}
 
 \begin{example}[Guarded: the cyclic stream $Y\,(\mathtt{cons}\;0)$]\label{ex:cons}
@@ -526,138 +482,22 @@ merge folds at the guarded re-entry,
 \]
 the finite representation of the rational tree
 $\lambda c.\lambda n.\,(c\,0)\,(\lambda c.\lambda n.\,(c\,0)\,(\cdots))$, a node
-pointing to itself. Under $T_P\!\uparrow\!1$ the re-entry is cut:
-$T_P\!\uparrow\!1(r) = \lambda c.\lambda n.\,(c\,0)\,\bot$, the first approximation. No recursion
+pointing to itself, where head reduction would unfold forever. No recursion
 binder is needed; $Y$ produces the repetition that interning folds.
 \end{example}
 
 \begin{example}[Unproductive: $\Omega$ and $Y\,(\lambda x.\,x)$]\label{ex:xx}
 $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head-reduces to itself with no
 constructor exposed, returning to the same interned position; so $\Omega = \bot$, the
-ordinary meaningless leaf of its Berarducci tree. Both readings give $\bot$ and both
-terminate: $T_P\!\uparrow\!1$ answers the re-entry with $\bot$, and $\mathrm{lfp}(T_P)$'s
-limit is $\bot$ as well, since there is no constructor for the merge to add. The same
-holds for $Y\,(\lambda x.\,x)$, the pure-$\lambda$ rendering of
-$\mathtt{letrec}\;x = x$. An unproductive cycle is the one place the two readings can
-never differ.
+meaningless leaf of its tree. The least fixpoint settles at $\bot$, since there is no
+constructor for the merge to add, and the readout terminates in finite time where head reduction
+loops. The same holds for $Y\,(\lambda x.\,x)$, the pure-$\lambda$ rendering of
+$\mathtt{letrec}\;x = x$.
 \end{example}
-
-% =====================================================================
-\section{The Ascent: \texorpdfstring{$T_P\!\uparrow\!1 \sqsubseteq \mathrm{lfp}(T_P) = \BeT$}{T\_P up 1 <= lfp(T\_P) = BeT}}\label{sec:bridge}
-% =====================================================================
-The two readings are the first iterate and the limit of one monotone ascent. The
-least fixpoint is the Berarducci tree; the first iterate is its first approximation.
-
-\begin{theorem}[The ascent]\label{thm:bridge}
-For every term $M$,
-\[
-  T_P\!\uparrow\!1(M) \;\sqsubseteq\; \mathrm{lfp}(T_P)(M) \;=\; \BeT(M)
-  \quad\text{in } D,
-\]
-where the inequality is the approximation order (Definition~\ref{def:order}) and the
-equality is Theorem~\ref{thm:adequacy}. The two readings coincide at every position
-that is not guarded cyclic (Proposition~\ref{prop:locus}); at a guarded cyclic
-position (Definition~\ref{def:guarded}) $T_P\!\uparrow\!1$ is $\bot$ while
-$\mathrm{lfp}(T_P)$ is the folded rational subtree, so $\mathrm{lfp}(T_P)$ is strictly more defined
-there and nowhere else. Proof in Appendix~\ref{app:bridge}.
-\end{theorem}
-
-\noindent
-Whether either reading terminates is not what separates them: by
-Remark~\ref{rem:termination} both terminate on a rational tree and both diverge on a
-non-rational one. What separates them is definedness at guarded cycles, where the
-first approximation has $\bot$ and the least fixpoint has the folded subtree. The
-Berarducci tree is what the merge \emph{folds} to in the limit; the first iterate is
-the one-step approximation head reduction reaches before it would re-enter.
-
-% =====================================================================
-\section{Applications}
-\label{sec:application}
-% =====================================================================
-
-\subsection{Full Abstraction}\label{sec:variants}
-Observation through the readout, place a term in a closing context and watch whether
-the readout converges and exposes a head constructor, identifies two terms exactly
-when their Berarducci trees coincide. By Theorem~\ref{thm:adequacy} the denotation of
-a term is its Berarducci tree, so Berarducci-tree equivalence is \emph{fully
-abstract}: contextual equivalence equals tree equality. Soundness is the easy
-direction; the content is completeness, that a difference in the trees surfaces at
-some finite path and a context can drive the readout to it
-(Definition~\ref{def:ctx}, Theorem~\ref{thm:fullabstraction}).
-
-\begin{definition}[Observation and contextual equivalence]\label{def:ctx}
-A \emph{context} $\mathcal{C}[\,\cdot\,]$ is a term with one hole. A term $M$
-\emph{converges}, written $M\!\Downarrow$, if $\Sh(M) \ne \bot$ (weak head reduction
-exposes a constructor). Terms $M,N$ are \emph{contextually equivalent}, written
-$M \approx N$, if $\mathcal{C}[M]\!\Downarrow \iff \mathcal{C}[N]\!\Downarrow$ for
-every context $\mathcal{C}[\,\cdot\,]$ such that $\mathcal{C}[M]$ and
-$\mathcal{C}[N]$ are closed.
-\end{definition}
-
-\begin{theorem}[Full abstraction]\label{thm:fullabstraction}
-For all terms $M,N$,
-\[
-  M \approx N \iff \BeT(M) = \BeT(N).
-\]
-Equivalently, by Theorem~\ref{thm:adequacy}, contextual equivalence coincides with
-equality of the least-fixpoint denotation: $M \approx N \iff \mathrm{lfp}(T_P)(M) =
-\mathrm{lfp}(T_P)(N)$. Proof in Appendix~\ref{app:fullabs}.
-\end{theorem}
-
-\begin{corollary}[Decidable on the rational fragment]\label{cor:decidable}
-Restricted to rational terms (Definition~\ref{def:rationalterm}), contextual
-equivalence $\approx$ is decidable. By Theorem~\ref{thm:fullabstraction} two such
-terms are equivalent iff $\BeT(M)=\BeT(N)$; by Theorem~\ref{thm:termination} each
-$\BeT$ is a finite rational graph over interned positions, and equality of finite
-rational graphs is decided by cycle detection, a pointer comparison of positions
-(Section~\ref{sec:interning}). Proof in Appendix~\ref{app:fullabs}.
-\end{corollary}
-
-\begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
-Several problems that need added machinery in other settings do not arise here.
-Observing sharing or cyclicity in a pure language needs an observable-sharing
-primitive or a circular-program idiom \citeTODO{gill, bird}; here sharing is the
-identity of interned positions. Representing a cyclic structure needs an explicit
-recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here $Y$
-generates the repetition and interning folds it, with no binder added to the
-calculus. Deciding equality over cyclic structures needs a separate unification
-discipline or recursive-type system \citeTODO{colmerauer, amadio-cardelli,
-brandt-henglein}; here it is cycle detection over positions within the calculus
-(Corollary~\ref{cor:decidable}). Terminating a recursive query over a cyclic datum
-needs a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}; here the query's own
-applications intern and fold (Section~\ref{sec:reach}).
-\end{corollary}
-
-\paragraph{The first approximation and the ordinary tree}
-The statement above is about $\mathrm{lfp}(T_P)$, which folds a guarded cycle and so denotes
-the rational Berarducci tree directly. The first approximation $T_P\!\uparrow\!1$ instead
-cuts every re-entered cycle to $\bot$, so it does not coincide with the ordinary
-(unfolded) Berarducci tree on the nose: where the ordinary tree continues
-infinitely, $T_P\!\uparrow\!1$ places a $\bot$ leaf. The two agree, and $T_P\!\uparrow\!1$ becomes
-fully abstract for the ordinary Berarducci tree, exactly when $T_P\!\uparrow\!1$'s $\bot$ is
-mapped to non-termination. Under that reading a $\bot$ leaf is not a value
-distinct from the others but the observation that the readout at that position
-does not converge, which is what the ordinary tree records as a non-normalising
-subtree. With $\bot$ identified with non-termination, the operational reading
-$T_P\!\uparrow\!1$ and the standard infinitary Berarducci semantics induce the same
-contextual equivalence.
-
-\begin{theorem}[Full abstraction of the first approximation]\label{thm:fa1}
-Let $\eta\colon D \to D_{\Uparrow}$ collapse every $\bot$-leaf to the divergence
-observation, identifying $\bot$ with non-termination. Then for all terms $M,N$,
-\[
-  M \approx N \iff \eta\big(T_P\!\uparrow\!1(M)\big) = \eta\big(T_P\!\uparrow\!1(N)\big).
-\]
-That is, with $\bot$ read as non-termination the first approximation
-$T_P\!\uparrow\!1$ induces the same contextual equivalence
-(Definition~\ref{def:ctx}) as the standard infinitary Berarducci semantics, even
-though $T_P\!\uparrow\!1 \sqsubseteq \BeT$ is strict at guarded cycles
-(Theorem~\ref{thm:bridge}). Proof in Appendix~\ref{app:fullabs}.
-\end{theorem}
 
 \paragraph{Why the bottom is $\bot$, and why that is sound}
 The merge ascends from a bottom value, and that bottom must be a fresh $\bot$,
-distinct from every $\lambda$-term, not a reused value. Otherwise the convergence
+distinct from every $\lambda$-term, not a reused value. Otherwise the resolution
 test would be ambiguous: a position still sitting at the bottom would be
 indistinguishable from one that genuinely computed that value, and a round could read
 a dependency's placeholder as a real value and reach a \emph{wrong} fixed point. With
@@ -665,6 +505,11 @@ $\bot$ a fresh leaf the test is exact: a position is resolved precisely when its
 is no longer $\bot$. The only test of identity, the one that lets the merge
 fold a cycle, is a pointer comparison of interned positions, not the undecidable
 $\beta$-equality of values.
+
+% =====================================================================
+\section{Applications}
+\label{sec:application}
+% =====================================================================
 
 \subsection{Structural computation over cyclic data}
 \label{sec:reach}
@@ -703,10 +548,8 @@ is undecidable. The first-order reading replaces values by interned positions, w
 identity is a pointer test, so it is the natural setting in which memoisation is
 even definable. Interning is that memoisation: it is what lets a re-entry be
 recognised at all. Head reduction, which remembers nothing, unfolds a cyclic position
-forever; the first approximation $T_P\!\uparrow\!1$ recognises the re-entry and
-answers it with $\bot$; the least fixpoint $\mathrm{lfp}(T_P)$ recognises it and folds, taking the
-limit. The three are the unfolding, its one-step cut, and its limit, separated by how
-much they remember.
+forever; the least fixpoint $\mathrm{lfp}(T_P)$ recognises the re-entry and folds, taking the
+limit. The two are the unfolding and its limit, separated by how much they remember.
 
 % =====================================================================
 \section{Related work}\label{sec:related}
@@ -715,13 +558,15 @@ much they remember.
 The Berarducci, L\'evy--Longo, and B\"ohm trees form a hierarchy by their
 meaningless sets \citeTODO{berarducci, levy-longo, barendregt}; the infinitary
 $\lambda$-calculus framework \citeTODO{kennaway-klop-sleep-devries} situates them
-uniformly. Our $T_P\!\uparrow\!1$ is the Berarducci tree (weak-head observation, retained
-$\bot$-headed applications).
+uniformly. Our construction gives the tree of any (H-fo) head-evaluation: with weak head
+reduction it is the L\'evy--Longo tree, with head reduction under $\lambda$ the B\"ohm tree. The
+Berarducci tree falls outside (H-fo): it retains $\bot$-headed applications, which is non-monotone,
+so it has no least-fixpoint $\Sh$.
 
 \paragraph{Least Herbrand models and tabling.}
 $\mathrm{lfp}(T_P)$ is the least Herbrand model of a definite program
-\citeTODO{vanemden-kowalski}; the difference from $T_P\!\uparrow\!1$ is the SLD-termination /
-least-model gap, and a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}
+\citeTODO{vanemden-kowalski}; SLD resolution diverges on a cyclic query, and a tabled evaluator
+\citeTODO{tamaki-sato, tabling-slg}
 computes $\mathrm{lfp}(T_P)$ by completing unproductive cycles instead of looping. Tabling is
 the canonical mechanism for terminating left-recursive and cyclic fixpoint queries
 that plain resolution diverges on; our query application
@@ -743,12 +588,12 @@ position rather than capability: those approaches add machinery (a unification
 discipline, a separate type-level system), whereas $\mathrm{lfp}(T_P)$ is a re-reading of the
 $\lambda$-calculus's own tree semantics, obtained by interning its positions and
 taking a least fixpoint, with nothing added to the calculus
-(Theorem~\ref{thm:bridge}).
+(Theorem~\ref{thm:adequacy}).
 
 \paragraph{Cyclic $\lambda$-terms and recursion.}
 Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and the call-by-need
-$\lambda$-calculus \citeTODO{ariola-felleisen} provide the sharing on which the
-$\mathrm{lfp}(T_P)$/$T_P\!\uparrow\!1$ difference rests; the guarded-cycle case yields rational trees,
+$\lambda$-calculus \citeTODO{ariola-felleisen} provide the sharing on which
+$\mathrm{lfp}(T_P)$'s folding rests; the guarded-cycle case yields rational trees,
 and the productivity distinction is the standard one from infinitary rewriting.
 
 \paragraph{Sharing in functional languages.}
@@ -768,8 +613,7 @@ relation.
 
 \paragraph{Lazy $\lambda$-calculus.}
 The lazy $\lambda$-calculus \citeTODO{abramsky-ong} observes weak head normal
-forms but, unlike the Berarducci reading, does not retain $\bot$-headed
-applications; its tree is L\'evy--Longo, not Berarducci.
+forms; its tree is the L\'evy--Longo tree, which is the weak-head (H-fo) instance used here.
 
 \paragraph{Defunctionalization.}
 Unlike defunctionalization \citeTODO{reynolds}, which compiles a higher-order
@@ -782,25 +626,24 @@ data by cycle detection---is decades old in logic programming
 \citeTODO{colmerauer, tamaki-sato} and in recursive-type theory
 \citeTODO{amadio-cardelli, brandt-henglein}. What appears to be new is its
 position: it is obtained by interning the positions of the $\lambda$-calculus's own
-Berarducci-tree semantics and taking a least fixpoint, without leaving the calculus
+tree semantics and taking a least fixpoint, without leaving the calculus
 or adding primitives. That least fixpoint is the same tree, computed effectively
-(Section~\ref{sec:bridge}): it terminates on every rational structure and decides an
+(Section~\ref{sec:grounding}): it terminates on every rational structure and decides an
 unproductive cycle as $\bot$ in finite time, where head reduction diverges.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % =====================================================================
-The Berarducci tree is the readout of a first-order shape relation, the least fixpoint
-of its monotone consequence operator. Head reduction unfolds that fixpoint and
+The tree of a monotone first-order head-evaluation is the readout of a first-order shape relation,
+the least fixpoint of its monotone consequence operator. Head reduction unfolds that fixpoint and
 diverges on a cyclic term; the least fixpoint, computed by merging partial trees over
 interned positions, folds it, so a lazy infinite list becomes a node that points to
-itself and the readout terminates on every rational tree. Its first iterate, the
-first approximation, instead cuts a cycle to $\bot$; the least fixpoint is the more
-defined, the Berarducci tree itself.
+itself and the readout terminates on every rational tree. So $\mathrm{lfp}(T_P)$ is a consistent
+monotone refinement of head reduction: the same tree, computed effectively.
 
 % =====================================================================
 \appendix
-\section{The Berarducci-tree domain (Proposition~\ref{prop:cpo})}\label{app:domain}
+\section{The tree domain (Proposition~\ref{prop:cpo})}\label{app:domain}
 \begin{proof}[Proof of Proposition~\ref{prop:cpo}]
 \emph{Least element.} For any $t \in D$, $\operatorname{dom}(\bot_D)=\{\varepsilon\}
 \subseteq \operatorname{dom}(t)$ and $\bot_D(\varepsilon)=\bot$, so
@@ -846,119 +689,58 @@ $\Sh=\operatorname{lfp}(T)=\bigsqcup_k T^k(\bot)$.
 \emph{Characterisation.} The iterates resolve shapes bottom-up: $T^k(\bot)(n)\ne\bot$
 iff $n$ has a shape derivation under Definition~\ref{def:shapeop} of height below $k$,
 where each head-redex clause first resolves the head $f$ and then its contractum. Such
-a finite derivation exists iff weak head reduction from $n$ reaches a weak head normal
+a finite derivation exists iff the head-evaluation from $n$ reaches a normal
 form ($\Varsh$, $\Lamsh$, or an $\Appsh$ with rigid head). \TODO{spell out the height
 measure: an induction on $k$ matching ``$T^k(\bot)(n)\ne\bot$'' with ``the head shape
 of $n$, and in the redex case the contractum's shape, are resolved within $k$
-iterations'', concluding $\Sh(n)=\bot$ iff weak head reduction from $n$ diverges. The
+iterations'', concluding $\Sh(n)=\bot$ iff the head-evaluation from $n$ diverges. The
 statement and both endpoints are fixed; only the bookkeeping of the measure remains.}
 \end{proof}
 
-\section{The ascent (Propositions~\ref{prop:ascentconv}, \ref{prop:locus})}\label{app:ascent}
-Throughout write $R=\mathrm{lfp}(T_P)=\operatorname{lfp}(\Psi)$, the unique tree with
-$R(n)=\Psi(R)(n)$ for every position $n$ (Proposition~\ref{prop:cpo}).
-
-\begin{lemma}[Cut soundness]\label{lem:cutsound}
-For all $k,n,S$ and every path $p$: if $\tau_k(n,S)(p)\ne\bot$ then
-$p\in\operatorname{dom}(R(n))$ and $\tau_k(n,S)(p)=R(n)(p)$. Hence
-$T_P\!\uparrow\!k(M)\sqsubseteq R(M)$.
-\end{lemma}
-\begin{proof}
-Induction on $|p|$. Both $\tau_k(n,S)$ and $R(n)=\Psi(R)(n)$ take their root label from
-$\Sh(n)$: if $\Sh(n)=\bot$ both are $\bot$ at $\varepsilon$; otherwise both expose the
-same constructor and recurse into the same child positions ($N$, or $f$ and $a$). The
-only way $\tau_k$ departs from $R$ is by returning $\bot$ at a budget cut
-($S(n')\ge k$) or at $\Sh=\bot$, where its label is $\bot$ and the claim holds
-vacuously. Where it does not cut, the child positions coincide with those of $R$ and
-the induction hypothesis applies.
-\end{proof}
-
-\begin{lemma}[Cut cofinality]\label{lem:cutcofinal}
-For every $p\in\operatorname{dom}(R(M))$ there is $k$ with
-$p\in\operatorname{dom}(T_P\!\uparrow\!k(M))$ and $T_P\!\uparrow\!k(M)(p)=R(M)(p)$.
-\end{lemma}
-\begin{proof}
-The descent to $p$ visits the finite sequence of positions $\subt{M}{p'}$ for the
-prefixes $p'$ of $p$. Let $k$ exceed the maximum number of occurrences of any single
-position in this finite sequence. Then no budget cut fires along $p$ in $\tau_k$, so
-$\tau_k$ reproduces the $\Sh$-driven descent of $R$ and assigns $R(M)(p)$ at $p$.
-\end{proof}
-
-\begin{proof}[Proof of Proposition~\ref{prop:ascentconv}]
-$T_P\!\uparrow\!0(M)=\bot_D$ because $S(M)=0\ge 0$ cuts immediately. The chain is
-increasing: a larger budget only delays cuts, so by the descent argument of
-Lemma~\ref{lem:cutsound} the $(k{+}1)$-tree refines the $k$-tree. By
-Lemmas~\ref{lem:cutsound} and~\ref{lem:cutcofinal},
-$\bigsqcup_k T_P\!\uparrow\!k(M)\sqsubseteq R(M)$ and every node of $R(M)$ occurs in
-some $T_P\!\uparrow\!k(M)$, whence $\bigsqcup_k T_P\!\uparrow\!k(M)=R(M)=\mathrm{lfp}(T_P)(M)$.
-\end{proof}
-
-\begin{proof}[Proof of Proposition~\ref{prop:locus}]
-$T_P\!\uparrow\!1(M)\sqsubseteq R(M)$ is Lemma~\ref{lem:cutsound} at $k=1$. With budget
-$1$ a cut fires exactly when a position recurs on the current path, i.e.\ at a cyclic
-position (Definition~\ref{def:guarded}). At a non-cyclic position no cut fires and the
-descent argument gives agreement with $R$. At a cyclic $n$: if unproductive
-($\Sh(n)=\bot$) both are $\bot$; if guarded ($\Sh(n)$ a constructor) $T_P\!\uparrow\!1$
-is $\bot$ at the back-edge while $R(n)$ is the folded subtree, non-$\bot$ by
-Lemma~\ref{lem:cutcofinal}. So the readings agree off guarded cyclic positions and the
-strict gap is exactly there.
-\end{proof}
-
-\section{Presentation adequacy (Theorem~\ref{thm:adequacy})}\label{app:adequacy}
+\section{Consistency (Theorem~\ref{thm:adequacy})}\label{app:adequacy}
 \begin{lemma}[Meaningless leaves]\label{lem:rootactive}
-$\Sh(n)=\bot$ iff $n$ is root-active in Berarducci's sense, equivalently
-$\BeT(n)=\bot$.
+$\Sh(n)=\bot$ iff the tree at $n$ is $\bot$.
 \end{lemma}
 \noindent
-By Proposition~\ref{prop:shwd}, $\Sh(n)=\bot$ iff weak head reduction from $n$ does not
-terminate, i.e.\ $n$ has no weak head normal form. \TODO{Lemma~\ref{lem:rootactive} is
-the one external input: identify ``no weak head normal form'' with Berarducci's
-root-active (meaningless) set \citeTODO{berarducci}, the set quotiented to $\bot$ in
-the Berarducci tree. The two endpoints are pinned (Definition~\ref{def:shapeop}'s
-$\bot$, and Berarducci's meaningless terms); only their identification is cited rather
-than reproved.}
+By Proposition~\ref{prop:shwd}, $\Sh(n)=\bot$ iff the head-evaluation from $n$ does not
+terminate. For an (H-fo) head-evaluation (Definition~\ref{def:hfo}) this is the meaningless set
+\emph{by definition}: the tree's $\bot$ leaf is exactly a position whose head-evaluation
+diverges, so the identification is immediate and needs no external input.
 
 \begin{proof}[Proof of Theorem~\ref{thm:adequacy}]
-Let $R=\mathrm{lfp}(T_P)=\operatorname{lfp}(\Psi)$. Both the readout and $\BeT$ label a
-valid path $p$ by a function of $\Sh(\subt{M}{p})$: $\Varsh_i$, $\Lamsh$ (with child
-$p\,\dlam$), $\Appsh$ (with children $p\,\dhead,p\,\darg$, retained even when the head
-is $\bot$), or $\bot$ (Definitions~\ref{def:sh}, \ref{def:btree}). By
-Proposition~\ref{prop:cpo}, $R$ is the unique tree with $R(\subt{M}{p})=
-\Psi(R)(\subt{M}{p})$, so $R(M)(p)$ is determined by $\Sh(\subt{M}{p})$ exactly as
-$\BeT$ prescribes. By induction on $|p|$, $p\in\operatorname{dom}(R(M))\iff
-p\in\operatorname{dom}(\BeT(M))$ with equal labels: the variable, $\Lamsh$, and
-$\Appsh$ cases match clause by clause, and the $\bot$-leaf case matches by
-Lemma~\ref{lem:rootactive}. Hence $R(M)=\BeT(M)$. The consequence
-$T_P\!\uparrow\!1(M)\sqsubseteq\BeT(M)$ and the equality locus are
-Proposition~\ref{prop:locus} with $R=\BeT$.
+Let $R=\mathrm{lfp}(T_P)=\operatorname{lfp}(\Psi)$. Both $R$ and the tree the head-evaluation
+enumerates label a valid path $p$ by a function of $\Sh(\subt{M}{p})$: $\Varsh_i$, $\Lamsh$ (with
+child $p\,\dlam$), $\Appsh$ (with children $p\,\dhead,p\,\darg$), or $\bot$
+(Definitions~\ref{def:sh}, \ref{def:btree}). By Proposition~\ref{prop:cpo}, $R$ is the unique
+tree with $R(\subt{M}{p})= \Psi(R)(\subt{M}{p})$, so $R(M)(p)$ is determined by
+$\Sh(\subt{M}{p})$ exactly as the head-evaluation's readout prescribes. By induction on $|p|$,
+the domains and labels coincide: the variable, $\Lamsh$, and $\Appsh$ cases match clause by
+clause, and the $\bot$-leaf case matches by Lemma~\ref{lem:rootactive}. Hence $R(M)$ is the tree.
 \end{proof}
 
 \section{Termination (Theorem~\ref{thm:termination})}\label{app:termination}
 \begin{proof}[Proof of Theorem~\ref{thm:termination}]
-Either reading descends only through positions of $\operatorname{Pos}(M)$
+The readout descends only through positions of $\operatorname{Pos}(M)$
 (Definition~\ref{def:positions}): the constructor children $N,f,a$ and, via the
 head-redex clause of $\Sh$, the contracta are exactly its generators.
 
 \emph{Rational $\Rightarrow$ halts.} If $\operatorname{Pos}(M)$ is finite, the
-$\mathrm{lfp}(T_P)$ computation tables over a finite set and halts, and $T_P\!\uparrow\!1$
-cuts every path at the first repeat, so its tree has depth at most
-$|\operatorname{Pos}(M)|$ and is finite.
+$\mathrm{lfp}(T_P)$ computation tables over a finite set and halts.
 
 \emph{Halts $\Rightarrow$ rational.} Contrapositive: if $\operatorname{Pos}(M)$ is
-infinite then the descent reaches infinitely many distinct positions, $T_P\!\uparrow\!1$
-never cuts a non-repeating position, and the $\mathrm{lfp}(T_P)$ tabling never saturates,
-so neither halts.
+infinite then the descent reaches infinitely many distinct positions and the
+$\mathrm{lfp}(T_P)$ tabling never saturates, so it does not halt.
 
-\emph{Rational $\Rightarrow$ tree rational.} The subtrees of $\BeT(M)=R(M)$ are
-$\{R(\subt{M}{p})\}_p=\{R(n):n\in\operatorname{Pos}(M)\}$, finite, so $\BeT(M)$ is
+\emph{Rational $\Rightarrow$ tree rational.} The subtrees of $R(M)$ are
+$\{R(\subt{M}{p})\}_p=\{R(n):n\in\operatorname{Pos}(M)\}$, finite, so $R(M)$ is
 rational (Definition~\ref{def:rational}).
 
 \emph{Failure of the converse.} Interning identifies positions by \emph{syntactic}
-(de Bruijn) identity, which is strictly finer than Berarducci-tree equality, so the map
+(de Bruijn) identity, which is strictly finer than tree equality, so the map
 $n\mapsto R(n)$ need not be injective: syntactically distinct positions can carry the
 same tree. A witness is $M=Y\,F\,\underline 0$ with
 $F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$. The head of every
-cell is the constant $0$, so $\BeT(M)$ is the rational stream
+cell is the constant $0$, so $R(M)$ is the rational stream
 $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$ with finitely many distinct subtrees;
 but the tail positions $Y\,F\,\underline k$ (with $\underline k=\mathtt{succ}^{k}\,
 \underline 0$) are pairwise syntactically distinct and never intern together, since
@@ -967,90 +749,6 @@ Hence $\operatorname{Pos}(M)$ is infinite while $\{R(n)\}$ is finite, and the re
 diverges on a rational tree. So tree rationality does not entail finite
 $\operatorname{Pos}(M)$: folding by position identity is strictly finer than folding by
 subtree.
-\end{proof}
-
-\section{The ascent chain (Theorem~\ref{thm:bridge})}\label{app:bridge}
-\begin{proof}[Proof of Theorem~\ref{thm:bridge}]
-$T_P\!\uparrow\!1(M)\sqsubseteq\mathrm{lfp}(T_P)(M)$ is Proposition~\ref{prop:locus} (or
-Lemma~\ref{lem:cutsound} at $k=1$); $\mathrm{lfp}(T_P)(M)=\BeT(M)$ is
-Theorem~\ref{thm:adequacy}; and the strictness locus (guarded cyclic positions, and
-nowhere else) is Proposition~\ref{prop:locus}.
-\end{proof}
-
-\section{Full abstraction (Theorems~\ref{thm:fullabstraction}, \ref{thm:fa1};
-Corollary~\ref{cor:decidable})}\label{app:fullabs}
-The two directions of full abstraction rest on two standard facts about tree
-semantics, isolated here as lemmas.
-
-\begin{lemma}[Compositionality]\label{lem:compositional}
-For every context $\mathcal{C}[\,\cdot\,]$, $\BeT(\mathcal{C}[M])$ depends on $M$ only
-through $\BeT(M)$.
-\end{lemma}
-\TODO{Lemma~\ref{lem:compositional}: the Berarducci tree is a $\lambda$-model, so tree
-equality is a congruence \citeTODO{berarducci, kennaway-klop-sleep-devries}. The proof
-is structural induction on $\mathcal{C}$: the application node uses that the weak head
-reduction of $\mathcal{C}[M]$ factors through that of its head subterm, the abstraction
-node uses stability of the tree under the de Bruijn shift. We rely on the standard
-model property; the inductive skeleton is fixed and only the model lemma is cited.}
-
-\begin{lemma}[Separation]\label{lem:separation}
-If $\BeT(M)$ and $\BeT(N)$ differ at a finite path $p$, there is a context
-$\mathcal{C}[\,\cdot\,]$ with exactly one of $\mathcal{C}[M]\!\Downarrow$,
-$\mathcal{C}[N]\!\Downarrow$.
-\end{lemma}
-\TODO{Lemma~\ref{lem:separation}: the B\"ohm-out technique adapted to Berarducci trees
-\citeTODO{barendregt}. The context projects along $p$, descending under each $\Lamsh$
-by supplying arguments and selecting the $\dhead$ or $\darg$ branch with projection
-combinators, so that the head constructors that differ at $p$ are forced to the root,
-where they differ in convergence (Definition~\ref{def:ctx}). The adaptation must handle
-$\bot$-headed applications and the weak-head observation; the construction is sketched
-and the verification is the remaining obligation.}
-
-\begin{proof}[Proof of Theorem~\ref{thm:fullabstraction}]
-\emph{Soundness.} Convergence is read at the root,
-$M\!\Downarrow\iff\BeT(M)(\varepsilon)\ne\bot$ (Definition~\ref{def:ctx},
-Proposition~\ref{prop:shwd}). If $\BeT(M)=\BeT(N)$ then by
-Lemma~\ref{lem:compositional} $\BeT(\mathcal{C}[M])=\BeT(\mathcal{C}[N])$ for every
-$\mathcal{C}$, so $\mathcal{C}[M]\!\Downarrow\iff\mathcal{C}[N]\!\Downarrow$ and
-$M\approx N$. \emph{Completeness.} Contrapositive: if $\BeT(M)\ne\BeT(N)$ they differ
-at some finite path $p$ (the trees are equal iff equal at every finite path), and
-Lemma~\ref{lem:separation} gives a context separating them, so $M\not\approx N$. The
-restatement via $\mathrm{lfp}(T_P)$ is Theorem~\ref{thm:adequacy}.
-\end{proof}
-
-\begin{proof}[Proof of Corollary~\ref{cor:decidable}]
-Let $M,N$ be rational (Definition~\ref{def:rationalterm}). By
-Theorem~\ref{thm:termination} each of $\BeT(M),\BeT(N)$ is a rational tree, presented
-by the finite readout graph over $\operatorname{Pos}(M)$, $\operatorname{Pos}(N)$
-(Theorem~\ref{thm:adequacy}); these graphs are computable, since weak head reduction
-terminates at each position (Proposition~\ref{prop:shwd}) and the position set closes
-after finitely many steps, while position identity is syntactic equality of interned
-terms. Equality of two rational trees given by finite graphs is decided by the standard
-cycle-detecting bisimulation \citeTODO{courcelle}. By
-Theorem~\ref{thm:fullabstraction}, $M\approx N\iff\BeT(M)=\BeT(N)$, so $\approx$ is
-decidable on the rational fragment.
-\end{proof}
-
-\begin{lemma}[Guarded cuts are observationally divergent]\label{lem:fa1}
-For every context $\mathcal{C}$, the test $\mathcal{C}[M]\!\Downarrow$ depends on
-$\BeT(M)$ only through $\eta(T_P\!\uparrow\!1(M))$: replacing a guarded-cyclic subtree
-by the divergence observation preserves every convergence test.
-\end{lemma}
-\TODO{Lemma~\ref{lem:fa1} is the least certain step of the paper. It asserts that no
-context distinguishes an infinite guarded-cyclic subtree from divergence under the
-convergence preorder. The intended argument: a converging context exposes only a
-finite prefix of its subject, which the unfolding $T_P\!\uparrow\!k$ ($k$ large)
-already supplies, while $\eta$ sends the cut $\bot$ to the same divergence a
-non-productive probe observes. If instead a separating context exists, the result must
-be weakened from an equivalence to a preorder. We flag this as open and isolate it
-here so that nothing downstream depends on its stronger form.}
-
-\begin{proof}[Proof of Theorem~\ref{thm:fa1}]
-By Theorem~\ref{thm:fullabstraction}, $M\approx N\iff\BeT(M)=\BeT(N)$. By
-Theorem~\ref{thm:bridge}, $T_P\!\uparrow\!1$ and $\BeT$ differ only at guarded cyclic
-positions, where $\eta$ collapses the cut $\bot$ to divergence. Lemma~\ref{lem:fa1}
-then gives $\eta(T_P\!\uparrow\!1(M))=\eta(T_P\!\uparrow\!1(N))\iff\BeT(M)=\BeT(N)$,
-hence $\iff M\approx N$.
 \end{proof}
 
 % =====================================================================

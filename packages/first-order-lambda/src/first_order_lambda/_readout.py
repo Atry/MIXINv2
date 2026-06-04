@@ -1,21 +1,20 @@
-"""The Berarducci tree readout (Definition ``def:btree``), as iterates of one monotone ascent.
+"""The tree readout: resolve each position's head via its single-valued ``shape`` and descend.
 
-``berarducci`` resolves each position's head via its single-valued ``shape`` and descends. It
-is the same readout under two re-entry policies, two points of the Kleene ascent of the
-shape operator:
+``readout`` reads off the shape relation ``Sh`` and is the same readout under two re-entry
+policies, two points of the Kleene ascent of the shape operator:
 
-- ``fold_cycles=False`` is the first-iteration approximation ``T \\uparrow 1`` (``Sbot``): a
-  cyclic position re-entered during its own readout returns ``⊥`` (the demand is answered by
-  ``T \\uparrow 0 = \\bot``), so a guarded cycle is cut at ``⊥``.
-- ``fold_cycles=True`` is the least fixpoint ``lfp`` (``Semp``): the re-entry folds, so a
-  guarded cycle becomes a finite rational graph (the output is genuinely cyclic, and
-  ``render`` prints it with back-reference labels).
+- ``fold_cycles=True`` is the least fixpoint ``lfp`` (the denotation): a guarded cycle folds, so
+  it becomes a finite rational graph (the output is genuinely cyclic, and ``render`` prints it
+  with back-reference labels). Its only leaves are variables and the meaningless ``⊥``.
+- ``fold_cycles=False`` is the finite-budget first-iteration reading ``T \\uparrow 1``: a cyclic
+  position re-entered during its own readout is cut. The cut is a distinct ``∅`` leaf (a guarded
+  cut: the hole where the finite budget stopped on a productive cycle), kept separate from the
+  meaningless ``⊥`` (an unproductive cycle, a position with no shape). Distinguishing them is the
+  point: ``∅`` marks productive content the budget cut, ``⊥`` marks divergence. ``∅`` never
+  appears in the least fixpoint, where a guarded cycle folds instead.
 
-``T \\uparrow 1 \\sqsubseteq lfp``: they agree on acyclic terms and on unproductive cycles
-(both ``⊥``), and ``lfp`` is more defined at a guarded cycle, where ``T \\uparrow 1`` has ``⊥``
-and ``lfp`` has the folded subtree. The fold is taken only at CLOSED positions, so a folded
-back-reference never misreads a free de Bruijn variable. Beta-headed applications are
-retained, not collapsed.
+The fold/cut is taken only at CLOSED positions, so a folded back-reference never misreads a free
+de Bruijn variable; open subpositions are rebuilt.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ from first_order_lambda._shape import AppShape, LamShape, VarShape, shape_of
 
 @dataclass(kw_only=True, eq=False)
 class TreeNode(ABC):
-    """A Berarducci-tree output node. Identity object; mutable so cycles can be tied."""
+    """A tree readout node. Identity object; mutable so cycles can be tied."""
 
 
 @final
@@ -42,7 +41,15 @@ class VarLeaf(TreeNode):
 @final
 @dataclass(kw_only=True, eq=False)
 class BottomLeaf(TreeNode):
-    """The bottom leaf ``⊥``: an unproductive cycle, or a position with no weak-head shape."""
+    """The meaningless leaf ``⊥``: an unproductive cycle, or a position with no head shape."""
+
+
+@final
+@dataclass(kw_only=True, eq=False)
+class CutLeaf(TreeNode):
+    """The guarded-cut leaf ``∅``: a productive cycle cut by the finite budget of the
+    first-iteration reading. It never appears in the least fixpoint (there a guarded cycle
+    folds), and is kept distinct from the meaningless ``⊥``."""
 
 
 @final
@@ -58,12 +65,12 @@ class AppTree(TreeNode):
     argument: TreeNode
 
 
-def berarducci(node: Node, *, fold_cycles: bool = True) -> TreeNode:
-    """Read out the Berarducci tree of ``node``.
+def readout(node: Node, *, fold_cycles: bool = True) -> TreeNode:
+    """Read out the tree of ``node`` off the shape relation ``Sh``.
 
-    ``fold_cycles=True`` is the least fixpoint ``lfp`` (folds a guarded cycle into a finite
-    rational graph); ``fold_cycles=False`` is the first-iteration approximation ``T \\uparrow
-    1`` (cuts a cyclic position to ``⊥``).
+    ``fold_cycles=True`` is the least fixpoint ``lfp`` (the denotation; folds a guarded cycle
+    into a finite rational graph). ``fold_cycles=False`` is the finite-budget first-iteration
+    reading ``T \\uparrow 1`` (cuts a guarded cycle to the ``∅`` leaf, distinct from ``⊥``).
     """
     return _read(node, {}, {}, fold_cycles)
 
@@ -83,8 +90,9 @@ def _read(
     if closed:
         folded = in_progress.get(node_id)
         if folded is not None:
-            # Re-entry: fold (lfp) or cut to bottom (the first-iteration approximation).
-            return folded if fold_cycles else BottomLeaf()
+            # Re-entry at a guarded position: fold (lfp) or cut to the guarded-cut leaf ∅
+            # (the first-iteration reading), kept distinct from the meaningless ⊥.
+            return folded if fold_cycles else CutLeaf()
         cached = memo.get(node_id)
         if cached is not None:
             return cached
@@ -171,6 +179,8 @@ def render(tree: TreeNode) -> str:
                 return f"{prefix}v{index}"
             case BottomLeaf():
                 return f"{prefix}⊥"
+            case CutLeaf():
+                return f"{prefix}∅"
             case LamTree(body=body):
                 return f"{prefix}(λ {emit(body)})"
             case AppTree(function=function, argument=argument):
