@@ -6,6 +6,14 @@ from typing import Callable
 from mixinv2 import extern, public, resource
 
 
+class _Handler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        self.server.request_scope_factory(request=self).responseSent  # type: ignore[attr-defined]
+
+    def log_message(self, format: str, *arguments: object) -> None:
+        pass
+
+
 @extern
 def host() -> str: ...
 
@@ -17,14 +25,9 @@ def port() -> int: ...
 @public
 @resource
 def server(host: str, port: int, Request: Callable) -> HTTPServer:
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:
-            Request(request=self).responseSent
-
-        def log_message(self, format: str, *arguments: object) -> None:
-            pass
-
-    return HTTPServer((host, port), Handler)
+    http_server = HTTPServer((host, port), _Handler)
+    http_server.request_scope_factory = Request  # type: ignore[attr-defined]
+    return http_server
 
 
 @public
