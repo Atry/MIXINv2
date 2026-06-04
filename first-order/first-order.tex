@@ -76,95 +76,48 @@ We give a first-order semantics for the $\lambda$-calculus over the domain of he
 % =====================================================================
 \section{Introduction}
 % =====================================================================
-The $\lambda$-calculus is the higher-order calculus, yet its tree semantics
-factors through a \emph{first-order} relation. We make this precise for any tree presented by a
-monotone first-order head-evaluation (Section~\ref{sec:firstorder}): the tree
-$\lfpT(M)$ of a term $M$ is the coinductive readout of a single
-relation $\Sh$, the \emph{shape} of a position, which is first-order
-in that it ranges over positions (graph nodes) and never over a function space. The weak-head
-shape we use throughout is one instance.
+Three examples expose three faces of the same obstacle.
+$\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ diverges under head reduction; its tree
+should be $\bot$, but detecting that head reduction has returned to its starting position requires
+testing identity on values, and on a function space the only identity is
+$\beta$-equality, which is undecidable.
+The pure $\lambda$-term $Y\,(\mathtt{cons}\;0)$ denotes the infinite stream
+$\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$; head reduction enumerates it forever, yet the
+stream is rational (one repeating cell) and should be representable as a finite cyclic graph.
+A pure calculus has no way to build this cycle: representing cyclic data normally requires an
+explicit recursion binder ($\mathtt{letrec}$), mutable references, or an observable-sharing
+primitive.
+Even with $\mathtt{letrec}$ to \emph{create} the cycle, applying an ordinary recursive
+$\mathtt{map}$ to it remains hard: $\mathtt{map}$ has nothing cycle-aware in it, head reduction
+diverges, yet the result is again a cyclic list and should terminate. The existing mechanisms
+can neither detect a repeated recursive call (the identity problem) nor fold the result into a
+cycle (the representation problem).
 
-Once the tree is presented this way, one observation becomes immediate:
-$\Sh$'s clauses are positive, so the immediate-consequence operator $T_P$ that reads
-off the tree is monotone, and the tree is its least fixpoint $\mathrm{lfp}(T_P)$
-(Knaster--Tarski). Because positions are taken up to a congruence, $\mathrm{lfp}(T_P)$ folds a guarded cycle
-into a finite rational graph, so it is an \emph{adequate monotone refinement} of head
-reduction: it agrees with the tree head reduction enumerates, and additionally terminates where
-head reduction diverges, deciding an unproductive cycle as $\bot$ in finite time.
-
-A deterministic calculus exposes one constructor at a position. The value
-at a position is therefore a \emph{partial}
-tree, a tree with $\bot$ holes, and the least-fixpoint ascent fills the holes
-until the tree stops growing. An unproductive cycle has nothing to fill
-its hole, so it stays $\bot$. The bottom is $\bot$.
-
-The reason any of this is effective is the word in the title. The merge must
-recognise when it has returned to a position it is already computing, both to fold
-a cycle and to memoise, and recognising a repeated position is a test of
-\emph{identity}. That identity is a parameter, a \emph{position congruence}: on a
-first-order domain it is decidable, the finest instance comparing finite de Bruijn
-terms, a coarser one a richer but still decidable test; on the higher-order values
-of the $\lambda$-calculus the only identity is $\beta$-equality, which is
-undecidable. Reading the tree off a first-order relation is precisely what makes
-identity a decidable, tunable parameter, and so makes memoisation and the folding of
-cyclic structures computable; the higher-order view affords neither. ``First-order''
-is not a description of $\Sh$ but the mechanism that the results rest on.
-
-We never normalise to an intermediate form; in particular we do not use A-normal
-form. Positions are read directly off the term, and the dynamics live entirely in
-$\Sh$.
+We give a first-order semantics that resolves both. The tree of a term factors through a
+first-order relation $\Sh$, the \emph{shape} of a position, ranging over positions (graph
+nodes), not over a function space. Because positions are first-order, identity is a decidable
+\emph{position congruence} (Definition~\ref{def:congruence}), and the tree is the least fixpoint
+of the monotone consequence operator $T_P$ (Knaster--Tarski). The $\mathrm{lfp}(T_P)$
+computation recognises repeated positions and folds guarded cycles into finite rational graphs,
+while deciding unproductive cycles as $\bot$: $\Omega$ terminates as $\bot$;
+$Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph without $\mathtt{letrec}$; an ordinary
+$\mathtt{map}$ transforms a circular list into a circular list. The construction is parametric in
+a head-evaluation and a position congruence.
+We have implemented an interpreter that validates these behaviours\anon[.]{ \cite{firstorderlambda}.}
 
 \paragraph{Contributions.}
 \begin{itemize}
   \item A presentation of the tree of any monotone first-order head-evaluation as the readout of
         a first-order shape relation $\Sh$, parametric in the head-evaluation and in a sound
-        \emph{position congruence} (Definition~\ref{def:congruence}), the weak-head shape and
-        syntactic identity being the respective finest instances
-        (Sections~\ref{sec:firstorder}, \ref{sec:grounding}). The congruence sits on a spectrum
-        from syntactic identity to tree equality; soundness is the congruence law read
-        coinductively (Remark~\ref{rem:soundness}), so it costs nothing to fix.
-  \item $\mathrm{lfp}(T_P)$ is an \emph{adequate monotone refinement} of head reduction
-        (Sections~\ref{sec:grounding}, \ref{sec:valrec}): it is the tree
-        (Theorem~\ref{thm:adequacy}), so it agrees with the tree head reduction enumerates, and
-        because positions are taken up to the congruence it folds a guarded cycle into the rational subtree and
-        terminates where head reduction diverges, deciding an unproductive cycle as $\bot$ in
-        finite time. Whether a readout terminates is governed by rationality
-        (Theorem~\ref{thm:termination}): finitely many positions up to the congruence iff the tree
-        is rational up to it. A coarser sound congruence folds more, up to a dead-subterm cycle the
-        finest one cannot (Remark~\ref{rem:deadfold}). Once $\Sh$ is given its positive
-        presentation (Remark~\ref{rem:positivity}), well-definedness of the least fixpoint is a
-        standard fixpoint fact.
-  \item As an application, structural computation over cyclic data
-        (Section~\ref{sec:application}). Quotienting the positions folds a guarded
-        cyclic datum into a finite rational tree, so a pure $\lambda$-term acquires a finite
-        \emph{circular} representation the standard semantics cannot build, and an \emph{ordinary}
-        recursive function over it terminates where head reduction diverges: the function's own
-        recursive applications fall into the same classes and fold. An ordinary $\mathtt{map}$, with
-        nothing cycle-aware in it, folds a circular list into a circular list.
+        position congruence; the weak-head shape and syntactic identity are the respective finest
+        instances (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
+  \item $\mathrm{lfp}(T_P)$ is the tree (Theorem~\ref{thm:adequacy}); whether the readout
+        terminates is governed by rationality (Theorem~\ref{thm:termination}); a coarser sound
+        congruence folds more (Sections~\ref{sec:grounding}, \ref{sec:valrec}).
+  \item As an application, structural computation over cyclic data without extending the
+        calculus (Section~\ref{sec:application}): $Y$ produces the cycle, the congruence folds it,
+        and an ordinary recursive function over it terminates where head reduction diverges.
 \end{itemize}
-
-\paragraph{Supplementary material}
-An executable implementation accompanies the paper: a
-first-order-shape-relation interpreter for the pure $\lambda$-calculus
-($\Varsh$/$\Lamsh$/$\Appsh$, no recursion binder), in which a term's tree is the readout of the
-weak-head shape relation $\Sh$ (Definition~\ref{def:sh}) and the least-fixpoint reading
-$\mathrm{lfp}(T_P)$ (Definition~\ref{def:lfpreading}) folds a guarded cycle into a finite rational
-graph, printed with explicit back-references.\anon[ It is included as supplementary
-material.]{ It is openly available at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.}
-It realises both parameters of the development. The
-two readings of Section~\ref{sec:tworeadings} are a policy flag (the least fixpoint, and the
-finite-budget first iterate, which cuts a guarded re-entry to a leaf kept distinct from the
-meaningless $\bot$). The position congruence (Definition~\ref{def:congruence}) is a pluggable
-parameter with four instances spanning its spectrum: syntactic de Bruijn identity (the finest,
-realised by interning), a congruence closure over tree-equal generators (the inductive end), a
-bisimulation on the demanded descent (the coinductive end, folding exactly the rational fragment),
-and a dead-subterm fold that discharges the converse-failure witness of
-Remark~\ref{rem:deadfold}, the only one of the four that finitises it. The examples of
-Sections~\ref{sec:overview}, \ref{sec:valrec}, and \ref{sec:reach} are reproduced as tests:
-$Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph, $\Omega$ and $Y\,(\lambda x.x)$ read out as
-$\bot$, the naive walk of Section~\ref{sec:reach} terminates over the cyclic stream where head
-reduction loops, and the rationality dichotomy of Theorem~\ref{thm:termination} is exercised on
-both a rational and a non-rational stream.
 
 % =====================================================================
 \section{Overview}\label{sec:overview}
@@ -813,6 +766,31 @@ or adding primitives. That least fixpoint is the same tree, computed effectively
 (Section~\ref{sec:grounding}): it terminates on every structure rational with respect to the chosen
 congruence, coarser congruences covering more, and decides an unproductive cycle as $\bot$ in finite
 time, where head reduction diverges.
+
+% =====================================================================
+\section{Implementation}\label{sec:implementation}
+% =====================================================================
+An executable implementation accompanies the paper: a
+first-order-shape-relation interpreter for the pure $\lambda$-calculus
+($\Varsh$/$\Lamsh$/$\Appsh$, no recursion binder), in which a term's tree is the readout of the
+weak-head shape relation $\Sh$ (Definition~\ref{def:sh}) and the least-fixpoint reading
+$\mathrm{lfp}(T_P)$ (Definition~\ref{def:lfpreading}) folds a guarded cycle into a finite rational
+graph, printed with explicit back-references.\anon[ It is included as supplementary
+material.]{ It is openly available at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.}
+It realises both parameters of the development. The
+two readings of Section~\ref{sec:tworeadings} are a policy flag (the least fixpoint, and the
+finite-budget first iterate, which cuts a guarded re-entry to a leaf kept distinct from the
+meaningless $\bot$). The position congruence (Definition~\ref{def:congruence}) is a pluggable
+parameter with four instances spanning its spectrum: syntactic de Bruijn identity (the finest,
+realised by interning), a congruence closure over tree-equal generators (the inductive end), a
+bisimulation on the demanded descent (the coinductive end, folding exactly the rational fragment),
+and a dead-subterm fold that discharges the converse-failure witness of
+Remark~\ref{rem:deadfold}, the only one of the four that finitises it. The examples of
+Sections~\ref{sec:overview}, \ref{sec:valrec}, and \ref{sec:reach} are reproduced as tests:
+$Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph, $\Omega$ and $Y\,(\lambda x.x)$ read out as
+$\bot$, the naive walk of Section~\ref{sec:reach} terminates over the cyclic stream where head
+reduction loops, and the rationality dichotomy of Theorem~\ref{thm:termination} is exercised on
+both a rational and a non-rational stream.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
