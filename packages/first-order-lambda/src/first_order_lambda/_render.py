@@ -1,7 +1,7 @@
-"""Render the rational graph of a term by tabling ``head_normalize`` directly.
+"""Render the rational graph of a term by tabling ``weak_head_normalize`` directly.
 
-The graph of a term is the part of the coalgebra ``(nodes, head_normalize)`` reachable from it;
-there is no separate readout structure to build. ``render`` walks ``head_normalize`` from the root,
+The graph of a term is the part of the coalgebra ``(nodes, weak_head_normalize)`` reachable from it;
+there is no separate readout structure to build. ``render`` walks ``weak_head_normalize`` from the root,
 tabling closed nodes by identity (interning makes that a pointer test), and prints the graph with
 explicit back-references for cycles:
 
@@ -19,7 +19,7 @@ variable; open subnodes are reprinted.
 from __future__ import annotations
 
 from first_order_lambda._ast import Node, ShapeBottom
-from first_order_lambda._shape import AppShape, LamShape, VarShape, head_normalize
+from first_order_lambda._shape import AppShape, LamShape, VarShape, weak_head_normalize
 
 
 def render(node: Node, *, fold_cycles: bool = True) -> str:
@@ -43,7 +43,7 @@ def render(node: Node, *, fold_cycles: bool = True) -> str:
             return f"#{labels[key]}"
         if closed:
             on_path.add(key)
-        head = head_normalize(current)
+        head = weak_head_normalize(current)
         match head:
             case ShapeBottom.BOTTOM:
                 body = "⊥"

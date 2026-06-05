@@ -45,13 +45,13 @@ def test_infinite_non_rational_list_does_not_terminate() -> None:
 
 
 def test_fixpoints_iteration_budget_bounds_a_reentrant_cycle() -> None:
-    # A structurally-unique unproductive cycle whose head normal form is not computed elsewhere,
+    # A structurally-unique unproductive cycle whose weak head normal form is not computed elsewhere,
     # so interning's cache does not pre-empt the digest. Under a 0-iteration budget the reentry
     # cannot be resolved and fixpoints raises FixpointRecursionError.
     unique_loop = build(app(Y, lam(lambda x: app(IDENTITY, x))))  # Y (lambda x. id x)
     token = fixpoint_cached_property.max_fixpoint_iterations.set(0)
     try:
         with pytest.raises(FixpointRecursionError):
-            _ = unique_loop.head_normal_form
+            _ = unique_loop.weak_head_normal_form
     finally:
         fixpoint_cached_property.max_fixpoint_iterations.reset(token)

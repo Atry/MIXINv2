@@ -1,8 +1,8 @@
-"""Core interpreter behaviour: the graph as the reachable sub-coalgebra of head normalization.
+"""Core interpreter behaviour: the graph as the reachable sub-coalgebra of weak head normalization.
 
-Interned nodes make a cyclic structure a finite set of nodes, so tabling ``head_normalize`` folds
+Interned nodes make a cyclic structure a finite set of nodes, so tabling ``weak_head_normalize`` folds
 it into a finite cyclic graph where head reduction would unfold forever. Unproductive cycles
-(Omega, Y (lambda x. x)) have no head normal form, so they render as the bottom leaf. Head
+(Omega, Y (lambda x. x)) have no weak head normal form, so they render as the bottom leaf. Head
 normalization is single-valued: there is no set, and the empty value is just bottom.
 """
 
@@ -54,8 +54,8 @@ def test_cyclic_zeros_folds_to_rational_tree(snapshot: SnapshotAssertion) -> Non
 def test_unproductive_cycles_are_bottom() -> None:
     # Omega and Y (lambda x. x) (i.e. letrec x = x) are unproductive cycles: no head normal
     # form, so the least fixpoint stabilizes at BOTTOM and the graph is the bottom leaf.
-    assert OMEGA.head_normal_form is BOTTOM
-    assert LOOP.head_normal_form is BOTTOM
+    assert OMEGA.weak_head_normal_form is BOTTOM
+    assert LOOP.weak_head_normal_form is BOTTOM
     assert render(OMEGA) == "⊥"
     assert render(LOOP) == "⊥"
 
