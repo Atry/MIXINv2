@@ -63,6 +63,19 @@ class Node(ABC):
 
         return compute_weak_head_normal_form(self)
 
+    @fixpoint_cached_property(bottom=lambda: BOTTOM)
+    def head_normal_form(self) -> "Shape | ShapeBottom":
+        """The head normal form (the Boehm reading): the outermost constructor after head reduction,
+        a least fixpoint.
+
+        Identical to ``weak_head_normal_form`` except that a ``lambda`` whose body has no head normal
+        form is itself ``BOTTOM`` here (head reduction continues under the ``lambda``), so the readout
+        is the Boehm tree rather than Levy-Longo.
+        """
+        from first_order_lambda._shape import compute_head_normal_form
+
+        return compute_head_normal_form(self)
+
 
 @final
 @dataclass(kw_only=True, eq=False)

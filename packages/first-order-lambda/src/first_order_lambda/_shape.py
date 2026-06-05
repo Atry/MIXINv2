@@ -119,3 +119,43 @@ def compute_weak_head_normal_form(node: Node) -> Shape | ShapeBottom:
                     raise TypeError(f"Unknown head {head!r}")
         case _:
             raise TypeError(f"Unknown node {node!r}")
+
+
+def head_normalize(node: Node) -> Shape | ShapeBottom:
+    """The head normal form of ``node`` (the Boehm reading): its outermost constructor after head
+    reduction, which reduces under ``lambda`` to expose the head, or ``BOTTOM`` (no head normal form).
+
+    Typed via ``Node.head_normal_form`` (a ``fixpoint_cached_property`` typed as ``object``).
+    """
+    return cast("Shape | ShapeBottom", node.head_normal_form)
+
+
+def compute_head_normal_form(node: Node) -> Shape | ShapeBottom:
+    """The per-node clause body of head normalization (the Boehm reading).
+
+    The only difference from weak head normalization is the ``Lam`` clause: a ``lambda`` whose body
+    has no head normal form is itself meaningless (``BOTTOM``), because head reduction continues under
+    the ``lambda``. The ``App`` clause is identical (a head redex fires on the weak head of the
+    function, whether or not its body has a head normal form).
+    """
+    match node:
+        case Var(index=index):
+            return VarShape(index=index)
+        case Lam(body=body):
+            if head_normalize(body) is BOTTOM:
+                return BOTTOM
+            return LamShape(body=body)
+        case App(function=function, argument=argument):
+            head = weak_head_normalize(function)
+            match head:
+                case LamShape(body=lambda_body):
+                    _consume_redex()
+                    return head_normalize(substitute(lambda_body, depth=0, argument=argument))
+                case VarShape() | AppShape():
+                    return AppShape(function=function, argument=argument)
+                case ShapeBottom.BOTTOM:
+                    return BOTTOM
+                case _:
+                    raise TypeError(f"Unknown head {head!r}")
+        case _:
+            raise TypeError(f"Unknown node {node!r}")

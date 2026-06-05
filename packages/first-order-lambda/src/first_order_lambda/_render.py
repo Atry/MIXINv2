@@ -18,12 +18,23 @@ variable; open subnodes are reprinted.
 
 from __future__ import annotations
 
+from typing import Callable
+
 from first_order_lambda._ast import Node, ShapeBottom
-from first_order_lambda._shape import AppShape, LamShape, VarShape, weak_head_normalize
+from first_order_lambda._shape import AppShape, LamShape, Shape, VarShape, weak_head_normalize
 
 
-def render(node: Node, *, fold_cycles: bool = True) -> str:
-    """Print the rational graph of ``node``, labelling back-reference targets ``#N``."""
+def render(
+    node: Node,
+    *,
+    fold_cycles: bool = True,
+    normalize: Callable[[Node], "Shape | ShapeBottom"] = weak_head_normalize,
+) -> str:
+    """Print the rational graph of ``node``, labelling back-reference targets ``#N``.
+
+    ``normalize`` is the structure map ``out``; the default ``weak_head_normalize`` gives the
+    Levy-Longo tree, ``head_normalize`` the Boehm tree. Both fold on the same node identity.
+    """
     labels: dict[int, int] = {}
     on_path: set[int] = set()
     next_label = 0
@@ -43,7 +54,7 @@ def render(node: Node, *, fold_cycles: bool = True) -> str:
             return f"#{labels[key]}"
         if closed:
             on_path.add(key)
-        head = weak_head_normalize(current)
+        head = normalize(current)
         match head:
             case ShapeBottom.BOTTOM:
                 body = "⊥"
