@@ -94,7 +94,8 @@ cyclic graph, and that graph is computed by \emph{tabling}: identify a state wit
 behaviour, table the states seen so far, and when a state recurs during its own readout,
 tie a back edge instead of unfolding forever.
 
-Two ingredients make this effective, and they are the two parameters of the development.
+Two things make this effective. The first is the form the input takes; the second is what makes its
+cycles detectable at all.
 
 First, the structure map need not be handed to us as a one-step observation. It may itself be
 produced by an \emph{iterative process}: from a state, perform some internal steps, possibly
@@ -131,23 +132,23 @@ with rational behaviour.
 
 \paragraph{Contributions}
 \begin{itemize}
-  \item A reading of the behaviour of an iterative coalgebra $\stepm \colon X \to M(F X + X)$ as the
-        anamorphism of a one-step structure map, computed by tabling on state identity, parametric
-        in an effect monad $M$ (the internal process) and a signature functor $F$ (the exposed
-        layer) (Sections~\ref{sec:domain}, \ref{sec:itcoalg}). The one-step map
-        $\outm = \iter{\stepm}$ is the least solution of the silent iteration
-        (Definition~\ref{def:out}), so divergence is decided as $\bot$ in finite time on the
-        rational fragment.
-  \item Two fixpoints, kept distinct (Sections~\ref{sec:itcoalg}, \ref{sec:readout}). The silent
-        collapse $\outm$ is an \emph{unguarded least} fixpoint: a silent cycle resolves to $\bot$
-        (the bottom of $M$). The readout $\behav$ is a \emph{guarded unique} fixpoint in the final
-        coalgebra: a recurring layer ties a back edge. Tabling realises both, by the same
-        mechanism under two re-entry policies.
-  \item Adequacy (Theorem~\ref{thm:adequacy}): $\behav$ is the behaviour of $\stepm$ up to silent
-        steps, agreeing layer for layer with the unfolding the coalgebra enumerates. Termination
-        (Theorem~\ref{thm:termination}): the readout halts iff the behaviour is rational, and then
-        lands in the rational fixpoint $\rfp\Beh$, a finite cyclic graph. Two independent rationality
-        conditions appear, one per fixpoint (Remark~\ref{rem:tworationalities}).
+  \item A reading of the behaviour of an iterative coalgebra $\stepm \colon X \to M(F X + X)$ by
+        tabling its one-step structure map over the reachable states, parametric in an effect monad
+        $M$ (the internal process) and a signature functor $F$ (the exposed layer)
+        (Sections~\ref{sec:domain}, \ref{sec:itcoalg}). The one-step map $\outm = \iter{\stepm}$ is
+        the least solution of the silent iteration (Definition~\ref{def:out}), so divergence is
+        decided as $\bot$ in finite time on the rational fragment.
+  \item One fixpoint, and a graph for free (Sections~\ref{sec:itcoalg}, \ref{sec:readout}). The
+        only fixpoint is the silent collapse $\outm = \iter{\stepm}$, an \emph{unguarded least}
+        fixpoint resolving a silent cycle to $\bot$ (the bottom of $M$). Tabling $\outm$ over the
+        reachable states yields the finite cyclic graph directly: its nodes are the states, and a
+        cycle is automatic when $\outm$ names a state already tabled. No separate readout fixpoint is
+        needed; the graph is the reachable sub-coalgebra $(R(M),\outm)$.
+  \item Adequacy (Theorem~\ref{thm:adequacy}): the reachable sub-coalgebra $(R(M),\outm)$ unfolds to
+        the behaviour of $\stepm$ up to silent steps, agreeing layer for layer with what the coalgebra
+        enumerates. Termination (Theorem~\ref{thm:termination}): tabling halts iff finitely many
+        states are reachable, and then the graph is a finite element of the rational fixpoint
+        $\rfp\Beh$. Two independent finiteness conditions appear (Remark~\ref{rem:tworationalities}).
   \item A bridge (Section~\ref{sec:bridge}): head and weak-head normalisation of the pure
         $\lambda$-calculus are the instance $M = \Delaym$ (pure divergence) and $F$ the
         $\lambda$-shape signature. There $\outm$ is the weak-head shape relation, $\Omega$ reads out
@@ -162,14 +163,14 @@ with rational behaviour.
 \paragraph{Supplementary material}
 An executable implementation accompanies the paper: a first-order interpreter for the
 $\lambda$-instance of Section~\ref{sec:bridge} ($\Varsh$/$\Lamsh$/$\Appsh$, no recursion binder), in
-which a term's behaviour is the readout of the weak-head structure map (Definition~\ref{def:shbridge})
-and the least-fixpoint silent collapse folds a guarded cycle into a finite cyclic graph, printed with
-explicit back-references.\anon[ It is included as supplementary material.]{ It is openly available
-at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.} It realises both parameters of the
-development: the silent collapse $\outm$ (the least fixpoint, with a finite-budget first iterate as a
-policy flag) and the state identity on which the readout folds (interning realises structural
-identity; a bisimulation and a dead-subterm canonicaliser realise the coarser identities of
-Remark~\ref{rem:coarser} as preprocessing on the carrier). The examples of
+which a term's behaviour is read by tabling the weak-head structure map (Definition~\ref{def:shbridge}),
+whose least-fixpoint silent collapse decides an unproductive cycle as $\bot$ and whose reachable
+sub-coalgebra is the finite cyclic graph, printed with explicit back-references.\anon[ It is included
+as supplementary material.]{ It is openly available
+at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.} It realises the construction
+directly: the silent collapse $\outm$ as a least fixpoint (with a finite-budget first iterate as a
+policy flag), and the tabling that folds on structural identity, realised by interning so identity is
+a pointer test. The examples of
 Sections~\ref{sec:overview}, \ref{sec:bridge}, and \ref{sec:application} are reproduced as tests:
 $Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph, $\Omega$ and $Y\,(\lambda x.x)$ read out as
 $\bot$, the na\"ive walk terminates over the cyclic stream where head reduction loops, and the
@@ -344,114 +345,92 @@ The work of the paper is elsewhere (Sections~\ref{sec:readout}--\ref{sec:applica
 \end{remark}
 
 % =====================================================================
-\section{The readout: behaviour by tabling}\label{sec:readout}
+\section{The rational graph: the reachable sub-coalgebra}\label{sec:readout}
 % =====================================================================
-The structure map exposes one layer per state; the readout exposes that layer and descends into its
-children, tabling states so a recurrence ties a back edge. This is the second fixpoint, and it is
-guarded.
+The structure map is already an ordinary one-step coalgebra $\outm \colon X \to \Beh X$
+(Definition~\ref{def:out}) whose successors are again states, so nothing further need be built: the
+graph is the part of $(X,\outm)$ reachable from the root. Reading out is tabling $\outm$.
 
-\begin{definition}[Readout functional]\label{def:readoutfun}
-The \emph{readout functional} $\Psi \colon (X \to D) \to (X \to D)$ reads one layer off $\outm$ and
-defers to its argument for the children:
-\[
-  \Psi(g)(x) =
-  \begin{cases}
-    \bot & \outm(x) = \bot_{M(FX)}\\
-    M\big[\,\sigma(g(x_1),\dots,g(x_{\mathit{ar}(\sigma)}))\,\big] & \outm(x) \text{ exposes layer } \sigma(x_1,\dots,x_{\mathit{ar}(\sigma)}),
-  \end{cases}
-\]
-where $M[\,\cdot\,]$ carries the $M$-structure of the exposed step through to the readout (for
-$M = \Delaym$ it is transparent; for $M = \Pow$ it is the union over the set of exposed layers; and so
-on). By Proposition~\ref{prop:cpo} the pointwise order on $X \to D$ is a pointed $\omega$-CPO and
-$\Psi$ is monotone and $\omega$-continuous.
+\begin{definition}[Reachable sub-coalgebra]\label{def:reach}
+For a state $M$, the \emph{reachable set} $R(M) \subseteq X$ is the least set containing $M$ and
+closed under the successors of $\outm$: if $x \in R(M)$ and $\outm(x)$ exposes a layer
+$\sigma(x_1,\dots,x_k)$, then $x_1,\dots,x_k \in R(M)$ (for a branching $M$, every state in every
+alternative of the layer). The \emph{graph} of $M$ is the sub-coalgebra $(R(M),\outm)$: nodes are the
+reachable states, edges are $\outm$, and a node with $\outm(x)=\bot$ is the meaningless leaf.
 \end{definition}
 
-\begin{definition}[Behaviour readout]\label{def:behreadout}
-The \emph{behaviour} of a state is $\behav(x) := \mathrm{lfp}(\Psi)(x) =
-\bigsqcup_{k} \Psi^{k}(\lambda y.\,\bot_D)(x)$. Computed by tabling, $\behav$ keeps a table of states
-already read out and a stack of states in progress: a state in progress that recurs ties a back edge
-(the guarded fixpoint), a finished state is reused from the table (sharing), and a state whose
-structure map is $\bot$ yields the $\bot$ leaf.
+\begin{definition}[Reading the graph; the behaviour it denotes]\label{def:behreadout}
+The graph $(R(M),\outm)$ is computed by \emph{tabling} $\outm$: keep a table of resolved states; from
+$M$, compute $\outm(M)$ and, for each successor state, reuse its table entry or recurse and add one. A
+successor already tabled closes a \emph{cycle}; a state with $\outm(x)=\bot$ is a leaf. The
+\emph{behaviour} $\behav(M) \in \nu\Beh$ is what this graph denotes: the unfolding of $(R(M),\outm)$,
+equivalently the unique $\Beh$-coalgebra morphism $X \to \nu\Beh$ at $M$ (finality). The behaviour is
+never materialised; the graph is its finite presentation, and every question about it is answered on
+the graph.
 \end{definition}
 
-\begin{remark}[Two fixpoints, two re-entry policies]\label{rem:twofix}
-The same tabling mechanism resolves a re-entry in two ways, and the two are the paper's two fixpoints.
-In the silent collapse $\outm$ (Definition~\ref{def:out}) a re-entry is \emph{unguarded}: no layer has
-been exposed, so the re-entry returns the bottom approximation and the value ascends to a
-\emph{least} fixpoint, decided as $\bot$ if it never improves. In the readout $\behav$
-(Definition~\ref{def:behreadout}) a re-entry is \emph{guarded}: a layer has been exposed, so the
-re-entry returns the in-progress node itself, tying a back edge, and the result is the \emph{unique}
-guarded solution in $\nu\Beh$. Guardedness is exactly what distinguishes a unique cyclic solution
-from a least one.
+\begin{remark}[One fixpoint; cycles for free]\label{rem:twofix}
+There is only one fixpoint: the silent collapse $\outm = \iter{\stepm}$ (Definition~\ref{def:out}), an
+unguarded least fixpoint that decides an unproductive cycle as $\bot$. Building the graph is not a
+second fixpoint. A cycle appears the moment $\outm$ names a state already tabled, so the back edge is
+structural, not tied by a separate computation, and ``reading out'' is just enumerating
+$(R(M),\outm)$; printing it with explicit back-references is a traversal of that finite graph, again no
+fixpoint. The whole algorithm is: table $\outm$.
 \end{remark}
 
 \begin{definition}[Guarded and unproductive states]\label{def:guarded}
-A state $x$ is \emph{cyclic} if a state equal to it recurs strictly below it on some readout descent.
-A cyclic $x$ is \emph{guarded} if $\outm(x)$ exposes a layer before the re-entry, and
+A state $x$ is \emph{cyclic} if a state equal to it recurs strictly below it on some descent of
+$\outm$. A cyclic $x$ is \emph{guarded} if $\outm(x)$ exposes a layer before the re-entry, and
 \emph{unproductive} if $\outm(x) = \bot$, so the silent process of $x$ returns to it with no layer
-exposed. A guarded cycle folds under $\behav$ into a rational behaviour, finitely represented as a
-node pointing to itself; an unproductive cycle is $\bot$.
+exposed. A guarded cycle is a graph node pointing back to an earlier node, the finite representation of
+a rational behaviour; an unproductive cycle is the $\bot$ leaf.
 \end{definition}
 
 \begin{remark}[Folding is the ordinary behaviour of tabling]\label{rem:foldingtabling}
-There is no separate notion of ``which states may be folded together'': the readout folds on state
-identity, the ordinary key of a tabled computation whose core is the unfolding endofunction. Because
-states are first-order (Definition~\ref{def:itcoalg}), that identity is decidable; the fold is then
-the standard tabling re-entry. The implementation realises it by interning, so structurally equal
-states are one object and identity is a pointer test.
-\end{remark}
-
-\begin{remark}[Coarser identities are preprocessing on the carrier]\label{rem:coarser}
-One may want to fold states that are not identical but denote the same behaviour (a layer and its
-silent reduct, two encodings of one stream, states differing only in a part the readout never
-descends into). Such an identification is not a new parameter of the readout; it is a quotient of the
-\emph{carrier} performed before the readout runs. Quotienting by behavioural equivalence
-(bisimulation) is coalgebra minimisation, sound by construction but in general only semidecidable; a
-tree-preserving canonical map (for example, erasing a part of a state that no descent can reach) is a
-decidable sound quotient that finitises behaviours an identity readout cannot
-(Remark~\ref{rem:tworationalities}). In every case the readout itself is unchanged, still folding on
-the identity of the (now quotiented) states. The implementation supplies three such carriers
-(interning, a bisimulation, a dead-part canonicaliser) as preprocessing.
+There is no separate notion of ``which states may be folded together'': tabling closes a cycle on
+state identity, the ordinary key of a tabled computation whose core is $\outm$. Because states are
+first-order (Definition~\ref{def:itcoalg}), that identity is decidable; the fold is then the standard
+tabling re-entry. The implementation realises it by interning, so structurally equal states are one
+object and identity is a pointer test. Structural identity is the only identity; there is no
+congruence to choose.
 \end{remark}
 
 % =====================================================================
 \section{Adequacy and termination}\label{sec:adequacy}
 % =====================================================================
 \begin{theorem}[Adequacy]\label{thm:adequacy}
-For every iterative coalgebra $\stepm \colon X \to M(F X + X)$, the readout
-$\behav$ (Definition~\ref{def:behreadout}) is the behaviour of $\stepm$ up to silent steps: it is the
-unique $\Beh$-coalgebra morphism $X \to \nu\Beh$ through the structure map $\outm = \iter{\stepm}$, so
-it agrees layer for layer with the unfolding the coalgebra enumerates once the silent steps are run.
-On states folded by a sound carrier quotient (Remark~\ref{rem:coarser}) every state in a class shares
-one behaviour, so the readout over the quotient agrees with the per-state readout. Proof in
+For every iterative coalgebra $\stepm \colon X \to M(F X + X)$, the graph $(R(M),\outm)$
+(Definition~\ref{def:reach}) unfolds to the behaviour of $\stepm$ up to silent steps: its unfolding
+$\behav(M)$ is the unique $\Beh$-coalgebra morphism $X \to \nu\Beh$ through the structure map
+$\outm = \iter{\stepm}$ (Definition~\ref{def:behreadout}), so the graph agrees layer for layer with
+the unfolding the coalgebra enumerates once the silent steps are run. Proof in
 Appendix~\ref{app:adequacy}.
 \end{theorem}
 
 \noindent
 There is no normal-form translation to justify and no administrative bridge: once the silent steps are
-collapsed into $\outm$, $\behav$ is the behaviour essentially by construction, and the only content is
-that the silent collapse $\iter{\stepm}$ presents the iterative process faithfully
-(Proposition~\ref{prop:outwd}).
+collapsed into $\outm$, the graph is the behaviour's finite presentation essentially by construction,
+and the only content is that the silent collapse $\iter{\stepm}$ presents the iterative process
+faithfully (Proposition~\ref{prop:outwd}).
 
 \begin{theorem}[Termination]\label{thm:termination}
-For every iterative coalgebra with decidable state equality, the readout $\behav(x)$ halts if and only
-if the behaviour of $x$ is rational with respect to that equality (finitely many distinct states are
-reached, up to the equality), and in that case $\behav(x)$ is a finite cyclic graph, an element of the
-rational fixpoint $\rfp\Beh$ (Definition~\ref{def:rational}). When the reachable states are infinite
-up to the equality, the readout enumerates infinitely many of them and diverges. Proof in
+For every iterative coalgebra with decidable state equality, tabling $\outm$ from $M$ halts if and
+only if finitely many states are reachable from $M$ (the reachable set $R(M)$ is finite,
+Definition~\ref{def:reach}), and in that case the graph $(R(M),\outm)$ is a finite cyclic graph whose
+unfolding lies in the rational fixpoint $\rfp\Beh$ (Definition~\ref{def:rational}). When infinitely
+many states are reachable, the tabling enumerates them and diverges. Proof in
 Appendix~\ref{app:termination}.
 \end{theorem}
 
-\begin{remark}[Two rationality conditions]\label{rem:tworationalities}
-Two independent finiteness conditions govern termination, one per fixpoint. The silent collapse
-$\outm(x)$ (Definition~\ref{def:out}) halts iff the silent orbit from $x$ is rational, returning to a
-seen state rather than producing ever-new ones; this is \emph{rational reduction}. The readout
-$\behav$ (Definition~\ref{def:behreadout}) halts iff the reachable states, up to identity, are
-finite; this is \emph{rational behaviour}. They are logically independent: a behaviour can be rational
-while the silent reduction that produces it is not, and conversely. A coarser sound carrier
-(Remark~\ref{rem:coarser}) can recover rational behaviour where identity fails, for instance folding
-states that differ only in a part no descent reaches; nothing recovers a non-rational silent
-reduction, which is genuine non-termination of the iterative process.
+\begin{remark}[Two finiteness conditions]\label{rem:tworationalities}
+Two independent conditions govern termination, both with respect to structural state identity. The
+silent collapse $\outm(x)$ (Definition~\ref{def:out}) halts iff the silent orbit from $x$ is finite,
+returning to a state already seen rather than producing ever-new ones. The graph
+(Definition~\ref{def:behreadout}) halts iff the reachable states $R(M)$ are finite. They are logically
+independent: the silent orbit of a state may be infinite while the reachable states are finite, or
+conversely. Either failure is genuine non-termination of the construction; there is no further
+parameter to tune, since the identity on which states are compared is fixed
+(Remark~\ref{rem:foldingtabling}).
 \end{remark}
 
 \begin{remark}[Determinism: reduction strategies]\label{rem:determinism}
@@ -463,7 +442,7 @@ weak-head normalisation (Section~\ref{sec:bridge}), and equally call-by-name and
 reduction, differ only in the choice of $F$ and of which redex the step contracts, never in the
 $M = \Delaym$ shape. Richer $M$ (non-deterministic, probabilistic, stateful) leaves the architecture
 intact but replaces the cycle-to-$\bot$ collapse with the corresponding $M$-least fixpoint, for
-$M = \Pow$ a set-valued one folding up to bisimulation.
+$M = \Pow$ a set-valued one.
 \end{remark}
 
 % =====================================================================
@@ -516,8 +495,8 @@ Propositions~\ref{prop:outwd}, \ref{prop:cpo} and Theorem~\ref{thm:adequacy} to 
 Write $r = \mathtt{cons}\;0\;r$ as $Y\,(\mathtt{cons}\;0)$, with the Scott encoding
 $\mathtt{cons} = \lambda h.\lambda t.\lambda c.\lambda n.\,c\,h\,t$. Then $\outm(r)$ exposes
 $\lambda c.\lambda n.\,c\,0\,r'$ in finitely many silent steps without re-requiring $\outm(r)$: the
-recursive occurrence enters only as data. The repeating cell is one interned state, so under $\behav$
-the readout folds at the guarded re-entry,
+recursive occurrence enters only as data. The repeating cell is one interned state, so tabling
+folds at the guarded re-entry,
 \[
   \rho \;=\; \lambda c.\,\lambda n.\,(c\cdot 0)\cdot\rho,
 \]
@@ -534,20 +513,6 @@ the same interned state; the silent collapse $\outm(\Omega)$ has nothing to expo
 for $Y\,(\lambda x.x)$, the pure-$\lambda$ rendering of $\mathtt{letrec}\;x = x$.
 \end{example}
 
-\begin{remark}[Coarser identity for the $\lambda$-instance]\label{rem:deadfold}
-The finest identity, structural equality of de Bruijn terms, can fail to fold a rational behaviour.
-The witness is $M = Y\,F\,\underline{0}$ with
-$F = \lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\,n))$: every cell has the constant head
-$0$, so the behaviour is the rational constant-$0$ stream, but the tail states $Y\,F\,\underline{k}$
-are pairwise structurally distinct, differing only in the index $\underline{k}$ buried in an argument
-the readout never descends into. They are tree-equal, so a sound carrier quotient that erases the dead
-argument (Remark~\ref{rem:coarser}) folds them and the readout halts; the finest identity diverges.
-Recognising deadness exactly is the neededness problem, undecidable in general, but a conservative
-decidable analysis certifies it here. This is the rational-behaviour-but-not-rational-under-identity
-gap of Remark~\ref{rem:tworationalities}; the implementation discharges it with a dead-argument
-canonicaliser, one of its carriers.
-\end{remark}
-
 % =====================================================================
 \section{Applications}\label{sec:application}
 % =====================================================================
@@ -556,13 +521,12 @@ On the rational fragment the behaviour is a finite graph, so its equality is dec
 of problems that need added machinery in other settings does not arise.
 
 \begin{corollary}[Decidable behaviour equality on the rational fragment]\label{cor:decidable}
-Restricted to states with rational behaviour under a decidable sound carrier
-(Definition~\ref{def:rational}, Remark~\ref{rem:coarser}), equality of behaviours $\behav(x) =
-\behav(y)$ is decidable. Each behaviour is a finite cyclic graph (Theorem~\ref{thm:termination}); the
-graphs are computable, since the silent collapse terminates at each reached state
+Restricted to states from which finitely many states are reachable (Theorem~\ref{thm:termination}),
+equality of behaviours $\behav(x) = \behav(y)$ is decidable. Each is presented by a finite cyclic
+graph; the graphs are computable, since the silent collapse terminates at each reached state
 (Proposition~\ref{prop:outwd}) and the reachable states close after finitely many steps, while state
-identity is the decidable carrier equality. Equality of two rational graphs is then decided by the
-standard cycle-detecting bisimulation \citeTODO{courcelle}.
+identity is decidable (structural equality of states). Equality of two rational graphs is then decided
+by the standard cycle-detecting bisimulation \citeTODO{courcelle}.
 \end{corollary}
 
 \begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
@@ -581,9 +545,9 @@ recurrences fall into the same states and fold (Section~\ref{sec:reach}).
 \subsection{Structural computation over cyclic data}\label{sec:reach}
 Constructing the cyclic datum is already the new step. The pure term $Y\,(\mathtt{cons}\;0)$ denotes
 the infinite stream $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$, with no finite form under head
-reduction; up to identity it has finitely many states, so $\behav$ gives it a finite \emph{circular}
-representation, a cell whose tail points back to itself (Example~\ref{ex:cons}). A circular linked
-list from a pure $\lambda$-term is what the standard semantics cannot build.
+reduction; up to identity it has finitely many states, so tabling $\outm$ gives it a finite
+\emph{circular} representation, a cell whose tail points back to itself (Example~\ref{ex:cons}). A
+circular linked list from a pure $\lambda$-term is what the standard semantics cannot build.
 
 A recursive query over that datum is an ordinary $\lambda$-function, and the guarded/unproductive
 split of Definition~\ref{def:guarded} governs the \emph{query} as it governs the data. The na\"ive
@@ -595,7 +559,7 @@ walk
 recurses down a Scott stream looking for $\mathtt{nil}$. Applied to $r = \mathtt{cons}\;0\;r$, each
 recursive call builds $\mathtt{reach}\;t$; because $r$ has finitely many states, these fall into
 finitely many states, so the readout folds the recursion. Head reduction, which remembers nothing,
-builds a fresh application at every step and diverges; $\behav$ folds at the repeated state and
+builds a fresh application at every step and diverges; tabling folds at the repeated state and
 returns a definite value (here $\bot$: no $\mathtt{nil}$ is reached, so the walk is itself an
 unproductive cycle), in finite time. It is memoised for free, since identical states share their
 subcomputations.
@@ -606,7 +570,7 @@ $\mathtt{map}\,f = Y\,(\lambda\mathit{self}.\,\lambda\mathit{lst}.\;\mathit{lst}
 (\lambda h.\lambda t.\,\mathtt{cons}\;(f\,h)\;(\mathit{self}\;t))\;\mathtt{nil})$ has nothing
 cycle-aware in it. Its recursive call sits under a $\mathtt{cons}$, so it is guarded: applied to
 $r = \mathtt{cons}\;0\;r$, the recursive application $\mathtt{map}\,f\;t$ re-enters the same state
-$\mathtt{map}\,f\;r$, and $\behav$ folds it. The result is a finite circular list
+$\mathtt{map}\,f\;r$, and tabling folds it. The result is a finite circular list
 $\rho = \mathtt{cons}\;(f\,0)\;\rho$, every element transformed, where head reduction would map the
 infinite stream forever. The fold is lazy knot-tying: each cell is registered before its tail is
 recursed into, so the table supplies the back edge. On a finite list the same $\mathtt{map}$ is the
@@ -614,12 +578,12 @@ ordinary one. The implementation\anon[~(supplementary material)]{~\cite{firstord
 both arms.
 
 \subsection{Memoising arbitrary programs}\label{sec:memo}
-More generally, $\behav$ is the denotation of a \emph{memoised} run of any program over the carrier.
+More generally, $\behav$ is the denotation of a \emph{memoised} run of any program over the states.
 Memoisation needs a comparable key on which to recognise a repeated call; first-order states supply
 one, higher-order values do not (value equality of functions is undecidable). The readout's tabling
 is that memoisation: it is what lets a re-entry be recognised at all. Head reduction, which remembers
-nothing, unfolds a cyclic state forever; $\behav$ recognises the re-entry and folds. The two are the
-unfolding and its limit, separated by how much they remember.
+nothing, unfolds a cyclic state forever; tabling $\outm$ recognises the re-entry and folds. The two
+are the unfolding and its limit, separated by how much they remember.
 
 % =====================================================================
 \section{Related work}\label{sec:related}
@@ -627,11 +591,9 @@ unfolding and its limit, separated by how much they remember.
 \paragraph{Coalgebra, final semantics, and rational fixpoints.}
 Reading behaviour as the unique map into a final coalgebra is the coalgebraic method
 \citeTODO{rutten, jacobs}; the finite cyclic graphs are the rational fixpoint between the initial
-algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Minimising a coalgebra by
-behavioural equivalence is the source of the coarser carriers of Remark~\ref{rem:coarser};
-partition-refinement minimisation of automata \citeTODO{hopcroft, paige-tarjan} is the canonical
-instance of structure-as-identity folding, of which the present readout is the generalisation to an
-arbitrary signature.
+algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition-refinement
+minimisation of automata \citeTODO{hopcroft, paige-tarjan} is the classical instance of folding on
+structural identity, of which tabling $\outm$ is the generalisation to an arbitrary signature.
 
 \paragraph{Iteration, the delay monad, and Elgot monads.}
 The silent collapse $\iter{\stepm}$ is iteration in a (complete) Elgot monad
@@ -641,8 +603,8 @@ rational-fragment computation of that value. Generalised resumption monads $M(F(
 \citeTODO{piróg-gibbons} are the home of the iterative coalgebra of Definition~\ref{def:itcoalg}.
 
 \paragraph{Least Herbrand models and tabling.}
-The structure map and readout are least fixpoints of monotone consequence operators, least Herbrand
-models of definite specifications \citeTODO{vanemden-kowalski}; plain resolution diverges on a cyclic
+The structure map $\outm$ is a least fixpoint of a monotone consequence operator, the least Herbrand
+model of a definite specification \citeTODO{vanemden-kowalski}; plain resolution diverges on a cyclic
 query, and a tabled evaluator \citeTODO{tamaki-sato, tabling-slg} computes the least fixpoint by
 completing unproductive cycles instead of looping. Tabling is the mechanism the whole construction
 rests on, transported from logic programming to an arbitrary iterative coalgebra.
@@ -691,10 +653,10 @@ ordinary recursion over it terminates, without leaving the calculus or adding pr
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % =====================================================================
-The behaviour of an iterative coalgebra is the readout of a one-step structure map, the structure map
-itself the least fixpoint of the silent iteration. The unfolding diverges on a cyclic state; the
-readout, tabling on first-order state identity, folds a guarded cycle into a finite graph and decides
-an unproductive cycle as $\bot$, both in finite time on the rational fragment. Head normalisation of
+The behaviour of an iterative coalgebra is read by tabling a one-step structure map, the structure map
+itself the least fixpoint of the silent iteration. The unfolding diverges on a cyclic state; tabling
+that map on first-order state identity folds a guarded cycle into a finite graph and decides an
+unproductive cycle as $\bot$, both in finite time on the rational fragment. Head normalisation of
 the pure $\lambda$-calculus is one instance, the one that shows a pure term can carry and compute over
 cyclic data with nothing added to the calculus. The two parameters, the effect monad of the iterative
 process and the signature of the exposed layer, range over deterministic, non-deterministic,
@@ -750,46 +712,39 @@ $\outm(x) = \bot$ iff the behaviour at $x$ is the $\bot$ leaf.
 \end{lemma}
 \noindent
 By Proposition~\ref{prop:outwd}, $\outm(x) = \bot$ iff the silent process from $x$ exposes no layer.
-The behaviour's $\bot$ leaf is by Definition~\ref{def:readoutfun} exactly such a state, so the
-identification is immediate.
+The graph's $\bot$ leaf is by Definition~\ref{def:reach} exactly such a state, so the identification is
+immediate.
 
 \begin{proof}[Proof of Theorem~\ref{thm:adequacy}]
 The structure map $\outm$ (Definition~\ref{def:out}) is a $\Beh$-coalgebra $X \to \Beh X$, $\Beh = MF$
-(Definition~\ref{def:behfun}). The readout functional $\Psi$ (Definition~\ref{def:readoutfun}) reads
-one $\Beh$-layer off $\outm$ and defers to its argument for children; by Proposition~\ref{prop:cpo}
-its least fixpoint $\behav$ is the unique map with $\behav(x) = \Psi(\behav)(x)$, hence the unique
-$\Beh$-coalgebra morphism $X \to \nu\Beh$ over $\outm$ (finality). So $\behav(x)$ is determined layer
-for layer by $\outm$, which by construction runs the silent steps of $\stepm$
-(Proposition~\ref{prop:outwd}), so $\behav$ is the behaviour of $\stepm$ up to silent steps. The
-$\bot$-leaf case matches by Lemma~\ref{lem:rootactive}. Under a sound carrier quotient
-(Remark~\ref{rem:coarser}) every state in a class shares one behaviour, so the readout over the
-quotient and the per-state readout agree and the argument is verbatim.
+(Definition~\ref{def:behfun}); the graph $(R(M),\outm)$ is its restriction to the reachable states. By
+finality there is a unique $\Beh$-coalgebra morphism $\behav \colon X \to \nu\Beh$, determined layer
+for layer by $\outm$: $\behav(x)$ exposes the layer $\outm(x)$ with children $\behav$ of the successor
+states, or the $\bot$ leaf when $\outm(x) = \bot$ (Lemma~\ref{lem:rootactive}). Since
+$\outm = \iter{\stepm}$ runs the silent steps of $\stepm$ (Proposition~\ref{prop:outwd}), $\behav$ is
+the behaviour of $\stepm$ up to silent steps, and the graph $(R(M),\outm)$, whose unfolding is
+$\behav(M)$, is its finite presentation.
 \end{proof}
 
 \section{Termination (Theorem~\ref{thm:termination})}\label{app:termination}
 \begin{proof}[Proof of Theorem~\ref{thm:termination}]
-The readout descends only through reachable states (Definition~\ref{def:itcoalg}): the children of an
-exposed layer and, via the silent steps of $\outm$, the silent successors. State equality is decidable
-(or the chosen carrier equality is), so the tabling key is testable.
+Tabling descends only through reachable states (Definition~\ref{def:reach}): the children of an
+exposed layer and, via the silent steps of $\outm$, the silent successors. State equality is decidable,
+so the tabling key is testable.
 
-\emph{Rational $\Rightarrow$ halts.} If finitely many states are reached up to the equality, both
-fixpoints table over a finite set and halt: the silent collapse $\outm$ saturates its finite silent
-orbit, and the readout $\behav$ saturates its finite reachable set.
+\emph{Finite $\Rightarrow$ halts.} If $R(M)$ is finite, tabling $\outm$ visits a finite set and halts:
+the silent collapse $\outm(x)$ saturates each finite silent orbit, and the reachable closure saturates
+$R(M)$.
 
-\emph{Halts $\Rightarrow$ rational.} Contrapositive: if infinitely many states are reached up to the
-equality, the descent visits infinitely many distinct keys and the tabling never saturates.
+\emph{Halts $\Rightarrow$ finite.} Contrapositive: if $R(M)$ is infinite, the descent visits
+infinitely many distinct states and the tabling never saturates.
 
-\emph{Rational $\Rightarrow$ behaviour rational.} The subtrees of $\behav(x)$ are
-$\{\behav(y) : y \text{ reachable}\}$, finite, so $\behav(x)$ is rational
-(Definition~\ref{def:rational}), an element of $\rfp\Beh$.
+\emph{Graph rational.} When $R(M)$ is finite, $(R(M),\outm)$ is a finite graph; its unfolding has
+subtrees $\{\behav(y) : y \in R(M)\}$, finite, so it lies in $\rfp\Beh$
+(Definition~\ref{def:rational}).
 
 \emph{Two conditions.} The two halts above are independent (Remark~\ref{rem:tworationalities}): the
-silent orbit may be non-rational while the reachable states are finite, or conversely. The
-converse-failure witness for the finest identity in the $\lambda$-instance is
-Remark~\ref{rem:deadfold}: $\{\behav(y)\}$ is finite while the reachable states are infinite under
-structural identity, recovered by a coarser sound carrier. \TODO{state the witness's reachable-state
-enumeration and the dead-argument quotient that finitises it; the endpoints are fixed
-(Remark~\ref{rem:deadfold}), only the bookkeeping remains.}
+silent orbit of a state may be infinite while $R(M)$ is finite, or conversely.
 \end{proof}
 
 % =====================================================================
