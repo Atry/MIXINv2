@@ -386,15 +386,6 @@ exposed. A guarded cycle is a graph node pointing back to an earlier node, the f
 a rational behaviour; an unproductive cycle is the $\bot$ leaf.
 \end{definition}
 
-\begin{remark}[Folding is the ordinary behaviour of tabling]\label{rem:foldingtabling}
-There is no separate notion of ``which states may be folded together'': tabling closes a cycle on
-state identity, the ordinary key of a tabled computation whose core is $\outm$. Because states are
-first-order (Definition~\ref{def:itcoalg}), that identity is decidable; the fold is then the standard
-tabling re-entry. The implementation realises it by interning, so structurally equal states are one
-object and identity is a pointer test. Structural identity is the only identity; there is no
-congruence to choose.
-\end{remark}
-
 % =====================================================================
 \section{Adequacy and termination}\label{sec:adequacy}
 % =====================================================================
@@ -428,9 +419,7 @@ silent collapse $\outm(x)$ (Definition~\ref{def:out}) halts iff the silent orbit
 returning to a state already seen rather than producing ever-new ones. The graph
 (Definition~\ref{def:behreadout}) halts iff the reachable states $R(M)$ are finite. They are logically
 independent: the silent orbit of a state may be infinite while the reachable states are finite, or
-conversely. Either failure is genuine non-termination of the construction; there is no further
-parameter to tune, since the identity on which states are compared is fixed
-(Remark~\ref{rem:foldingtabling}).
+conversely. Either failure is genuine non-termination of the construction.
 \end{remark}
 
 \begin{remark}[Determinism: reduction strategies]\label{rem:determinism}
@@ -454,8 +443,7 @@ opening claim, so we give it in full; everything specialises the general develop
 
 \begin{definition}[The $\lambda$-shape signature]\label{def:lamsig}
 States are pure $\lambda$-terms in de Bruijn form (no $\alpha$-renaming), interned so that
-structurally equal terms are one state and identity is a pointer test (the first-order identity of
-Remark~\ref{rem:foldingtabling}). The signature is
+structurally equal terms are one state. The signature is
 \[
   F X = \big\{\Varsh_i\big\}_{i\in\mathbb{N}} \;+\; \big\{\Lamsh(x)\big\}_{x\in X} \;+\; \big\{\Appsh(x,x')\big\}_{x,x'\in X},
 \]
@@ -660,8 +648,7 @@ unproductive cycle as $\bot$, both in finite time on the rational fragment. Head
 the pure $\lambda$-calculus is one instance, the one that shows a pure term can carry and compute over
 cyclic data with nothing added to the calculus. The two parameters, the effect monad of the iterative
 process and the signature of the exposed layer, range over deterministic, non-deterministic,
-probabilistic, and stateful processes alike; the identity on which cycles fold is fixed, the ordinary
-behaviour of tabling, and decidable because the states are first-order.
+probabilistic, and stateful processes alike.
 
 % =====================================================================
 \appendix
