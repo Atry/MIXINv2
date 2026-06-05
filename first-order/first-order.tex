@@ -192,17 +192,18 @@ as an iterative coalgebra with this behaviour gives the same finite graph, the $
 $Y\,(\mathtt{cons}\;0)$ among them (Section~\ref{sec:bridge}).
 
 Now take a process that returns to a state \emph{without} ever exposing a layer: an
-\emph{unproductive} cycle. There is nothing to tie a back edge to. Here the second mechanism acts:
-the one-step map is the least fixpoint of the silent iteration, so an unproductive cycle, having
-nothing to fill its hole, settles at $\bot$. In the $\lambda$-instance this is reached by a recursive
-binder ($\mathtt{letrec}\;x=x$) and equally by self-application,
+\emph{unproductive} cycle. There is nothing to tie a back edge to. This is the one place a fixpoint is
+needed: the structure map $\outm$ is the least fixpoint of the silent iteration, so an unproductive
+cycle, having nothing to fill its hole, settles at $\bot$. In the $\lambda$-instance this is reached
+by a recursive binder ($\mathtt{letrec}\;x=x$) and equally by self-application,
 $\Omega=(\lambda x.x\,x)(\lambda x.x\,x)$, which steps to itself with no constructor exposed, so
 $\Omega = \bot$, decided in finite time where reduction loops forever.
 
-These are the two fixpoints the paper keeps apart: a guarded recurrence folds (a unique solution in
-the space of cyclic graphs), and an unguarded recurrence bottoms out (a least solution that ascends
-from $\bot$). Whether either readout terminates is governed by one property, rationality, developed
-next.
+So there is a single fixpoint, the silent collapse $\outm$. The guarded cycle above is not a second
+fixpoint but a back edge the tabling ties for free: the tail already \emph{is} the registered cell, so
+the cyclic graph is there in the coalgebra and the readout merely prints it. The guarded case folds,
+the unproductive case bottoms out, and whether either terminates is governed by one property,
+rationality, developed next.
 
 % =====================================================================
 \section{The behaviour domain}\label{sec:domain}
