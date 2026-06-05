@@ -63,11 +63,11 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-We give a first-order semantics for the $\lambda$-calculus over the domain of head reduction trees. It is parametric in a head-evaluation and a position congruence, and an adequate refinement of head reduction. A term's tree is the least fixpoint of a consequence operator. When evaluated by tabling, $\Omega$ terminates as $\bot$, and some other pure $\lambda$-terms converge to cyclic graphs.
+We read the behaviour of a coalgebra as a finite cyclic graph. A state is identified with its own unfolding, so a behaviour with finitely many distinct subtrees, a \emph{rational} behaviour, collapses to a finite graph closed by back edges, and \emph{tabling} computes it: a state revisited during its own readout ties a cycle instead of unfolding forever. The structure map need not be given outright; it may itself be the least fixpoint of an iterative process, and the ascent from $\bot$ makes a silent cycle terminate as $\bot$ in finite time where the process alone diverges. Head normalisation of the pure $\lambda$-calculus is one instance, with weak-head reduction as the iterative process: $\Omega$ terminates as $\bot$, and some pure $\lambda$-terms converge to cyclic graphs. The construction needs only that observations have a computable rational fixpoint and that internal steps can be iterated, and the readout is parametric in the identity on which cycles fold, a \emph{position congruence}, decidable because states are \emph{first-order}, ranging over graph nodes and never over a function space. Deterministic reduction strategies, head and weak-head normalisation among them, are the special case where the iterated effect is mere divergence.
 \end{abstract}
 
-\keywords{first-order semantics, least fixpoint, rational trees, position congruence,
-  tabling, head reduction,
+\keywords{coalgebra, rational fixpoint, structure as identity, least fixpoint,
+  rational trees, tabling, position congruence, head reduction,
   \texorpdfstring{$\lambda$-calculus}{lambda-calculus},
   \texorpdfstring{B\"ohm trees}{Bohm trees}}
 
