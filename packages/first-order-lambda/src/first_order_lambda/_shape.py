@@ -1,15 +1,16 @@
-"""The weak-head shape relation ``Sh`` (Definition ``def:sh``), single-valued.
+"""Head normalization: the structure map ``out`` of the lambda-calculus coalgebra.
 
-A deterministic calculus exposes exactly one weak-head constructor at a position, so ``Sh``
-is single-valued, not a set: the value at a position is a shape or ``BOTTOM`` (no shape), not
-a set of shapes. ``compute_shape`` is the per-node clause body; ``Node.shape`` wraps it in a
-``fixpoint_cached_property`` resolved as a least fixpoint from ``BOTTOM`` upward. Because
-nodes are interned, a position reached again during its own computation is caught by a
-pointer test; an unproductive head cycle (such a reentry with no constructor exposed, as in
-``Omega`` or ``Y (lambda x. x)``) stabilizes at ``BOTTOM``.
+``head_normalize`` exposes a node's outermost constructor after head reduction. A deterministic
+calculus exposes exactly one constructor at a node, so the value is a single shape
+(``VarShape``/``LamShape``/``AppShape``) or ``BOTTOM`` (no constructor), never a set.
+``compute_head_normal_form`` is the per-node clause body; ``Node.head_normal_form`` wraps it in a
+``fixpoint_cached_property`` resolved as a least fixpoint from ``BOTTOM`` upward. Because nodes are
+interned, a node reached again during its own computation is caught by a pointer test; an
+unproductive cycle (a re-entry with no constructor exposed, as in ``Omega`` or ``Y (lambda x. x)``)
+stabilizes at ``BOTTOM``.
 
-A reduction budget (a context variable) bounds beta-reduction so any genuinely non-rational
-reduction surfaces as ``ReductionBudgetExceeded`` in tests instead of hanging.
+A reduction budget (a context variable) bounds beta-reduction so a genuinely non-rational reduction
+surfaces as ``ReductionBudgetExceeded`` instead of hanging.
 """
 
 from __future__ import annotations
@@ -88,29 +89,32 @@ def _consume_redex() -> None:
     budget.remaining -= 1
 
 
-def shape_of(node: Node) -> Shape | ShapeBottom:
-    """The stabilized shape of ``node`` (``fixpoint_cached_property`` is typed as ``object``)."""
-    return cast("Shape | ShapeBottom", node.shape)
+def head_normalize(node: Node) -> Shape | ShapeBottom:
+    """The head normal form of ``node``: its outermost constructor, or ``BOTTOM`` (no constructor).
+
+    Typed via ``Node.head_normal_form`` (a ``fixpoint_cached_property`` typed as ``object``).
+    """
+    return cast("Shape | ShapeBottom", node.head_normal_form)
 
 
-def compute_shape(node: Node) -> Shape | ShapeBottom:
-    """The clauses of ``Sh`` (Definition ``def:sh``); single-valued, no aggregate."""
+def compute_head_normal_form(node: Node) -> Shape | ShapeBottom:
+    """The per-node clause body of head normalization; single-valued, no aggregate."""
     match node:
         case Var(index=index):
             return VarShape(index=index)
         case Lam(body=body):
             return LamShape(body=body)
         case App(function=function, argument=argument):
-            head = shape_of(function)
+            head = head_normalize(function)
             match head:
                 case LamShape(body=lambda_body):
                     _consume_redex()
-                    return shape_of(substitute(lambda_body, depth=0, argument=argument))
+                    return head_normalize(substitute(lambda_body, depth=0, argument=argument))
                 case VarShape() | AppShape():
                     return AppShape(function=function, argument=argument)
                 case ShapeBottom.BOTTOM:
                     return BOTTOM
                 case _:
-                    raise TypeError(f"Unknown head shape {head!r}")
+                    raise TypeError(f"Unknown head {head!r}")
         case _:
             raise TypeError(f"Unknown node {node!r}")

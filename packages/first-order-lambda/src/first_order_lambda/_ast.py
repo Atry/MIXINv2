@@ -49,19 +49,18 @@ class Node(ABC):
         return _loose_bound(self)
 
     @fixpoint_cached_property(bottom=lambda: BOTTOM)
-    def shape(self) -> "Shape | ShapeBottom":
-        """The weak-head shape relation ``Sh``, resolved as a least fixpoint.
+    def head_normal_form(self) -> "Shape | ShapeBottom":
+        """The head normal form: the outermost constructor after head reduction, a least fixpoint.
 
-        The shape is single-valued (a deterministic calculus exposes one weak-head
-        constructor), so it is not a set. It is the least fixpoint of the shape recurrence,
-        computed by merging from ``BOTTOM`` upward (``fixpoints``); because nodes are
-        interned, a position reached again during its own computation is caught by a pointer
-        test. An unproductive head cycle (such a reentry with no constructor exposed, as in
-        ``Omega`` or ``Y (lambda x. x)``) stabilizes at ``BOTTOM`` (bottom).
+        Single-valued (a deterministic calculus exposes one constructor), so not a set. The least
+        fixpoint of the head-normalization recurrence, computed from ``BOTTOM`` upward
+        (``fixpoints``); because nodes are interned, a node reached again during its own computation
+        is caught by a pointer test. An unproductive cycle (a re-entry with no constructor exposed,
+        as in ``Omega`` or ``Y (lambda x. x)``) stabilizes at ``BOTTOM``.
         """
-        from first_order_lambda._shape import compute_shape
+        from first_order_lambda._shape import compute_head_normal_form
 
-        return compute_shape(self)
+        return compute_head_normal_form(self)
 
 
 @final

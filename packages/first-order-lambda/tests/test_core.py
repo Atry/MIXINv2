@@ -1,10 +1,9 @@
-"""Core interpreter behaviour: the tree as a least fixpoint over interned positions.
+"""Core interpreter behaviour: the graph as the reachable sub-coalgebra of head normalization.
 
-Interned positions make a cyclic structure a finite set of positions, so the least-fixpoint
-readout folds it into a finite rational tree where head reduction would unfold forever.
-Unproductive cycles (Omega, Y (lambda x. x)) have no weak-head shape, so they read out as the
-bottom leaf. The readout is single-valued: there is no set, and the empty/bottom value is
-just bottom.
+Interned nodes make a cyclic structure a finite set of nodes, so tabling ``head_normalize`` folds
+it into a finite cyclic graph where head reduction would unfold forever. Unproductive cycles
+(Omega, Y (lambda x. x)) have no head normal form, so they render as the bottom leaf. Head
+normalization is single-valued: there is no set, and the empty value is just bottom.
 """
 
 from __future__ import annotations
@@ -26,54 +25,52 @@ from first_order_lambda._prelude import (
     ZERO,
     cons,
 )
-from first_order_lambda._readout import readout, render
+from first_order_lambda._render import render
 
 
 def test_identity_readout(snapshot: SnapshotAssertion) -> None:
-    assert render(readout(IDENTITY_TERM)) == snapshot(name="identity")
+    assert render(IDENTITY_TERM) == snapshot(name="identity")
 
 
 def test_kestrel_readout(snapshot: SnapshotAssertion) -> None:
-    assert render(readout(KESTREL_TERM)) == snapshot(name="kestrel")
+    assert render(KESTREL_TERM) == snapshot(name="kestrel")
 
 
 def test_finite_list_readout(snapshot: SnapshotAssertion) -> None:
-    assert render(readout(FINITE_LIST)) == snapshot(name="finite_list")
+    assert render(FINITE_LIST) == snapshot(name="finite_list")
 
 
 def test_beta_redex_fires() -> None:
     applied = build(app(IDENTITY, KESTREL))
-    assert render(readout(applied)) == render(readout(KESTREL_TERM))
+    assert render(applied) == render(KESTREL_TERM)
 
 
 def test_cyclic_zeros_folds_to_rational_tree(snapshot: SnapshotAssertion) -> None:
     # The cyclic stream is written Y (cons 0) (no recursion binder); interning folds the
-    # structurally-repeating cell into a finite rational tree.
-    assert render(readout(CYCLIC_ZEROS)) == snapshot(name="cyclic_zeros")
+    # structurally-repeating cell into a finite cyclic graph.
+    assert render(CYCLIC_ZEROS) == snapshot(name="cyclic_zeros")
 
 
 def test_unproductive_cycles_are_bottom() -> None:
-    # Omega and Y (lambda x. x) (i.e. letrec x = x) are unproductive cycles: no weak-head
-    # shape, so the least fixpoint stabilizes at BOTTOM and the readout is the bottom leaf.
-    assert OMEGA.shape is BOTTOM
-    assert LOOP.shape is BOTTOM
-    assert render(readout(OMEGA)) == "⊥"
-    assert render(readout(LOOP)) == "⊥"
+    # Omega and Y (lambda x. x) (i.e. letrec x = x) are unproductive cycles: no head normal
+    # form, so the least fixpoint stabilizes at BOTTOM and the graph is the bottom leaf.
+    assert OMEGA.head_normal_form is BOTTOM
+    assert LOOP.head_normal_form is BOTTOM
+    assert render(OMEGA) == "⊥"
+    assert render(LOOP) == "⊥"
 
 
 def test_first_approximation_versus_lfp() -> None:
     # T up 1 (fold_cycles=False) cuts a guarded cycle to the guarded-cut leaf: a finite,
     # back-reference-free tree with a single dummy cut leaf and no bottom (the cycle is
-    # productive, not unproductive). lfp (fold_cycles=True) folds it: a cyclic tree with a
+    # productive, not unproductive). lfp (fold_cycles=True) folds it: a cyclic graph with a
     # back-reference and no cut. T up 1 is the less defined; both terminate.
-    approx = render(readout(CYCLIC_ZEROS, fold_cycles=False))
-    fixpoint = render(readout(CYCLIC_ZEROS, fold_cycles=True))
+    approx = render(CYCLIC_ZEROS, fold_cycles=False)
+    fixpoint = render(CYCLIC_ZEROS, fold_cycles=True)
     assert "∅" in approx and "#" not in approx and "⊥" not in approx
     assert "#" in fixpoint and "∅" not in fixpoint and "⊥" not in fixpoint
     # On an acyclic term the two coincide (no re-entry to fold or cut).
-    assert render(readout(IDENTITY_TERM, fold_cycles=False)) == render(
-        readout(IDENTITY_TERM, fold_cycles=True)
-    )
+    assert render(IDENTITY_TERM, fold_cycles=False) == render(IDENTITY_TERM, fold_cycles=True)
 
 
 def test_guarded_cut_distinct_from_unproductive() -> None:
@@ -81,8 +78,8 @@ def test_guarded_cut_distinct_from_unproductive() -> None:
     # stops) distinct from the unproductive meaningless leaf. Y (cons 0) is a productive cycle,
     # cut to the dummy cut leaf; cons 0 Omega stops at the unproductive Omega, a bottom. They no
     # longer collapse onto one symbol, so a context can no longer conflate them.
-    guarded = render(readout(CYCLIC_ZEROS, fold_cycles=False))
+    guarded = render(CYCLIC_ZEROS, fold_cycles=False)
     cons_zero_omega = build(cons(ZERO, app(SELF_APPLY, SELF_APPLY)))  # cons 0 Omega
-    unproductive = render(readout(cons_zero_omega, fold_cycles=False))
+    unproductive = render(cons_zero_omega, fold_cycles=False)
     assert "∅" in guarded and "⊥" not in guarded
     assert "⊥" in unproductive and "∅" not in unproductive

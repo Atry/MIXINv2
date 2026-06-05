@@ -1,8 +1,8 @@
 """Classic lambda-calculus computations: Church numerals, Peano arithmetic, factorial, Fibonacci.
 
-Each is a normalizing pure-lambda term; the interpreter reduces it and the readout is the
-tree of the normal form, so a computed numeral reads out identically to the literal Church
-numeral it equals.
+Each is a normalizing pure-lambda term; the interpreter reduces it and the graph is the tree of
+the normal form, so a computed numeral renders identically to the literal Church numeral it
+equals.
 """
 
 from __future__ import annotations
@@ -22,16 +22,16 @@ from first_order_lambda._prelude import (
     TRUE,
     church,
 )
-from first_order_lambda._readout import readout, render
+from first_order_lambda._render import render
 
 
 def _reads_as(term, expected) -> bool:
-    return render(readout(build(term))) == render(readout(build(expected)))
+    return render(build(term)) == render(build(expected))
 
 
 def test_church_numeral_shape() -> None:
     # church 3 = lambda s. lambda z. s (s (s z)).
-    assert render(readout(build(church(3)))) == "(λ (λ (v1 (v1 (v1 v0)))))"
+    assert render(build(church(3))) == "(λ (λ (v1 (v1 (v1 v0)))))"
 
 
 @pytest.mark.parametrize("n", [0, 1, 2, 5])
@@ -65,8 +65,8 @@ def test_pred(n: int) -> None:
 
 def test_is_zero() -> None:
     assert _reads_as(app(IS_ZERO, church(0)), TRUE)
-    assert render(readout(build(app(IS_ZERO, church(3))))) == render(
-        readout(build(app(IS_ZERO, church(2))))
+    assert render(build(app(IS_ZERO, church(3)))) == render(
+        build(app(IS_ZERO, church(2)))
     )  # both False
 
 

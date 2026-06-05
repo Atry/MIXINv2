@@ -6,9 +6,9 @@ in the pure calculus is already new: ``Y (cons 0)`` is the cyclic stream ``r = c
 and interning gives it a finite circular representation (a node pointing to itself) that the
 standard infinite unfolding cannot. The recursion in ``map`` is guarded (a ``cons`` is exposed
 before the recursive call), so over that cyclic list the recursive application re-enters the
-same closed position and the least fixpoint folds the result into a finite circular structure,
-where head reduction would map the infinite stream forever. On a finite list the same ``map``
-behaves as usual.
+same closed node and tabling folds the result into a finite circular structure, where head
+reduction would map the infinite stream forever. On a finite list the same ``map`` behaves as
+usual.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from first_order_lambda._prelude import (
     cons,
     map_list,
 )
-from first_order_lambda._readout import readout, render
+from first_order_lambda._render import render
 
 # The cyclic singly-linked list r = cons 0 r, written with Y (no recursion binder).
 _CYCLIC = app(Y, app(SCOTT_CONS, ZERO))
@@ -37,27 +37,27 @@ _CYCLIC = app(Y, app(SCOTT_CONS, ZERO))
 def test_map_over_cyclic_list_folds_and_terminates(snapshot: SnapshotAssertion) -> None:
     # map succ over the cyclic 0-stream folds to a finite circular structure (a back-reference
     # #0), terminating where head reduction would unfold the mapped stream forever.
-    rendered = render(readout(build(map_list(SUCC, _CYCLIC))))
+    rendered = render(build(map_list(SUCC, _CYCLIC)))
     assert "#" in rendered and "⊥" not in rendered
     assert rendered == snapshot(name="map_succ_cyclic")
 
 
 def test_map_identity_preserves_the_cyclic_structure() -> None:
     # map id is a no-op that still folds: the result is the source cyclic list itself.
-    assert render(readout(build(map_list(IDENTITY, _CYCLIC)))) == render(readout(CYCLIC_ZEROS))
+    assert render(build(map_list(IDENTITY, _CYCLIC))) == render(CYCLIC_ZEROS)
 
 
 def test_map_transforms_each_element() -> None:
     # map succ genuinely rewrites every element (0 becomes 1), so its folded result differs
     # from the source cyclic 0-stream.
-    mapped = render(readout(build(map_list(SUCC, _CYCLIC))))
-    assert mapped != render(readout(CYCLIC_ZEROS))
+    mapped = render(build(map_list(SUCC, _CYCLIC)))
+    assert mapped != render(CYCLIC_ZEROS)
 
 
 def test_same_map_on_a_finite_list_is_ordinary() -> None:
     # The very same map, on the finite list cons 0 nil, is the textbook map: it yields
     # cons (succ 0) nil = cons 1 nil and terminates with no fold.
-    mapped = render(readout(build(map_list(SUCC, cons(ZERO, SCOTT_NIL)))))
-    expected = render(readout(build(cons(church(1), SCOTT_NIL))))
+    mapped = render(build(map_list(SUCC, cons(ZERO, SCOTT_NIL))))
+    expected = render(build(cons(church(1), SCOTT_NIL)))
     assert "#" not in mapped
     assert mapped == expected
