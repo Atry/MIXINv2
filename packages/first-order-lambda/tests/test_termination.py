@@ -21,13 +21,19 @@ from fixpoints._core import FixpointRecursionError, fixpoint_cached_property
 from first_order_lambda._dsl import app, build, lam
 from first_order_lambda._prelude import IDENTITY, SUCC, Y, ZERO, cons
 from first_order_lambda._render import render
-from first_order_lambda._shape import ReductionBudgetExceeded, reduction_budget
+from first_order_lambda._shape import ReductionBudgetExceeded, reduction_budget, weak_head_normalize
 
 # An infinite RATIONAL singly-linked list: cons 0 (cons 0 (...)), finitely many nodes.
 CYCLIC_LIST = build(app(Y, lam(lambda self_: cons(ZERO, self_))))
 
 # An infinite NON-RATIONAL singly-linked list: 0, 1, 2, ... every cell distinct.
 NATS = build(app(app(Y, lam(lambda self_: lam(lambda n: cons(n, app(self_, app(SUCC, n)))))), ZERO))
+
+# A finite term whose STRUCTURE MAP itself diverges (not merely the readout). The counter
+# count 0 = Y (lambda self. lambda n. self (succ n)) 0 head-reduces through count 0 -> count 1 ->
+# count 2 -> ..., never reaching a weak head normal form and never returning to an interned node
+# (the succ-argument grows), so its head reduction is non-rational.
+COUNTER = build(app(app(Y, lam(lambda self_: lam(lambda n: app(self_, app(SUCC, n))))), ZERO))
 
 
 def test_infinite_cyclic_list_is_representable() -> None:
@@ -42,6 +48,18 @@ def test_infinite_non_rational_list_does_not_terminate() -> None:
     with reduction_budget(50_000):
         with pytest.raises((ReductionBudgetExceeded, RecursionError)):
             render(NATS)
+
+
+def test_structure_map_itself_does_not_terminate() -> None:
+    # out does not converge on every finite term. NATS only diverges at the readout: each cons cell
+    # HAS a weak head normal form, so out converges per node. COUNTER is sharper -- out itself
+    # diverges, because the head reduction never reaches a weak head normal form and never cycles
+    # back to an interned node (unlike Omega, whose contractum interns back to itself and resolves
+    # to BOTTOM). The reduction budget surfaces it, or Python's stack first; both are RuntimeError
+    # subclasses.
+    with reduction_budget(20_000):
+        with pytest.raises((ReductionBudgetExceeded, RecursionError)):
+            weak_head_normalize(COUNTER)
 
 
 def test_fixpoints_iteration_budget_bounds_a_reentrant_cycle() -> None:
