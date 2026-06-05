@@ -170,12 +170,14 @@ as supplementary material.]{ It is openly available
 at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.} It realises the construction
 directly: the silent collapse $\outm$ as a least fixpoint (with a finite-budget first iterate as a
 policy flag), and the tabling that folds on structural identity, realised by interning so identity is
-a pointer test. The examples of
+a pointer test. It also provides the head structure map of Remark~\ref{rem:boehm} as a second
+least-fixpoint instance over the same carrier and readout. The examples of
 Sections~\ref{sec:overview}, \ref{sec:bridge}, and \ref{sec:application} are reproduced as tests:
 $Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph, $\Omega$ and $Y\,(\lambda x.x)$ read out as
-$\bot$, the na\"ive walk terminates over the cyclic stream where head reduction loops, and the
+$\bot$, the na\"ive walk terminates over the cyclic stream where head reduction loops, the
 rationality dichotomy of Theorem~\ref{thm:termination} is exercised on a rational and a non-rational
-stream.
+stream, and the weak-head and head readings are checked to terminate together while differing on
+$\lambda x.\,\Omega$ (Remark~\ref{rem:boehm}).
 
 % =====================================================================
 \section{Overview}\label{sec:overview}
@@ -473,11 +475,26 @@ silent iteration of Definition~\ref{def:out}.
 For this $\stepm$, the structure map $\outm = \iter{\stepm}$ (Definition~\ref{def:out}) is the
 weak-head shape relation $\Sh$: $\outm(M)$ is the outermost constructor of $M$ after weak head
 reduction, and $\outm(M) = \bot$ exactly when weak head reduction of $M$ does not terminate. The
-behaviour $\behav$ (Definition~\ref{def:behreadout}) is the L\'evy--Longo tree. Replacing the silent
-step by head reduction \emph{under} $\lambda$ (a different choice of which redex to contract) gives
-the B\"ohm tree instead (Section~\ref{sec:related}). Proof: specialise
+behaviour $\behav$ (Definition~\ref{def:behreadout}) is the L\'evy--Longo tree. Taking the structure
+map to be head reduction \emph{under} $\lambda$ instead, a ``$\lambda$'' over a body with no head
+normal form being itself $\bot$, gives the B\"ohm tree (Remark~\ref{rem:boehm}). Proof: specialise
 Propositions~\ref{prop:outwd}, \ref{prop:cpo} and Theorem~\ref{thm:adequacy} to $M = \Delaym$.
 \end{proposition}
+
+\begin{remark}[Both readings, same convergence]\label{rem:boehm}
+The weak-head and head structure maps are two instances over the one carrier, the one tabling, and
+the one readout, differing only in the $\lambda$ clause. They terminate on exactly the same terms:
+head reduction performs eagerly, along the head spine, the very weak-head reductions the L\'evy--Longo
+readout performs lazily down the $\lambda$-spine, so the reachable nodes and the reductions coincide.
+They differ only denotationally, at a $\lambda$ whose body has no head normal form: L\'evy--Longo
+keeps it (reading $\lambda x.\,\Omega$ as $\lambda x.\,\bot$), B\"ohm bottoms the whole term (reading
+it as $\bot$). The choice of normalisation is therefore denotational, not a difference in
+convergence. The accompanying implementation\anon[~(supplementary
+material)]{~\cite{firstorderlambda}} realises both as least-fixpoint structure maps over the one
+carrier and the one readout, and checks both facts: $\lambda x.\,\Omega$ reads out as
+$\lambda x.\,\bot$ under weak head and as $\bot$ under head, while both readings terminate on the same
+terms and diverge on the same non-rational stream.
+\end{remark}
 
 \begin{example}[Guarded: the cyclic stream $Y\,(\mathtt{cons}\;0)$]\label{ex:cons}
 Write $r = \mathtt{cons}\;0\;r$ as $Y\,(\mathtt{cons}\;0)$, with the Scott encoding
