@@ -994,7 +994,11 @@ tuple of booleans (the Datalog engine of Section~\ref{sec:application}), and a r
 subproblems are the nodes of a first-order datum, memoised for free because identical subproblems
 are one interned state. Each claim is confined to a domain's rational core: regular lexing but not
 general context-free parsing, rational-tree unification but not a general most-general unifier,
-finite-state model checking but not infinite-state.
+finite-state model checking but not infinite-state. The terms below are the actual encodings; the
+Booleans are Church, $\mathtt{T} = \lambda a.\lambda b.\,a$ and $\mathtt{F} = \lambda a.\lambda b.\,b$,
+with $\mathtt{or} = \lambda p.\lambda q.\,p\,\mathtt{T}\,q$ and
+$\mathtt{and} = \lambda p.\lambda q.\,p\,q\,\mathtt{F}$, and $\mathtt{cons}$ and $Y$ are as in
+Section~\ref{sec:bridge}.
 
 \paragraph{Dynamic programming, memoisation for free.}
 The decisive capability is memoisation (Section~\ref{sec:memo}): a recursion whose state space is a
@@ -1005,12 +1009,32 @@ DP over it is read in time linear in $n$, where a naive recursion would visit $2
 memo table is written; tabling on first-order state identity is the memoisation, which the pure
 $\lambda$-calculus lacks without a decidable identity on subproblems, value equality of closures
 being undecidable.
+\[
+  \mathtt{node} = \lambda l.\lambda r.\lambda m.\lambda f.\,m\,l\,r, \qquad
+  \mathtt{leaf} = \lambda v.\lambda m.\lambda f.\,f\,v,
+\]
+\[
+  \mathtt{any} = Y\,\big(\lambda\mathit{self}.\lambda t.\;
+    t\,(\lambda l.\lambda r.\,\mathtt{or}\,(\mathit{self}\,l)\,(\mathit{self}\,r))\,(\lambda v.\,v)\big),
+  \qquad t_0 = \mathtt{leaf}\;\mathtt{F},\quad t_{k+1} = \mathtt{node}\;t_k\;t_k,
+\]
+so $\mathtt{any}\,t_n$ reads to $\mathtt{F}$ with each of the $n+1$ shared subtrees evaluated once.
 
 \paragraph{Game search with a transposition table.}
 Minimax is an and-or tree: a maximising position takes the disjunction over its moves, a minimising
 position the conjunction, and a terminal position a Boolean. A \emph{transposition}, the same
 position reached by a different move order, is the same interned node, so its value is computed
 once. Interning is the transposition table of a game-playing program, with no table written by hand.
+\[
+  \mathtt{max} = \lambda l.\lambda r.\lambda x.\lambda n.\lambda f.\,x\,l\,r, \quad
+  \mathtt{min} = \lambda l.\lambda r.\lambda x.\lambda n.\lambda f.\,n\,l\,r, \quad
+  \mathtt{leaf} = \lambda v.\lambda x.\lambda n.\lambda f.\,f\,v,
+\]
+\[
+  \mathtt{value} = Y\,\big(\lambda\mathit{self}.\lambda p.\;
+    p\,(\lambda l.\lambda r.\,\mathtt{or}\,(\mathit{self}\,l)(\mathit{self}\,r))\,
+      (\lambda l.\lambda r.\,\mathtt{and}\,(\mathit{self}\,l)(\mathit{self}\,r))\,(\lambda v.\,v)\big).
+\]
 
 \paragraph{Graph reachability and program analysis.}
 Reachability and transitive closure over a directed graph, including one with cycles, are the least
@@ -1018,20 +1042,44 @@ fixpoint of the immediate-consequence operator, terminating because the lattice 
 shape decides reachability of a state in a finite transition system. Andersen-style points-to (alias)
 analysis \citeTODO{andersen, doop}, in which $\mathtt{pointsTo}(p,o)$ follows from
 $\mathtt{assign}(p,q)$ and $\mathtt{pointsTo}(q,o)$, is monotone Datalog, and a compiler reads it as
-the same boolean fixpoint.
+the same boolean fixpoint. The cyclic graph $a\to b\to c\to a$ with $c\to d$, and the points-to
+program for $a=\mathtt{new}\,o_1;\,b=a;\,c=b$, are the clause sets
+\[
+\begin{aligned}
+  &\mathtt{reach}(a),\quad \mathtt{reach}(b)\leftarrow\mathtt{reach}(a),\quad
+    \mathtt{reach}(c)\leftarrow\mathtt{reach}(b),\\
+  &\mathtt{reach}(a)\leftarrow\mathtt{reach}(c),\quad \mathtt{reach}(d)\leftarrow\mathtt{reach}(c);\\
+  &\mathtt{pt}(a,o_1),\quad \mathtt{pt}(b,X)\leftarrow\mathtt{pt}(a,X),\quad
+    \mathtt{pt}(c,X)\leftarrow\mathtt{pt}(b,X),
+\end{aligned}
+\]
+so $\mathtt{reach}(d)$ and $\mathtt{pt}(c,o_1)$ hold while $\mathtt{reach}(e)$ and $\mathtt{pt}(c,o_2)$
+do not.
 
 \paragraph{Lexical analysis.}
 A deterministic finite automaton is a finite cyclic transition graph, and running it is a fold over
 the input that threads the state. Regular languages are the archetypal rational behaviour, so a lexer
 is a $\lambda$-term whose behaviour is rational; the name \emph{rational} is itself the regular, or
-Kleene, sense (Definition~\ref{def:rational}).
+Kleene, sense (Definition~\ref{def:rational}). Encoding the even state and the symbol $a$ as
+$\mathtt{T}$, and the odd state and $b$ as $\mathtt{F}$, both two-way selectors,
+\[
+  \delta = \lambda s.\lambda x.\,s\,(x\,\mathtt{F}\,\mathtt{T})\,(x\,\mathtt{T}\,\mathtt{F}), \qquad
+  \mathtt{accepts} = \lambda s.\,s\,\mathtt{T}\,\mathtt{F},
+\]
+\[
+  \mathtt{run} = Y\,\big(\lambda\mathit{self}.\lambda s.\lambda w.\;
+    w\,(\lambda h.\lambda t.\,\mathit{self}\,(\delta\,s\,h)\,t)\,s\big),
+\]
+and $\mathtt{accepts}\,(\mathtt{run}\,\mathtt{T}\,w)$ is $\mathtt{T}$ exactly when $w$ has an even
+number of $a$s.
 
 \paragraph{Unification and recursive types.}
 Equality of two rational (cyclic) terms is decided by their behaviour through cycle-detecting
 bisimulation (Corollary~\ref{cor:decidable}). This is the decidable core shared by rational-tree
 unification \citeTODO{colmerauer} and equirecursive ($\mu$-) type equality
 \citeTODO{amadio-cardelli, brandt-henglein}: two constructions of one rational term read out
-identically, and a different term reads out differently.
+identically, and a different term reads out differently. For instance $Y\,(\mathtt{cons}\;0)$ and
+$Y\,(\lambda s.\,\mathtt{cons}\;0\;s)$ read out identically, while $Y\,(\mathtt{cons}\;1)$ differs.
 
 \paragraph{The metalanguage needs tabling too.}
 The interpreter's own host-language term builder illustrates the point reflexively. Writing a shared
