@@ -838,8 +838,11 @@ type of such systems but no procedure over them.
 The least fixpoint of a monotone consequence operator is the least Herbrand
 model of a definite specification \citeTODO{vanemden-kowalski}; plain resolution diverges on a cyclic
 query, whereas a tabled evaluator \citeTODO{tamaki-sato, tabling-slg} computes the least fixpoint by
-completing unproductive cycles instead of looping. Tabling there stays within logic programming and is
-not carried to an arbitrary signature functor.
+completing unproductive cycles instead of looping. Tabling has also been extended to store rational
+(cyclic) terms under a canonical representation and to drive coinductive logic programming
+\citeTODO{mantadelis-rocha-moura}, but there the cyclic term is already produced by occurs-check-free
+unification. In all of these, tabling stays within logic programming and is not carried to an arbitrary
+signature functor.
 
 \paragraph{Rational trees and recursive types.}
 Deciding structural queries over cyclic structures by cycle detection is long established: rational
