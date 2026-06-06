@@ -445,7 +445,9 @@ rational behaviours are a proper subclass of the (always unique) behaviours.
 \begin{theorem}[Finite-representation barrier; optimality]\label{thm:optimal}
 By a \emph{finite representation} of a behaviour $t \in \nu\Beh$ we mean a finite $\Sigma$-graph whose
 unfolding is $t$ (a first-order datum, to be distinguished from a finite \emph{generator}, a term that
-reduces to $t$). Then:
+reduces to $t$). The statement is for the deterministic skeleton; for a branching $M$ the labels carry
+the $M$-structure and $\rfp\Beh$ is the corresponding rational fixpoint, and the argument lifts
+unchanged. Then:
 \begin{enumerate}
   \item \emph{(Barrier.)} $t$ has a finite representation iff $t$ is rational (Definition~\ref{def:rational},
         i.e.\ $t \in \rfp\Beh$); hence no procedure halts with a finite representation of a non-rational
@@ -468,7 +470,9 @@ many distinct subtrees, is the unfolding of the finite graph on those subtrees w
 immediate subtree of a root; this is the standard equivalence for regular trees \citeTODO{courcelle},
 and the rational behaviours are exactly $\rfp\Beh$ (Definition~\ref{def:behfun}). Hence a non-rational
 $t$ is the unfolding of no finite $\Sigma$-graph, so no procedure can output one. The generator clause
-is immediate: the term $M$ is a finite generator of $\behav(M)$ for every $M$, rational or not.
+is immediate: the term $M$ is a finite generator of $\behav(M)$ for every $M$, rational or not. The
+barrier is against any \emph{regular} (first-order, finitely presented) representation, each of which
+unfolds to only rational trees; only a Turing-complete generator, such as the term itself, escapes it.
 
 \emph{(2)} If the readout halts then by Theorem~\ref{thm:termination} the reached positions are finite
 and the result is a finite graph in $\rfp\Beh$, which by Theorem~\ref{thm:adequacy} unfolds to
@@ -483,7 +487,9 @@ ever identifies positions of equal behaviour is sound (it changes no tree, Theor
 and yields fewer classes, hence a larger halting set; for the coarsest such identity two positions are
 identified exactly when their subtrees are equal, so the classes are the distinct subtrees of
 $\behav(M)$, finite iff $\behav(M)$ is rational. That identity therefore halts iff rational, and by (1)
-no sound identity can do better.
+no sound identity can do better. That coarsest identity is effective on the rational fragment, where
+each fold is decided by cycle-detecting bisimulation; the implementation here ships structural identity
+instead, which sits strictly below it, the gap being the dead-subterm witnesses.
 \end{proof}
 
 \begin{remark}[The optimum is relative to the denotation]\label{rem:fixeddenotation}
@@ -499,8 +505,9 @@ fixed denotation}; termination beyond it is bought only by changing what is comp
 \end{remark}
 
 \begin{remark}[Optimal semi-decision]\label{rem:semidec}
-Rationality is undecidable (one can make $\behav(M)$ rational iff a given machine fails to halt), so the
-terminating inputs cannot be pre-selected. The readout is thus a \emph{sound semi-decision procedure}
+Rationality is undecidable: given a machine $T$, the term that emits the constant-$0$ stream while
+simulating $T$ and switches to emitting $0,1,2,\dots$ once $T$ halts has a rational behaviour iff $T$
+never halts, so rationality is co-r.e.-hard. Hence the terminating inputs cannot be pre-selected. The readout is thus a \emph{sound semi-decision procedure}
 for rationality: on the rational fragment (up to its identity, Theorem~\ref{thm:optimal}(3)) it halts
 and returns the finite representation, and elsewhere it diverges, which by Theorem~\ref{thm:optimal}(1)
 is the most any procedure can achieve.
