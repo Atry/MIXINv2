@@ -1,5 +1,5 @@
 % =====================================================================
-%  First-Order Semantics of Iterative Coalgebras
+%  The Fixed-Point over the Approximation Order
 % ---------------------------------------------------------------------
 %  Shared body. This file carries NO \documentclass: it is \input by two
 %  entry points that supply the class (mimicking ../inheritance-calculus):
@@ -29,7 +29,7 @@
 \newcommand{\rfp}{\varrho}                   % rational fixpoint
 \newcommand{\behav}{\mathsf{beh}}            % behaviour map into the final coalgebra
 \newcommand{\outm}{\mathsf{out}}             % structure map: the iteration of the equation morphism
-\newcommand{\stepm}{e}                       % equation morphism (iterative coalgebra)
+\newcommand{\stepm}{e}                       % equation morphism (the map e)
 \newcommand{\Delaym}{\mathsf{Delay}}
 \newcommand{\Pow}{\mathcal{P}}
 \newcommand{\iter}[1]{#1^{\dagger}}          % Elgot iteration
@@ -71,11 +71,11 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-The pure $\lambda$-calculus is commonly held to be unable to manipulate cyclic data without extending it with a recursion construct such as \texttt{letrec} or a $\mu$-binder; we demonstrate that no such extension is needed. The behaviour of a coalgebra, like HNF, can be read as a finite cyclic graph. A state is identified with its own unfolding, so a behaviour with finitely many distinct subtrees, a \emph{rational} behaviour, collapses to a finite graph closed by back edges, and \emph{tabling} computes it: a state revisited while its behaviour is computed ties a cycle instead of unfolding forever. The structure map need not be given outright; it may itself be the least fixpoint of an iterative process, and the ascent from $\bot$ makes a silent cycle terminate as $\bot$ in finite time where the process alone diverges. Head normalisation of the pure $\lambda$-calculus is one instance, and the one that bears out the opening claim: with weak-head reduction as the iterative process, $\Omega$ terminates as $\bot$ and pure $\lambda$-terms converge to cyclic graphs, with no construct added to the calculus. The construction needs only that observations have a computable rational fixpoint and that internal steps can be iterated. Cycles fold by the ordinary behaviour of tabling, on the identity of states, which is decidable because the states are \emph{first-order}, ranging over graph nodes and never over a function space. Deterministic reduction strategies, head and weak-head normalisation among them, are the special case where the iterated effect is mere divergence.
+Representing and transforming cyclic data in the pure $\lambda$-calculus normally requires an added recursion construct, such as a \texttt{letrec} or a $\mu$-binder, because reduction of a term that refers to itself does not terminate. Over the $\bot$-completed approximation order on a finitary signature, however, the behaviour functor is algebraically compact, so its initial algebra and final coalgebra coincide; the least and greatest fixpoints of a term's unfolding then agree, giving each term a unique fixpoint as its denotation, and what remains is to compute it. We present an algorithm that, for an arbitrary coalgebra over a finitary signature, computes this fixpoint by tabling. It halts precisely when the behaviour is rational, that is, when it has finitely many distinct subtrees. This is optimal: a non-rational behaviour has no finite representation, so no procedure that preserves the denotation halts on a larger class of inputs. Applied to the coalgebra that head reduction of the pure $\lambda$-calculus defines, the algorithm decides $\Omega$ as $\bot$ in finite time and represents a term such as $Y\,(\mathtt{cons}\;0)$ as a finite cyclic graph that an ordinary recursive function can transform, with no construct added to the calculus. An accompanying interpreter implements this case, evaluating any pure $\lambda$-term of rational behaviour to its unique fixpoint. We also give an encoding of pure Datalog into the $\lambda$-calculus; a Datalog program is function-free with a finite Herbrand base, so every encoded term has rational behaviour, and the interpreter computes the program's least Herbrand model.
 \end{abstract}
 
-\keywords{coalgebra, rational fixpoint, structure as identity, least fixpoint,
-  rational trees, tabling, head reduction,
+\keywords{coalgebra, rational fixpoint, algebraic compactness, structure as identity,
+  least fixpoint, rational trees, tabling, head reduction, Datalog,
   \texorpdfstring{$\lambda$-calculus}{lambda-calculus},
   \texorpdfstring{B\"ohm trees}{Bohm trees}}
 
@@ -97,7 +97,7 @@ Two things make this effective. The first is the form the input takes; the secon
 cycles detectable at all.
 
 First, the structure map need not be handed to us as a one-step observation. It may itself be
-produced by an \emph{iterative process}: from a state, perform some internal steps, possibly
+produced by an \emph{internal process}: from a state, perform some internal steps, possibly
 none, until a layer of behaviour is exposed. We capture the internal process by an effect
 monad $M$ and the exposed layer by a signature functor $F$, so the datum is a coalgebra
 $\stepm\colon X \to M(F X + X)$ valued in the \emph{resumption} of $F$ over $M$
@@ -108,7 +108,7 @@ the silent steps (Definition~\ref{def:out}). Because it is a \emph{least} fixpoi
 from $\bot$, so a silent cycle, a state whose internal process returns to it with no layer
 exposed, terminates as $\bot$ in finite time where the process alone diverges. Head
 normalisation of the $\lambda$-calculus is exactly this situation, with weak-head reduction as
-the iterative process (Section~\ref{sec:bridge}).
+the internal process (Section~\ref{sec:bridge}).
 
 Second, recognising that a state has recurred is a test of \emph{identity}. This is the word the
 title turns on. The identity is decidable because the states are \emph{first-order}: they range
@@ -122,16 +122,16 @@ decidable and the folding of cyclic structure effective.
 \paragraph{Why this answers the cyclic-data question}
 It is folklore that the pure $\lambda$-calculus cannot represent or manipulate cyclic data without
 an added recursion construct (a \texttt{letrec}, a $\mu$-binder, observable sharing, mutable
-references). The construction refutes this: the $\lambda$-calculus, read as an iterative coalgebra,
+references). The construction refutes this: the $\lambda$-calculus, read as an equation morphism,
 is one instance among many, and on it a pure term such as $Y\,(\mathtt{cons}\;0)$ has a rational
 behaviour, so tabling folds it into a finite circular graph and an ordinary recursive function over
 it terminates, with nothing added to the calculus (Sections~\ref{sec:bridge}, \ref{sec:application}).
-The capability is not special to the $\lambda$-calculus; it is a property of any iterative coalgebra
+The capability is not special to the $\lambda$-calculus; it is a property of any equation morphism
 with rational behaviour.
 
 \paragraph{Contributions}
 \begin{itemize}
-  \item A reading of the behaviour of an iterative coalgebra $\stepm \colon X \to M(F X + X)$ by
+  \item A reading of the behaviour of an equation morphism $\stepm \colon X \to M(F X + X)$ by
         tabling its one-step structure map over the reachable states, parametric in an effect monad
         $M$ (the internal process) and a signature functor $F$ (the exposed layer)
         (Sections~\ref{sec:domain}, \ref{sec:itcoalg}). The one-step map $\outm = \iter{\stepm}$ is
@@ -193,7 +193,7 @@ subtrees, $0$ and $r$ itself, so it is rational. Reading it off by tabling, the 
 $\mathtt{cons}\;0\;(-)$ is registered before its tail is followed; the tail returns to that very
 cell, which is already in the table, so the tabling ties a back edge and stops. The result is a
 finite graph, a node pointing to itself, that unfolds to the infinite stream. Any presentation of $r$
-as an iterative coalgebra with this behaviour gives the same finite graph, the $\lambda$-term
+as an equation morphism with this behaviour gives the same finite graph, the $\lambda$-term
 $Y\,(\mathtt{cons}\;0)$ among them (Section~\ref{sec:bridge}).
 
 Now take a process that returns to a state \emph{without} ever exposing a layer: an
@@ -288,14 +288,14 @@ finite $\Sigma$-labelled graph, equivalently $t \in \rfp\Beh$ (Definition~\ref{d
 \end{definition}
 
 % =====================================================================
-\section{Iterative coalgebras and the structure map}\label{sec:itcoalg}
+\section{Equation morphisms and the structure map}\label{sec:itcoalg}
 % =====================================================================
-The development is parametric in the iterative process that produces the structure map. We give it,
+The development is parametric in the internal process that produces the structure map. We give it,
 extract the one-step map by collapsing the silent steps, and record that the collapse is a least
 fixpoint.
 
-\begin{definition}[Iterative coalgebra]\label{def:itcoalg}
-An \emph{iterative coalgebra} is given by an \emph{equation morphism}
+\begin{definition}[Equation morphism]\label{def:itcoalg}
+An \emph{equation morphism} is a map
 \[
   \stepm \colon X \longrightarrow M\big(F X + X\big),
 \]
@@ -320,7 +320,7 @@ divergent computation $\bot_{M(FX)}$.
 \end{definition}
 
 \begin{proposition}[The structure map is well-defined]\label{prop:outwd}
-For every iteration-ready $M$ and every iterative coalgebra $\stepm$, $\Phi$ is monotone and
+For every iteration-ready $M$ and every equation morphism $\stepm$, $\Phi$ is monotone and
 $\omega$-continuous in the pointwise order on $X \to M(F X)$, so by Kleene
 $\outm = \bigsqcup_{k} \Phi^{k}(\lambda x.\,\bot)$ exists and is the least fixpoint, and $\outm(x)$ is
 the divergent computation exactly when the silent process from $x$ exposes no layer. Proof in
@@ -338,7 +338,7 @@ The only identity test, the one that lets the iteration recognise a cycle, is th
 of states, not an equality of the values they compute.
 \end{remark}
 
-The structure map turns the iterative coalgebra $\stepm$ into an ordinary one-step coalgebra
+The structure map turns the equation morphism $\stepm$ into an ordinary one-step coalgebra
 $\outm \colon X \to \Beh X$ for $\Beh = M F$ (Definition~\ref{def:behfun}). The rest of the
 development runs on $\outm$ and never re-inspects the silent steps. The next definition is the
 positive presentation that makes $\Phi$ monotone above; like the rest, it is parametric in $M$ and
@@ -398,7 +398,7 @@ a rational behaviour; an unproductive cycle is the $\bot$ leaf.
 \section{Adequacy and termination}\label{sec:adequacy}
 % =====================================================================
 \begin{theorem}[Adequacy]\label{thm:adequacy}
-For every iterative coalgebra $\stepm \colon X \to M(F X + X)$, the graph $(R(M),\outm)$
+For every equation morphism $\stepm \colon X \to M(F X + X)$, the graph $(R(M),\outm)$
 (Definition~\ref{def:reach}) unfolds to the behaviour of $\stepm$ up to silent steps: its unfolding
 $\behav(M)$ is the unique $\Beh$-coalgebra morphism $X \to \nu\Beh$ through the structure map
 $\outm = \iter{\stepm}$ (Definition~\ref{def:behreadout}), so the graph agrees layer for layer with
@@ -409,11 +409,11 @@ Appendix~\ref{app:adequacy}.
 \noindent
 There is no normal-form translation to justify and no administrative bridge: once the silent steps are
 collapsed into $\outm$, the graph is the behaviour's finite presentation essentially by construction,
-and the only content is that the silent collapse $\iter{\stepm}$ presents the iterative process
+and the only content is that the silent collapse $\iter{\stepm}$ presents the internal process
 faithfully (Proposition~\ref{prop:outwd}).
 
 \begin{theorem}[Termination]\label{thm:termination}
-For every iterative coalgebra with decidable state equality, tabling $\outm$ from $M$ halts if and
+For every equation morphism with decidable state equality, tabling $\outm$ from $M$ halts if and
 only if finitely many states are reachable from $M$ (the reachable set $R(M)$ is finite,
 Definition~\ref{def:reach}), and in that case the graph $(R(M),\outm)$ is a finite cyclic graph whose
 unfolding lies in the rational fixpoint $\rfp\Beh$ (Definition~\ref{def:rational}). When infinitely
@@ -513,7 +513,7 @@ is the most any procedure can achieve.
 \end{remark}
 
 \begin{remark}[Determinism: reduction strategies]\label{rem:determinism}
-When $M = \Delaym$, an iterative coalgebra is a deterministic observe-or-step system
+When $M = \Delaym$, an equation morphism is a deterministic observe-or-step system
 $X \to F X + X$ (one silent successor, divergence the only effect), the behaviour functor is $\Beh = F$
 with $\nu\Beh$ the ordinary $F$-trees, and the silent collapse decides an unproductive cycle as the
 single value $\bot$. This is the case of a \emph{deterministic reduction strategy}: head and
@@ -654,7 +654,7 @@ equals greatest.
 \end{remark}
 
 % =====================================================================
-\section{Bridge: head normalisation is an iterative coalgebra}\label{sec:bridge}
+\section{Bridge: head normalisation is an equation morphism}\label{sec:bridge}
 % =====================================================================
 Head normalisation of the pure $\lambda$-calculus is the instance $M = \Delaym$ (pure divergence,
 Example~\ref{ex:effects}) with $F$ the $\lambda$-shape signature. It is the instance that bears out the
@@ -671,8 +671,8 @@ recursion binder; the repetition that tabling folds is produced by ordinary term
 $Y$ combinator.
 \end{definition}
 
-\begin{definition}[Weak-head reduction as the iterative coalgebra]\label{def:shbridge}
-The iterative coalgebra $\stepm \colon X \to \Delaym(F X + X)$ is weak-head reduction:
+\begin{definition}[Weak-head reduction as the equation morphism]\label{def:shbridge}
+The equation morphism $\stepm \colon X \to \Delaym(F X + X)$ is weak-head reduction:
 \[
   \stepm(M) =
   \begin{cases}
@@ -755,8 +755,8 @@ by the standard cycle-detecting bisimulation \citeTODO{courcelle}.
 Several problems that need added machinery elsewhere do not arise here. Observing sharing or cyclicity
 in a pure language needs an observable-sharing primitive or a circular-program idiom
 \citeTODO{gill, bird}; here sharing is state identity. Representing a cyclic structure needs an
-explicit recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here the iterative
-coalgebra generates the repetition and tabling folds it, with no binder added
+explicit recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here the equation
+morphism generates the repetition and tabling folds it, with no binder added
 (Section~\ref{sec:bridge}). Deciding equality over cyclic structures needs a separate unification
 discipline or recursive-type system \citeTODO{colmerauer, amadio-cardelli, brandt-henglein}; here it
 is cycle detection over states (Corollary~\ref{cor:decidable}). Terminating a recursive query over a
@@ -822,14 +822,14 @@ The silent collapse $\iter{\stepm}$ is iteration in a (complete) Elgot monad
 \citeTODO{adamek-milius-velebil, goncharov-elgot}; for $M = \Delaym$ it is the delay/partiality monad
 \citeTODO{capretta}, which makes divergence a value, and the cycle-to-$\bot$ decision is the
 rational-fragment computation of that value. Generalised resumption monads $M(F(-) + -)$
-\citeTODO{piróg-gibbons} are the home of the iterative coalgebra of Definition~\ref{def:itcoalg}.
+\citeTODO{piróg-gibbons} are the home of the equation morphism of Definition~\ref{def:itcoalg}.
 
 \paragraph{Least Herbrand models and tabling.}
 The structure map $\outm$ is a least fixpoint of a monotone consequence operator, the least Herbrand
 model of a definite specification \citeTODO{vanemden-kowalski}; plain resolution diverges on a cyclic
 query, and a tabled evaluator \citeTODO{tamaki-sato, tabling-slg} computes the least fixpoint by
 completing unproductive cycles instead of looping. Tabling is the mechanism the whole construction
-rests on, transported from logic programming to an arbitrary iterative coalgebra.
+rests on, transported from logic programming to an arbitrary equation morphism.
 
 \paragraph{Rational trees and recursive types.}
 Deciding structural queries over cyclic structures by cycle detection is long established: rational
@@ -854,7 +854,7 @@ normal forms, the weak-head instance used here.
 Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and call-by-need \citeTODO{ariola-felleisen}
 provide sharing as an added construct; that a pure functional language cannot observe sharing or
 cyclicity without an addition such as observable sharing \citeTODO{gill} or a circular-program idiom
-\citeTODO{bird} is a known obstacle. We add nothing to the calculus: it is one iterative coalgebra
+\citeTODO{bird} is a known obstacle. We add nothing to the calculus: it is one equation morphism
 among many, and tabling folds its rational behaviour.
 
 \paragraph{Higher-order model checking and defunctionalization.}
@@ -868,19 +868,19 @@ interpreter, we give a first-order semantic \emph{object}; no interpreter is con
 The capability we exploit, terminating structural computation over cyclic data by cycle detection, is
 decades old in logic programming \citeTODO{colmerauer, tamaki-sato} and recursive-type theory
 \citeTODO{amadio-cardelli, brandt-henglein}. What appears to be new is its placement: it is the
-behaviour of an arbitrary iterative coalgebra, read by tabling on first-order state identity, with the
+behaviour of an arbitrary equation morphism, read by tabling on first-order state identity, with the
 $\lambda$-calculus as one instance, so a pure term acquires a finite cyclic representation and an
 ordinary recursion over it terminates, without leaving the calculus or adding primitives.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
 % =====================================================================
-The behaviour of an iterative coalgebra is read by tabling a one-step structure map, the structure map
+The behaviour of an equation morphism is read by tabling a one-step structure map, the structure map
 itself the least fixpoint of the silent iteration. The unfolding diverges on a cyclic state; tabling
 that map on first-order state identity folds a guarded cycle into a finite graph and decides an
 unproductive cycle as $\bot$, both in finite time on the rational fragment. Head normalisation of
 the pure $\lambda$-calculus is one instance, the one that shows a pure term can carry and compute over
-cyclic data with nothing added to the calculus. The two parameters, the effect monad of the iterative
+cyclic data with nothing added to the calculus. The two parameters, the effect monad of the internal
 process and the signature of the exposed layer, range over deterministic, non-deterministic,
 probabilistic, and stateful processes alike.
 
