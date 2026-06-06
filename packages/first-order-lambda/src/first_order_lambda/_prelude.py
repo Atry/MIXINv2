@@ -359,3 +359,59 @@ def any_false_dp(depth: int) -> Node:
     returning FALSE in time linear in ``depth`` where the naive tree recursion is ``2 ** depth``.
     """
     return make_app(TREE_ANY_NODE, shared_false_tree(depth))
+
+
+# =====================================================================
+# Minimax / AND-OR game search with a transposition table for free.
+#
+# A game position is a MAX node (the side to move maximises, so its value is the OR over moves of
+# "can the mover force a win"), a MIN node (the opponent, AND over moves), or a terminal LEAF
+# carrying a Boolean outcome. A transposition is the same position reached by a different move
+# order; here it is the same interned node, so its value is computed once. Interning is the
+# transposition table, and no table is written by hand.
+# =====================================================================
+
+MAX_NODE: Builder = lam(lambda l: lam(lambda r: lam(
+    lambda on_max: lam(lambda on_min: lam(lambda on_leaf: app(app(on_max, l), r))))))
+MIN_NODE: Builder = lam(lambda l: lam(lambda r: lam(
+    lambda on_max: lam(lambda on_min: lam(lambda on_leaf: app(app(on_min, l), r))))))
+GAME_LEAF: Builder = lam(lambda v: lam(
+    lambda on_max: lam(lambda on_min: lam(lambda on_leaf: app(on_leaf, v)))))
+
+# minimax = Y (lambda self. lambda pos. pos (max: OR (self l) (self r)) (min: AND (self l) (self r))
+#                                            (leaf: lambda v. v))
+MINIMAX: Builder = app(
+    Y,
+    lam(lambda self_recursion: lam(lambda position: app(app(app(
+        position,
+        lam(lambda left: lam(lambda right: app(
+            app(OR, app(self_recursion, left)), app(self_recursion, right)))),       # MAX: OR
+        ),
+        lam(lambda left: lam(lambda right: app(
+            app(AND, app(self_recursion, left)), app(self_recursion, right)))),       # MIN: AND
+        ),
+        lam(lambda value: value),                                                     # LEAF
+    ))),
+)
+
+MAX_NODE_NODE: Node = build(MAX_NODE)
+MIN_NODE_NODE: Node = build(MIN_NODE)
+GAME_LEAF_NODE: Node = build(GAME_LEAF)
+MINIMAX_NODE: Node = build(MINIMAX)
+_TRUE_NODE: Node = build(TRUE)
+
+
+def game_max(left: Node, right: Node) -> Node:
+    return make_app(make_app(MAX_NODE_NODE, left), right)
+
+
+def game_min(left: Node, right: Node) -> Node:
+    return make_app(make_app(MIN_NODE_NODE, left), right)
+
+
+def game_leaf(value: Node) -> Node:
+    return make_app(GAME_LEAF_NODE, value)
+
+
+def minimax(position: Node) -> Node:
+    return make_app(MINIMAX_NODE, position)
