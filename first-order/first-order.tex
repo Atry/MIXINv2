@@ -1,56 +1,16 @@
-% =====================================================================
-%  First-Order Semantics for the lambda-Calculus
-% ---------------------------------------------------------------------
-%  Shared body. This file carries NO \documentclass: it is \input by two
-%  entry points that supply the class (mimicking ../inheritance-calculus):
-%    * preprint.tex   -- arXiv / preprint  (acmart, nonacm)
-%    * submission.tex -- POPL submission   (acmart, review, anonymous)
-%  Build both with: latexmk  (see latexmkrc)
-% ---------------------------------------------------------------------
-%  STATUS: working draft.
-%  * Placeholders are marked \TODO{...} and render in red.
-%  * Every bibliography entry is UNVERIFIED: author/title are best-effort
-%    recollections; years, venues, volumes, and pages are marked [verify].
-%    Do not cite from this file without checking each entry.
-%  * Proofs are sketches; load-bearing gaps are flagged with \TODO.
-% =====================================================================
-
-%% acmart already loads amsmath, amssymb, amsthm, xcolor, and hyperref;
-%% only mathtools needs to be added here.
+%% acmart already loads amsmath, amssymb, amsthm, xcolor, and hyperref.
 \usepackage{mathtools}
 
-% --- draft placeholder macro ------------------------------------------
+% --- draft placeholder macros -----------------------------------------
 \newcommand{\TODO}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
 \newcommand{\citeTODO}[1]{\textcolor{red}{[\textbf{cite:} #1]}}
 
 % --- notation ----------------------------------------------------------
-\newcommand{\Sh}{\mathsf{Sh}}
-\newcommand{\lfpT}{\mathrm{lfp}(T_P)}
-\newcommand{\Lamsh}{\mathsf{Lam}}
-\newcommand{\Appsh}{\mathsf{App}}
-\newcommand{\Varsh}{\mathsf{Var}}
-\newcommand{\Btree}{\mathcal{B}}
-\newcommand{\dlam}{\mathord{\downarrow}\lambda}
-\newcommand{\dhead}{\mathord{\downarrow}\mathsf{h}}
-\newcommand{\darg}{\mathord{\downarrow}\mathsf{a}}
-\newcommand{\subt}[2]{#1\!\downarrow\!#2}   % subterm of #1 at path #2
-\newcommand{\Posq}[1]{\operatorname{Pos}(#1)/{\approx}} % positions up to the congruence
-\newcommand{\reduces}{\twoheadrightarrow}
-\newcommand{\bred}{\rightarrow_{\beta}}
-\newcommand{\present}{\mathtt{present}}     % first Scott constructor (a value is present)
-
-% --- theorem environments ---------------------------------------------
-%% acmart provides theorem/lemma/proposition/corollary (acmplain) and
-%% definition/example (acmdefinition), all sharing the `theorem' counter.
-%% Only `remark' is missing, so we add it on the same shared counter.
-\AtBeginDocument{%
-  \theoremstyle{acmdefinition}%
-  \newtheorem{remark}[theorem]{Remark}%
-}
+\newcommand{\out}{\mathsf{out}}            % the coalgebra structure map (one-step observation)
 
 \begin{document}
 
-\title{First-Order Semantics for the $\lambda$-Calculus}
+\title{Least-Fixpoint Semantics for the $\lambda$-Calculus}
 
 \author{Bo Yang}
 \affiliation{%
@@ -60,875 +20,371 @@
   \country{USA}
 }
 \email{yang-bo@yang-bo.com}
-\thanks{This work was conducted independently prior to the author's employment at Figure AI.}
+% \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-We give a first-order semantics for the $\lambda$-calculus over the domain of head reduction trees. It is parametric in a head-evaluation and a position congruence, and an adequate refinement of head reduction. A term's tree is the least fixpoint of a consequence operator. When evaluated by tabling, $\Omega$ terminates as $\bot$, and some other pure $\lambda$-terms converge to cyclic graphs.
+  Cyclic graph representations of $\lambda$-terms have traditionally relied on extensions to the pure calculus. We give a least-fixpoint semantics for the $\lambda$-calculus by defining a monotone approximation order on $\lambda$-terms. The semantics is parameterized by a normalization $f$, whose coinductive reading is the standard, possibly infinite tree; we take instead the least fixpoint $\operatorname{lfp}(\out)$ of the one-step observation $\out$ it induces. Weak head and head normalization are the two instances. When evaluated by tabling, $\Omega$ terminates as $\bot$, and pure $\lambda$-terms can build and transform potentially infinite cyclic graphs.
+
 \end{abstract}
 
-\keywords{first-order semantics, least fixpoint, rational trees, position congruence,
-  tabling, head reduction,
-  \texorpdfstring{$\lambda$-calculus}{lambda-calculus},
-  \texorpdfstring{B\"ohm trees}{Bohm trees}}
+\keywords{least fixpoint, head reduction, B\"ohm trees, rational trees, cyclic data,
+  \texorpdfstring{$\lambda$-calculus}{lambda-calculus}}
 
 \maketitle
 
 % =====================================================================
 \section{Introduction}
 % =====================================================================
-The tree of a $\lambda$-term (B\"ohm tree, L\'evy--Longo tree) is the coinductive normal form
-obtained by iterating head reduction at every exposed position. Head reduction itself is the
-shared engine, but three examples expose two obstacles that it cannot overcome alone.
-$\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ diverges under head reduction; its tree
-should be $\bot$, but detecting that head reduction has returned to its starting position requires
-testing identity on values, and on a function space the only identity is
-$\beta$-equality, which is undecidable.
-The pure $\lambda$-term $Y\,(\mathtt{cons}\;0)$ denotes the infinite stream
-$\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$; head reduction enumerates it forever, yet the
-stream is rational (one repeating cell) and should be representable as a finite cyclic graph.
-A pure calculus has no way to build this cycle: representing cyclic data normally requires an
-explicit recursion binder ($\mathtt{letrec}$), mutable references, or an observable-sharing
-primitive.
-Even with $\mathtt{letrec}$ to \emph{create} the cycle, applying an ordinary recursive
-$\mathtt{map}$ to it remains hard: $\mathtt{map}$ has nothing cycle-aware in it, head reduction
-diverges, yet the result is again a cyclic list and should terminate. The existing mechanisms
-can neither detect a repeated recursive call (the identity problem) nor fold the result into a
-cycle (the representation problem).
+The tree of a $\lambda$-term, its B\"ohm tree or L\'evy--Longo tree, is obtained by iterating head
+reduction at every exposed position \cite{barendregt, levy-longo}. Head reduction is the shared
+engine, and it only ever \emph{unfolds}, so on a cyclic term it runs forever. Three pure terms expose
+two obstacles to recovering a finite answer,
+\[
+  \Omega, \qquad r = Y\,(\mathtt{cons}\,0), \qquad \mathtt{map}\;\mathtt{succ}\;r,
+\]
+the diverging combination, the cyclic stream of zeros, and an ordinary $\mathtt{map}$ that increments
+it. The $\mathtt{map}$ is the textbook one, with nothing cycle-aware in it,
+\[
+  \mathtt{map}\,f = Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\,\mathtt{nil}\big);
+\]
+see Appendix~\ref{app:examples} for $Y$, $\mathtt{cons}$, $\mathtt{succ}$, and the complete
+definitions.
 
-We give a first-order semantics that resolves both. The tree of a term factors through a
-first-order relation $\Sh$, the \emph{shape} of a position, ranging over positions (graph
-nodes), not over a function space. Because positions are first-order, identity is a decidable
-\emph{position congruence} (Definition~\ref{def:congruence}), and the tree is the least fixpoint
-of the monotone consequence operator $T_P$ (Knaster--Tarski). The $\mathrm{lfp}(T_P)$
-computation recognises repeated positions and folds guarded cycles into finite rational graphs,
-while deciding unproductive cycles as $\bot$: $\Omega$ terminates as $\bot$;
-$Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph without $\mathtt{letrec}$; an ordinary
-$\mathtt{map}$ transforms a circular list into a circular list. The construction is parametric in
-a head-evaluation and a position congruence.
-We have implemented an interpreter that validates these behaviours\anon[.]{ \cite{firstorderlambda}.}
+The first obstacle is identity. $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head reduces to
+itself, so its tree should be the meaningless $\bot$; but recognising that head reduction has returned
+to its starting term means deciding identity on values, and on a function space the only identity is
+$\beta$-equality, which is undecidable. The second is representation. The stream $r$ is rational, one
+repeating cell, and should have a finite cyclic graph, yet head reduction enumerates it forever, and a
+pure calculus cannot even build the cycle: a circular structure normally needs an explicit recursion
+binder ($\mathtt{letrec}$), mutable references, or an observable-sharing primitive
+\cite{ariola-klop, gill}. The two obstacles meet in $\mathtt{map}\,\mathtt{succ}\,r$: head reduction
+diverges, yet the result is again a finite cyclic list and should terminate, and the existing
+mechanisms can neither detect the repeated recursive call nor fold the result.
+
+We resolve both by reading the tree not as the unfolding of head reduction but as its \emph{least
+fixpoint}. We give the partial trees a monotone approximation order and identify positions up to a
+decidable congruence; over this order the construction is parametric in a \emph{normalization} $f$,
+with weak head normalization yielding the L\'evy--Longo tree and head normalization the B\"ohm tree.
+The least fixpoint $\operatorname{lfp}(\out)$ of the one-step observation $\out$ that $f$ induces is
+the same tree that head reduction enumerates, but it folds a guarded cycle into a finite rational
+graph and settles an unproductive cycle at $\bot$:
+$\Omega$ is $\bot$ in finite time, $r$ folds to a node pointing to itself, and
+$\mathtt{map}\,\mathtt{succ}\,r$ folds to a finite circular list of ones, all where head reduction
+diverges, with nothing added to the calculus. We have implemented an interpreter that validates these
+behaviours\anon[.]{ \cite{firstorderlambda}.}
 
 \paragraph{Contributions.}
 \begin{itemize}
-  \item A presentation of the tree of any monotone first-order head-evaluation as the readout of
-        a first-order shape relation $\Sh$, parametric in the head-evaluation and in a sound
-        position congruence; the weak-head shape and syntactic identity are the respective finest
-        instances (Sections~\ref{sec:firstorder}, \ref{sec:grounding}).
-  \item $\mathrm{lfp}(T_P)$ is the tree (Theorem~\ref{thm:adequacy}); whether the readout
-        terminates is governed by rationality (Theorem~\ref{thm:termination}); a coarser sound
-        congruence folds more (Sections~\ref{sec:grounding}, \ref{sec:valrec}).
-  \item As an application, structural computation over cyclic data without extending the
-        calculus (Section~\ref{sec:application}): $Y$ produces the cycle, the congruence folds it,
-        and an ordinary recursive function over it terminates where head reduction diverges.
+  \item The tree of an admissible normalization $f$ as the least fixpoint $\operatorname{lfp}(\out)$ of a
+        monotone operator over the approximation order, parametric in $f$, with weak head and head
+        normalization the two standard instances (Section~\ref{sec:lfp}).
+  \item Folding: taken up to a sound position congruence, $\operatorname{lfp}(\out)$ is a finite rational
+        graph wherever the term has finitely many position classes, and decides an unproductive cycle
+        such as $\Omega$ as $\bot$ (Section~\ref{sec:lfp}).
+  \item As an application, structural computation over cyclic data with nothing added to the calculus
+        (Section~\ref{sec:application}): $Y$ builds the cycle, the congruence folds it, and an ordinary
+        recursive function over it terminates where head reduction diverges.
 \end{itemize}
 
 % =====================================================================
-\section{Overview}\label{sec:overview}
+\section{The Least Fixpoint}\label{sec:lfp}
 % =====================================================================
-Consider a cyclic stream of zeros, written $r = \mathtt{cons}\;0\;r$, and the pure
-$\lambda$-term $Y\,(\mathtt{cons}\;0)$, which has the \emph{same} tree
-(the infinite stream $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$). Head reduction
-enumerates this tree the same way in both cases, and never finishes.
+All three defects come from one choice: the tree is read as the \emph{unfolding} of $f$, a
+greatest-fixpoint (coinductive) object, so a cycle unfolds without end. We change only this. We give
+the trees a monotone order and read the tree of a term as the \emph{least} fixpoint of $f$. This
+section fixes the order, says which normalizations $f$ admit such a fixpoint, and proves that the two
+standard ones do.
 
-The least fixpoint folds it. Once positions are taken up to the congruence, structurally equal
-positions are one class, so the stream has finitely many distinct positions; the
-least fixpoint folds the tail back onto the repeating cell, a node that points to
-itself, a finite rational graph. Head reduction, which identifies nothing, enumerates the infinite
-tree forever, so at this guarded cycle $\mathrm{lfp}(T_P)$ terminates where head reduction does
-not, while denoting the same tree.
-
-At an \emph{unproductive} cycle, a position that returns to itself before exposing
-any constructor, there is nothing to fold, so the least fixpoint settles at $\bot$. Such a
-position is reached not only by a recursive binder ($\mathtt{letrec}\;x = x$) but by
-self-application: $\Omega = (\lambda x.x\,x)(\lambda x.x\,x)$ returns to the same
-position with no constructor exposed, so $\Omega = \bot$. Whether a readout terminates is
-governed by rationality.
-
-% =====================================================================
-\section{Tree semantics as the readout of a first-order shape relation}
-\label{sec:firstorder}
-% =====================================================================
-
-\subsection{Terms and the position congruence}\label{sec:congruence}
-We work with pure $\lambda$-terms in de Bruijn form (avoiding $\alpha$-renaming);
-a node is labelled $\Lamsh$, $\Appsh$, or $\Varsh$. A \emph{position} is a subterm
-reached while computing a shape. Positions are identified up to a position congruence
-$\approx$ (Definition~\ref{def:congruence}), the equality on which a re-entry is recognised and a
-cycle folded. The choice of $\approx$ is the mechanism the results rest on: it makes the recurrence
-for $\Sh$ a memoisable dynamic program keyed by the $\approx$-class of a position, and it makes that
-class the finite key on which $\mathrm{lfp}(T_P)$ folds a cycle. The finest instance is syntactic
-(de Bruijn) identity, deciding a re-entry by equality of finite terms; a coarser sound congruence
-(modulo a decidable theory, or up to dead subterms) folds strictly more, at the cost of a richer
-identity test.
-A term has finitely many positions up to $\approx$ when its
-tree is \emph{rational} (finitely many distinct subtrees); for the finest congruence this can
-fail, and a coarser sound congruence recovers it (Theorem~\ref{thm:termination}). A recursive
-definition produces such repetition directly, and so does a self-application, whose contractum is
-an existing position. No recursion binder belongs to the calculus:
-the $Y$ combinator produces the repetition that the congruence folds
-(Section~\ref{sec:valrec}).
-
-\subsection{The tree domain}\label{sec:domain}
-We fix the codomain of the readout, and the order along which the fixpoints below
-ascend, before introducing the relation that drives them. The codomain is the usual
-domain of finite-and-infinite trees with a bottom element; the order is information
-refinement, replacing a $\bot$-hole by a more defined subtree.
-
-\begin{definition}[Tree signature]\label{def:signature}
-$\Sigma$ is the ranked alphabet with one binary symbol $\Appsh$, one unary symbol
-$\Lamsh$, and the nullary symbols $\Varsh_i$ ($i \in \mathbb{N}$, de Bruijn indices)
-and $\bot$. The descent alphabet $\Delta = \{\dlam,\dhead,\darg\}$
-(Definition~\ref{def:path}) names argument positions: $\dlam$ under $\Lamsh$, and
-$\dhead,\darg$ under $\Appsh$.
+\begin{definition}[Partial trees and the approximation order]\label{def:order}
+Let $\Sigma$ be the signature with nullary symbols $\bot$ and $\mathsf{Var}_i$ ($i\in\mathbb{N}$), a
+unary $\mathsf{Lam}$, and a binary $\mathsf{App}$. A \emph{partial tree} is an arity-respecting map
+from a nonempty prefix-closed set of paths to $\Sigma$. The \emph{approximation order} on the set
+$D$ of partial trees is $t\sqsubseteq u$ iff $\operatorname{dom}(t)\subseteq\operatorname{dom}(u)$
+and, at every $p\in\operatorname{dom}(t)$, either $t(p)=u(p)$ or $t(p)=\bot$. Then $(D,\sqsubseteq)$
+is a pointed $\omega$-complete partial order: its least element is the one-node tree $\bot$, and the
+least upper bound of a $\sqsubseteq$-chain is taken pathwise. Thus $\bot$ marks a subtree not yet
+produced, and refinement fills the hole.
 \end{definition}
 
-\begin{definition}[Trees]\label{def:domain}
-A \emph{tree} is a map $t \colon \operatorname{dom}(t) \to \Sigma$ whose
-domain $\operatorname{dom}(t) \subseteq \Delta^{*}$ is prefix-closed and
-arity-respecting: for each $p \in \operatorname{dom}(t)$ the children of $p$ in
-$\operatorname{dom}(t)$ are exactly $\{p\,\dlam\}$ if $t(p)=\Lamsh$, $\{p\,\dhead,
-p\,\darg\}$ if $t(p)=\Appsh$, and $\varnothing$ if $t(p) \in \{\Varsh_i,\bot\}$. Let
-$D$ be the set of all such finite or infinite trees.
+\begin{definition}[Normalization, its observation, and the operator]\label{def:operator}
+A \emph{normalization} $f$ drives a term toward a normal form of a chosen kind by contracting one
+head redex at a time: a deterministic partial function on $\Lambda$, the contraction of the head
+redex, whose domain, the non-normal terms, is decidable; the terms outside the domain are the
+\emph{$f$-normal} forms (the weak head and the head normal forms,
+Propositions~\ref{prop:llt}--\ref{prop:bt}). It is \emph{admissible} when, moreover, the outermost
+constructor of an $f$-normal term, one of $\mathsf{Var}_i$, $\mathsf{Lam}(N)$, or $\mathsf{App}(P,Q)$,
+is a function of its syntax, never the detection that a subterm diverges.
+
+An admissible $f$ makes $\Lambda$ a coalgebra: it gives each term one \emph{observation} $\out(M)$,
+the successor state $f(M)$ when $M$ is not $f$-normal, and otherwise the outermost constructor with
+its immediate sub-positions. Read coinductively, $\out$ unfolds the standard, possibly infinite tree,
+the B\"ohm or L\'evy--Longo tree, which never finishes on a cyclic term. We read it inductively
+instead. The observation induces the operator $T_f$ on $[\Lambda\to D]$, ordered pointwise by
+Definition~\ref{def:order},
+\[
+  T_f(g)(M) =
+  \begin{cases}
+    g\big(f(M)\big) & M \text{ is not } f\text{-normal},\\
+    \mathsf{Var}_i & M \text{ is } f\text{-normal with head } \mathsf{Var}_i,\\
+    \mathsf{Lam}\big(g\,N\big) & M \text{ is } f\text{-normal of the form } \mathsf{Lam}(N),\\
+    \mathsf{App}\big(g\,P,\, g\,Q\big) & M \text{ is } f\text{-normal of the form } \mathsf{App}(P,Q),
+  \end{cases}
+\]
+whose greatest fixpoint is that coinductive unfolding and whose \emph{least} fixpoint, written
+$\operatorname{lfp}(\out)$, is our semantics.
 \end{definition}
 
-\begin{definition}[Approximation order]\label{def:order}
-For $t,u \in D$, $t \sqsubseteq u$ iff $\operatorname{dom}(t) \subseteq
-\operatorname{dom}(u)$ and for every $p \in \operatorname{dom}(t)$ either
-$t(p)=u(p)$, or $t(p)=\bot$. Thus $u$ refines $t$ by replacing $\bot$-leaves with
-subtrees.
-\end{definition}
-
-\begin{proposition}[The codomain is a domain]\label{prop:cpo}
-$(D,\sqsubseteq)$ is a pointed $\omega$-complete partial order with least element
-$\bot_D = \{\varepsilon \mapsto \bot\}$, and least upper bounds of
-$\sqsubseteq$-directed families exist and are computed nodewise. Proof in
-Appendix~\ref{app:domain}.
+\begin{proposition}[Soundness]\label{prop:sound}
+For an admissible normalization $f$, the operator $T_f$ is monotone and $\omega$-continuous, so by
+the Kleene fixed-point theorem it has a least fixpoint
+\[
+  \operatorname{lfp}(\out) \;:=\; \operatorname{lfp}(T_f) \;=\; \textstyle\bigsqcup_{k\in\mathbb{N}} T_f^{\,k}(\bot),
+\]
+the tree of $M$, and $\operatorname{lfp}(\out)(M)=\bot$ exactly when $f$ does not terminate at $M$.
+The greatest fixpoint, the coinductive unfolding, instead loops at such a term; taking the least
+fixpoint is what settles an unproductive cycle at $\bot$.
 \end{proposition}
+\begin{proof}
+Whether $M$ is $f$-normal is decidable by hypothesis, so the clause of $T_f$ at $M$ is selected
+independently of $g$; within each clause $g$ occurs only positively and at finitely many arguments.
+Hence $g\sqsubseteq g'$ gives $T_f(g)\sqsubseteq T_f(g')$, so $T_f$ is monotone, and $T_f$ preserves
+least upper bounds of $\sqsubseteq$-chains, so it is $\omega$-continuous; the Kleene theorem then
+gives the displayed least fixpoint. By induction on $k$, $T_f^{\,k}(\bot)(M)\neq\bot$ iff some head
+reduction of fewer than $k$ steps takes $M$ to an $f$-normal term; hence
+$\operatorname{lfp}(\out)(M)=\bot$ iff no such reduction exists, that is, iff $f$ diverges at $M$.
+\end{proof}
 
-\begin{definition}[Rational tree]\label{def:rational}
-$t \in D$ is \emph{rational} if its set of subtrees $\{\,t\!\restriction_{p} : p \in
-\operatorname{dom}(t)\,\}$, where $t\!\restriction_{p}(q)=t(pq)$, is finite.
-Equivalently, $t$ is the unfolding of a finite $\Sigma$-labelled graph.
+So far the tree is read one position at a time. Folding is a second, independent ingredient: a
+congruence under which a re-entry is recognised.
+
+\begin{definition}[Sound congruence]\label{def:cong}
+A decidable equivalence $\approx$ on $\Lambda$ is a \emph{sound congruence} when it respects the
+descent: if $M\approx M'$ then $\operatorname{lfp}(\out)(M)$ and $\operatorname{lfp}(\out)(M')$ carry the
+same outermost label, and the subpositions the readout descends into, the contractum $f(M)$ when $M$
+is not $f$-normal and the immediate subterms of the exposed constructor when it is, are pairwise
+$\approx$-related to those of $M'$. Syntactic, de Bruijn, identity is the finest such congruence.
 \end{definition}
 
-\begin{definition}[Position set]\label{def:positions}
-For a term $M \in \Lambda$, the \emph{position set} $\operatorname{Pos}(M) \subseteq
-\Lambda$ is the least set of de Bruijn terms with $M \in \operatorname{Pos}(M)$ and,
-for each $n \in \operatorname{Pos}(M)$: if $n=\Lamsh(\lambda x.N)$ then $N \in
-\operatorname{Pos}(M)$; if $n=\Appsh(f,a)$ then $f,a \in \operatorname{Pos}(M)$; and
-if $n=\Appsh(f,a)$ with $\Sh(f)=\Lamsh(\lambda x.\,\mathit{body})$ then the
-contractum $\mathit{body}[x\mathbin{:=}a] \in \operatorname{Pos}(M)$. Positions are
-taken up to a position congruence $\approx$ (Definition~\ref{def:congruence}), the
-default being syntactic identity (the finest instance), and
-$\operatorname{Pos}(M)$ is generated simultaneously with $\Sh$
-(Definition~\ref{def:shapeop}) as one least fixpoint.
-\end{definition}
-
-\begin{definition}[Rational term]\label{def:rationalterm}
-$M$ is \emph{rational with respect to $\approx$} if the quotient $\Posq{M}$ is finite.
-For the finest congruence this is $\operatorname{Pos}(M)$ finite; a coarser sound congruence can
-make rational a term the finest one does not (Theorem~\ref{thm:termination}).
-\end{definition}
-
-\subsection{The shape relation}
-The development is parametric in a \emph{head-evaluation}, presented as a first-order operator on
-the positions of a term. We isolate the property it must have, then fix the weak-head instance
-used throughout.
-
-\begin{definition}[(H-fo) head-evaluation]\label{def:hfo}
-A \emph{first-order head-evaluation} assigns to each node either a single outermost
-$\Sigma$-constructor, with its children named among the node's sub-positions, or the shape of one
-sub-position (a head redex). It is \emph{(H-fo)} when these clauses are \emph{positive}
-(Remark~\ref{rem:positivity}), so the induced operator $T^{\Sh}$ (Definition~\ref{def:shapeop}) is
-monotone and $\Sh := \operatorname{lfp}(T^{\Sh})$ exists; the tree's meaningless set is then
-$\{n : \Sh(n)=\bot\}$ \emph{by definition}. The weak-head shape (Definition~\ref{def:sh}) is the
-instance we use throughout; head reduction under $\lambda$ is another. Every definition, theorem,
-and proof below is stated for an arbitrary (H-fo) head-evaluation.
-\end{definition}
-
-A second ingredient is also a parameter, and the rest of the paper turns on it: the
-\emph{identity} of positions, the equality on which a re-entry is recognised and a cycle folded.
-Syntactic identity (Section~\ref{sec:congruence}) is one choice, the finest. We isolate the
-property it must have, exactly as we did for the head-evaluation.
-
-\begin{definition}[Position congruence]\label{def:congruence}
-A \emph{position congruence} is an equivalence relation $\approx$ on $\operatorname{Pos}(M)$ that
-respects the descent (Definition~\ref{def:path}): if $n \approx n'$ then $\Sh(n)$ and $\Sh(n')$
-carry the same outermost label of the full signature, counting $\bot$ as a label that must match
-and $\Varsh_i$ with its index, and their demanded sub-positions (the children of $\Sh(n)$, the
-readout descent, not the raw syntactic subterms) are pairwise $\approx$-related. Being a
-congruence, $\approx$ lifts the shape operator $T^{\Sh}$ (Definition~\ref{def:shapeop}) and the
-readout functional $\Psi$ (Definition~\ref{def:readoutfun}) to the quotient
-$\operatorname{Pos}(M)/{\approx}$, where they remain monotone, so the least fixpoints are computed
-over the quotient. Syntactic (de Bruijn) identity is the finest congruence and the default
-instance; tree equality (Definition~\ref{def:btree}) is the coarsest. Between them lie congruence
-modulo a decidable theory and bisimulation. Every definition, theorem, and proof below is stated
-for an arbitrary position congruence, with syntactic identity as the default.
-\end{definition}
-
-The congruence is on the \emph{demanded descent}, so two positions may be $\approx$-identified
-while differing in a subterm the readout never descends into. This is what lets a coarser
-congruence fold positions that syntactic identity keeps apart (Section~\ref{sec:valrec}).
-
-\begin{remark}[Soundness is the congruence law]\label{rem:soundness}
-A congruence is \emph{sound} when it is contained in tree equality: $n \approx n'$ implies
-$\Btree(n)=\Btree(n')$, so folding by $\approx$ never changes the denotation. Write tree equality
-as the greatest fixpoint $\nu\Phi$ of the behavioural operator $\Phi$ on relations, where
-$n\,\Phi(R)\,n'$ holds iff $\Sh(n),\Sh(n')$ share the outermost label and their demanded children
-are pairwise $R$-related; then $\Btree(n)=\Btree(n')$ unfolds coinductively to exactly $\nu\Phi$.
-The congruence law of Definition~\ref{def:congruence} \emph{is} $\approx\,\subseteq\,\Phi(\approx)$,
-so by coinduction $\approx\,\subseteq\,\nu\Phi$: a congruence stated over the full signature is
-sound by construction. The only load-bearing clause is that $\bot$ must match a non-$\bot$ only
-with itself; folding $\bot$ into the outermost label makes the congruence law and soundness
-coincide. Syntactic identity is sound because it is the trivial $\Phi$-invariant: $\Sh$ is a
-function, so equal positions have equal shapes and identical children. To establish a coarser
-$\approx$ one discharges the same $\Phi$-invariant, either by congruence-closing tree-equal
-generators (the inductive instances), by exhibiting a bisimulation (the coinductive instances), or
-by a tree-preserving canonical map whose kernel it is (the dead-subterm fold of
-Section~\ref{sec:valrec}).
-\end{remark}
-
-\begin{definition}[Weak-head shape, an (H-fo) instance]\label{def:sh}
-The \emph{weak-head} shape relation $\Sh$ assigns to a node its outermost constructor after weak
-head reduction:
-\[
-\begin{aligned}
-  \Sh(\Appsh(f,a)) &= \Sh(\,\mathit{body}[x \mathbin{:=} a]\,)
-      && \text{if } \Sh(f) = \Lamsh(\lambda x.\,\mathit{body}) && \text{(head redex)}\\
-  \Sh(\Appsh(f,a)) &= \Appsh(f,a)
-      && \text{if } \Sh(f) \text{ is rigid} && \text{(root-stable)}\\
-  \Sh(\Lamsh(\lambda x.\,N)) &= \Lamsh(\lambda x.\,N) && &&\\
-  \Sh(\Varsh(x)) &= \Varsh(x). && &&
-\end{aligned}
-\]
-A node is \emph{rigid} when its head is a variable or is itself root-stable
-(non-abstraction). This instance performs \emph{weak} head reduction only: it stops at
-the outermost constructor and does not reduce under $\lambda$. How far the head-evaluation
-reduces is itself the parameter (Definition~\ref{def:hfo}), not a fixed property of $\Sh$:
-the head-reduction-under-$\lambda$ instance reduces under the leading abstractions to expose
-the head, giving the B\"ohm rather than the L\'evy--Longo tree (Section~\ref{sec:related}),
-so a node whose body has no head normal form (such as $\lambda x.\,\Omega$) is $\bot$ there
-while this instance reads it as $\lambda x.\,\bot$. No (H-fo) instance reduces inside
-arguments; the readout descends into them instead.
-\end{definition}
-
-\noindent
-$\Sh$ is first-order: it is a relation over nodes, with no quantification over a
-function space.
-
-\begin{remark}[Positivity]\label{rem:positivity}
-The clauses of $\Sh$ are \emph{definite}: every premise is an atom $\Sh(\cdot)=c$,
-and there is no negation. In particular ``rigid'' must be read as the positive
-disjunction ``head is a $\Varsh$, or head is itself a root-stable $\Appsh$'', never
-as the negative ``head is not a $\Lamsh$''; a negation-as-failure reading would
-break positivity and forfeit the least-fixpoint semantics below. Positivity makes
-the immediate-consequence operator $T_P$ monotone (indeed continuous), so by
-Knaster--Tarski its least fixpoint exists and is unique, and the least-fixpoint
-reading $\mathrm{lfp}(T_P)$ of Section~\ref{sec:tworeadings} is well-defined and sound by
-construction \citeTODO{vanemden-kowalski}. Soundness of $\mathrm{lfp}(T_P)$ therefore costs
-nothing beyond fixing this positive presentation; the work of the paper is
-elsewhere (Sections~\ref{sec:grounding}, \ref{sec:application}).
-\end{remark}
-
-\noindent
-Definition~\ref{def:sh} is made precise as the least fixpoint of an operator on the
-flat domain of shapes, so that ``$\Sh$ undefined'' is exactly the value $\bot$ at a
-non-terminating weak head reduction.
-
-\begin{definition}[Shape operator]\label{def:shapeop}
-Let $C = \{\Varsh_i\}_{i\in\mathbb{N}} \cup \{\Lamsh(N)\}_{N} \cup
-\{\Appsh(f,a)\}_{f,a} \cup \{\bot\}$ be the flat domain of \emph{shapes}, ordered by
-$\bot \sqsubseteq c$ for all $c$ and no other strict relation. The \emph{shape
-operator} $T^{\Sh}\colon (\operatorname{Pos}(M)\to C) \to
-(\operatorname{Pos}(M)\to C)$ is
-\[
-T^{\Sh}(s)(n) =
-\begin{cases}
-  \Varsh_i & n=\Varsh_i\\
-  \Lamsh(N) & n=\Lamsh(\lambda x.N)\\
-  s\big(\mathit{body}[x\mathbin{:=}a]\big) & n=\Appsh(f,a),\ s(f)=\Lamsh(\lambda x.\,\mathit{body})\\
-  \Appsh(f,a) & n=\Appsh(f,a),\ s(f)\in\{\Varsh_i,\Appsh(\cdot,\cdot)\}\\
-  \bot & n=\Appsh(f,a),\ s(f)=\bot.
-\end{cases}
-\]
-Define $\Sh := \operatorname{lfp}(T^{\Sh})$.
-\end{definition}
-
-\begin{proposition}[Shape is well-defined]\label{prop:shwd}
-$T^{\Sh}$ is monotone and $\omega$-continuous under the pointwise order, so by Kleene
-$\Sh = \bigsqcup_{k\in\mathbb{N}} (T^{\Sh})^{k}(\bot)$ exists and is its least
-fixpoint, and $\Sh(n)=\bot$ exactly when the head-evaluation from $n$ does not
-terminate (here, weak head reduction). Proof in Appendix~\ref{app:shape}.
+\begin{proposition}[Folding]\label{prop:fold}
+A sound congruence is contained in tree equality: $M\approx M'$ implies
+$\operatorname{lfp}(\out)(M)=\operatorname{lfp}(\out)(M')$, so $\operatorname{lfp}(\out)$ factors through the
+quotient $\Lambda/{\approx}$ and $T_f$ descends to $[\Lambda/{\approx}\to D]$ with the same least
+fixpoint. If the positions reachable from $M$ meet finitely many $\approx$-classes, then
+$\operatorname{lfp}(\out)(M)$ solves finitely many equations, one per class, and is a finite rational
+graph; a \emph{guarded} cycle, a class recurring strictly below itself, folds to a back-reference,
+where the unfolding of $f$ would descend forever.
 \end{proposition}
+\begin{proof}
+Tree equality is the greatest fixpoint of the behavioural operator that relates two trees sharing an
+outermost label and having pairwise-related children. The descent condition makes $\approx$ a
+post-fixpoint of this operator, so $\approx$ is contained in tree equality by coinduction; this gives
+the equality and the factoring, and $T_f$ descends to classes because $f$ and the exposure respect
+$\approx$. When $M$ reaches finitely many classes, the fixpoint is determined by one equation per
+class, whose solution is the finite rational graph; a class occurring below itself is a guarded
+cycle, folded to its back-reference.
+\end{proof}
 
-\subsection{Positions are tree addresses}
-\begin{definition}[Path]\label{def:path}
-The descent alphabet is $\Delta = \{\dlam,\dhead,\darg\}$. A \emph{path} is a word
-in $\Delta^{*}$. The valid paths of $M$ and the subterm $\subt{M}{p}$ at a valid
-path $p$ are defined coinductively together with $\Sh$:
-\begin{itemize}
-  \item $\varepsilon$ is valid and $\subt{M}{\varepsilon} = M$;
-  \item if $\Sh(\subt{M}{p}) = \Lamsh(\lambda x.\,N)$ then $p\,\dlam$ is valid and
-        $\subt{M}{p\,\dlam} = N$;
-  \item if $\Sh(\subt{M}{p}) = \Appsh(R,Q)$ then $p\,\dhead$ and $p\,\darg$ are
-        valid, $\subt{M}{p\,\dhead}=R$ and $\subt{M}{p\,\darg}=Q$;
-  \item if $\Sh(\subt{M}{p}) = \Varsh(x)$ then $p$ is a leaf;
-  \item if $\Sh(\subt{M}{p})$ is undefined then $p$ is a leaf.
-\end{itemize}
-\end{definition}
+The two standard tree semantics are the two admissible normalizations.
 
-\noindent
-A path is purely a static address into the tree being built; all dynamics (which
-positions exist, where divergence occurs) are delegated to $\Sh$.
+\begin{proposition}[Weak head normalization gives the L\'evy--Longo tree]\label{prop:llt}
+Let $f_{\mathrm w}$ contract the head redex but not under a leading $\lambda$, with the weak head
+normal forms, $\mathsf{Lam}(N)$ and $\mathsf{Var}_i\,M_1\cdots M_k$, as its normal terms. Then
+$f_{\mathrm w}$ is admissible, so its observation $\out_{\mathrm w}$ has a least fixpoint
+$\operatorname{lfp}(\out_{\mathrm w})$ by Proposition~\ref{prop:sound}; it is the L\'evy--Longo tree,
+and it is $\bot$ at $M$ iff $M$ has no weak head normal form.
+\end{proposition}
+\begin{proof}
+A weak head normal form is recognised by inspecting the head of the spine, an outermost $\lambda$ or
+a variable head, so the predicate is decidable; the head contraction is a deterministic syntactic
+partial function; and the outermost constructor of a normal form is read off its syntax, a positive
+test. Thus $f_{\mathrm w}$ is admissible. Its readout labels each position by the weak head normal
+form reached there, which is the L\'evy--Longo tree by definition, and its meaningless terms, those
+without a weak head normal form, are where $\operatorname{lfp}(\out_{\mathrm w})=\bot$ by
+Proposition~\ref{prop:sound}.
+\end{proof}
 
-\begin{definition}[Tree readout]\label{def:btree}
-\[
-\Btree(\subt{M}{p}) =
-\begin{cases}
-  x & \Sh(\subt{M}{p}) = \Varsh(x)\\
-  \lambda.\;\Btree(\subt{M}{p\,\dlam}) & \Sh(\subt{M}{p}) = \Lamsh(\cdots)\\
-  \Btree(\subt{M}{p\,\dhead}) \cdot \Btree(\subt{M}{p\,\darg}) & \Sh(\subt{M}{p}) = \Appsh(\cdots)\\
-  \bot & \Sh(\subt{M}{p}) \text{ undefined.}
-\end{cases}
-\]
-\end{definition}
+\begin{proposition}[Head normalization gives the B\"ohm tree]\label{prop:bt}
+Let $f_{\mathrm h}$ contract the head redex, now also under leading $\lambda$s, with the head normal
+forms $\lambda x_1\cdots\lambda x_n.\,y\,M_1\cdots M_k$ as its normal terms. Then $f_{\mathrm h}$ is
+admissible, so its observation $\out_{\mathrm h}$ has a least fixpoint
+$\operatorname{lfp}(\out_{\mathrm h})$; it is the B\"ohm tree, and it is $\bot$ at $M$ iff $M$ has no
+head normal form.
+\end{proposition}
+\begin{proof}
+A head normal form is recognised by peeling the leading $\lambda$s and testing that the head of the
+remaining spine is a variable, again decidable; the head contraction under leading $\lambda$s is
+deterministic and syntactic; and the exposure is the same positive read of the outermost
+constructor. Thus $f_{\mathrm h}$ is admissible, Proposition~\ref{prop:sound} gives the fixpoint, it
+is the B\"ohm tree, and $\bot$ marks the terms with no head normal form.
+\end{proof}
 
-\begin{remark}
-Definitions~\ref{def:sh}--\ref{def:btree} present the tree of the chosen (H-fo) head-evaluation as
-the readout of $\Sh$. The design point is load-bearing: a $\bot$-headed application collapses to
-$\bot$ (Definition~\ref{def:shapeop}), so the meaningless set is exactly the least-fixpoint
-$\bot$. This places the construction in the \emph{collapsing} family: with the weak head reduction
-used here it is the L\'evy--Longo tree, and with head reduction under $\lambda$ it is the B\"ohm
-tree \citeTODO{barendregt, levy-longo}. The Berarducci tree, which \emph{retains} $\bot$-headed
-applications, is \emph{not} (H-fo): retaining them is non-monotone, so it has no least-fixpoint
-$\Sh$ (Section~\ref{sec:related}).
-\end{remark}
+Admissibility is exactly what the Berarducci tree lacks: it retains a $\bot$-headed application
+instead of collapsing it, which requires testing that the head has no normal form, a negative
+condition, so its operator is not monotone and has no least fixpoint.
 
-% =====================================================================
-\section{The least-fixpoint reading of the shape relation}\label{sec:tworeadings}
-% =====================================================================
-$\Sh$ assigns each position its shape: a deterministic calculus exposes one constructor. The
-readout reads one constructor off $\Sh$ and defers to its children; its functional $\Psi$
-(Definition~\ref{def:readoutfun}) is monotone, and the tree is the least fixpoint
-$\mathrm{lfp}(T_P) = \operatorname{lfp}(\Psi)$, the limit of the Kleene ascent that fills
-$\bot$-holes from $\bot$ upward (Definition~\ref{def:lfpreading}).
-
-The reading is made precise as the least fixpoint of one readout functional.
-
-\begin{definition}[Readout functional]\label{def:readoutfun}
-The \emph{readout functional} $\Psi\colon (\operatorname{Pos}(M)\to D) \to
-(\operatorname{Pos}(M)\to D)$ reads one constructor off $\Sh$ and defers to its
-argument for the children:
-\[
-\Psi(g)(n) =
-\begin{cases}
-  \bot & \Sh(n)=\bot\\
-  \Varsh_i & \Sh(n)=\Varsh_i\\
-  \Lamsh\big(g(N)\big) & \Sh(n)=\Lamsh(\lambda x.N)\\
-  \Appsh\big(g(f),g(a)\big) & \Sh(n)=\Appsh(f,a).
-\end{cases}
-\]
-By Proposition~\ref{prop:cpo} the pointwise order on $\operatorname{Pos}(M)\to D$ is a
-pointed $\omega$-CPO and $\Psi$ is monotone and $\omega$-continuous.
-\end{definition}
-
-\begin{definition}[Least-fixpoint reading]\label{def:lfpreading}
-The \emph{least-fixpoint reading} is
-$\mathrm{lfp}(T_P)(M) := \operatorname{lfp}(\Psi)(M) =
-\bigsqcup_{k\in\mathbb{N}} \Psi^{k}(\lambda n.\,\bot_D)(M)$. It merges partial
-trees from $\bot$ upward: each iterate fills the $\bot$-holes of the
-previous one, and because positions are taken up to the congruence a guarded re-entry folds into the
-finite rational representation of the subtree it generates.
-\end{definition}
-
-\begin{remark}[Meaningless leaf]\label{rem:codomains}
-The tree's meaningless leaf is $\bot$: an unproductive cycle is $\bot$, a position whose
-head-evaluation does not terminate.
-\end{remark}
-
-\begin{remark}[When a readout terminates]\label{rem:termination}
-A single readout terminates iff the term has finitely many distinct positions up to $\approx$,
-that is, iff its tree is \emph{rational} with respect to $\approx$. An infinite but
-rational tree, the lazy cyclic list $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$
-written $Y\,(\mathtt{cons}\;0)$, folds under $\mathrm{lfp}(T_P)$ to a node that points to itself,
-a finite cyclic graph, and terminates. Two failure modes are distinct. A \emph{non-rational}
-infinite tree, the stream of all naturals $\mathtt{cons}\;0\;(\mathtt{cons}\;1\;\cdots)$, has
-unboundedly many distinct subtrees and hence no finite representation under \emph{any} sound
-congruence; the readout produces ever-new positions and does not terminate. A rational tree may
-still diverge under the \emph{finest} congruence yet fold under a coarser one
-(Theorem~\ref{thm:termination}). Termination is governed by rationality relative to $\approx$.
-\end{remark}
-
-\begin{theorem}[Termination]\label{thm:termination}
-For every term $M$ and decidable sound congruence $\approx$, the term is rational with respect to
-$\approx$ ($\Posq{M}$ finite, Definition~\ref{def:rationalterm}) if and only if its readout halts;
-and in that case $\lfpT(M)$ is a rational tree (Definition~\ref{def:rational}). The converse of the
-last implication fails for the finest congruence, and the gap demonstrates the parameter's
-spectrum: syntactic identity is strictly finer than tree equality, so syntactically distinct
-positions may share a subtree, and tree rationality does not bound $\operatorname{Pos}(M)$
-(Appendix~\ref{app:termination} gives a witness, a rational stream with infinitely many distinct
-tail positions, on which the finest congruence diverges while a coarser sound congruence, in the
-limit tree equality, folds it to a finite quotient). When $M$ is not rational with respect to $\approx$ the
-readout enumerates infinitely many distinct classes and diverges. Proof in
-Appendix~\ref{app:termination}.
-\end{theorem}
-
-\begin{remark}[Folding the converse-failure witness]\label{rem:deadfold}
-The witness $M=Y\,F\,\underline 0$ with $F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$
-has a constant head and threads the index $n$ through an argument the readout never demands, so its
-tail positions $Y\,F\,\underline k$ are pairwise syntactically distinct yet all denote the one
-constant-$0$ stream. The coarser congruence that folds it identifies positions differing only in a
-\emph{dead} subterm, one occurring only in argument slots of the recursion (Remark~\ref{rem:soundness},
-the canonical-map route). It is sound because a dead subterm cannot reach the tree, strictly coarser
-than syntactic identity (it folds the witness), and strictly finer than tree equality (it folds only
-by deadness, never by deciding arbitrary tree equality). Recognising deadness exactly is the
-neededness problem and undecidable in general, but a conservative decidable analysis certifies it
-here, so this is a decidable sound congruence on which $M$ is rational. Neither congruence closure nor
-bisimulation reaches it: the identity $Y\,F\,\underline j \approx Y\,F\,\underline k$ is coinductive
-and the presentation is infinite, so the fold needs the dead subterm erased, a tree-preserving map,
-not a closure. The implementation\anon[~(supplementary material)]{~\cite{firstorderlambda}}
-realises this fold as its dead-subterm congruence,
-recognising the dead slot by a sound recursion-argument rule, the only one of its four congruences
-that finitises the witness; the bisimulation instance, folding exactly the rational fragment,
-still diverges on it.
-\end{remark}
+The three behaviours of the introduction are now the three cases above: $\Omega$ is the divergent
+normalization of Proposition~\ref{prop:sound}, reading out as $\bot$; a productive term yields its
+tree; and a guarded cycle folds by Proposition~\ref{prop:fold}, where the unfolding diverges.
+Section~\ref{sec:implementation} computes $\operatorname{lfp}(\out)$ by tabling and validates the
+examples of Appendix~\ref{app:examples}\anon[.]{ \cite{firstorderlambda}.}
 
 % =====================================================================
-\section{Adequacy: \texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)} is the tree}
-\label{sec:grounding}
+\section{Structural Computation over Cyclic Data}\label{sec:application}
 % =====================================================================
-\begin{theorem}[Adequacy]\label{thm:adequacy}
-For every term $M$ and sound position congruence $\approx$ (Definition~\ref{def:congruence}), the
-least-fixpoint readout $\mathrm{lfp}(T_P)(M)$ over $\Posq{M}$ (Definition~\ref{def:lfpreading}) is,
-in $D$, the tree of the (H-fo) head-evaluation (Definition~\ref{def:hfo}) at $M$: it agrees node
-for node with the coinductive readout that the head-evaluation enumerates. Soundness is what makes
-this hold over the quotient, since every position in a class then shares one tree. Proof in
-Appendix~\ref{app:adequacy}.
-\end{theorem}
+The least fixpoint turns the pure $\lambda$-calculus into a setting for structural computation over
+cyclic data, with nothing added to the calculus.
 
-\noindent
-Because we work on raw terms, there is no normal-form translation to justify and
-no administrative-redex bridge: $\mathrm{lfp}(T_P)$ is the tree essentially by construction,
-and the only content is that Definitions~\ref{def:path}--\ref{def:btree} present
-the head-evaluation faithfully.
+Building the datum is already the new step. The cyclic stream of zeros, $r = \mathtt{cons}\;0\;r$,
+is written purely as $Y\,(\mathtt{cons}\;0)$. Under the unfolding it has no finite form; under
+$\operatorname{lfp}(\out)$ it has finitely many positions up to the congruence, so it folds to a finite
+circular list, a single cell whose tail points back to itself. A circular linked list from a pure
+term is exactly what the standard reading cannot build: here $Y$ produces the repetition and the
+congruence folds it.
 
-% =====================================================================
-\section{\texorpdfstring{$\mathrm{lfp}(T_P)$}{lfp(T\_P)}: the least fixpoint by merging partial trees}
-\label{sec:valrec}
-% =====================================================================
-$\mathrm{lfp}(T_P)$ is the least fixpoint of $\Sh$, computed by merging partial
-trees from $\bot$ upward (Section~\ref{sec:tworeadings}). Because positions are
-taken up to the congruence, a position re-entered during the computation of its own shape is
-detected by its identity test, and the behaviour splits on whether that re-entry is productive.
-
-\begin{definition}[Cyclic, guarded, and unproductive positions]\label{def:guarded}
-A position $n \in \operatorname{Pos}(M)$ is \emph{cyclic} if a position $\approx$-equal to it
-occurs strictly below it on some readout path, i.e.\ $n \approx \subt{n}{p}$ for some non-empty
-valid path $p$ (Definition~\ref{def:path}); for the finest congruence this is syntactic recurrence
-$n = \subt{n}{p}$, and a coarser one folds a re-entry into the same class even when the two
-positions differ (the dead-subterm witness, Remark~\ref{rem:deadfold}). The condition is
-$\approx$-invariant, since $\approx$ preserves the outermost label of $\Sh$. A cyclic $n$ is
-\emph{guarded} if $\Sh(n) \in \{\Lamsh(\cdot),\Appsh(\cdot,\cdot)\}$, so a constructor is exposed at
-$n$ before the re-entry, and \emph{unproductive} if $\Sh(n)=\bot$, so the head-evaluation of $n$
-returns to its class with no constructor exposed.
-\end{definition}
-
-\begin{itemize}
-  \item \textbf{Guarded.} $\Sh(n)$ is a constructor and the re-entry sits in a
-        child position. Under $\mathrm{lfp}(T_P)$ the merge folds at the re-entry, yielding a
-        \emph{rational} (regular) infinite tree, finitely represented as a node that
-        points to itself, where head reduction would unfold forever.
-  \item \textbf{Unproductive.} $\Sh(n)$ returns to $n$ with no constructor exposed;
-        its least fixpoint is $\bot$: the limit does not improve an unproductive cycle.
-\end{itemize}
-
-\begin{example}[Guarded: the cyclic stream $Y\,(\mathtt{cons}\;0)$]\label{ex:cons}
-Write the cyclic stream of zeros $r = \mathtt{cons}\;0\;r$ as $Y\,(\mathtt{cons}\;0)$,
-with the Scott encoding $\mathtt{cons} = \lambda h.\lambda t.\lambda c.\lambda n.\,c\,h\,t$.
-Then $\Sh(r) = \lambda c.\lambda n.\,c\,0\,r'$, derived in finitely many steps
-without re-requiring the head $\Sh(r)$: the recursive occurrence enters only as
-data. The structurally repeating cell is one position in the quotient. Under $\mathrm{lfp}(T_P)$ the
-merge folds at the guarded re-entry,
-\[
-  \rho \;=\; \lambda c.\,\lambda n.\,(c\cdot 0)\cdot \rho,
-\]
-the finite representation of the rational tree
-$\lambda c.\lambda n.\,(c\,0)\,(\lambda c.\lambda n.\,(c\,0)\,(\cdots))$, a node
-pointing to itself, where head reduction would unfold forever. No recursion
-binder is needed; $Y$ produces the repetition that the congruence folds.
-\end{example}
-
-\begin{example}[Unproductive: $\Omega$ and $Y\,(\lambda x.\,x)$]\label{ex:xx}
-$\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head-reduces to itself with no
-constructor exposed, returning to the same position; so $\Omega = \bot$, the
-meaningless leaf of its tree. The least fixpoint settles at $\bot$, since there is no
-constructor for the merge to add, and the readout terminates in finite time where head reduction
-loops. The same holds for $Y\,(\lambda x.\,x)$, the pure-$\lambda$ rendering of
-$\mathtt{letrec}\;x = x$.
-\end{example}
-
-\paragraph{Why the bottom is $\bot$, and why that is sound}
-The merge ascends from a bottom value, and that bottom must be a fresh $\bot$,
-distinct from every $\lambda$-term, not a reused value. Otherwise the resolution
-test would be ambiguous: a position still sitting at the bottom would be
-indistinguishable from one that genuinely computed that value, and a round could read
-a dependency's placeholder as a real value and reach a \emph{wrong} fixed point. With
-$\bot$ a fresh leaf the test is exact: a position is resolved precisely when its value
-is no longer $\bot$. The only test of identity, the one that lets the merge
-fold a cycle, is the decidable position congruence, not the undecidable
-$\beta$-equality of values.
-
-% =====================================================================
-\section{Applications}
-\label{sec:application}
-% =====================================================================
-
-\subsection{Decidability and dissolved problems}\label{sec:variants}
-On the rational fragment the tree is a finite graph, so its equality is decidable; and a cluster of
-problems that need added machinery in other settings does not arise here.
-
-\begin{corollary}[Decidable tree equality on the rational fragment]\label{cor:decidable}
-Restricted to terms rational with respect to a decidable sound congruence
-(Definition~\ref{def:rationalterm}), equality of the trees
-$\mathrm{lfp}(T_P)(M) = \mathrm{lfp}(T_P)(N)$ is decidable. By Theorem~\ref{thm:termination} each
-tree is a finite rational graph over the position quotient $\Posq{M}$ (Theorem~\ref{thm:adequacy});
-these graphs are computable, since the head-evaluation terminates at each position
-(Proposition~\ref{prop:shwd}) and the position set closes after finitely many steps, while
-position identity is the chosen decidable congruence (syntactic equality of de Bruijn terms for the
-finest instance). Equality of two rational trees given by finite graphs is then decided by the
-standard cycle-detecting bisimulation \citeTODO{courcelle}.
-\end{corollary}
-
-\begin{corollary}[Hard problems dissolved]\label{cor:dissolved}
-Several problems that need added machinery in other settings do not arise here.
-Observing sharing or cyclicity in a pure language needs an observable-sharing
-primitive or a circular-program idiom \citeTODO{gill, bird}; here sharing is the
-chosen position congruence. Representing a cyclic structure needs an explicit
-recursion binder or a cyclic $\lambda$-calculus \citeTODO{ariola-klop}; here $Y$
-generates the repetition and the congruence folds it, with no binder added to the
-calculus. Deciding equality over cyclic structures needs a separate unification
-discipline or recursive-type system \citeTODO{colmerauer, amadio-cardelli,
-brandt-henglein}; here it is cycle detection over positions within the calculus
-(Corollary~\ref{cor:decidable}). Terminating a recursive query over a cyclic datum
-needs a tabled evaluator \citeTODO{tamaki-sato, tabling-slg}; here the query's own
-applications fall into the same classes and fold (Section~\ref{sec:reach}).
-\end{corollary}
-
-\subsection{Structural computation over cyclic data}
-\label{sec:reach}
-Before any query, constructing the cyclic datum is already the new step. The pure term
-$Y\,(\mathtt{cons}\;0)$ denotes the infinite stream $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$,
-and under head reduction it has no finite form, unfolding forever. Up to the congruence it has
-finitely many positions, so $\mathrm{lfp}(T_P)$ gives it a finite \emph{circular} representation, a
-singly-linked cell whose tail points back to itself (Example~\ref{ex:cons}). A circular linked list
-from a pure $\lambda$-term is what the standard semantics cannot build: elsewhere a cycle needs
-mutable references, an explicit recursion binder, or an observable-sharing primitive
-(Section~\ref{sec:related}); here $Y$ produces the repetition and the congruence folds it, with
-nothing added to the calculus.
-
-A recursive query over that datum is then an ordinary $\lambda$-function, and the guarded versus
-unproductive split of Definition~\ref{def:guarded} governs the \emph{query} just as it governs the
-data. Take first the naive walk
-\[
-  \mathtt{reach} \;=\; Y\,\big(\lambda\mathit{self}.\,\lambda\mathit{lst}.\;
-    \mathit{lst}\;(\lambda h.\lambda t.\,\mathit{self}\;t)\;\present\big),
-\]
-which recurses down a Scott stream looking for $\mathtt{nil}$. Applied to the cyclic
-stream $r = \mathtt{cons}\;0\;r$, each recursive call builds the application
-$\mathtt{reach}\;t$; because $r$ has finitely many positions up to the congruence, these
-applications fall into finitely many classes, so the least fixpoint folds the
-recursion. Head reduction, which identifies nothing, builds a fresh application at every
-step and diverges; $\mathrm{lfp}(T_P)$ folds at the repeated position and returns a
-definite value (here $\bot$: no $\mathtt{nil}$ is ever reached, so the walk is itself
-an unproductive cycle). The query terminates for the same reason the readout does:
-finitely many positions up to the congruence.
-It is also memoised for free, since the congruence shares the repeated subcomputations.
-The walk is unguarded: its recursive call $\mathit{self}\;t$ exposes no constructor before
-re-entering, so it is the unproductive arm of Definition~\ref{def:guarded}, and $\bot$ is the
-correct answer, decided in finite time.
-
-\paragraph{Mapping a cyclic list}
-The guarded arm of the same query produces rather than decides. The textbook
-$\mathtt{map}\,f = Y\,(\lambda\mathit{self}.\,\lambda\mathit{lst}.\;\mathit{lst}\;
-(\lambda h.\lambda t.\,\mathtt{cons}\;(f\,h)\;(\mathit{self}\;t))\;\mathtt{nil})$ has nothing
-cycle-aware in it. Its recursive call sits under a $\mathtt{cons}$, so it is guarded: applied to the
-cyclic stream $r=\mathtt{cons}\;0\;r$, the recursive application $\mathtt{map}\,f\;t$ re-enters the
-same closed position $\mathtt{map}\,f\;r$, and $\mathrm{lfp}(T_P)$ folds it. The result is a finite
-circular list $\rho=\mathtt{cons}\;(f\,0)\;\rho$, every element transformed, where head reduction
-would map the infinite stream forever. The fold is the lazy knot-tying: each cell is registered
-before its tail is recursed into, so the congruence supplies the table. On a finite list the same
-$\mathtt{map}$ is the ordinary one. The implementation\anon[~(supplementary
-material)]{~\cite{firstorderlambda}} reproduces both arms: the naive walk terminates with value
-$\bot$ on $r$, and $\mathtt{map}\;\mathtt{succ}$ folds $r$ into the finite circular stream of $1$s,
-where head reduction loops.
-
-\subsection{Memoising arbitrary programs}
-\label{sec:memo}
-More generally, $\mathrm{lfp}(T_P)$ is the denotation of a \emph{memoised} run of any
-$\lambda$-program. Memoisation needs a comparable key on which to recognise a
-repeated call; the higher-order view offers none, since value equality of functions
-is undecidable. The first-order reading replaces values by positions whose
-identity is a decidable congruence, so it is the natural setting in which memoisation is
-even definable. The congruence is that memoisation: it is what lets a re-entry be
-recognised at all. Head reduction, which remembers nothing, unfolds a cyclic position
-forever; the least fixpoint $\mathrm{lfp}(T_P)$ recognises the re-entry and folds, taking the
-limit. The two are the unfolding and its limit, separated by how much they remember.
-
-% =====================================================================
-\section{Related work}\label{sec:related}
-% =====================================================================
-\paragraph{Trees and infinitary $\lambda$-calculus.}
-The Berarducci, L\'evy--Longo, and B\"ohm trees form a hierarchy by their
-meaningless sets \citeTODO{berarducci, levy-longo, barendregt}; the infinitary
-$\lambda$-calculus framework \citeTODO{kennaway-klop-sleep-devries} situates them
-uniformly. Our construction gives the tree of any (H-fo) head-evaluation: with weak head
-reduction it is the L\'evy--Longo tree, with head reduction under $\lambda$ the B\"ohm tree. The
-Berarducci tree falls outside (H-fo): it retains $\bot$-headed applications, which is non-monotone,
-so it has no least-fixpoint $\Sh$.
-
-\paragraph{Least Herbrand models and tabling.}
-$\mathrm{lfp}(T_P)$ is the least Herbrand model of a definite program
-\citeTODO{vanemden-kowalski}; SLD resolution diverges on a cyclic query, and a tabled evaluator
-\citeTODO{tamaki-sato, tabling-slg}
-computes $\mathrm{lfp}(T_P)$ by completing unproductive cycles instead of looping. Tabling is
-the canonical mechanism for terminating left-recursive and cyclic fixpoint queries
-that plain resolution diverges on; our query application
-(Section~\ref{sec:reach}) is an instance of it transported into the
-$\lambda$-calculus.
-
-\paragraph{Rational trees and recursive types.}
-The capability of deciding structural queries over cyclic structures by
-cycle detection is long established outside the $\lambda$-calculus. Rational
-(regular) infinite trees and their algebra \citeTODO{courcelle} underlie cyclic
-unification in logic programming \citeTODO{colmerauer}, where the occurs-check is
-dropped and cyclic terms are first class. In type theory, equirecursive
-(\emph{regular}) recursive types give terminating algorithms for subtyping and
-equality precisely by detecting cycles in the type's regular tree
-\citeTODO{amadio-cardelli, brandt-henglein}. These are the same phenomenon as our
-guarded-cycle case---a rational denotation with finitely many distinct
-subtrees---reached by different routes. The point of difference is one of
-position rather than capability: those approaches add machinery (a unification
-discipline, a separate type-level system), whereas $\mathrm{lfp}(T_P)$ is a re-reading of the
-$\lambda$-calculus's own tree semantics, obtained by choosing a sound position congruence
-(syntactic identity is the finest) and taking a least fixpoint, with nothing added to the calculus
-(Theorem~\ref{thm:adequacy}).
-
-\paragraph{The spectrum of position congruences}
-The congruence parameter (Definition~\ref{def:congruence}) is bounded below by syntactic identity
-and above by tree equality, and the two ends have opposite fixpoint character. The inductive end is
-congruence closure of tree-equal generators, realised by e-graphs and equality saturation
-\citeTODO{nelson-oppen, egraphs}; it folds whatever finitely many sound equations generate, the
-tabled and least-Herbrand reading of Section~\ref{sec:reach} \citeTODO{tamaki-sato, tabling-slg}.
-The coinductive end is bisimulation, tree equality being its greatest fixpoint; deciding it on the
-rational fragment is exactly the cyclic-tree and equirecursive-type procedure
-\citeTODO{courcelle, amadio-cardelli, brandt-henglein}, and computing it during construction is
-coinductive resolution \citeTODO{simon-coinductive}. A congruence closure cannot reach a
-non-finitely-generated identity, so the converse-failure witness (Remark~\ref{rem:deadfold}) folds
-only by a third route, a tree-preserving canonical map that erases the dead subterm, certified by a
-neededness analysis. Syntactic identity is the finest, cheapest point on this line; the others trade
-a richer identity test for a larger rational fragment.
-
-\paragraph{Cyclic $\lambda$-terms and recursion.}
-Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and the call-by-need
-$\lambda$-calculus \citeTODO{ariola-felleisen} provide the sharing on which
-$\mathrm{lfp}(T_P)$'s folding rests; the guarded-cycle case yields rational trees,
-and the productivity distinction is the standard one from infinitary rewriting.
-
-\paragraph{Sharing in functional languages.}
-That a pure functional language cannot observe sharing or cyclicity is a known
-obstacle: a traversal of a cyclic structure diverges because referential
-transparency hides the repetition. Existing remedies \emph{add} something to the
-language, such as observable sharing \citeTODO{gill} or the deliberate use of
-laziness in circular programs \citeTODO{bird}. We add nothing to the calculus:
-quotienting the positions exposes the repetition, and $\mathrm{lfp}(T_P)$ folds it.
-
-\paragraph{Higher-order model checking.}
-Deciding properties of the (possibly infinite) trees generated by higher-order
-programs \citeTODO{ong-hors, kobayashi} shares the goal of answering queries about
-$\lambda$-generated infinite trees, but proceeds by automata and games over
-B\"ohm-tree-like denotations rather than by a least-model reading of a shape
-relation.
-
-\paragraph{Lazy $\lambda$-calculus.}
-The lazy $\lambda$-calculus \citeTODO{abramsky-ong} observes weak head normal
-forms; its tree is the L\'evy--Longo tree, which is the weak-head (H-fo) instance used here.
-
-\paragraph{Defunctionalization.}
-Unlike defunctionalization \citeTODO{reynolds}, which compiles a higher-order
-program into a first-order interpreter, we give a first-order semantic
-\emph{object} for the higher-order calculus; no interpreter is constructed.
-
-\paragraph{Position.}
-The capability we exploit---terminating structural computation over cyclic
-data by cycle detection---is decades old in logic programming
-\citeTODO{colmerauer, tamaki-sato} and in recursive-type theory
-\citeTODO{amadio-cardelli, brandt-henglein}. What appears to be new is its
-position: it is obtained by quotienting the positions of the $\lambda$-calculus's own
-tree semantics by a sound congruence and taking a least fixpoint, without leaving the calculus
-or adding primitives. That least fixpoint is the same tree, computed effectively
-(Section~\ref{sec:grounding}): it terminates on every structure rational with respect to the chosen
-congruence, coarser congruences covering more, and decides an unproductive cycle as $\bot$ in finite
-time, where head reduction diverges.
+A recursive query over the datum is then an ordinary $\lambda$-function, and it terminates for the
+same reason the tree does. A naive walk looking for $\mathtt{nil}$ recurses down the stream; its
+recursive calls fall into finitely many position classes, so the least fixpoint folds them and
+returns $\bot$ (no $\mathtt{nil}$ is ever reached, an unproductive cycle) in finite time, where the
+reduction would build a fresh call forever. The textbook $\mathtt{map}$, whose recursive call sits
+under a $\mathtt{cons}$ and is therefore guarded, folds the cyclic input into a finite circular list
+with every element transformed, where the reduction would map the infinite stream forever. On a
+finite list the same $\mathtt{map}$ is the ordinary one. The implementation reproduces all of this,
+including $\Omega$ and $Y\,(\lambda x.\,x)$ reading out as $\bot$\anon[.]{~\cite{firstorderlambda}.}
 
 % =====================================================================
 \section{Implementation}\label{sec:implementation}
 % =====================================================================
-An executable implementation accompanies the paper: a
-first-order-shape-relation interpreter for the pure $\lambda$-calculus
-($\Varsh$/$\Lamsh$/$\Appsh$, no recursion binder), in which a term's tree is the readout of the
-weak-head shape relation $\Sh$ (Definition~\ref{def:sh}) and the least-fixpoint reading
-$\mathrm{lfp}(T_P)$ (Definition~\ref{def:lfpreading}) folds a guarded cycle into a finite rational
-graph, printed with explicit back-references.\anon[ It is included as supplementary
-material.]{ It is openly available at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.}
-It realises both parameters of the development. The
-two readings of Section~\ref{sec:tworeadings} are a policy flag (the least fixpoint, and the
-finite-budget first iterate, which cuts a guarded re-entry to a leaf kept distinct from the
-meaningless $\bot$). The position congruence (Definition~\ref{def:congruence}) is a pluggable
-parameter with four instances spanning its spectrum: syntactic de Bruijn identity (the finest,
-realised by interning), a congruence closure over tree-equal generators (the inductive end), a
-bisimulation on the demanded descent (the coinductive end, folding exactly the rational fragment),
-and a dead-subterm fold that discharges the converse-failure witness of
-Remark~\ref{rem:deadfold}, the only one of the four that finitises it. The examples of
-Sections~\ref{sec:overview}, \ref{sec:valrec}, and \ref{sec:reach} are reproduced as tests:
-$Y\,(\mathtt{cons}\;0)$ folds to a finite cyclic graph, $\Omega$ and $Y\,(\lambda x.x)$ read out as
-$\bot$, the naive walk of Section~\ref{sec:reach} terminates over the cyclic stream where head
-reduction loops, and the rationality dichotomy of Theorem~\ref{thm:termination} is exercised on
-both a rational and a non-rational stream.
+$\operatorname{lfp}(\out)$ is computed by \emph{tabling}, the standard least-fixpoint evaluation that
+completes the cyclic and left-recursive queries on which plain resolution diverges
+\cite{vanemden-kowalski, tamaki-sato, tabling-slg}. Each formal notion has a direct counterpart, and
+this correspondence is the plan the accompanying artifact follows\anon[.]{~\cite{firstorderlambda}.}
+
+\paragraph{A position is a tabled call; the congruence is the tabling key.}
+Computing the tree at a position is a call, and its answer is memoised in a table. Two positions are
+the \emph{same} call exactly when they are $\approx$-equal, so the congruence
+(Definition~\ref{def:cong}) is the tabling key. The finest key, syntactic de Bruijn identity, is
+realised by hash-consing (interning), an $O(1)$ pointer test; a coarser sound $\approx$ is a coarser
+call equivalence that tables more positions together and so folds more.
+
+\paragraph{$\operatorname{lfp}(\out)$ is the table's least fixpoint; a guarded cycle folds on re-entry.}
+Each answer is built from $\bot$ upward. A position re-entered while its call is still in progress
+does not unfold; it consumes the call's current answer, a back-reference to the node being built. The
+table holds one entry per $\approx$-class, so when the reachable classes are finite it saturates into
+a finite rational graph, the guarded cycle folded to that back-reference and printed explicitly. This
+is ``the least fixpoint over a finite quotient'' made operational.
+
+\paragraph{An unproductive cycle is a call that never produces.}
+A position whose head evaluation re-enters its own call before exposing a constructor, such as
+$\Omega$, has a tabled answer that never improves past $\bot$, so it is decided as $\bot$ in finite
+time, where untabled head reduction loops. Guarded and unproductive cycles are then one mechanism:
+re-entry consults the table, which holds a constructor in the first case and $\bot$ in the second.
+
+\paragraph{Two readings, one engine.}
+The two readings are a policy flag on the same tabling: the least fixpoint, which folds a guarded
+re-entry, and a finite-budget first iterate, which cuts it to a distinct leaf kept apart from the
+meaningless $\bot$.
+
+\paragraph{The congruence is pluggable.}
+The tabling key ranges over the spectrum of Definition~\ref{def:cong}: interning for syntactic
+identity (the finest); a union-find with congruence closure, an e-graph, for the inductive end,
+folding whatever finitely many asserted tree-equal pairs generate; a bisimulation on the demanded
+descent for the coinductive end, folding exactly the rational fragment; and a dead-subterm
+canonicalisation that tables together positions differing only in a dead argument, which no
+congruence closure reaches.
+
+\paragraph{Normalization flag and termination guard.}
+Which normalization is a flag, whether to reduce under a leading $\lambda$: weak head normalization
+(the L\'evy--Longo tree) and head normalization (the B\"ohm tree). A non-rational term raises
+infinitely many calls and the table never saturates; a reduction budget bounds head reduction so such
+a term surfaces as an error rather than hanging.
+
+\paragraph{Realisation and the examples.}
+The present artifact realises the table by knot-tying, the special case in which the call's
+in-progress node is itself the table entry and the key is interning; hosting the same table in a
+reusable least-fixpoint memoised property would decouple it from the readout and admit a coarser key.
+The examples are tests: $\Omega$ and $Y\,(\lambda x.\,x)$ read out as $\bot$, $Y\,(\mathtt{cons}\,0)$
+folds to a finite cyclic cell, $\mathtt{map}\,\mathtt{succ}$ over it folds to the cyclic stream of
+ones, and the naive walk terminates as $\bot$ where head reduction loops
+(Appendix~\ref{app:examples}).
 
 % =====================================================================
-\section{Conclusion}\label{sec:conclusion}
-% =====================================================================
-The tree of a monotone first-order head-evaluation is the readout of a first-order shape relation,
-the least fixpoint of its monotone consequence operator. Head reduction unfolds that fixpoint and
-diverges on a cyclic term; the least fixpoint, computed by merging partial trees over
-positions up to the congruence, folds it, so a lazy infinite list becomes a node that points to
-itself and the readout terminates on every tree rational with respect to that congruence. So
-$\mathrm{lfp}(T_P)$ is an adequate monotone refinement of head reduction: the same tree, computed
-effectively.
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
 
 % =====================================================================
 \appendix
-\section{The tree domain (Proposition~\ref{prop:cpo})}\label{app:domain}
-\begin{proof}[Proof of Proposition~\ref{prop:cpo}]
-\emph{Least element.} For any $t \in D$, $\operatorname{dom}(\bot_D)=\{\varepsilon\}
-\subseteq \operatorname{dom}(t)$ and $\bot_D(\varepsilon)=\bot$, so
-$\bot_D \sqsubseteq t$ by Definition~\ref{def:order}.
-
-\emph{Directed completeness.} Let $\{t_i\}_{i\in I}$ be $\sqsubseteq$-directed. Define
-$t$ by $\operatorname{dom}(t)=\bigcup_i \operatorname{dom}(t_i)$ and, for
-$p \in \operatorname{dom}(t)$, $t(p)=t_i(p)$ if $t_i(p)\ne\bot$ for some $i$, else
-$t(p)=\bot$. This is well-defined: if $t_i(p)\ne\bot\ne t_j(p)$, directedness gives
-$t_\ell \sqsupseteq t_i,t_j$, and by Definition~\ref{def:order} a non-$\bot$ label is
-preserved upward, so $t_i(p)=t_\ell(p)=t_j(p)$. And $t \in D$: $\operatorname{dom}(t)$
-is prefix-closed as a union of prefix-closed sets, and arity-respecting because if
-$t(p)=\Lamsh$ then $t_i(p)=\Lamsh$ for some $i$, whose children of $p$ are exactly
-$\{p\,\dlam\}$, and no other $t_j$ adds a child (labels agree where non-$\bot$, and
-$\bot$ has no children); the $\Appsh$ and leaf cases are identical. Finally $t$ is the
-least upper bound: each $t_i \sqsubseteq t$, and any upper bound $u$ satisfies
-$t \sqsubseteq u$ since at $p$ with $t(p)\ne\bot$ the witnessing $t_i$ gives
-$t(p)=t_i(p)=u(p)$. In particular every $\omega$-chain has a least upper bound.
-\end{proof}
-
-\section{The shape operator (Proposition~\ref{prop:shwd})}\label{app:shape}
-\begin{proof}[Proof of Proposition~\ref{prop:shwd}]
-Write $T=T^{\Sh}$, with $\operatorname{Pos}(M)\to C$ ordered pointwise over the flat
-order on $C$.
-
-\emph{Monotone.} Let $s\sqsubseteq s'$ and fix $n$. For $n=\Varsh_i$ or
-$n=\Lamsh(\lambda x.N)$, $T(s)(n)=T(s')(n)$. For $n=\Appsh(f,a)$ the clause is selected
-by $s(f)$: if $s(f)=\bot$ then $T(s)(n)=\bot\sqsubseteq T(s')(n)$; if $s(f)\ne\bot$
-then flatness forces $s'(f)=s(f)$, so the same clause fires, giving
-$T(s)(n)=\Appsh(f,a)=T(s')(n)$ in the rigid subcase and
-$T(s)(n)=s(\mathit{body}[x{:=}a])\sqsubseteq s'(\mathit{body}[x{:=}a])=T(s')(n)$ in the
-head-redex subcase.
-
-\emph{Continuous.} Let $s_0\sqsubseteq s_1\sqsubseteq\cdots$ with $s=\bigsqcup_k s_k$.
-By monotonicity $\bigsqcup_k T(s_k)\sqsubseteq T(s)$. Conversely, fix $n$ with
-$T(s)(n)\ne\bot$. Computing $T(s)(n)$ inspects at most two arguments of $s$, namely
-$s(f)$ and, in the head-redex subcase, $s(\mathit{body}[x{:=}a])$; each is non-$\bot$
-here, hence by flatness equals $s_k$ at that argument for all large $k$. Taking $k$
-past both, $T(s_k)(n)=T(s)(n)$, so $T(s)(n)\sqsubseteq\bigsqcup_k T(s_k)(n)$. Thus $T$
-is $\omega$-continuous and, by the Kleene fixed-point theorem,
-$\Sh=\operatorname{lfp}(T)=\bigsqcup_k T^k(\bot)$.
-
-\emph{Characterisation.} The iterates resolve shapes bottom-up: $T^k(\bot)(n)\ne\bot$
-iff $n$ has a shape derivation under Definition~\ref{def:shapeop} of height below $k$,
-where each head-redex clause first resolves the head $f$ and then its contractum. Such
-a finite derivation exists iff the head-evaluation from $n$ reaches a normal
-form ($\Varsh$, $\Lamsh$, or an $\Appsh$ with rigid head). \TODO{spell out the height
-measure: an induction on $k$ matching ``$T^k(\bot)(n)\ne\bot$'' with ``the head shape
-of $n$, and in the redex case the contractum's shape, are resolved within $k$
-iterations'', concluding $\Sh(n)=\bot$ iff the head-evaluation from $n$ diverges. The
-statement and both endpoints are fixed; only the bookkeeping of the measure remains.}
-\end{proof}
-
-\section{Adequacy (Theorem~\ref{thm:adequacy})}\label{app:adequacy}
-\begin{lemma}[Meaningless leaves]\label{lem:rootactive}
-$\Sh(n)=\bot$ iff the tree at $n$ is $\bot$.
-\end{lemma}
-\noindent
-By Proposition~\ref{prop:shwd}, $\Sh(n)=\bot$ iff the head-evaluation from $n$ does not
-terminate. For an (H-fo) head-evaluation (Definition~\ref{def:hfo}) this is the meaningless set
-\emph{by definition}: the tree's $\bot$ leaf is exactly a position whose head-evaluation
-diverges, so the identification is immediate and needs no external input.
-
-\begin{proof}[Proof of Theorem~\ref{thm:adequacy}]
-Fix a sound congruence $\approx$ (Definition~\ref{def:congruence}). By soundness every position in
-a class shares one tree (Remark~\ref{rem:soundness}), so the readout over $\Posq{M}$ and the
-per-position readout of Definition~\ref{def:btree} agree, and the induction below is verbatim.
-Let $R=\mathrm{lfp}(T_P)=\operatorname{lfp}(\Psi)$. Both $R$ and the tree the head-evaluation
-enumerates label a valid path $p$ by a function of $\Sh(\subt{M}{p})$: $\Varsh_i$, $\Lamsh$ (with
-child $p\,\dlam$), $\Appsh$ (with children $p\,\dhead,p\,\darg$), or $\bot$
-(Definitions~\ref{def:sh}, \ref{def:btree}). By Proposition~\ref{prop:cpo}, $R$ is the unique
-tree with $R(\subt{M}{p})= \Psi(R)(\subt{M}{p})$, so $R(M)(p)$ is determined by
-$\Sh(\subt{M}{p})$ exactly as the head-evaluation's readout prescribes. By induction on $|p|$,
-the domains and labels coincide: the variable, $\Lamsh$, and $\Appsh$ cases match clause by
-clause, and the $\bot$-leaf case matches by Lemma~\ref{lem:rootactive}. Hence $R(M)$ is the tree.
-\end{proof}
-
-\section{Termination (Theorem~\ref{thm:termination})}\label{app:termination}
-\begin{proof}[Proof of Theorem~\ref{thm:termination}]
-The readout descends only through positions of $\operatorname{Pos}(M)$
-(Definition~\ref{def:positions}): the constructor children $N,f,a$ and, via the
-head-redex clause of $\Sh$, the contracta are exactly its generators.
-
-Throughout, $\approx$ is a decidable sound congruence, so the tabling key (the $\approx$-class) is
-testable; the readout descends through classes of $\Posq{M}$.
-
-\emph{Rational $\Rightarrow$ halts.} If $\Posq{M}$ is finite, the
-$\mathrm{lfp}(T_P)$ computation tables over a finite set and halts.
-
-\emph{Halts $\Rightarrow$ rational.} Contrapositive: if $\Posq{M}$ is
-infinite then the descent reaches infinitely many distinct classes and the
-$\mathrm{lfp}(T_P)$ tabling never saturates, so it does not halt.
-
-\emph{Rational $\Rightarrow$ tree rational.} The subtrees of $R(M)$ are
-$\{R(\subt{M}{p})\}_p=\{R(n):n\in\Posq{M}\}$, finite, so $R(M)$ is
-rational (Definition~\ref{def:rational}).
-
-\emph{Failure of the converse for the finest congruence.} The finest congruence identifies
-positions by \emph{syntactic} (de Bruijn) identity, which is strictly finer than tree equality, so
-the map $n\mapsto R(n)$ need not be injective: syntactically distinct positions can carry the
-same tree. A witness is $M=Y\,F\,\underline 0$ with
-$F=\lambda s.\lambda n.\,\mathtt{cons}\;0\;(s\,(\mathtt{succ}\;n))$. The head of every
-cell is the constant $0$, so $R(M)$ is the rational stream
-$\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$ with finitely many distinct subtrees;
-but the tail positions $Y\,F\,\underline k$ (with $\underline k=\mathtt{succ}^{k}\,
-\underline 0$) are pairwise syntactically distinct, hence distinct classes of the finest
-congruence, since $\Sh$ does not reduce the $\mathtt{succ}^{k}\,\underline 0$ buried in the
-argument. Hence $\operatorname{Pos}(M)$ is infinite while $\{R(n)\}$ is finite, and the finest
-congruence diverges on a rational tree. A coarser sound congruence identifying the tail positions (they differ
-only in the dead argument $\mathtt{succ}^{k}\,\underline 0$, so they are tree-equal) makes $\Posq{M}$
-finite and the readout halt (Remark~\ref{rem:deadfold}); in the limit tree equality always does. So
-tree rationality entails finite $\Posq{M}$ only as $\approx$ approaches tree equality: folding by the
-finest position identity is strictly finer than folding by subtree.
-\end{proof}
-
+\section{The Example Terms}\label{app:examples}
 % =====================================================================
-%% The body cites via \citeTODO (red draft markers), never \cite, so
-%% \nocite{*} forces every references.bib entry into the printed list,
-%% reproducing the former inline thebibliography under ACM formatting.
-\nocite{*}
-\bibliographystyle{ACM-Reference-Format}
-\bibliography{references}
+Every example is a closed pure $\lambda$-term, built from Scott-encoded lists, the Church numeral
+$0$, and the fixpoint combinator $Y$, with no recursion binder added to the calculus. These are the
+terms the implementation runs\anon[.]{~\cite{firstorderlambda}.} For each we recall its B\"ohm tree,
+the original semantics, and contrast how it is computed: head normalization $f_{\mathrm h}$
+(Proposition~\ref{prop:bt}) enumerates the tree by unfolding and diverges on a cyclic term, whereas
+$\operatorname{lfp}(\out_{\mathrm h})$ yields the same tree, folded.
+
+The combinators are the identity, self-application, and the fixpoint combinator:
+\[
+  I = \lambda x.\, x, \qquad
+  \omega = \lambda x.\, x\,x, \qquad
+  Y = \lambda f.\, (\lambda x.\, f\,(x\,x))\,(\lambda x.\, f\,(x\,x)).
+\]
+$Y\,g$ head reduces to $g\,(Y\,g)$, so a pure term can denote a recursive, hence infinite, B\"ohm
+tree, as the cyclic stream and the $\mathtt{map}$ output below do.
+
+A list is Scott encoded: it is a function that, given a $\mathtt{cons}$ case $c$ and a $\mathtt{nil}$
+case $n$, selects the matching one.
+\[
+  \mathtt{cons} = \lambda h.\,\lambda t.\,\lambda c.\,\lambda n.\, c\,h\,t, \qquad
+  \mathtt{nil} = \lambda c.\,\lambda n.\, n, \qquad
+  \mathtt{present} = \lambda a.\,\lambda b.\, a.
+\]
+A cell $\mathtt{cons}\,h\,t$ hands its head $h$ and tail $t$ to $c$, while $\mathtt{nil}$ returns $n$;
+$\mathtt{present}$ is the constant the walk below returns at a non-empty cell. Numerals are Church
+encoded, with $0$ and the successor:
+\[
+  0 = \lambda s.\,\lambda z.\, z, \qquad
+  \mathtt{succ} = \lambda n.\,\lambda s.\,\lambda z.\, s\,(n\,s\,z).
+\]
+
+The first example is the canonical diverging term, and the pure rendering of $\mathtt{letrec}\;x=x$:
+\[
+  \Omega = \omega\,\omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x), \qquad \mathtt{loop} = Y\,I.
+\]
+Neither has a head normal form, so its B\"ohm tree is the meaningless $\bot$. Head normalization
+searches for that head normal form forever; $\operatorname{lfp}(\out_{\mathrm h})$ reaches the same
+$\bot$ in finite time, the unproductive cycle.
+
+The second example is the cyclic datum, the stream of zeros written purely with $Y$:
+\[
+  r = Y\,(\mathtt{cons}\,0), \qquad\text{denoting } r = \mathtt{cons}\,0\,r.
+\]
+The B\"ohm tree of $r$ is the infinite stream $\mathtt{cons}\,0\,(\mathtt{cons}\,0\,(\cdots))$. Head
+normalization enumerates it by unfolding and never finishes; $\operatorname{lfp}(\out_{\mathrm h})$ is
+the same tree, folded to a finite cyclic cell, the node $c$ with $c = \mathtt{cons}\,0\,c$.
+
+The third example is an ordinary recursive $\mathtt{map}$, with nothing cycle-aware in it:
+\[
+  \mathtt{map} = \lambda f.\, Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\,\mathtt{nil}\big).
+\]
+Its recursive call sits under a $\mathtt{cons}$, so it is guarded. The map of interest increments
+every element of $r$,
+\[
+  \mathtt{map}\;\mathtt{succ}\;r,
+\]
+whose B\"ohm tree is the infinite stream $\mathtt{cons}\,1\,(\mathtt{cons}\,1\,(\cdots))$, since
+$\mathtt{succ}\,0 = 1$. Head normalization maps the infinite stream forever;
+$\operatorname{lfp}(\out_{\mathrm h})$ is the same tree, folded to the finite cyclic cell $c'$ with
+$c' = \mathtt{cons}\,1\,c'$.
+
+The unguarded companion is the naive walk, whose recursive call exposes no constructor:
+\[
+  \mathtt{reach} = Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathit{self}\,t)\,\mathtt{present}\big).
+\]
+Applied to $r$ it never reaches $\mathtt{nil}$, so $\mathtt{reach}\,r$ has no head normal form and its
+B\"ohm tree is $\bot$. Head normalization builds a fresh recursive call at every step and loops;
+$\operatorname{lfp}(\out_{\mathrm h})$ returns $\bot$ in finite time.
 
 \end{document}
