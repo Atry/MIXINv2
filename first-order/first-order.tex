@@ -149,6 +149,12 @@ with rational behaviour.
         enumerates. Termination (Theorem~\ref{thm:termination}): tabling halts iff finitely many
         states are reachable, and then the graph is a finite element of the rational fixpoint
         $\rfp\Beh$. Two independent finiteness conditions appear (Remark~\ref{rem:tworationalities}).
+  \item Least equals greatest (Theorem~\ref{thm:unique}): because $\outm$ exposes a constructor or
+        $\bot$, the readout functional is guarded, hence a contraction with a \emph{unique} fixpoint,
+        so the least-fixpoint reading and the coinductive unfolding coincide and no least-versus-greatest
+        choice arises. This is the operational face of algebraic compactness over the $\bot$-completed
+        domain (Remark~\ref{rem:compact}); the least fixpoint is indispensable only at the silent
+        collapse, where it decides divergence as $\bot$ (Remark~\ref{rem:leastessential}).
   \item A bridge (Section~\ref{sec:bridge}): head and weak-head normalisation of the pure
         $\lambda$-calculus are the instance $M = \Delaym$ (pure divergence) and $F$ the
         $\lambda$-shape signature. There $\outm$ is the weak-head shape relation, $\Omega$ reads out
@@ -435,6 +441,117 @@ reduction, differ only in the choice of $F$ and of which redex the step contract
 $M = \Delaym$ shape. Richer $M$ (non-deterministic, probabilistic, stateful) leaves the architecture
 intact but replaces the cycle-to-$\bot$ collapse with the corresponding $M$-least fixpoint, for
 $M = \Pow$ a set-valued one.
+\end{remark}
+
+% =====================================================================
+\section{The readout has a unique fixpoint: least equals greatest}\label{sec:unique}
+% =====================================================================
+The behaviour was introduced coinductively, as the unfolding of $\outm$ into $\nu\Beh$
+(Definition~\ref{def:behreadout}). It is equally the order-theoretic least fixpoint of a readout
+functional, and the two coincide: that functional is \emph{guarded}, so it has a \emph{unique}
+fixpoint, and no least-versus-greatest choice arises. Once $\outm$ has exposed a constructor,
+induction and coinduction agree.
+
+\begin{definition}[Readout functional]\label{def:readoutfun}
+The \emph{readout functional} $\Psi\colon (X \to D) \to (X \to D)$ reads one $\Beh$-layer off the
+structure map and defers to its argument for the children:
+\[
+  \Psi(g)(n) =
+  \begin{cases}
+    \bot & \outm(n) = \bot,\\
+    \sigma\big(g(n_1),\dots,g(n_k)\big) & \outm(n) \text{ exposes the layer } \sigma(n_1,\dots,n_k),
+  \end{cases}
+\]
+the $M$-structure of the exposed layer (for a branching $M$) carried at the root, above the children.
+By Proposition~\ref{prop:cpo} the pointwise order on $X \to D$ is a pointed $\omega$-CPO and $\Psi$ is
+monotone and $\omega$-continuous, so $\operatorname{lfp}(\Psi) = \bigsqcup_{k} \Psi^{k}(\lambda n.\,\bot_D)$
+exists.
+\end{definition}
+
+\begin{definition}[Tree metric]\label{def:metric}
+For $t,u \in D$ put $\mathrm{d}(t,u) = 0$ if $t = u$, and otherwise $\mathrm{d}(t,u) = 2^{-\ell}$ where
+$\ell$ is the least length $|p|$ of a position $p \in \mathrm{dom}(t) \cup \mathrm{dom}(u)$ at which $t$
+and $u$ differ ($p$ lies in only one domain, or $t(p) \neq u(p)$). Lift it to $X \to D$ by
+$\mathrm{d}(g,h) = \sup_{n} \mathrm{d}(g(n),h(n))$.
+\end{definition}
+
+\begin{proposition}[The tree space is complete]\label{prop:metric}
+$(D,\mathrm{d})$ is a complete ultrametric space, and hence so is $(X \to D, \mathrm{d})$ under the
+supremum metric \citeTODO{arnold-nivat}. A Cauchy sequence of trees stabilises at every fixed depth,
+so it has a level-wise limit in $D$; the metric topology agrees with the $\omega$-CPO of
+Proposition~\ref{prop:cpo} in that the $\mathrm{d}$-limit of a $\sqsubseteq$-increasing sequence is its
+least upper bound.
+\end{proposition}
+
+\begin{lemma}[The readout is guarded]\label{lem:guarded}
+$\Psi$ is a contraction with factor $\tfrac{1}{2}$:
+$\mathrm{d}(\Psi(g),\Psi(h)) \le \tfrac{1}{2}\,\mathrm{d}(g,h)$.
+\end{lemma}
+\begin{proof}
+Fix a state $n$. The root label of $\Psi(g)(n)$ is determined by $\outm(n)$ alone, independently of
+$g$: it is $\bot$ when $\outm(n) = \bot$, and the operation $\sigma$ when $\outm(n)$ exposes
+$\sigma(n_1,\dots,n_k)$. So $\Psi(g)(n)$ and $\Psi(h)(n)$ always share the root ($|p| = 0$) label and
+can differ only strictly below it. If $\outm(n) = \bot$ or a nullary layer, they are equal and
+$\mathrm{d}(\Psi(g)(n),\Psi(h)(n)) = 0$. Otherwise a shortest position at which they differ is one
+descent step into some child $n_i$ followed by a shortest differing position of $g(n_i)$ and $h(n_i)$,
+so its length is $1$ greater, giving
+\[
+  \mathrm{d}\big(\Psi(g)(n),\Psi(h)(n)\big) = \tfrac{1}{2}\,\max_{i}\,\mathrm{d}\big(g(n_i),h(n_i)\big)
+  \le \tfrac{1}{2}\,\mathrm{d}(g,h).
+\]
+Taking the supremum over $n$ gives $\mathrm{d}(\Psi(g),\Psi(h)) \le \tfrac{1}{2}\,\mathrm{d}(g,h)$.
+\end{proof}
+
+\begin{theorem}[Least equals greatest]\label{thm:unique}
+$\Psi$ has a unique fixpoint, and it is simultaneously
+\begin{enumerate}
+  \item the order-theoretic least fixpoint $\operatorname{lfp}(\Psi) = \bigsqcup_{k} \Psi^{k}(\lambda n.\,\bot_D)$, and
+  \item the coinductive unfolding $\behav$, the unique $\Beh$-coalgebra morphism $X \to \nu\Beh$ over
+        $\outm$ (Definition~\ref{def:behreadout}).
+\end{enumerate}
+Hence the least-fixpoint reading and the coinductive reading denote the same object: there is no
+least-versus-greatest choice to make.
+\end{theorem}
+\begin{proof}
+By Lemma~\ref{lem:guarded}, $\Psi$ is a contraction on the complete metric space $(X \to D, \mathrm{d})$
+(Proposition~\ref{prop:metric}); by the Banach fixed-point theorem \citeTODO{banach} it has a unique
+fixpoint $r$, and $\Psi^{k}(g_0) \to r$ from every starting point $g_0$.
+
+\emph{(1)} Take $g_0 = \lambda n.\,\bot_D$. The iterates $\Psi^{k}(g_0)$ are $\sqsubseteq$-increasing
+($\Psi$ is monotone and $g_0$ is least) and converge to $r$ in $\mathrm{d}$; the $\mathrm{d}$-limit of a
+$\sqsubseteq$-increasing sequence is its least upper bound (Proposition~\ref{prop:metric}), so
+$\bigsqcup_{k} \Psi^{k}(g_0) = r$, which by $\omega$-continuity is $\operatorname{lfp}(\Psi)$. Thus
+$\operatorname{lfp}(\Psi) = r$.
+
+\emph{(2)} A function $g$ is a fixpoint of $\Psi$ iff $g(n) = \sigma(g(n_1),\dots,g(n_k))$ whenever
+$\outm(n)$ exposes $\sigma(n_1,\dots,n_k)$ and $g(n) = \bot$ when $\outm(n) = \bot$, which is exactly
+the equation defining the $\Beh$-coalgebra morphism $X \to \nu\Beh$ over $\outm$. By finality that
+morphism $\behav$ exists and is the unique such; being a fixpoint of $\Psi$, it equals $r$.
+
+Therefore $\operatorname{lfp}(\Psi) = r = \behav$.
+\end{proof}
+
+\begin{remark}[Algebraic compactness]\label{rem:compact}
+Theorem~\ref{thm:unique} is the operational face of a categorical fact. Over a \emph{discrete} carrier
+the initial $\Beh$-algebra and the final $\Beh$-coalgebra differ, $\mu\Beh \neq \nu\Beh$ (for the
+stream functor, the finite lists versus the finite-or-infinite ones), so there least and greatest
+fixpoint genuinely diverge. The readout instead lives over the $\bot$-completed tree domain $D$, where a
+locally continuous functor is \emph{algebraically compact}, $\mu\Beh \cong \nu\Beh$
+\citeTODO{smyth-plotkin, freyd}, and the unique fixpoint of Theorem~\ref{thm:unique} is that one
+common object. So ``least equals greatest'' is a property of the $\bot$-completion and the guarded
+readout, \emph{not} of the discrete signature: completing with $\bot$ and reading guardedly is exactly
+what collapses induction and coinduction.
+\end{remark}
+
+\begin{remark}[Where the least fixpoint is indispensable]\label{rem:leastessential}
+Uniqueness is a property of the readout, after $\outm$ has exposed a constructor. The structure map
+$\outm = \iter{\stepm}$ itself is \emph{unguarded}: a silent cycle returns with no constructor exposed,
+so its defining operator (Definition~\ref{def:out}) is not contractive, and there least genuinely
+differs from greatest. The least choice is the correct and the only computable one: $\Omega$ has
+$\outm(\Omega) = \bot$ (least), whereas a greatest reading would assign it an arbitrary non-$\bot$
+shape. So the construction is least-fixpoint throughout, and the single place the choice does real work
+is the collapse of divergence to $\bot$; once a layer is exposed, the readout is guarded and least
+equals greatest.
 \end{remark}
 
 % =====================================================================
