@@ -814,63 +814,66 @@ are the unfolding and its limit, separated by how much they remember.
 Reading behaviour as the unique map into a final coalgebra is the coalgebraic method
 \citeTODO{rutten, jacobs}; the finite cyclic graphs are the rational fixpoint between the initial
 algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition-refinement
-minimisation of automata \citeTODO{hopcroft, paige-tarjan} is the classical instance of folding on
-structural identity, of which tabling $\outm$ is the generalisation to an arbitrary signature.
+minimisation of automata \citeTODO{hopcroft, paige-tarjan} folds on structural identity, but only for
+automata, not for an arbitrary signature functor.
 
 \paragraph{Iteration, the delay monad, and Elgot monads.}
-The silent collapse $\iter{\stepm}$ is iteration in a (complete) Elgot monad
-\citeTODO{adamek-milius-velebil, goncharov-elgot}; for $M = \Delaym$ it is the delay/partiality monad
-\citeTODO{capretta}, which makes divergence a value, and the cycle-to-$\bot$ decision is the
-rational-fragment computation of that value. Generalised resumption monads $M(F(-) + -)$
-\citeTODO{piróg-gibbons} are the home of the equation morphism of Definition~\ref{def:itcoalg}.
+Iteration in a (complete) Elgot monad
+\citeTODO{adamek-milius-velebil, goncharov-elgot} solves guarded recursion abstractly, and for
+$M = \Delaym$ the delay/partiality monad \citeTODO{capretta} makes divergence a value; but these
+accounts fix the value categorically and neither compute it nor give it a finite representation on
+the rational fragment. Generalised resumption monads $M(F(-) + -)$ \citeTODO{piróg-gibbons} supply the
+type of such systems but no procedure over them.
 
 \paragraph{Least Herbrand models and tabling.}
-The structure map $\outm$ is a least fixpoint of a monotone consequence operator, the least Herbrand
+The least fixpoint of a monotone consequence operator is the least Herbrand
 model of a definite specification \citeTODO{vanemden-kowalski}; plain resolution diverges on a cyclic
-query, and a tabled evaluator \citeTODO{tamaki-sato, tabling-slg} computes the least fixpoint by
-completing unproductive cycles instead of looping. Tabling is the mechanism the whole construction
-rests on, transported from logic programming to an arbitrary equation morphism.
+query, whereas a tabled evaluator \citeTODO{tamaki-sato, tabling-slg} computes the least fixpoint by
+completing unproductive cycles instead of looping. Tabling there stays within logic programming and is
+not carried to an arbitrary signature functor.
 
 \paragraph{Rational trees and recursive types.}
 Deciding structural queries over cyclic structures by cycle detection is long established: rational
 (regular) trees and their algebra \citeTODO{courcelle} underlie cyclic unification
 \citeTODO{colmerauer}, and equirecursive recursive types give terminating subtyping and equality by
-detecting cycles in a regular tree \citeTODO{amadio-cardelli, brandt-henglein}. These are the
-guarded-cycle case of the present behaviour map, reached by different routes; the difference is one of
-position, not capability, since here it is the behaviour of a coalgebra read by tabling rather than a
-separate discipline.
+detecting cycles in a regular tree \citeTODO{amadio-cardelli, brandt-henglein}. Each, however, handles
+only the guarded-cycle case and is a separate discipline tied to one domain, unification or subtyping,
+not a single uniform construction.
 
 \paragraph{$\lambda$-trees and infinitary $\lambda$-calculus.}
 The Berarducci, L\'evy--Longo, and B\"ohm trees form a hierarchy by their meaningless sets
 \citeTODO{berarducci, levy-longo, barendregt}, situated uniformly by the infinitary
-$\lambda$-calculus \citeTODO{kennaway-klop-sleep-devries}. The $\lambda$-instance
-(Section~\ref{sec:bridge}) gives the L\'evy--Longo tree with weak head reduction and the B\"ohm tree
-with head reduction under $\lambda$. The Berarducci tree retains $\bot$-headed applications, which is
-non-monotone, so it is \emph{not} the behaviour of an iteration-ready coalgebra (it has no
-least-fixpoint structure map). The lazy $\lambda$-calculus \citeTODO{abramsky-ong} observes weak head
-normal forms, the weak-head instance used here.
+$\lambda$-calculus \citeTODO{kennaway-klop-sleep-devries}; they are studied as infinite normal forms,
+with no finite representation of the rational ones. The Berarducci tree retains $\bot$-headed
+applications and is non-monotone, so it admits no least-fixpoint presentation. The lazy
+$\lambda$-calculus \citeTODO{abramsky-ong} observes weak head normal forms but does not fold the trees
+it produces.
 
 \paragraph{Cyclic $\lambda$-terms, sharing, and recursion.}
-Cyclic graphs / explicit recursion \citeTODO{ariola-klop} and call-by-need \citeTODO{ariola-felleisen}
-provide sharing as an added construct; that a pure functional language cannot observe sharing or
-cyclicity without an addition such as observable sharing \citeTODO{gill} or a circular-program idiom
-\citeTODO{bird} is a known obstacle. We add nothing to the calculus: it is one equation morphism
-among many, and tabling folds its rational behaviour.
+Graph reduction \citeTODO{wadsworth, turner-combinators} evaluates $\lambda$-terms over (possibly
+cyclic) graphs, and term graph rewriting \citeTODO{barendregt-term-graph, kennaway-graph-adequacy}
+relates finite cyclic graphs to the rational trees they unfold to; but a cycle is tied only where
+recursion is primitive, a \texttt{letrec} or a built-in fixpoint, whereas a pure fixpoint combinator
+has its body copied at each $\beta$-step and unfolds into an unbounded spine. Cyclic graphs / explicit
+recursion \citeTODO{ariola-klop} and call-by-need \citeTODO{ariola-felleisen} likewise provide sharing
+only as an added construct, and a pure functional language cannot even observe sharing or cyclicity
+without an addition such as observable sharing \citeTODO{gill} or a circular-program idiom
+\citeTODO{bird}. Across all of these, an ordinary recursive function over a cyclic list, such as a
+$\mathtt{map}$, reduces to an unbounded spine rather than to a cycle.
 
 \paragraph{Higher-order model checking and defunctionalization.}
-Deciding properties of trees generated by higher-order programs \citeTODO{ong-hors, kobayashi} shares
-the goal of answering queries about $\lambda$-generated infinite trees, but proceeds by automata and
-games over B\"ohm-tree-like denotations rather than by a least-fixpoint reading of a coalgebra. Unlike
-defunctionalization \citeTODO{reynolds}, which compiles a higher-order program into a first-order
-interpreter, we give a first-order semantic \emph{object}; no interpreter is constructed.
+Deciding properties of trees generated by higher-order programs \citeTODO{ong-hors, kobayashi}
+answers queries about $\lambda$-generated infinite trees, but proceeds by automata and games over
+B\"ohm-tree-like denotations and produces no finite representation of the tree itself.
+Defunctionalization \citeTODO{reynolds} compiles a higher-order program into a first-order
+interpreter, a syntactic translation that yields no semantic \emph{object}.
 
-\paragraph{Position.}
-The capability we exploit, terminating structural computation over cyclic data by cycle detection, is
-decades old in logic programming \citeTODO{colmerauer, tamaki-sato} and recursive-type theory
-\citeTODO{amadio-cardelli, brandt-henglein}. What appears to be new is its placement: it is the
-behaviour of an arbitrary equation morphism, read by tabling on first-order state identity, with the
-$\lambda$-calculus as one instance, so a pure term acquires a finite cyclic representation and an
-ordinary recursion over it terminates, without leaving the calculus or adding primitives.
+\paragraph{A common limitation.}
+Terminating structural computation over cyclic data by cycle detection is decades old in logic
+programming \citeTODO{colmerauer, tamaki-sato} and recursive-type theory \citeTODO{amadio-cardelli,
+brandt-henglein}, but in every case it is confined to one domain and applies only to data already
+presented in cyclic form; none reads it as the behaviour of an arbitrary system, and none folds a pure
+term that merely generates the cycle.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
