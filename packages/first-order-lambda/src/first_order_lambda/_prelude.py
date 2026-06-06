@@ -144,3 +144,112 @@ CYCLIC_ZEROS: Node = build(app(Y, app(SCOTT_CONS, ZERO)))
 
 # letrec x = x : an unproductive head cycle, written Y (lambda x. x).
 LOOP: Node = build(app(Y, IDENTITY))
+
+
+# =====================================================================
+# Pure Datalog as a monotone Church-boolean least fixpoint.
+#
+# A ground Datalog program (no function symbols, so a finite Herbrand base) is a monotone
+# Boolean equation system over its ground atoms. A model is a Church tuple of booleans; the
+# immediate-consequence operator T_P is a tuple-to-tuple function (each atom's new truth is an
+# OR over its clauses of an AND over the clause body); the least Herbrand model is T_P iterated
+# |HB| times from the all-false tuple -- a bounded, total term (no Y). A goal atom is a
+# projection, which renders to TRUE or FALSE.
+# =====================================================================
+
+AND: Builder = lam(lambda p: lam(lambda q: app(app(p, q), FALSE)))  # p and q
+OR: Builder = lam(lambda p: lam(lambda q: app(app(p, TRUE), q)))    # p or q
+
+
+def _tuple(elements: "list[Builder]") -> Builder:
+    # <e0, ..., e_{n-1}> = lambda s. s e0 ... e_{n-1}
+    def apply_all(selector: Builder) -> Builder:
+        applied = selector
+        for element in elements:
+            applied = app(applied, element)
+        return applied
+
+    return lam(apply_all)
+
+
+def _select(index: int, arity: int) -> Builder:
+    # lambda x0 ... x_{arity-1}. x_index
+    def make(captured: "list[Builder]") -> Builder:
+        if len(captured) == arity:
+            return captured[index]
+        return lam(lambda variable: make(captured + [variable]))
+
+    return make([])
+
+
+def _proj(index: int, arity: int) -> Builder:
+    # pi_index = lambda t. t (select index arity)
+    return lam(lambda the_tuple: app(the_tuple, _select(index, arity)))
+
+
+def _conjunction(body, num_atoms: int, model: Builder) -> Builder:
+    # AND over the body atoms of their current truth; an empty body (a fact) is TRUE.
+    if not body:
+        return TRUE
+    first, *rest = body
+    conjunction = app(_proj(first, num_atoms), model)
+    for atom in rest:
+        conjunction = app(app(AND, conjunction), app(_proj(atom, num_atoms), model))
+    return conjunction
+
+
+def _disjunction(clause_truths: "list[Builder]") -> Builder:
+    # OR over the clauses deriving an atom; no clause is FALSE.
+    if not clause_truths:
+        return FALSE
+    first, *rest = clause_truths
+    disjunction = first
+    for clause in rest:
+        disjunction = app(app(OR, disjunction), clause)
+    return disjunction
+
+
+def datalog_model(num_atoms: int, clauses) -> Builder:
+    """The least Herbrand model of a ground program, as a Church tuple of booleans.
+
+    ``clauses`` is a sequence of ``(head, body)`` with 0-based atom indices; a fact has an empty
+    ``body``. Returns the least fixpoint of ``T_P``, computed as ``T_P`` iterated ``num_atoms``
+    times from the all-false tuple (the lattice has height ``num_atoms``, so this reaches it).
+    """
+    def step(model: Builder) -> Builder:
+        cells = [
+            _disjunction(
+                [_conjunction(body, num_atoms, model)
+                 for (head, body) in clauses if head == atom]
+            )
+            for atom in range(num_atoms)
+        ]
+        return _tuple(cells)
+
+    bottom = _tuple([FALSE for _ in range(num_atoms)])
+    return app(app(church(num_atoms), lam(step)), bottom)
+
+
+# Example 1 (domain {a}): a fact, a chain, a conjunction (AND), and a disjunction (OR).
+#   p(a).  q(X):-p(X).  r(X):-p(X),s(X).  t(X):-q(X).  t(X):-r(X).
+# atoms: p(a)=0, q(a)=1, r(a)=2, s(a)=3, t(a)=4  (s(a) has no fact, so r(a) is false).
+_CONJ_CLAUSES = (
+    (0, ()),
+    (1, (0,)),
+    (2, (0, 3)),
+    (4, (1,)),
+    (4, (2,)),
+)
+DATALOG_CONJ_T: Node = build(app(_proj(4, 5), datalog_model(5, _CONJ_CLAUSES)))  # t(a): true
+DATALOG_CONJ_R: Node = build(app(_proj(2, 5), datalog_model(5, _CONJ_CLAUSES)))  # r(a): false
+
+# Example 2 (domain {a,b,c,d}): recursive reachability from a along edges a->b->c (d unreachable).
+#   reach(a).  reach(b):-reach(a).  reach(c):-reach(b).
+# atoms: reach(a)=0, reach(b)=1, reach(c)=2, reach(d)=3.
+_REACH_CLAUSES = (
+    (0, ()),
+    (1, (0,)),
+    (2, (1,)),
+)
+DATALOG_REACH_C: Node = build(app(_proj(2, 4), datalog_model(4, _REACH_CLAUSES)))  # reach(c): true
+DATALOG_REACH_D: Node = build(app(_proj(3, 4), datalog_model(4, _REACH_CLAUSES)))  # reach(d): false
