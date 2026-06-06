@@ -19,7 +19,7 @@
 %% only mathtools needs to be added here.
 \usepackage{mathtools}
 
-% --- draft placeholder macro ------------------------------------------
+% --- draft placeholder macros -----------------------------------------
 \newcommand{\TODO}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
 \newcommand{\citeTODO}[1]{\textcolor{red}{[\textbf{cite:} #1]}}
 
@@ -68,7 +68,7 @@
   \country{USA}
 }
 \email{yang-bo@yang-bo.com}
-\thanks{This work was conducted independently prior to the author's employment at Figure AI.}
+% \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
 Representing and transforming cyclic data in the pure $\lambda$-calculus normally requires an added recursion construct, such as a \texttt{letrec} or a $\mu$-binder, because reduction of a term that refers to itself does not terminate. Over the $\bot$-completed approximation order on a finitary signature, however, the behaviour functor is algebraically compact, so its initial algebra and final coalgebra coincide; the least and greatest fixpoints of a term's unfolding then agree, giving each term a unique fixpoint as its denotation, and what remains is to compute it. We present an algorithm that, for an arbitrary coalgebra over a finitary signature, computes this fixpoint by tabling. It halts precisely when the behaviour is rational, that is, when it has finitely many distinct subtrees. This is optimal: a non-rational behaviour has no finite representation, so no procedure that preserves the denotation halts on a larger class of inputs. Applied to the coalgebra that head reduction of the pure $\lambda$-calculus defines, the algorithm decides $\Omega$ as $\bot$ in finite time and represents $Y\,(\mathtt{cons}\;0)$, the cyclic stream of zeros, as a finite cyclic graph; an ordinary recursive function then transforms it, $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$ returning the cyclic stream of ones as another finite cyclic graph, with no construct added to the calculus. An accompanying interpreter implements this case, evaluating any pure $\lambda$-term of rational behaviour to its unique fixpoint. We also give an encoding of pure Datalog into the $\lambda$-calculus; a Datalog program is function-free with a finite Herbrand base, so every encoded term has rational behaviour, and the interpreter computes the program's least Herbrand model.
@@ -137,6 +137,44 @@ behaviour, so tabling folds it into a finite circular graph and an ordinary recu
 it terminates, with nothing added to the calculus (Sections~\ref{sec:bridge}, \ref{sec:application}).
 The capability is not special to the $\lambda$-calculus; it is a property of any equation morphism
 with rational behaviour.
+The tree of a $\lambda$-term, its B\"ohm tree or L\'evy--Longo tree, is obtained by iterating head
+reduction at every exposed position \cite{barendregt, levy-longo}. Head reduction is the shared
+engine, and it only ever \emph{unfolds}, so on a cyclic term it runs forever. Three pure terms expose
+two obstacles to recovering a finite answer,
+\[
+  \Omega, \qquad r = Y\,(\mathtt{cons}\,0), \qquad \mathtt{map}\;\mathtt{succ}\;r,
+\]
+the diverging combination, the cyclic stream of zeros, and an ordinary $\mathtt{map}$ that increments
+it. The $\mathtt{map}$ is the textbook one, with nothing cycle-aware in it,
+\[
+  \mathtt{map}\,f = Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\,\mathtt{nil}\big);
+\]
+see Appendix~\ref{app:examples} for $Y$, $\mathtt{cons}$, $\mathtt{succ}$, and the complete
+definitions.
+
+The first obstacle is identity. $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head reduces to
+itself, so its tree should be the meaningless $\bot$; but recognising that head reduction has returned
+to its starting term means deciding identity on values, and on a function space the only identity is
+$\beta$-equality, which is undecidable. The second is representation. The stream $r$ is rational, one
+repeating cell, and should have a finite cyclic graph, yet head reduction enumerates it forever, and a
+pure calculus cannot even build the cycle: a circular structure normally needs an explicit recursion
+binder ($\mathtt{letrec}$), mutable references, or an observable-sharing primitive
+\cite{ariola-klop, gill}. The two obstacles meet in $\mathtt{map}\,\mathtt{succ}\,r$: head reduction
+diverges, yet the result is again a finite cyclic list and should terminate, and the existing
+mechanisms can neither detect the repeated recursive call nor fold the result.
+
+We resolve both by reading the tree not as the unfolding of head reduction but as its \emph{least
+fixpoint}. We give the partial trees a monotone approximation order and identify positions up to a
+decidable congruence; over this order the construction is parametric in a \emph{normalization} $f$,
+with weak head normalization yielding the L\'evy--Longo tree and head normalization the B\"ohm tree.
+The least fixpoint $\operatorname{lfp}(\out)$ of the one-step observation $\out$ that $f$ induces is
+the same tree that head reduction enumerates, but it folds a guarded cycle into a finite rational
+graph and settles an unproductive cycle at $\bot$:
+$\Omega$ is $\bot$ in finite time, $r$ folds to a node pointing to itself, and
+$\mathtt{map}\,\mathtt{succ}\,r$ folds to a finite circular list of ones, all where head reduction
+diverges, with nothing added to the calculus. We have implemented an interpreter that validates these
+behaviours\anon[.]{ \cite{firstorderlambda}.}
 
 \paragraph{Contributions}
 \begin{itemize}
@@ -194,7 +232,7 @@ stream, and the weak-head and head readings are checked to terminate together wh
 $\lambda x.\,\Omega$ (Remark~\ref{rem:boehm}).
 
 % =====================================================================
-\section{Overview}\label{sec:overview}
+\section{The Least Fixpoint}\label{sec:lfp}
 % =====================================================================
 Take the cyclic stream of zeros, $r = \mathtt{cons}\;0\;r$. As the behaviour of a coalgebra it is the
 infinite tree $\mathtt{cons}\;0\;(\mathtt{cons}\;0\;\cdots)$, but it has only \emph{two} distinct
@@ -1098,11 +1136,75 @@ distribution of a finite Markov chain. Each is a finite-state, regular, or finit
 computation, hence a rational behaviour the construction reads.
 
 % =====================================================================
-%% The body cites via \citeTODO (red draft markers), never \cite, so
-%% \nocite{*} forces every references.bib entry into the printed list,
-%% reproducing the former inline thebibliography under ACM formatting.
-\nocite{*}
-\bibliographystyle{ACM-Reference-Format}
-\bibliography{references}
+Every example is a closed pure $\lambda$-term, built from Scott-encoded lists, the Church numeral
+$0$, and the fixpoint combinator $Y$, with no recursion binder added to the calculus. These are the
+terms the implementation runs\anon[.]{~\cite{firstorderlambda}.} For each we recall its B\"ohm tree,
+the original semantics, and contrast how it is computed: head normalization $f_{\mathrm h}$
+(Proposition~\ref{prop:bt}) enumerates the tree by unfolding and diverges on a cyclic term, whereas
+$\operatorname{lfp}(\out_{\mathrm h})$ yields the same tree, folded.
+
+The combinators are the identity, self-application, and the fixpoint combinator:
+\[
+  I = \lambda x.\, x, \qquad
+  \omega = \lambda x.\, x\,x, \qquad
+  Y = \lambda f.\, (\lambda x.\, f\,(x\,x))\,(\lambda x.\, f\,(x\,x)).
+\]
+$Y\,g$ head reduces to $g\,(Y\,g)$, so a pure term can denote a recursive, hence infinite, B\"ohm
+tree, as the cyclic stream and the $\mathtt{map}$ output below do.
+
+A list is Scott encoded: it is a function that, given a $\mathtt{cons}$ case $c$ and a $\mathtt{nil}$
+case $n$, selects the matching one.
+\[
+  \mathtt{cons} = \lambda h.\,\lambda t.\,\lambda c.\,\lambda n.\, c\,h\,t, \qquad
+  \mathtt{nil} = \lambda c.\,\lambda n.\, n, \qquad
+  \mathtt{present} = \lambda a.\,\lambda b.\, a.
+\]
+A cell $\mathtt{cons}\,h\,t$ hands its head $h$ and tail $t$ to $c$, while $\mathtt{nil}$ returns $n$;
+$\mathtt{present}$ is the constant the walk below returns at a non-empty cell. Numerals are Church
+encoded, with $0$ and the successor:
+\[
+  0 = \lambda s.\,\lambda z.\, z, \qquad
+  \mathtt{succ} = \lambda n.\,\lambda s.\,\lambda z.\, s\,(n\,s\,z).
+\]
+
+The first example is the canonical diverging term, and the pure rendering of $\mathtt{letrec}\;x=x$:
+\[
+  \Omega = \omega\,\omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x), \qquad \mathtt{loop} = Y\,I.
+\]
+Neither has a head normal form, so its B\"ohm tree is the meaningless $\bot$. Head normalization
+searches for that head normal form forever; $\operatorname{lfp}(\out_{\mathrm h})$ reaches the same
+$\bot$ in finite time, the unproductive cycle.
+
+The second example is the cyclic datum, the stream of zeros written purely with $Y$:
+\[
+  r = Y\,(\mathtt{cons}\,0), \qquad\text{denoting } r = \mathtt{cons}\,0\,r.
+\]
+The B\"ohm tree of $r$ is the infinite stream $\mathtt{cons}\,0\,(\mathtt{cons}\,0\,(\cdots))$. Head
+normalization enumerates it by unfolding and never finishes; $\operatorname{lfp}(\out_{\mathrm h})$ is
+the same tree, folded to a finite cyclic cell, the node $c$ with $c = \mathtt{cons}\,0\,c$.
+
+The third example is an ordinary recursive $\mathtt{map}$, with nothing cycle-aware in it:
+\[
+  \mathtt{map} = \lambda f.\, Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\,\mathtt{nil}\big).
+\]
+Its recursive call sits under a $\mathtt{cons}$, so it is guarded. The map of interest increments
+every element of $r$,
+\[
+  \mathtt{map}\;\mathtt{succ}\;r,
+\]
+whose B\"ohm tree is the infinite stream $\mathtt{cons}\,1\,(\mathtt{cons}\,1\,(\cdots))$, since
+$\mathtt{succ}\,0 = 1$. Head normalization maps the infinite stream forever;
+$\operatorname{lfp}(\out_{\mathrm h})$ is the same tree, folded to the finite cyclic cell $c'$ with
+$c' = \mathtt{cons}\,1\,c'$.
+
+The unguarded companion is the naive walk, whose recursive call exposes no constructor:
+\[
+  \mathtt{reach} = Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathit{self}\,t)\,\mathtt{present}\big).
+\]
+Applied to $r$ it never reaches $\mathtt{nil}$, so $\mathtt{reach}\,r$ has no head normal form and its
+B\"ohm tree is $\bot$. Head normalization builds a fresh recursive call at every step and loops;
+$\operatorname{lfp}(\out_{\mathrm h})$ returns $\bot$ in finite time.
 
 \end{document}
