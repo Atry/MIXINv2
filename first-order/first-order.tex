@@ -431,6 +431,81 @@ independent: the silent orbit of a state may be infinite while the reachable sta
 conversely. Either failure is genuine non-termination of the construction.
 \end{remark}
 
+\begin{remark}[Uniqueness does not characterise halting]\label{rem:notmunu}
+One might hope the readout halts exactly when the least and greatest fixpoint coincide. They always
+coincide (Theorem~\ref{thm:unique} gives a unique fixpoint for \emph{every} term), yet the readout does
+not halt on every term, so $\mu=\nu$ cannot be the criterion. The witness is the stream of all
+naturals, $\mathit{nats} = Y(\lambda s.\lambda n.\,\mathtt{cons}\,n\,(s\,(\mathtt{succ}\,n)))\,\underline{0}$:
+it is guarded, so its behaviour is that unique fixpoint, a well-defined infinite stream, but the stream
+is \emph{non-rational} (its tails are pairwise distinct), so it has no finite representation and the
+readout diverges. Halting is governed by rationality, which is strictly stronger than uniqueness: the
+rational behaviours are a proper subclass of the (always unique) behaviours.
+\end{remark}
+
+\begin{theorem}[Finite-representation barrier; optimality]\label{thm:optimal}
+By a \emph{finite representation} of a behaviour $t \in \nu\Beh$ we mean a finite $\Sigma$-graph whose
+unfolding is $t$ (a first-order datum, to be distinguished from a finite \emph{generator}, a term that
+reduces to $t$). Then:
+\begin{enumerate}
+  \item \emph{(Barrier.)} $t$ has a finite representation iff $t$ is rational (Definition~\ref{def:rational},
+        i.e.\ $t \in \rfp\Beh$); hence no procedure halts with a finite representation of a non-rational
+        behaviour, even though every behaviour has a finite generator.
+  \item \emph{(Soundness.)} Whenever the readout halts it outputs a finite representation
+        (Theorems~\ref{thm:termination}, \ref{thm:adequacy}), so it halts only on rational behaviours.
+  \item \emph{(Attainment.)} The readout halts iff finitely many positions are reached up to the identity
+        it folds on. Under structural identity the halting set is a proper subclass of the rational
+        behaviours, the gap being the dead-subterm witnesses ($Y\,F\,\underline{0}$ with
+        $F=\lambda s.\lambda n.\,\mathtt{cons}\,0\,(s\,(\mathtt{succ}\,n))$); folding additionally any
+        positions of equal behaviour enlarges it, and in the limit, folding all behaviourally equal
+        positions, the readout halts iff the behaviour is rational. By (1) no sound identity pushes the
+        halting set beyond the rational fragment.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+\emph{(1)} A finite representation is a finite $\Sigma$-graph; its unfolding has at most one distinct
+subtree per node, hence finitely many, so it is rational. Conversely a rational $t$, having finitely
+many distinct subtrees, is the unfolding of the finite graph on those subtrees with an edge to each
+immediate subtree of a root; this is the standard equivalence for regular trees \citeTODO{courcelle},
+and the rational behaviours are exactly $\rfp\Beh$ (Definition~\ref{def:behfun}). Hence a non-rational
+$t$ is the unfolding of no finite $\Sigma$-graph, so no procedure can output one. The generator clause
+is immediate: the term $M$ is a finite generator of $\behav(M)$ for every $M$, rational or not.
+
+\emph{(2)} If the readout halts then by Theorem~\ref{thm:termination} the reached positions are finite
+and the result is a finite graph in $\rfp\Beh$, which by Theorem~\ref{thm:adequacy} unfolds to
+$\behav(M)$; so a halt witnesses $\behav(M) \in \rfp\Beh$.
+
+\emph{(3)} The readout descends through positions up to the folding identity and tables them, so it
+halts iff those classes are finite (Theorem~\ref{thm:termination}). Structural identity can keep
+infinitely many classes while the behaviour is rational: in the cited witness every tail
+$Y\,F\,\underline{k}$ is a distinct closed term, yet all denote the one constant-$0$ stream, which is
+rational; so the halting set is a proper subclass of the rational behaviours. An identity that only
+ever identifies positions of equal behaviour is sound (it changes no tree, Theorem~\ref{thm:adequacy})
+and yields fewer classes, hence a larger halting set; for the coarsest such identity two positions are
+identified exactly when their subtrees are equal, so the classes are the distinct subtrees of
+$\behav(M)$, finite iff $\behav(M)$ is rational. That identity therefore halts iff rational, and by (1)
+no sound identity can do better.
+\end{proof}
+
+\begin{remark}[The optimum is relative to the denotation]\label{rem:fixeddenotation}
+The optimum in Theorem~\ref{thm:optimal} is among procedures that \emph{preserve the denotation}, the
+tree. A fold changes no tree exactly when it identifies only behaviourally equal positions, so
+behavioural equivalence is the coarsest denotation-preserving identity, and it is what attains the
+rational ceiling (structural identity, fixed by the syntax, sits below it; behavioural equivalence,
+relative to the chosen normalisation, sits at it). Folding more would identify positions of
+\emph{different} behaviour: that is a coarser normalisation, a different tree, hence a different
+denotation. One can then terminate on more, even on $\mathit{nats}$ by collapsing its distinct tails,
+but one is computing a different semantics. Thus Theorem~\ref{thm:optimal}(1) is the barrier \emph{at a
+fixed denotation}; termination beyond it is bought only by changing what is computed.
+\end{remark}
+
+\begin{remark}[Optimal semi-decision]\label{rem:semidec}
+Rationality is undecidable (one can make $\behav(M)$ rational iff a given machine fails to halt), so the
+terminating inputs cannot be pre-selected. The readout is thus a \emph{sound semi-decision procedure}
+for rationality: on the rational fragment (up to its identity, Theorem~\ref{thm:optimal}(3)) it halts
+and returns the finite representation, and elsewhere it diverges, which by Theorem~\ref{thm:optimal}(1)
+is the most any procedure can achieve.
+\end{remark}
+
 \begin{remark}[Determinism: reduction strategies]\label{rem:determinism}
 When $M = \Delaym$, an iterative coalgebra is a deterministic observe-or-step system
 $X \to F X + X$ (one silent successor, divergence the only effect), the behaviour functor is $\Beh = F$
