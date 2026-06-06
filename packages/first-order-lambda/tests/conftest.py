@@ -1,10 +1,12 @@
-"""A ``backend`` fixture parametrising tests over the interpreter and the compiler.
+"""A ``backend`` fixture parametrising tests over the interpreter and the compiler runtimes.
 
 A backend observes a closed lambda term in a common domain: a Church numeral as an ``int`` and a
 Church boolean as a ``bool``. The interpreter backend reads the behaviour directly (counting the
-weak-head spine); the compiler backend compiles the term to Python, runs it, and applies it to a
-Python successor and zero (or to ``True``/``False``). A test written against ``backend`` therefore
-runs on both, cross-checking the compiler against the interpreter on the same computation.
+weak-head spine). A compiler backend compiles the term to Python for one of the thunk-based runtimes
+(LAZY or FIXPOINT, which differ only in the thunk: recompute vs ``fixpoint_cached_property``-memoised)
+and runs it, applying the Church numeral to a thunked successor and zero (or to ``True``/``False``).
+Both thunk runtimes are lazy, so every normalizing term computes, matching the interpreter; the
+strict EAGER runtime, which diverges on Y recursion, is exercised in ``test_runtimes`` instead.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 import pytest
 
 from first_order_lambda._ast import make_app, make_var
-from first_order_lambda._compiler import compile_to_source_lazy
+from first_order_lambda._compiler import Runtime, compile_to_source, runtime_globals
 from first_order_lambda._dsl import Builder, build
 from first_order_lambda._pyast import _church_to_int
 from first_order_lambda._shape import VarShape
@@ -44,20 +46,29 @@ class _InterpreterBackend:
 
 
 class _CompilerBackend:
-    # The compiler backend uses the lazy (call-by-name) runtime, under which every normalizing term
-    # computes its value, matching the interpreter's lazy weak-head reduction. Arguments are thunks,
-    # so a Church numeral is observed by applying it to a thunked successor and zero.
-    name = "compiler"
+    def __init__(self, runtime: Runtime) -> None:
+        self.runtime = runtime
+        self.name = f"compiler-{runtime.name.lower()}"
+
+    def _evaluate(self, term: Builder):
+        environment = runtime_globals(self.runtime)
+        return eval(compile_to_source(build(term), self.runtime), environment), environment
 
     def church(self, term: Builder) -> int:
-        numeral = eval(compile_to_source_lazy(build(term)))
-        successor = lambda thunk: thunk() + 1
-        return numeral(lambda: successor)(lambda: 0)
+        numeral, environment = self._evaluate(term)
+        thunk, force = environment["Thunk"], environment["force"]
+        successor = lambda t: force(t) + 1
+        return numeral(thunk(lambda: successor))(thunk(lambda: 0))
 
     def boolean(self, term: Builder) -> bool:
-        return eval(compile_to_source_lazy(build(term)))(lambda: True)(lambda: False)
+        result, environment = self._evaluate(term)
+        thunk = environment["Thunk"]
+        return result(thunk(lambda: True))(thunk(lambda: False))
 
 
-@pytest.fixture(params=[_InterpreterBackend(), _CompilerBackend()], ids=["interpreter", "compiler"])
+@pytest.fixture(
+    params=[_InterpreterBackend(), _CompilerBackend(Runtime.LAZY), _CompilerBackend(Runtime.FIXPOINT)],
+    ids=["interpreter", "compiler-lazy", "compiler-fixpoint"],
+)
 def backend(request):
     return request.param

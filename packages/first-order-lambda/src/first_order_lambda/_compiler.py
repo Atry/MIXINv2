@@ -13,6 +13,9 @@ turns the compiled Scott value, run in the interpreter, into a real Python ``ast
 from __future__ import annotations
 
 import ast
+from enum import Enum, auto
+
+from fixpoints._core import fixpoint_cached_property
 
 from first_order_lambda._ast import App, Lam, Node, Var
 from first_order_lambda._dsl import Builder, app, build, lam
@@ -130,55 +133,115 @@ def _decode_pyexpr(node: Node) -> ast.expr:
             raise ValueError(f"unknown PyExpr tag {tag}")
 
 
-def compile_to_source(node: Node) -> str:
-    """Compile an interpreter lambda term to Python source: quote, run COMPILE, decode, unparse."""
-    compiled = compile_quoted(quote(node))
-    return ast.unparse(ast.fix_missing_locations(_decode_pyexpr(compiled)))
+# --- runtimes -----------------------------------------------------------------------------------
+# Three target runtimes select how the compiled Python evaluates. EAGER is strict (call-by-value):
+# an application f(a) evaluates a before the call, so a Church conditional's unselected branch is
+# forced and a Y recursion diverges. LAZY and FIXPOINT share one thunk-based target: an argument is
+# a thunk Thunk(lambda: a) and a variable reference forces it, so only the selected branch runs and
+# a Y recursion over a normalizing term terminates, matching the interpreter's weak-head reduction.
+# LAZY and FIXPOINT differ only in the thunk: LAZY recomputes on each force (call-by-name), while
+# FIXPOINT memoises the value with fixpoint_cached_property, so a re-entrant (self-referential) force
+# folds to BOTTOM rather than looping, the same least-fixpoint fold the interpreter performs.
 
 
-# --- lazy (call-by-name) decode -----------------------------------------------------------------
-# The strict decode above evaluates Python eagerly, so a Church conditional's unselected branch is
-# forced and a Y recursion diverges. The lazy decode emits call-by-name Python: an argument is a
-# thunk ``lambda: a``, a variable reference forces it (``v()``), so only the selected branch runs
-# and Y-recursion over a normalizing term terminates, matching the interpreter's lazy weak-head
-# reduction. This is the runtime under which every normalizing term, factorial and Fibonacci
-# included, computes its value.
+class Runtime(Enum):
+    EAGER = auto()
+    LAZY = auto()
+    FIXPOINT = auto()
+
+
+class _Bottom:
+    def __repr__(self) -> str:
+        return "BOTTOM"
+
+
+BOTTOM = _Bottom()
+
+
+class _Thunk:
+    """A delayed computation; ``force`` evaluates it."""
+
+    __slots__ = ("_fn", "__dict__")
+
+    def __init__(self, fn) -> None:
+        self._fn = fn
+
+
+class _LazyThunk(_Thunk):
+    @property
+    def value(self):
+        return self._fn()  # call-by-name: recompute on every force
+
+
+class _FixpointThunk(_Thunk):
+    @fixpoint_cached_property(bottom=lambda: BOTTOM)
+    def value(self):
+        return self._fn()  # call-by-need: memoised, and a re-entrant force folds to BOTTOM
+
+
+def force(value):
+    return value.value if isinstance(value, _Thunk) else value
+
+
+_THUNK_CLASS = {Runtime.LAZY: _LazyThunk, Runtime.FIXPOINT: _FixpointThunk}
+
+
+def runtime_globals(runtime: Runtime) -> dict:
+    """The evaluation globals for a compiled thunk-based program under the given runtime."""
+    return {"force": force, "Thunk": _THUNK_CLASS[runtime]}
+
 
 def _no_args() -> ast.arguments:
-    return ast.arguments(
-        posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[],
-    )
+    return ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[])
 
 
-def _decode_pyexpr_lazy(node: Node) -> ast.expr:
+def _decode_pyexpr_thunk(node: Node) -> ast.expr:
+    # Shared target for LAZY and FIXPOINT: variables are forced, arguments are thunks.
     tag, fields = _extract(node, (1, 2, 2), _PY_BASE)
     match tag:
-        case 0:  # PyVar level: force the thunk, v{level}()
+        case 0:  # PyVar level: force(v{level})
             name = f"v{_church_to_int(fields[0])}"
-            return ast.Call(func=ast.Name(id=name, ctx=ast.Load()), args=[], keywords=[])
-        case 1:  # PyLam level body: lambda v{level}: body, the parameter a thunk
+            return ast.Call(
+                func=ast.Name(id="force", ctx=ast.Load()),
+                args=[ast.Name(id=name, ctx=ast.Load())],
+                keywords=[],
+            )
+        case 1:  # PyLam level body: lambda v{level}: body
             name = f"v{_church_to_int(fields[0])}"
             return ast.Lambda(
                 args=ast.arguments(
                     posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[],
                     kw_defaults=[], defaults=[],
                 ),
-                body=_decode_pyexpr_lazy(fields[1]),
+                body=_decode_pyexpr_thunk(fields[1]),
             )
-        case 2:  # PyApp function argument: function(lambda: argument)
+        case 2:  # PyApp function argument: force(function)(Thunk(lambda: argument))
             return ast.Call(
-                func=_decode_pyexpr_lazy(fields[0]),
-                args=[ast.Lambda(args=_no_args(), body=_decode_pyexpr_lazy(fields[1]))],
+                func=ast.Call(
+                    func=ast.Name(id="force", ctx=ast.Load()),
+                    args=[_decode_pyexpr_thunk(fields[0])],
+                    keywords=[],
+                ),
+                args=[ast.Call(
+                    func=ast.Name(id="Thunk", ctx=ast.Load()),
+                    args=[ast.Lambda(args=_no_args(), body=_decode_pyexpr_thunk(fields[1]))],
+                    keywords=[],
+                )],
                 keywords=[],
             )
         case _:
             raise ValueError(f"unknown PyExpr tag {tag}")
 
 
-def compile_to_source_lazy(node: Node) -> str:
-    """Compile to call-by-name Python, the lazy runtime under which normalizing terms terminate."""
+def compile_to_source(node: Node, runtime: Runtime = Runtime.EAGER) -> str:
+    """Compile an interpreter lambda term to Python source for the given target runtime.
+
+    EAGER yields a strict expression; LAZY and FIXPOINT yield the same thunk-based expression
+    (referring to the free names ``force`` and ``Thunk``, supplied by ``runtime_globals``).
+    """
     compiled = compile_quoted(quote(node))
-    return ast.unparse(ast.fix_missing_locations(_decode_pyexpr_lazy(compiled)))
+    decode = _decode_pyexpr if runtime is Runtime.EAGER else _decode_pyexpr_thunk
+    return ast.unparse(ast.fix_missing_locations(decode(compiled)))
 
 
 # --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
