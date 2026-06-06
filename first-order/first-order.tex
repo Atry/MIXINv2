@@ -85,8 +85,13 @@ Representing and transforming cyclic data in the pure $\lambda$-calculus normall
 \section{Introduction}\label{sec:intro}
 % =====================================================================
 A coalgebra is a state set $X$ with a structure map that, at each state, exposes one
-layer of behaviour and names the successor states. Its \emph{behaviour} is the unfolding
-of that map: the possibly infinite tree obtained by exposing layer after layer. We make one
+layer of behaviour and names the successor states. Its \emph{behaviour}\footnote{Throughout,
+\emph{behaviour} is meant in the coalgebraic sense: the tree a state unfolds to, that is, its
+denotation, and not the operational behaviour in the sense of a reduction sequence or contextual
+equivalence. In the $\lambda$-instance (Section~\ref{sec:bridge}) it is the L\'evy--Longo or B\"ohm
+tree; the reduction is the internal process the structure map collapses, while the behaviour is the
+tree that process exposes. Two terms may thus share a behaviour yet reduce differently.} is the
+unfolding of that map: the possibly infinite tree obtained by exposing layer after layer. We make one
 observation about this unfolding and pursue its consequences. When the behaviour is
 \emph{rational}, with finitely many distinct subtrees, it is the unfolding of a finite
 cyclic graph, and that graph is computed by \emph{tabling}: identify a state with its own
