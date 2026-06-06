@@ -84,6 +84,47 @@ Representing and transforming cyclic data in the pure $\lambda$-calculus normall
 % =====================================================================
 \section{Introduction}\label{sec:intro}
 % =====================================================================
+
+
+The tree of a $\lambda$-term, its B\"ohm tree or L\'evy--Longo tree, is obtained by iterating head
+reduction at every exposed position \cite{barendregt, levy-longo}. Head reduction is the shared
+engine, and it only ever \emph{unfolds}, so on a cyclic term it runs forever. Three pure terms expose
+two obstacles to recovering a finite answer,
+\[
+  \Omega, \qquad r = Y\,(\mathtt{cons}\,0), \qquad \mathtt{map}\;\mathtt{succ}\;r,
+\]
+the diverging combination, the cyclic stream of zeros, and an ordinary $\mathtt{map}$ that increments
+it. The $\mathtt{map}$ is the textbook one, with nothing cycle-aware in it,
+\[
+  \mathtt{map}\,f = Y\,\big(\lambda \mathit{self}.\,\lambda \mathit{xs}.\,
+       \mathit{xs}\,(\lambda h.\,\lambda t.\, \mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\,\mathtt{nil}\big);
+\]
+see Appendix~\ref{app:examples} for $Y$, $\mathtt{cons}$, $\mathtt{succ}$, and the complete
+definitions.
+
+The first obstacle is identity. $\Omega = (\lambda x.\,x\,x)(\lambda x.\,x\,x)$ head reduces to
+itself, so its tree should be the meaningless $\bot$; but recognising that head reduction has returned
+to its starting term means deciding identity on values, and on a function space the only identity is
+$\beta$-equality, which is undecidable. The second is representation. The stream $r$ is rational, one
+repeating cell, and should have a finite cyclic graph, yet head reduction enumerates it forever, and a
+pure calculus cannot even build the cycle: a circular structure normally needs an explicit recursion
+binder ($\mathtt{letrec}$), mutable references, or an observable-sharing primitive
+\cite{ariola-klop, gill}. The two obstacles meet in $\mathtt{map}\,\mathtt{succ}\,r$: head reduction
+diverges, yet the result is again a finite cyclic list and should terminate, and the existing
+mechanisms can neither detect the repeated recursive call nor fold the result.
+
+We resolve both by reading the tree not as the unfolding of head reduction but as its \emph{least
+fixpoint}. We give the partial trees a monotone approximation order and identify positions up to a
+decidable congruence; over this order the construction is parametric in a \emph{normalization} $f$,
+with weak head normalization yielding the L\'evy--Longo tree and head normalization the B\"ohm tree.
+The least fixpoint $\operatorname{lfp}(\out)$ of the one-step observation $\out$ that $f$ induces is
+the same tree that head reduction enumerates, but it folds a guarded cycle into a finite rational
+graph and settles an unproductive cycle at $\bot$:
+$\Omega$ is $\bot$ in finite time, $r$ folds to a node pointing to itself, and
+$\mathtt{map}\,\mathtt{succ}\,r$ folds to a finite circular list of ones, all where head reduction
+diverges, with nothing added to the calculus. We have implemented an interpreter that validates these
+behaviours\anon[.]{ \cite{firstorderlambda}.}
+
 A coalgebra is a state set $X$ with a structure map that, at each state, exposes one
 layer of behaviour and names the successor states. Its \emph{behaviour}\footnote{Throughout,
 \emph{behaviour} is meant in the coalgebraic sense: the tree a state unfolds to, that is, its
