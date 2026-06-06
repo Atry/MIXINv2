@@ -73,6 +73,14 @@ def test_first_approximation_versus_lfp() -> None:
     assert render(IDENTITY_TERM, fold_cycles=False) == render(IDENTITY_TERM, fold_cycles=True)
 
 
+def test_repr_of_cyclic_node_is_bounded() -> None:
+    # A node graph is shared and may be cyclic (Y), so a structural repr would unfold the sharing
+    # exponentially or loop forever; repr must be bounded (it identifies the node, not its tree).
+    # This guards error messages that interpolate a node, which would otherwise hang.
+    text = repr(CYCLIC_ZEROS)
+    assert text.startswith("<") and "0x" in text and len(text) < 80
+
+
 def test_guarded_cut_distinct_from_unproductive() -> None:
     # The first-iteration reading keeps the guarded cut (the productive cycle the finite budget
     # stops) distinct from the unproductive meaningless leaf. Y (cons 0) is a productive cycle,

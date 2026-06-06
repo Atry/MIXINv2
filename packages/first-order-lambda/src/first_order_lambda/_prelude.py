@@ -9,7 +9,7 @@ is-zero), factorial and Fibonacci via ``Y``.
 
 from __future__ import annotations
 
-from first_order_lambda._ast import Node
+from first_order_lambda._ast import Node, make_app
 from first_order_lambda._dsl import Builder, app, build, lam
 
 # Combinators.
@@ -253,3 +253,109 @@ _REACH_CLAUSES = (
 )
 DATALOG_REACH_C: Node = build(app(_proj(2, 4), datalog_model(4, _REACH_CLAUSES)))  # reach(c): true
 DATALOG_REACH_D: Node = build(app(_proj(3, 4), datalog_model(4, _REACH_CLAUSES)))  # reach(d): false
+
+# Reachability over a directed graph WITH A CYCLE (a -> b -> c -> a), plus c -> d; e is isolated.
+# The least fixpoint handles the cycle and terminates: reach(d) is true (reached through the
+# cycle), reach(e) is false. This is graph reachability / transitive closure, and the same shape
+# as model-checking reachability of a bad state in a finite transition system.
+# atoms: reach(a)=0, reach(b)=1, reach(c)=2, reach(d)=3, reach(e)=4.
+_GRAPH_CLAUSES = (
+    (0, ()),     # reach(a): the source
+    (1, (0,)),   # reach(b) :- reach(a)   edge a -> b
+    (2, (1,)),   # reach(c) :- reach(b)   edge b -> c
+    (0, (2,)),   # reach(a) :- reach(c)   edge c -> a (closes the cycle)
+    (3, (2,)),   # reach(d) :- reach(c)   edge c -> d
+)
+GRAPH_REACH_D: Node = build(app(_proj(3, 5), datalog_model(5, _GRAPH_CLAUSES)))  # reachable: true
+GRAPH_REACH_E: Node = build(app(_proj(4, 5), datalog_model(5, _GRAPH_CLAUSES)))  # unreachable: false
+
+# Andersen-style points-to (alias) analysis as monotone Datalog, the basis of alias analysis in
+# compilers:  pointsTo(p,o) :- new(p,o);  pointsTo(p,o) :- assign(p,q), pointsTo(q,o).
+# Program: a = new o1; b = a; c = b. Vars a,b,c and objects o1,o2; atom pointsTo(v,o) = 2*v + o.
+# So c points to o1 (through the copy chain) but not o2 (o2 is never allocated).
+_POINTSTO_CLAUSES = (
+    (0, ()),     # pointsTo(a,o1): a = new o1
+    (2, (0,)),   # pointsTo(b,o1) :- pointsTo(a,o1)   (b = a)
+    (3, (1,)),   # pointsTo(b,o2) :- pointsTo(a,o2)
+    (4, (2,)),   # pointsTo(c,o1) :- pointsTo(b,o1)   (c = b)
+    (5, (3,)),   # pointsTo(c,o2) :- pointsTo(b,o2)
+)
+POINTSTO_C_O1: Node = build(app(_proj(4, 6), datalog_model(6, _POINTSTO_CLAUSES)))  # c -> o1: true
+POINTSTO_C_O2: Node = build(app(_proj(5, 6), datalog_model(6, _POINTSTO_CLAUSES)))  # c -> o2: false
+
+
+# =====================================================================
+# Dynamic programming with a tree state space: memoisation for free.
+#
+# A binary tree is Scott-encoded with two constructors, node(l, r) and leaf(v); a tree DP is an
+# ordinary Y-recursion whose subproblems are the subtrees. Interning makes structurally-identical
+# subtrees one node, so a DP over a DAG-compressed tree (both children of every node shared)
+# computes each distinct subtree once: the exponential recomputation of the naive tree recursion
+# collapses to a linear pass. This is the memoisation a pure lambda-calculus lacks without a
+# decidable identity on subproblems (value equality of closures is undecidable).
+# =====================================================================
+
+TREE_NODE: Builder = lam(
+    lambda l: lam(lambda r: lam(lambda on_node: lam(lambda on_leaf: app(app(on_node, l), r))))
+)
+TREE_LEAF: Builder = lam(lambda v: lam(lambda on_node: lam(lambda on_leaf: app(on_leaf, v))))
+
+
+def tree_node(left: Builder, right: Builder) -> Builder:
+    return app(app(TREE_NODE, left), right)
+
+
+def tree_leaf(value: Builder) -> Builder:
+    return app(TREE_LEAF, value)
+
+
+# tree_any t = OR over the leaves of t of the leaf's boolean. As a tree DP:
+#   tree_any = Y (lambda self. lambda t. t (lambda l. lambda r. OR (self l) (self r)) (lambda v. v))
+# The recursive calls self l and self r are the subtree subproblems.
+TREE_ANY: Builder = app(
+    Y,
+    lam(lambda self_recursion: lam(lambda tree: app(
+        app(
+            tree,
+            lam(lambda left: lam(lambda right: app(
+                app(OR, app(self_recursion, left)), app(self_recursion, right)
+            ))),
+        ),
+        lam(lambda value: value),
+    ))),
+)
+
+
+def tree_any(tree: Builder) -> Builder:
+    return app(TREE_ANY, tree)
+
+
+# Built (interned) Node forms, so the DAG below can be assembled bottom-up at the node level: the
+# HOAS builders would re-invoke a shared sub-builder once per reference, unfolding the sharing and
+# costing O(2 ** depth) just to construct the term, whereas reusing the built Node keeps both the
+# construction and the DP linear in the depth.
+TREE_NODE_NODE: Node = build(TREE_NODE)
+TREE_LEAF_NODE: Node = build(TREE_LEAF)
+TREE_ANY_NODE: Node = build(TREE_ANY)
+_FALSE_NODE: Node = build(FALSE)
+
+
+def shared_false_tree(depth: int) -> Node:
+    """A perfect binary tree of the given depth with every leaf FALSE, assembled bottom-up so the
+    two children of each node are the same object. The result is a DAG of ``depth + 1`` distinct
+    interned nodes that unfolds to ``2 ** depth`` leaves, built in time linear in ``depth``.
+    """
+    if depth < 0:
+        raise ValueError("depth must be nonnegative")
+    node = make_app(TREE_LEAF_NODE, _FALSE_NODE)  # leaf FALSE
+    for _ in range(depth):
+        node = make_app(make_app(TREE_NODE_NODE, node), node)
+    return node
+
+
+def any_false_dp(depth: int) -> Node:
+    """The tree DP ``tree_any`` over ``shared_false_tree(depth)``: its state space is the DAG, and
+    because identical subtrees are one interned node the DP computes each distinct subtree once,
+    returning FALSE in time linear in ``depth`` where the naive tree recursion is ``2 ** depth``.
+    """
+    return make_app(TREE_ANY_NODE, shared_false_tree(depth))

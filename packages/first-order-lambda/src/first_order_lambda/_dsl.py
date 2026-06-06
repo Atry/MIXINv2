@@ -18,16 +18,38 @@ Builder = Callable[[int], Node]
 """A HOAS term: given the current binder depth, produce a de Bruijn node."""
 
 
+def _by_depth(produce: Callable[[int], Node]) -> Builder:
+    """Memoise a builder's node by binder depth.
+
+    A builder is a pure function of the binder depth, so reusing the same builder object in several
+    places (a shared subterm) yields the same node at a given depth. Caching by depth makes a
+    shared-builder DAG build in time linear in its distinct nodes instead of unfolding it into a
+    tree: ``build`` invokes each child builder per occurrence, so without this a builder reused in
+    ``n`` places is re-run ``n`` times. The result nodes are interned regardless; this shares the
+    construction work too.
+    """
+    cache: dict[int, Node] = {}
+
+    def at(depth: int) -> Node:
+        node = cache.get(depth)
+        if node is None:
+            node = produce(depth)
+            cache[depth] = node
+        return node
+
+    return at
+
+
 def var_at(level: int) -> Builder:
-    return lambda depth: make_var(depth - level - 1)
+    return _by_depth(lambda depth: make_var(depth - level - 1))
 
 
 def lam(body: Callable[[Builder], Builder]) -> Builder:
-    return lambda depth: make_lam(body(var_at(depth))(depth + 1))
+    return _by_depth(lambda depth: make_lam(body(var_at(depth))(depth + 1)))
 
 
 def app(function: Builder, argument: Builder) -> Builder:
-    return lambda depth: make_app(function(depth), argument(depth))
+    return _by_depth(lambda depth: make_app(function(depth), argument(depth)))
 
 
 def build(term: Builder) -> Node:

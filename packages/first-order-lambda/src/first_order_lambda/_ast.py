@@ -43,6 +43,12 @@ class Node(ABC):
     cache (mirrors the ``MixinSymbol`` precedent in ``mixinv2``).
     """
 
+    def __repr__(self) -> str:
+        # Node graphs are shared and may be cyclic (a Y recursion folds to a finite cyclic graph),
+        # so a structural repr would unfold the sharing exponentially or loop forever on a cycle.
+        # Identify a node by its type and object identity instead; use ``render`` for the tree.
+        return f"<{type(self).__name__} 0x{id(self):x}>"
+
     @cached_property
     def loose_bound(self) -> int:
         """One past the largest free de Bruijn index (``0`` iff the node is closed)."""
@@ -85,13 +91,13 @@ class Var(Node):
 
 
 @final
-@dataclass(kw_only=True, eq=False)
+@dataclass(kw_only=True, eq=False, repr=False)
 class Lam(Node):
     body: Node
 
 
 @final
-@dataclass(kw_only=True, eq=False)
+@dataclass(kw_only=True, eq=False, repr=False)
 class App(Node):
     function: Node
     argument: Node
