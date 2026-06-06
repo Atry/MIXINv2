@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from first_order_lambda._ast import make_app, make_var
-from first_order_lambda._compiler import compile_to_source
+from first_order_lambda._compiler import compile_to_source_lazy
 from first_order_lambda._dsl import Builder, build
 from first_order_lambda._pyast import _church_to_int
 from first_order_lambda._shape import VarShape
@@ -44,13 +44,18 @@ class _InterpreterBackend:
 
 
 class _CompilerBackend:
+    # The compiler backend uses the lazy (call-by-name) runtime, under which every normalizing term
+    # computes its value, matching the interpreter's lazy weak-head reduction. Arguments are thunks,
+    # so a Church numeral is observed by applying it to a thunked successor and zero.
     name = "compiler"
 
     def church(self, term: Builder) -> int:
-        return eval(compile_to_source(build(term)))(lambda k: k + 1)(0)
+        numeral = eval(compile_to_source_lazy(build(term)))
+        successor = lambda thunk: thunk() + 1
+        return numeral(lambda: successor)(lambda: 0)
 
     def boolean(self, term: Builder) -> bool:
-        return eval(compile_to_source(build(term)))(True)(False)
+        return eval(compile_to_source_lazy(build(term)))(lambda: True)(lambda: False)
 
 
 @pytest.fixture(params=[_InterpreterBackend(), _CompilerBackend()], ids=["interpreter", "compiler"])

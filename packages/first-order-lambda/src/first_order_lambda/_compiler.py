@@ -136,6 +136,51 @@ def compile_to_source(node: Node) -> str:
     return ast.unparse(ast.fix_missing_locations(_decode_pyexpr(compiled)))
 
 
+# --- lazy (call-by-name) decode -----------------------------------------------------------------
+# The strict decode above evaluates Python eagerly, so a Church conditional's unselected branch is
+# forced and a Y recursion diverges. The lazy decode emits call-by-name Python: an argument is a
+# thunk ``lambda: a``, a variable reference forces it (``v()``), so only the selected branch runs
+# and Y-recursion over a normalizing term terminates, matching the interpreter's lazy weak-head
+# reduction. This is the runtime under which every normalizing term, factorial and Fibonacci
+# included, computes its value.
+
+def _no_args() -> ast.arguments:
+    return ast.arguments(
+        posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[],
+    )
+
+
+def _decode_pyexpr_lazy(node: Node) -> ast.expr:
+    tag, fields = _extract(node, (1, 2, 2), _PY_BASE)
+    match tag:
+        case 0:  # PyVar level: force the thunk, v{level}()
+            name = f"v{_church_to_int(fields[0])}"
+            return ast.Call(func=ast.Name(id=name, ctx=ast.Load()), args=[], keywords=[])
+        case 1:  # PyLam level body: lambda v{level}: body, the parameter a thunk
+            name = f"v{_church_to_int(fields[0])}"
+            return ast.Lambda(
+                args=ast.arguments(
+                    posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[],
+                    kw_defaults=[], defaults=[],
+                ),
+                body=_decode_pyexpr_lazy(fields[1]),
+            )
+        case 2:  # PyApp function argument: function(lambda: argument)
+            return ast.Call(
+                func=_decode_pyexpr_lazy(fields[0]),
+                args=[ast.Lambda(args=_no_args(), body=_decode_pyexpr_lazy(fields[1]))],
+                keywords=[],
+            )
+        case _:
+            raise ValueError(f"unknown PyExpr tag {tag}")
+
+
+def compile_to_source_lazy(node: Node) -> str:
+    """Compile to call-by-name Python, the lazy runtime under which normalizing terms terminate."""
+    compiled = compile_quoted(quote(node))
+    return ast.unparse(ast.fix_missing_locations(_decode_pyexpr_lazy(compiled)))
+
+
 # --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
 
 def _python_church(n: int):

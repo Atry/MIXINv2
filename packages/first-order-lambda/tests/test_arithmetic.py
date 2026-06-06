@@ -2,9 +2,9 @@
 
 Each case observes a Church numeral as an int (or a Church boolean as a bool) through the
 ``backend`` fixture, so the same computation is checked on the interpreter and on the compiled
-Python. The Y-free operations (successor, addition, multiplication, exponentiation, predecessor,
-zero test) are strict-safe and run on both; factorial and Fibonacci use Y and a Church conditional
-whose eager branches diverge in a strict host, so they run on the interpreter only.
+Python. The compiler backend uses the lazy (call-by-name) runtime, the faithful lambda semantics
+matching the interpreter's weak-head reduction, so every normalizing term computes its value,
+factorial and Fibonacci (Y recursion through a Church conditional) included.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import math
 
 import pytest
 
-from first_order_lambda._dsl import app, build
+from first_order_lambda._dsl import app
 from first_order_lambda._prelude import (
     EXP,
     FACTORIAL,
@@ -25,7 +25,6 @@ from first_order_lambda._prelude import (
     SUCC,
     church,
 )
-from first_order_lambda._pyast import _church_to_int
 
 
 @pytest.mark.parametrize("n", [0, 1, 3])
@@ -64,13 +63,11 @@ def test_is_zero(backend) -> None:
     assert backend.boolean(app(IS_ZERO, church(3))) is False
 
 
-# Factorial and Fibonacci use Y and a Church conditional; in a strict host the eager else branch
-# diverges, so they are observed on the interpreter only.
 @pytest.mark.parametrize("n", [0, 1, 2, 3, 4])
-def test_factorial(n: int) -> None:
-    assert _church_to_int(build(app(FACTORIAL, church(n)))) == math.factorial(n)
+def test_factorial(backend, n: int) -> None:
+    assert backend.church(app(FACTORIAL, church(n))) == math.factorial(n)
 
 
 @pytest.mark.parametrize("n, fib", [(0, 0), (1, 1), (2, 1), (3, 2), (4, 3), (5, 5)])
-def test_fibonacci(n: int, fib: int) -> None:
-    assert _church_to_int(build(app(FIBONACCI, church(n)))) == fib
+def test_fibonacci(backend, n: int, fib: int) -> None:
+    assert backend.church(app(FIBONACCI, church(n))) == fib

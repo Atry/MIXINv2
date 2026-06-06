@@ -1128,7 +1128,10 @@ $\mathtt{QApp}\,f\,a$ (de Bruijn). The compiler is the pure term
 mapping an abstraction to a Python \texttt{lambda}, an application to a call, and a variable to a
 name; it threads the binder depth $d$ so a de Bruijn index $i$ becomes the level $d - 1 - i$
 (Church subtraction), giving stable parameter names. Compiled identity, $K$, Church numerals, and
-arithmetic applications execute in Python and compute what the source terms compute.
+arithmetic applications execute in Python and compute what the source terms compute. Decoded to
+call-by-name Python, the lazy semantics matching the interpreter's weak-head reduction, every
+normalizing term computes its value, factorial and Fibonacci among them, and the prelude arithmetic
+is cross-checked on both the interpreter and the compiler.
 
 \paragraph{Bootstrap.}
 The fixpoint is the strict combinator
