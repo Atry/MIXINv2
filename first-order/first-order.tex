@@ -984,6 +984,72 @@ silent orbit of a state may be infinite while $R(M)$ is finite, or conversely.
 \end{proof}
 
 % =====================================================================
+\section{The Rational Fragment as a Domain-Specific Language}\label{app:dsl}
+The terminating fragment of the construction, the rational behaviours, is exactly the world of
+finite-state, regular, and least-fixpoint-over-a-finite-lattice computation, and a range of
+practical domains live there. Each domain below is a pure $\lambda$-term whose behaviour is
+rational, so the interpreter halts, and each is reproduced as a test\anon[~(supplementary
+material)]{~\cite{firstorderlambda}}. Two reusable shapes recur: a least fixpoint over a Church
+tuple of booleans (the Datalog engine of Section~\ref{sec:application}), and a recursion whose
+subproblems are the nodes of a first-order datum, memoised for free because identical subproblems
+are one interned state. Each claim is confined to a domain's rational core: regular lexing but not
+general context-free parsing, rational-tree unification but not a general most-general unifier,
+finite-state model checking but not infinite-state.
+
+\paragraph{Dynamic programming, memoisation for free.}
+The decisive capability is memoisation (Section~\ref{sec:memo}): a recursion whose state space is a
+tree or graph computes each distinct subproblem once, because a structurally repeated subtree, or a
+graph node revisited along several paths, is one interned state. A perfect binary tree of depth $n$
+whose nodes share both children is a graph of $n+1$ states that unfolds to $2^{n}$ leaves; a tree
+DP over it is read in time linear in $n$, where a naive recursion would visit $2^{n}$ leaves. No
+memo table is written; tabling on first-order state identity is the memoisation, which the pure
+$\lambda$-calculus lacks without a decidable identity on subproblems, value equality of closures
+being undecidable.
+
+\paragraph{Game search with a transposition table.}
+Minimax is an and-or tree: a maximising position takes the disjunction over its moves, a minimising
+position the conjunction, and a terminal position a Boolean. A \emph{transposition}, the same
+position reached by a different move order, is the same interned node, so its value is computed
+once. Interning is the transposition table of a game-playing program, with no table written by hand.
+
+\paragraph{Graph reachability and program analysis.}
+Reachability and transitive closure over a directed graph, including one with cycles, are the least
+fixpoint of the immediate-consequence operator, terminating because the lattice is finite; the same
+shape decides reachability of a state in a finite transition system. Andersen-style points-to (alias)
+analysis \citeTODO{andersen, doop}, in which $\mathtt{pointsTo}(p,o)$ follows from
+$\mathtt{assign}(p,q)$ and $\mathtt{pointsTo}(q,o)$, is monotone Datalog, and a compiler reads it as
+the same boolean fixpoint.
+
+\paragraph{Lexical analysis.}
+A deterministic finite automaton is a finite cyclic transition graph, and running it is a fold over
+the input that threads the state. Regular languages are the archetypal rational behaviour, so a lexer
+is a $\lambda$-term whose behaviour is rational; the name \emph{rational} is itself the regular, or
+Kleene, sense (Definition~\ref{def:rational}).
+
+\paragraph{Unification and recursive types.}
+Equality of two rational (cyclic) terms is decided by their behaviour through cycle-detecting
+bisimulation (Corollary~\ref{cor:decidable}). This is the decidable core shared by rational-tree
+unification \citeTODO{colmerauer} and equirecursive ($\mu$-) type equality
+\citeTODO{amadio-cardelli, brandt-henglein}: two constructions of one rational term read out
+identically, and a different term reads out differently.
+
+\paragraph{The metalanguage needs tabling too.}
+The interpreter's own host-language term builder illustrates the point reflexively. Writing a shared
+subterm by reusing a builder gives a term whose construction unfolds the sharing exponentially, and
+a cyclic builder would not terminate, until the builder is memoised by binder depth, the
+host-language analogue of tabling. Intuitive code is slow or non-terminating exactly where the
+metalanguage does not table. The memo key here is the syntactic builder rather than the first-order
+behavioural identity the calculus folds on, but the moral is the same.
+
+\paragraph{Further instances.}
+The same rational core underlies others not reproduced here: equality saturation over e-graphs
+\citeTODO{egg, egglog} and binary decision diagrams \citeTODO{bryant}, both of which are interning
+of a shared graph; garbage-collection reachability over a cyclic heap; abstract interpretation as a
+fixpoint over a finite abstract domain; and, with a non-trivial effect monad, the stationary
+distribution of a finite Markov chain. Each is a finite-state, regular, or finite-lattice-fixpoint
+computation, hence a rational behaviour the construction reads.
+
+% =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
 %% \nocite{*} forces every references.bib entry into the printed list,
 %% reproducing the former inline thebibliography under ACM formatting.
