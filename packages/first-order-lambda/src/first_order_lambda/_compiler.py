@@ -16,10 +16,19 @@ import ast
 
 from first_order_lambda._ast import App, Lam, Node, Var
 from first_order_lambda._dsl import Builder, app, build, lam
-from first_order_lambda._prelude import PRED, SUCC, Y, church
+from first_order_lambda._prelude import PRED, SUCC, church
 from first_order_lambda._pyast import _church_to_int, _extract
 
 _PY_BASE = 5_000_000
+
+# The strict (call-by-value) fixpoint combinator Z = lambda f. (lambda x. f (lambda v. x x v)) (...).
+# Unlike Y it is eta-expanded under the recursive call, so the compiled Python (a strict language)
+# terminates where the compiled Y would diverge; in our weak-head interpreter it is an ordinary
+# fixpoint just like Y.
+Z: Builder = lam(lambda f: app(
+    lam(lambda x: app(f, lam(lambda v: app(app(x, x), v)))),
+    lam(lambda x: app(f, lam(lambda v: app(app(x, x), v)))),
+))
 
 
 def _scott3(tag: int, fields: "list[Builder]") -> Builder:
@@ -66,7 +75,7 @@ _SUB: Builder = lam(lambda a: lam(lambda b: app(app(b, PRED), a)))
 #     (lambda b. PyLam d (self (succ d) b))         -- QLam b
 #     (lambda f. lambda a. PyApp (self d f) (self d a)))  -- QApp f a
 COMPILE: Builder = app(
-    Y,
+    Z,
     lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
         quoted,
         lam(lambda index: _py_var(app(app(_SUB, depth), app(SUCC, index)))),
@@ -125,3 +134,75 @@ def compile_to_source(node: Node) -> str:
     """Compile an interpreter lambda term to Python source: quote, run COMPILE, decode, unparse."""
     compiled = compile_quoted(quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_pyexpr(compiled)))
+
+
+# --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
+
+def _python_church(n: int):
+    def successor(s):
+        def zero(z):
+            result = z
+            for _ in range(n):
+                result = s(result)
+            return result
+        return zero
+    return successor
+
+
+def _python_church_to_int(numeral) -> int:
+    return numeral(lambda k: k + 1)(0)
+
+
+def _python_quote(node: Node):
+    """Quote an interpreter Node into a host Scott value, matching the QVar/QLam/QApp eliminators."""
+    match node:
+        case Var(index=index):
+            i = _python_church(index)
+            return lambda v: lambda l: lambda a: v(i)
+        case Lam(body=body):
+            quoted_body = _python_quote(body)
+            return lambda v: lambda l: lambda a: l(quoted_body)
+        case App(function=function, argument=argument):
+            quoted_function = _python_quote(function)
+            quoted_argument = _python_quote(argument)
+            return lambda v: lambda l: lambda a: a(quoted_function)(quoted_argument)
+        case _:
+            raise ValueError(f"cannot quote {node!r}")
+
+
+def _arguments(name: str) -> ast.arguments:
+    return ast.arguments(
+        posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[], kw_defaults=[], defaults=[],
+    )
+
+
+def _decode_python_pyexpr(value) -> ast.expr:
+    """Decode a host (Python) Scott PyExpr value, produced by the self-compiled compiler."""
+    def on_var(level):
+        return ast.Name(id=f"v{_python_church_to_int(level)}", ctx=ast.Load())
+
+    def on_lam(level):
+        return lambda body: ast.Lambda(
+            args=_arguments(f"v{_python_church_to_int(level)}"),
+            body=_decode_python_pyexpr(body),
+        )
+
+    def on_app(function):
+        return lambda argument: ast.Call(
+            func=_decode_python_pyexpr(function),
+            args=[_decode_python_pyexpr(argument)],
+            keywords=[],
+        )
+
+    return value(on_var)(on_lam)(on_app)
+
+
+def compiled_compiler():
+    """The self-compiled compiler: COMPILE compiled to Python and evaluated as a Python function."""
+    return eval(compile_to_source(build(COMPILE)))
+
+
+def compile_with(compiler, node: Node) -> str:
+    """Compile ``node`` using a host-Python compiler function (e.g. the self-compiled one)."""
+    result = compiler(_python_church(0))(_python_quote(node))
+    return ast.unparse(ast.fix_missing_locations(_decode_python_pyexpr(result)))
