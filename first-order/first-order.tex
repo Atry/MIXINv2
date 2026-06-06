@@ -59,7 +59,7 @@
 
 \begin{document}
 
-\title{Manipulating Cyclic Data Structures in the Pure $\lambda$-Calculus by Computing the Least Fixpoint of the Iterative Reading of Coalgebras}
+\title{Manipulating Cyclic Data Structures in the Pure $\lambda$-Calculus by Computing the Least Fixpoint of the Reading of Coalgebras}
 
 \author{Bo Yang}
 \affiliation{%
@@ -541,6 +541,24 @@ locally continuous functor is \emph{algebraically compact}, $\mu\Beh \cong \nu\B
 common object. So ``least equals greatest'' is a property of the $\bot$-completion and the guarded
 readout, \emph{not} of the discrete signature: completing with $\bot$ and reading guardedly is exactly
 what collapses induction and coinduction.
+\end{remark}
+
+\begin{remark}[The parameter is the approximation order; the result is about computable ADTs]\label{rem:metalanguage}
+What forces the unique fixpoint of Theorem~\ref{thm:unique} is the \emph{approximation order} on terms
+(Definition~\ref{def:order}, equivalently its metric, Definition~\ref{def:metric}), under which the
+guarded readout is a contraction; the iteration plays no role. This order is intrinsic to the
+\emph{signature}, not to the $\lambda$-calculus: the Scott encoding supplies it automatically at the
+implementation level (a constructor is observed, a divergence is $\bot$), but it can be defined
+directly, with no reference to $\lambda$-terms, as the ideal completion of the finite partial
+$\Sigma$-trees. Fixing it determines at once the order and the unique fixpoint of \emph{every} data
+structure the calculus describes: a structure presented by a $\lambda$-term \emph{is} the tree read off
+$\outm$, so it inherits both. Theorem~\ref{thm:unique} is therefore not really about the
+$\lambda$-calculus. For any finitary signature $F$, every computable abstract data type, taken with its
+approximation order, has a unique fixpoint, its initial algebra and final coalgebra coinciding
+(Remark~\ref{rem:compact}); the $\lambda$-calculus is one realization of that order, not its source.
+One never designates an iteration operator or selects a least solution \emph{for the data}; the least
+fixpoint survives only one level down, in the evaluation, where the silent collapse gives a divergent
+computation its forced value $\bot$ (Remark~\ref{rem:leastessential}).
 \end{remark}
 
 \begin{remark}[Where the least fixpoint is indispensable]\label{rem:leastessential}
