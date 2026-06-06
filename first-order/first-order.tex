@@ -93,7 +93,11 @@ tree; the reduction is the internal process the structure map collapses, while t
 tree that process exposes. Two terms may thus share a behaviour yet reduce differently.} is the
 unfolding of that map: the possibly infinite tree obtained by exposing layer after layer. We make one
 observation about this unfolding and pursue its consequences. When the behaviour is
-\emph{rational}, with finitely many distinct subtrees, it is the unfolding of a finite
+\emph{rational},\footnote{Throughout, \emph{rational} qualifies a behaviour, that is, a tree: the
+tree has finitely many distinct subtrees, equivalently it is the unfolding of a finite graph (a
+regular, or Courcelle, tree). This is the rational-fixpoint sense, unrelated to rational numbers,
+and it is a property of the behaviour, not of the term or its reduction.} with finitely many
+distinct subtrees, it is the unfolding of a finite
 cyclic graph, and that graph is computed by \emph{tabling}: identify a state with its own
 behaviour, table the states seen so far, and when a state recurs while its behaviour is computed,
 tie a back edge instead of unfolding forever.
@@ -117,8 +121,8 @@ the internal process (Section~\ref{sec:bridge}).
 
 Second, recognising that a state has recurred is a test of \emph{identity}. This is the word the
 title turns on. The identity is decidable because the states are \emph{first-order}: they range
-over graph nodes, never over a function space. The cycle fold is then nothing special; it is the
-ordinary behaviour of tabling on state identity when the tabling core is the unfolding map. Where
+over graph nodes, never over a function space. The cycle fold is then nothing special; it is
+ordinary tabling on state identity when the tabling core is the unfolding map. Where
 the states are higher-order values, as in the na\"ive reading of the $\lambda$-calculus, the only
 available identity is $\beta$-equality, which is undecidable, and neither memoisation nor cycle
 folding is computable. Reading behaviour off a first-order coalgebra is what makes identity
