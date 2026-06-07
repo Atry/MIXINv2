@@ -1,8 +1,9 @@
-"""The source-to-LaTeX printer names variables exactly as the compiler does, so they line up.
+"""The source-to-LaTeX printer renders a term with readable bound-variable names.
 
-``term_to_latex`` prints a source term with parameter names ``v_{level}`` matching the ``v{level}``
-the compiler emits, so the displayed lambda and the generated Python read off against each other one
-to one. The snapshots pin the rendered LaTeX; the name-match test checks the correspondence.
+``term_to_latex`` names a binder by its de Bruijn level with a readable letter (``x``, ``y``, ...),
+not the compiler's ``v{level}``, so the displayed lambda reads naturally. The snapshots pin the
+rendered LaTeX; the structural test checks the lambda has the same number of binders as the Python
+the compiler emits (the level-`k` binder is the Python parameter ``v{k}``).
 """
 
 from __future__ import annotations
@@ -26,14 +27,19 @@ def test_term_to_latex(name: str, builder, snapshot: SnapshotAssertion) -> None:
     assert term_to_latex(build(builder)) == snapshot(name=name)
 
 
+def test_term_to_latex_uses_readable_names() -> None:
+    # No de Bruijn / v-style names in the rendered lambda; the first binders are x, y, z.
+    rendered = term_to_latex(build(SUCC))
+    assert "v_{" not in rendered and "v0" not in rendered
+    assert rendered == "\\lambda x.\\, \\lambda y.\\, \\lambda z.\\, y\\, (x\\, y\\, z)"
+
+
 @pytest.mark.parametrize(
     "builder",
     [IDENTITY, KESTREL, church(0), church(2), SUCC, PLUS, MULT, IS_ZERO],
 )
-def test_latex_names_match_compiled_python(builder) -> None:
+def test_latex_has_same_binder_count_as_compiled_python(builder) -> None:
     node = build(builder)
-    latex = term_to_latex(node)
-    python = compile_to_source(node, Runtime.EAGER)
-    latex_levels = sorted({int(level) for level in re.findall(r"v_\{(\d+)\}", latex)})
-    python_levels = sorted({int(level) for level in re.findall(r"\bv(\d+)\b", python)})
-    assert latex_levels == python_levels
+    latex_binders = len(re.findall(r"\\lambda", term_to_latex(node)))
+    python_binders = len(re.findall(r"\blambda\b", compile_to_source(node, Runtime.EAGER)))
+    assert latex_binders == python_binders

@@ -1,24 +1,33 @@
-"""Render a source lambda term to LaTeX, with variable names matching the compiler's output.
+"""Render a source lambda term to LaTeX with readable bound-variable names.
 
-The compiler names a parameter ``v{level}`` where a de Bruijn ``Var(i)`` seen at binder depth ``d``
-is the level ``d - 1 - i`` and a ``Lam`` binder introduced at depth ``d`` is the level ``d`` (see
-``_decode_pyexpr`` and ``COMPILE`` in ``_compiler``). ``term_to_latex`` prints the source syntax with
-those same names, so the displayed lambda and the generated Python line up one to one.
+A binder is named by its de Bruijn level (its depth at introduction): the binder introduced at depth
+``d`` is level ``d``, and a ``Var(i)`` seen at depth ``d`` refers to level ``d - 1 - i``. Each binder
+thus has a distinct level, hence a distinct readable name (``x``, ``y``, ``z``, ...), so the rendering
+is unambiguous and reads naturally. The compiler names the same binder ``v{level}`` in the emitted
+Python, so the lambda's name at level ``k`` corresponds to the Python parameter ``v{k}``.
 """
 
 from __future__ import annotations
 
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 
+# Readable bound-variable names indexed by de Bruijn level; deeper levels fall back to a subscript.
+_READABLE_NAMES = (
+    "x", "y", "z", "w", "u", "s", "t", "p", "q", "r",
+    "k", "m", "n", "a", "b", "c", "d", "e", "g", "h",
+)
+
 
 def term_to_latex(node: Node) -> str:
-    """The source term as a LaTeX math string (no surrounding ``$``), named to match the compiler."""
+    """The source term as a LaTeX math string (no surrounding ``$``), with readable names."""
     return _latex(node, 0)
 
 
 def _name(level: int) -> str:
     assert level >= 0, "a closed term references only bound variables, so every level is nonnegative"
-    return f"v_{{{level}}}"
+    if level < len(_READABLE_NAMES):
+        return _READABLE_NAMES[level]
+    return f"x_{{{level - len(_READABLE_NAMES) + 1}}}"
 
 
 def _latex(node: Node, depth: int) -> str:

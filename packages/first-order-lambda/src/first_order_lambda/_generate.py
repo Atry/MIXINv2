@@ -2,14 +2,15 @@
 
 These are pure, deterministic string builders. ``first-order/generate_examples.py`` writes them to
 disk, and tests assert the committed files match these builders, so the artifacts cannot drift from
-the compiler. Every example's Python is the real ``compile_to_source`` output, and every displayed
-lambda is ``term_to_latex`` of the same term, named to match.
+the compiler. Every example's Python is the real ``compile_to_source`` output; the displayed lambda is
+``term_to_latex`` of the term (readable names) for the small terms, or a named-combinator form (as the
+paper writes it) for the larger composite terms, whose full expansion would be unreadable.
 """
 
 from __future__ import annotations
 
 from first_order_lambda._compiler import COMPILE, Runtime, compile_to_source
-from first_order_lambda._dsl import Builder, build
+from first_order_lambda._dsl import Builder, app, build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import (
     IDENTITY,
@@ -17,8 +18,13 @@ from first_order_lambda._prelude import (
     KESTREL,
     MULT,
     PLUS,
+    SCOTT_CONS,
+    SELF_APPLY,
     SUCC,
+    Y,
+    ZERO,
     church,
+    map_list,
 )
 
 _LATEX_HEADER = (
@@ -34,17 +40,31 @@ _PYTHON_HEADER = (
     "# convention). Regenerate with: python3 first-order/generate_examples.py\n"
 )
 
-# (title, builder, runtime): each compiles to readable Python; one LAZY entry shows the thunk target.
-_EXAMPLES: tuple[tuple[str, Builder, Runtime], ...] = (
-    ("Identity", IDENTITY, Runtime.EAGER),
-    ("The constant combinator $K$", KESTREL, Runtime.EAGER),
-    ("Church numeral $0$", church(0), Runtime.EAGER),
-    ("Church numeral $2$", church(2), Runtime.EAGER),
-    ("Successor", SUCC, Runtime.EAGER),
-    ("Addition", PLUS, Runtime.EAGER),
-    ("Multiplication", MULT, Runtime.EAGER),
-    ("Zero test", IS_ZERO, Runtime.EAGER),
-    ("Identity, call-by-name target", IDENTITY, Runtime.LAZY),
+# The cyclic stream of zeros, written purely with Y, and a guarded map over it.
+_CYCLIC_ZEROS: Builder = app(Y, app(SCOTT_CONS, ZERO))
+_MAP_SUCC_CYCLIC: Builder = map_list(SUCC, _CYCLIC_ZEROS)
+
+# (title, builder, runtime, latex): latex is None to auto-render the term with readable names, or a
+# named-combinator string for the composite terms whose full expansion would be unreadable. The
+# strict (eager) target diverges on a cyclic term, so the cyclic examples use the fixpoint runtime,
+# whose memoising thunk folds the cycle (Omega to bottom, the streams to a finite cyclic graph).
+_EXAMPLES: tuple[tuple[str, Builder, Runtime, str | None], ...] = (
+    ("Identity", IDENTITY, Runtime.EAGER, None),
+    ("The constant combinator $K$", KESTREL, Runtime.EAGER, None),
+    ("Church numeral $2$", church(2), Runtime.EAGER, None),
+    ("Successor", SUCC, Runtime.EAGER, None),
+    ("Addition", PLUS, Runtime.EAGER, None),
+    ("Multiplication", MULT, Runtime.EAGER, None),
+    ("Zero test", IS_ZERO, Runtime.EAGER, None),
+    ("Identity, call-by-name target", IDENTITY, Runtime.LAZY, None),
+    ("The divergent term $\\Omega$", app(SELF_APPLY, SELF_APPLY), Runtime.FIXPOINT, None),
+    ("Cyclic stream of zeros", _CYCLIC_ZEROS, Runtime.FIXPOINT, "Y\\,(\\mathtt{cons}\\;0)"),
+    (
+        "Mapping over the cyclic stream",
+        _MAP_SUCC_CYCLIC,
+        Runtime.FIXPOINT,
+        "\\mathtt{map}\\;\\mathtt{succ}\\;(Y\\,(\\mathtt{cons}\\;0))",
+    ),
 )
 
 
@@ -52,16 +72,17 @@ def _listing(source: str) -> str:
     return "\\begin{lstlisting}\n" + source + "\n\\end{lstlisting}\n"
 
 
-def _example_block(title: str, builder: Builder, runtime: Runtime) -> str:
+def _example_block(title: str, builder: Builder, runtime: Runtime, latex: str | None) -> str:
     node = build(builder)
+    rendered = latex if latex is not None else term_to_latex(node)
     note = "" if runtime is Runtime.EAGER else f"~\\textnormal{{({runtime.name.lower()} runtime)}}"
-    heading = f"\\medskip\\noindent\\textbf{{{title}.}}{note}\\quad $" + term_to_latex(node) + "$\n"
+    heading = f"\\medskip\\noindent\\textbf{{{title}.}}{note}\\quad ${rendered}$\n"
     return heading + _listing(compile_to_source(node, runtime))
 
 
 def compiler_examples_fragment() -> str:
-    """The LaTeX fragment: a one-to-one comparison of each source lambda and the Python emitted."""
-    blocks = [_example_block(title, builder, runtime) for title, builder, runtime in _EXAMPLES]
+    """The LaTeX fragment: a comparison of each source lambda and the Python the compiler emits."""
+    blocks = [_example_block(title, builder, runtime, latex) for title, builder, runtime, latex in _EXAMPLES]
     bootstrap = (
         "\\medskip\\noindent\\textbf{The compiler itself, compiled to Python (self-hosting).}\\quad "
         "The compiler $\\mathtt{compile}$ above, compiled by itself, is the Python function committed "
