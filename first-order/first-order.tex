@@ -1189,16 +1189,23 @@ diverge, while in the weak-head interpreter $Z$ is an ordinary fixpoint. The com
 its own source to a Python program, and that self-compiled compiler, evaluated as a Python function
 and run on host-encoded source terms, produces the same output as the original and itself runs.
 
-\paragraph{Depth-bounded reduction and the one-layer reading.}
-Bounding the reduction gives a family of structure maps between the raw term and the weak head normal
-form. Reducing to depth $d$ fires at most $d$ contractions per application position and leaves a
-still-unfired redex $(\lambda a.\,T)\,a$ as a guarded suspension, a let-stub the variant reads as a
-value. At $d$ large enough this is the Levy-Longo weak head reading; at $d = 1$ it is the one-layer
-reading, one contraction per position, a denotational variant distinct from both weak head
-(Levy-Longo) and head (Boehm) normalization; at $d = 0$ it reads the term raw. Its denotation is the
-same least fixpoint over the $\bot$-completed approximation order, and growing $d$ climbs that order.
-Because firings are bounded, every head reduction halts regardless of rationality, while the reader
-still folds the readout's cycles by interned-node identity.
+\paragraph{A weak head and combinatory fusion: depth-bounded reduction.}
+The compiler's reference semantics fuses two reductions. A combinatory (SK) reduction pushes a
+substitution one constructor inward instead of copying the whole spine, which is efficient, but its
+$S$ rule, $(\lambda a.\,E_1\,E_2)\,b \to ((\lambda a.\,E_1)\,b)\,((\lambda a.\,E_2)\,b)$, turns the
+argument into suspensions that grow on every turn of a cycle, so the cycle never re-forms one interned
+node and the fold never fires; reducing the suspensions first (call by value) re-forms the node but
+diverges on a productive cycle such as $Y\,(\mathtt{cons}\;0)$. The construction instead takes
+call-by-name beta, where the argument is inserted by reference rather than reduced, so tabling folds
+both $\Omega$ (to $\bot$) and $Y\,(\mathtt{cons}\;0)$ (to a finite cyclic graph), together with a depth
+bound on the substitution that leaves a still-unfired redex $(\lambda a.\,T)\,a$ as a guarded let-stub
+rather than substituting the whole, possibly infinite, tree. Because substitution returns a closed
+subterm by reference, closed cyclic data is shared and only the open redex-body spine is copied, the
+minimal traversal the fold requires. Bounding the reduction gives a family of structure maps between
+the raw term ($d = 0$) and the weak head normal form ($d$ large), with $d = 1$ the one-layer reading;
+growing $d$ climbs the $\bot$-completed approximation order, whose limit is the Levy-Longo reading. So
+the semantics folds the common cycles, as weak head normalization does, while never doing the
+unbounded whole-tree substitution that motivates combinatory reduction.
 
 \paragraph{The halting boundary.}
 Faithfulness is convergence to the unique fixpoint, not structural identity: since the least and

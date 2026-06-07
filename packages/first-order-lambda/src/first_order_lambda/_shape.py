@@ -194,23 +194,27 @@ def compute_head_normal_form(node: Node) -> Shape | ShapeBottom:
 
 
 def normalize_to_depth(node: Node, depth: int) -> Shape | ShapeBottom:
-    """Depth-bounded weak head normalization: a variant structure map that fires at most ``depth``
-    beta contractions per application position, leaving the redex unfired once the budget is spent.
+    """Depth-bounded call-by-name beta normalization: the compiler's reference semantics.
 
-    An unfired redex ``App(Lam(body), argument)`` is exactly the let-stub ``(\\a. body) argument``
-    the variant suspends at: the readout shows it without firing, so the suspension is a guarded
-    value rather than a step. This is the depth-indexed approximation of ``weak_head_normalize``: a
-    ``depth`` large enough reproduces the Levy-Longo weak head normal form, ``depth == 1`` is the
-    one-layer-beta variant (one contraction per application position), and ``depth == 0`` reads the
-    term raw (no contraction). It never consults the cached ``weak_head_normal_form`` (the unbounded
-    least fixpoint), so the cached semantics is untouched; each contraction still goes through
-    ``substitute`` (which builds with the interning ``make_*``), so structurally identical results
+    This is the fusion of weak head normalization and combinatory (SK) reduction. From weak head
+    normalization it keeps call-by-name beta, where the argument is inserted by reference (not
+    reduced), so the caller's tabling folds both an unproductive cycle (``Omega`` to bottom) and a
+    productive one (``Y (cons 0)`` to a finite cyclic graph); a fully lazy SK reduction cannot fold,
+    because its ``S`` rule grows the argument into suspensions that never re-form the cyclic node, and
+    reducing them first (call by value) diverges on a productive cycle. From combinatory reduction it
+    keeps the motivation to avoid copying the whole tree: it fires at most ``depth`` beta contractions
+    per application position and leaves a still-unfired redex ``App(Lam(body), argument)`` (the
+    let-stub ``(\\a. body) argument``) as a guarded value, rather than substituting an unbounded tree.
+
+    A ``depth`` large enough reproduces the Levy-Longo weak head normal form, ``depth == 1`` is the
+    one-layer reading, and ``depth == 0`` reads the term raw. It never consults the cached
+    ``weak_head_normal_form`` (the unbounded least fixpoint), so the cached semantics is untouched;
+    each contraction goes through ``substitute`` (which returns closed subterms by reference and builds
+    with the interning ``make_*``), so closed cyclic data is shared and structurally identical results
     fold at every reduced layer, the per-layer tabling guarantee that lets a cycle closing within the
-    depth fold and halt.
-
-    ``depth`` bounds firings, so every head reduction terminates regardless of rationality; the
-    readout's tree is folded by the caller (``render`` tables re-entrant closed nodes), so a rational
-    behaviour whose cycle closes within the depth reads as a finite cyclic graph.
+    depth fold and halt. ``depth`` bounds firings, so every head reduction terminates regardless of
+    rationality; the readout's tree is folded by the caller (``render`` tables re-entrant closed
+    nodes), so a rational behaviour whose cycle closes within the depth reads as a finite cyclic graph.
     """
     match node:
         case Var(index=index):
