@@ -1107,8 +1107,9 @@ it preserves the interpreter's result only when an analysis certifies the choice
 accompanying implementation\anon[~(supplementary material)]{~\cite{firstorderlambda}} carries this
 out as a self-hosting compiler from the pure $\lambda$-calculus to a Python AST that specializes a
 sub-term to a strict or a call-by-name Python target when an analysis certifies the result is
-unchanged, and leaves everything else to the interpreter. Five executable pieces follow, each
-reproduced as a test.
+unchanged, and leaves everything else to the interpreter. Specialization is local, the analysis is
+itself a $\lambda$-term, and a depth bound turns reduction into a family of readings between the raw
+term and the weak head normal form. The pieces below are executable, each reproduced as a test.
 
 \paragraph{The target: a Scott-encoded Python AST.}
 The target is a Python AST represented in the pure $\lambda$-calculus by Scott encoding, a value of
@@ -1153,6 +1154,33 @@ interpreted. Simple typability is a sound but conservative certificate, and norm
 undecidable, so the lazy test runs the safe interpreter and reads off whether it folded; no totality
 is claimed, and anything the analysis does not certify stays interpreted.
 
+\paragraph{The analysis, in the $\lambda$-calculus.}
+The certificate that selects what to specialize is itself a pure $\lambda$-term, run by the
+interpreter on the quoted program, so the calculus analyzes its own programs. The first and simplest
+is a closedness check
+\[
+  \mathtt{closed} = Z\,\big(\lambda\mathit{self}.\lambda d.\lambda q.\;
+    q\,(\lambda i.\, i < d)\,
+      (\lambda b.\,\mathit{self}\,(d{+}1)\,b)\,
+      (\lambda f.\lambda a.\,\mathit{and}\,(\mathit{self}\,d\,f)\,(\mathit{self}\,d\,a))\big),
+\]
+recursing structurally with $Z$ and threading a Church-numeral binder depth: a variable is in scope
+when its index is below the depth, an abstraction recurses at $d+1$, an application is closed when
+both sides are, with $<$ and $\mathit{and}$ the usual Church encodings. Closedness is exactly the
+precondition a compiled island needs, and richer certificates (rationality by folding, typability)
+layer on in the same style. That the analysis is a $\lambda$-term rather than host code is the point:
+tabling-based reduction expresses program analysis, not only evaluation.
+
+\paragraph{Local specialization through a foreign-function node.}
+Specialization is local, not whole-program: a single node kind embeds a compiled Python callable in
+the term graph, taking argument nodes to a result node, so the node graph is the interoperation
+boundary. A closed sub-term the analysis certifies is compiled once to such a node and spliced into an
+otherwise interpreted graph; the interpreter drives the island and folds around it. In
+$Y\,(\mathtt{cons}\,(3 \times 3))$ the cyclic $\mathtt{cons}$ stays interpreted while the closed
+element compiles to an island, and the readout, a cyclic stream of $9$, is unchanged. A solution
+written once is thus compiled once and run on many $\lambda$-term inputs from the host, inputs and
+results staying $\lambda$ values.
+
 \paragraph{Bootstrap.}
 The fixpoint is the strict combinator
 $Z = \lambda f.\,(\lambda x.\,f\,(\lambda v.\,x\,x\,v))\,(\lambda x.\,f\,(\lambda v.\,x\,x\,v))$
@@ -1160,6 +1188,30 @@ rather than $Y$, so the compiled Python terminates in a strict host where compil
 diverge, while in the weak-head interpreter $Z$ is an ordinary fixpoint. The compiler then compiles
 its own source to a Python program, and that self-compiled compiler, evaluated as a Python function
 and run on host-encoded source terms, produces the same output as the original and itself runs.
+
+\paragraph{Depth-bounded reduction and the one-layer reading.}
+Bounding the reduction gives a family of structure maps between the raw term and the weak head normal
+form. Reducing to depth $d$ fires at most $d$ contractions per application position and leaves a
+still-unfired redex $(\lambda a.\,T)\,a$ as a guarded suspension, a let-stub the variant reads as a
+value. At $d$ large enough this is the Levy-Longo weak head reading; at $d = 1$ it is the one-layer
+reading, one contraction per position, a denotational variant distinct from both weak head
+(Levy-Longo) and head (Boehm) normalization; at $d = 0$ it reads the term raw. Its denotation is the
+same least fixpoint over the $\bot$-completed approximation order, and growing $d$ climbs that order.
+Because firings are bounded, every head reduction halts regardless of rationality, while the reader
+still folds the readout's cycles by interned-node identity.
+
+\paragraph{The halting boundary.}
+Faithfulness is convergence to the unique fixpoint, not structural identity: since the least and
+greatest fixpoints coincide (Theorem~\ref{thm:unique}), an operational strategy is faithful as long
+as it reaches that fixpoint rather than diverging, so a folded cycle may be unrolled into a finite
+tree or reshaped into a different cycle and stay faithful, and the only unfaithful move is unrolling a
+cycle into an infinite tree. This places compilation on a halting spectrum. Plain lazy reduction folds
+nothing and halts only on a finite normal form. The interpreter folds at every depth and halts on
+exactly the rational behaviour, the optimal boundary (Theorems~\ref{thm:termination},
+\ref{thm:optimal}). Bounded compilation lies strictly between: every contraction it fires is interned
+and its re-entry folded, so a cycle that closes within the depth folds and halts, and it halts on more
+than plain lazy reduction; a cycle that closes only deeper is left suspended, and forcing it past the
+bound without returning to the interpreter is where compiled code can diverge.
 
 \paragraph{Loops from folding.}
 A code generator
@@ -1175,7 +1227,7 @@ test in the $\lambda$-term. This is a further specialization, beyond the eager a
 productive stream whose behaviour is rational.
 
 \paragraph{Scope.}
-The five pieces are executable and tested. Read as Futamura projections \citeTODO{futamura},
+The pieces are executable and tested. Read as Futamura projections \citeTODO{futamura},
 specializing a program under a soundness analysis is an ahead-of-time compiler, and the fold that
 decides $\Omega$ as $\bot$ and folds a cyclic datum is the interpreter's default the analysis falls
 back to. Meta-tracing does not apply here: a meta-tracing just-in-time compiler
