@@ -118,9 +118,12 @@ by ``HttpHandlers.Request``) flows automatically into ``currentUser`` (looked up
 in the DB by ``UserRepository.Request``) without any glue code.
 
 ``responseSent`` is an IO resource: it sends the HTTP response as a side effect and
-returns ``None``. The handler body is a single attribute access — all logic lives in
-the DI graph. In an async framework (e.g. FastAPI), return an ``asyncio.Task[None]``
-instead of a coroutine, which cannot be safely awaited in multiple dependents.
+returns ``None``. The ``_Handler`` class is defined at module level and accesses the
+``Request`` factory through ``self.server.request_scope_factory``; the ``server``
+resource stores it on the ``HTTPServer`` instance. The handler body is a single
+attribute access; all logic lives in the DI graph. In an async framework (e.g.
+FastAPI), return an ``asyncio.Task[None]`` instead of a coroutine, which cannot be
+safely awaited in multiple dependents.
 
 .. literalinclude:: ../../mixinv2-examples/src/mixinv2_examples/app_decorator/step4_http_server.py
    :language: python
