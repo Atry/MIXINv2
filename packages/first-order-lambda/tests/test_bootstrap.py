@@ -8,7 +8,7 @@ compiler, and that its output runs.
 
 from __future__ import annotations
 
-from first_order_lambda._compiler import compile_to_source, compile_with, compiled_compiler
+from first_order_lambda._compiler import COMPILE, compile_to_source, compile_with, compiled_compiler
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS, church
 
@@ -33,3 +33,13 @@ def test_self_compiled_output_runs() -> None:
     successor = lambda k: k + 1
     source = compile_with(compiler, build(church(3)))
     assert eval(source)(successor)(0) == 3
+
+
+def test_interpreter_and_committed_compiler_agree_on_self() -> None:
+    # The compiler run on the interpreter and the committed self-compiled compiler (the generated
+    # Python source) compile the compiler ITSELF to the same Python.
+    from first_order_lambda._generated_compiler import compiled_compiler as committed_compiler
+
+    interpreter_output = compile_to_source(build(COMPILE))
+    committed_output = compile_with(committed_compiler, build(COMPILE))
+    assert committed_output == interpreter_output

@@ -1,0 +1,13 @@
+# serializer version: 1
+# name: test_term_to_latex[church_2-at][church_2]
+  '\\lambda v_{0}.\\, \\lambda v_{1}.\\, v_{0}\\, (v_{0}\\, v_{1})'
+# ---
+# name: test_term_to_latex[identity-at][identity]
+  '\\lambda v_{0}.\\, v_{0}'
+# ---
+# name: test_term_to_latex[kestrel-at][kestrel]
+  '\\lambda v_{0}.\\, \\lambda v_{1}.\\, v_{0}'
+# ---
+# name: test_term_to_latex[successor-at][successor]
+  '\\lambda v_{0}.\\, \\lambda v_{1}.\\, \\lambda v_{2}.\\, v_{1}\\, (v_{0}\\, v_{1}\\, v_{2})'
+# ---
