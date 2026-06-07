@@ -24,8 +24,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from typing import Callable
+
 from first_order_lambda._ast import App, Lam, Node, Var
-from first_order_lambda._compiler import Runtime, compile_to_source
+from first_order_lambda._compiler import Runtime, compile_to_source, runtime_globals
 from first_order_lambda._render import render
 
 
@@ -173,3 +175,70 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     if runtime is Runtime.FIXPOINT:
         return runtime, None
     return runtime, compile_to_source(node, runtime)
+
+
+# --- compile once, run many: a reusable compiled function fed lambda-term inputs ----------------
+# A solution written in the lambda-calculus is compiled ONCE to a Python callable; the Python side
+# then feeds it many lambda-term inputs. Inputs and outputs stay lambda values (no Python-domain
+# marshalling): an input term is compiled to its host value under the same runtime and applied, and
+# the result is the host lambda value, which the caller observes however it likes. EAGER is chosen
+# for a simply-typed (strongly normalizing) solution, otherwise LAZY: call-by-name is faithful on
+# every terminating application (it reaches the unique fixpoint, the denotation, rather than
+# diverging), which is exactly the regime of concrete test inputs.
+
+
+def compile_callable(node: Node, runtime: Runtime) -> Callable:
+    """Compile ``node`` ONCE to a Python callable under ``runtime``.
+
+    EAGER source is strict and self-contained; LAZY/FIXPOINT source refers to the free names ``force``
+    and ``Thunk`` supplied by ``runtime_globals``.
+    """
+    source = compile_to_source(node, runtime)
+    if runtime is Runtime.EAGER:
+        return eval(source)
+    return eval(source, runtime_globals(runtime))
+
+
+def host_value(node: Node, runtime: Runtime) -> object:
+    """Compile a lambda-term input to its host (compiled) value under ``runtime``.
+
+    The same operation as ``compile_callable``: a closed term's compiled value, ready to be applied
+    to or by another compiled value of the same runtime.
+    """
+    return compile_callable(node, runtime)
+
+
+def apply_compiled(function: object, argument: object, runtime: Runtime) -> object:
+    """Apply a compiled ``function`` to a compiled ``argument`` under ``runtime``'s calling convention.
+
+    EAGER passes the argument directly; LAZY/FIXPOINT pass it as a thunk, since the compiled body
+    forces its variables.
+    """
+    if runtime is Runtime.EAGER:
+        return function(argument)  # type: ignore[operator]
+    thunk = runtime_globals(runtime)["Thunk"]
+    return function(thunk(lambda: argument))  # type: ignore[operator]
+
+
+def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[..., object]:
+    """Compile a reusable lambda function ONCE; return ``solve(*input_nodes)`` applying it to its
+    inputs.
+
+    ``runtime`` defaults to EAGER if the solution is simply typable (strongly normalizing), else
+    LAZY. ``solve`` compiles each input term to a host value (cheap; the solution is the expensive
+    part, compiled once) and applies the function under the runtime's calling convention, returning
+    the host lambda value. The function is never classed FIXPOINT here: the caller is asserting it is
+    a function to be applied, and LAZY converges on every terminating application.
+    """
+    if runtime is None:
+        runtime = Runtime.EAGER if is_typable(node) else Runtime.LAZY
+    chosen = runtime
+    function = compile_callable(node, chosen)
+
+    def solve(*argument_nodes: Node) -> object:
+        result = function
+        for argument_node in argument_nodes:
+            result = apply_compiled(result, host_value(argument_node, chosen), chosen)
+        return result
+
+    return solve
