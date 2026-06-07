@@ -159,3 +159,55 @@ def compute_head_normal_form(node: Node) -> Shape | ShapeBottom:
                     raise TypeError(f"Unknown head {head!r}")
         case _:
             raise TypeError(f"Unknown node {node!r}")
+
+
+def normalize_to_depth(node: Node, depth: int) -> Shape | ShapeBottom:
+    """Depth-bounded weak head normalization: a variant structure map that fires at most ``depth``
+    beta contractions per application position, leaving the redex unfired once the budget is spent.
+
+    An unfired redex ``App(Lam(body), argument)`` is exactly the let-stub ``(\\a. body) argument``
+    the variant suspends at: the readout shows it without firing, so the suspension is a guarded
+    value rather than a step. This is the depth-indexed approximation of ``weak_head_normalize``: a
+    ``depth`` large enough reproduces the Levy-Longo weak head normal form, ``depth == 1`` is the
+    one-layer-beta variant (one contraction per application position), and ``depth == 0`` reads the
+    term raw (no contraction). It never consults the cached ``weak_head_normal_form`` (the unbounded
+    least fixpoint), so the cached semantics is untouched; each contraction still goes through
+    ``substitute`` (which builds with the interning ``make_*``), so structurally identical results
+    fold at every reduced layer, the per-layer tabling guarantee that lets a cycle closing within the
+    depth fold and halt.
+
+    ``depth`` bounds firings, so every head reduction terminates regardless of rationality; the
+    readout's tree is folded by the caller (``render`` tables re-entrant closed nodes), so a rational
+    behaviour whose cycle closes within the depth reads as a finite cyclic graph.
+    """
+    match node:
+        case Var(index=index):
+            return VarShape(index=index)
+        case Lam(body=body):
+            return LamShape(body=body)
+        case App(function=function, argument=argument):
+            head = normalize_to_depth(function, depth)
+            match head:
+                case LamShape(body=lambda_body):
+                    if depth <= 0:
+                        return AppShape(function=function, argument=argument)
+                    fired = substitute(lambda_body, depth=0, argument=argument)
+                    return normalize_to_depth(fired, depth - 1)
+                case VarShape() | AppShape():
+                    return AppShape(function=function, argument=argument)
+                case ShapeBottom.BOTTOM:
+                    return BOTTOM
+                case _:
+                    raise TypeError(f"Unknown head {head!r}")
+        case _:
+            raise TypeError(f"Unknown node {node!r}")
+
+
+def one_layer_normalize(node: Node) -> Shape | ShapeBottom:
+    """The one-layer-beta structure map: one contraction per application position (``depth == 1``).
+
+    A distinct denotational variant beside ``weak_head_normalize`` (Levy-Longo) and ``head_normalize``
+    (Boehm): where weak head normalization fires the head spine to a constructor, this fires a single
+    redex per position and leaves any remaining redex as a guarded let-stub.
+    """
+    return normalize_to_depth(node, 1)

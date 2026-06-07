@@ -1,0 +1,19 @@
+# serializer version: 1
+# name: test_depth_climbs_to_the_weak_head_reading[depth_0]
+  '(λ ((λ v0) ((λ v0) v0)))'
+# ---
+# name: test_depth_climbs_to_the_weak_head_reading[depth_1]
+  '(λ ((λ v0) v0))'
+# ---
+# name: test_one_layer_distinct_from_weak_head_and_head[one_layer]
+  '(λ ((λ v0) v0))'
+# ---
+# name: test_one_layer_distinct_from_weak_head_and_head[weak_head]
+  '(λ v0)'
+# ---
+# name: test_rational_cycle_folds_within_the_depth[cyclic_zeros_depth_2]
+  '((λ (λ (λ ((v1 (λ (λ v0))) v2)))) #0=(λ (λ ((v1 (λ (λ v0))) #0))))'
+# ---
+# name: test_unproductive_cycle_reads_as_its_unfired_redex[omega_bounded]
+  '((λ (v0 v0)) (λ (v0 v0)))'
+# ---
