@@ -1098,14 +1098,17 @@ distribution of a finite Markov chain. Each is a finite-state, regular, or finit
 computation, hence a rational behaviour the construction reads.
 
 % =====================================================================
-\section{Compilation by Tabling: a Bootstrap Compiler to Python}\label{app:compiler}
-A meta-tracing compiler runs a program, records the trace, and folds it at a cache keyed by the
-program state, so a loop in the source becomes a loop in the compiled code. This is tabling the
-behaviour: the trace cache is the runtime's fold on first-order state identity, here
-\texttt{fixpoint\_cached\_property} with interning, and the rational graph is the compiled program
-with its loops. The accompanying implementation\anon[~(supplementary
-material)]{~\cite{firstorderlambda}} carries this out as a self-hosting compiler from the pure
-$\lambda$-calculus to a Python AST, in four executable pieces, each reproduced as a test.
+\section{Compilation to Python by Analysis-Driven Specialization}\label{app:compiler}
+The interpreter is the default evaluator, and it is already a fixpoint-thunk graph: every node's
+weak head normal form is a \texttt{fixpoint\_cached\_property} thunk, interned and possibly cyclic,
+so the term graph is the thunk graph the interpreter folds, and handing that graph back is the
+identity. A compiler can do something different only by choosing a different evaluation strategy, and
+it preserves the interpreter's result only when an analysis certifies the choice is sound. The
+accompanying implementation\anon[~(supplementary material)]{~\cite{firstorderlambda}} carries this
+out as a self-hosting compiler from the pure $\lambda$-calculus to a Python AST that specializes a
+sub-term to a strict or a call-by-name Python target when an analysis certifies the result is
+unchanged, and leaves everything else to the interpreter. Five executable pieces follow, each
+reproduced as a test.
 
 \paragraph{The target: a Scott-encoded Python AST.}
 The target is a Python AST represented in the pure $\lambda$-calculus by Scott encoding, a value of
@@ -1129,12 +1132,26 @@ mapping an abstraction to a Python \texttt{lambda}, an application to a call, an
 name; it threads the binder depth $d$ so a de Bruijn index $i$ becomes the level $d - 1 - i$
 (Church subtraction), giving stable parameter names. Compiled identity, $K$, Church numerals, and
 arithmetic applications execute in Python and compute what the source terms compute. The compiler
-emits one of three target runtimes: a strict (eager) one, and two thunk-based ones differing only in
-the thunk, a call-by-name lazy thunk and a fixpoint thunk memoised by \texttt{fixpoint\_cached\_property}
-so a re-entrant force folds to $\bot$, the same least-fixpoint fold the interpreter performs. Under
-either thunk runtime, the lazy semantics matching weak-head reduction, every normalizing term
-computes its value, factorial and Fibonacci among them, and the prelude arithmetic is cross-checked
-against the interpreter on both.
+emits one of three targets, selected by the analysis below: a strict (eager) target; a call-by-name
+lazy target; and a fixpoint target that is the interpreter itself, since the fixpoint-thunk graph is
+the AST. The eager and lazy targets differ from the interpreter only in evaluation strategy, so they
+are sound only under the conditions the analysis certifies; the lazy target uses a thunk forced on
+reference, the call-by-name semantics matching weak-head reduction, so every normalizing term
+computes its value, factorial and Fibonacci among them. The prelude arithmetic is cross-checked
+against the interpreter on the lazy target.
+
+\paragraph{The soundness analysis.}
+A static analysis chooses the target. A term that is simply typable, decided by algorithm-W
+inference with an occurs check so the self-application $x\,x$ of $Y$, $Z$, and $\Omega$ fails, is
+strongly normalizing, so the strict eager target terminates with the interpreter's normal form.
+Otherwise the interpreter serves as a sound oracle: it reads the behaviour out, and if the behaviour
+is a finite normal form (no folded back edge and no $\bot$), the term is normalizing and the
+call-by-name lazy target reaches the same value. Failing both, the term keeps the fixpoint default,
+the interpreter, which folds every rational behaviour correctly. Church arithmetic compiles eager;
+factorial and Fibonacci applied to a numeral compile lazy; $Y\,(\mathtt{cons}\;0)$ and $\Omega$ stay
+interpreted. Simple typability is a sound but conservative certificate, and normalization is
+undecidable, so the lazy test runs the safe interpreter and reads off whether it folded; no totality
+is claimed, and anything the analysis does not certify stays interpreted.
 
 \paragraph{Bootstrap.}
 The fixpoint is the strict combinator
@@ -1150,19 +1167,21 @@ $\mathtt{gen} = Z\,\big(\lambda\mathit{self}.\lambda s.\;
   s\,(\lambda h.\lambda t.\,\mathtt{Yield}\,h\,(\mathit{self}\,t))\,\mathtt{Stop}\big)$
 maps a stream to a quoted output stream, with nothing loop-aware in it. Run on a cyclic source such
 as $Y\,(\mathtt{cons}\;0)$, the recursive $\mathit{self}\,t$ re-enters the same interned state, so
-the runtime ties the back edge and the output is a cyclic quoted stream; a cycle-aware decoder turns
-it into a Python generator with a \texttt{while} loop, which runs and yields the stream. On a finite
-source the same $\mathtt{gen}$ yields a finite, loopless generator. The loop in the compiled program
-is exactly the runtime's fold of the trace, with no sharing test in the $\lambda$-term.
+the interpreter folds the back edge and the output is a cyclic quoted stream; a cycle-aware decoder
+turns it into a Python generator with a \texttt{while} loop, which runs and yields the stream. On a
+finite source the same $\mathtt{gen}$ yields a finite, loopless generator. The loop in the compiled
+program is exactly the interpreter's fold of the rational behaviour made imperative, with no sharing
+test in the $\lambda$-term. This is a further specialization, beyond the eager and lazy targets, of a
+productive stream whose behaviour is rational.
 
 \paragraph{Scope.}
-The four pieces are executable and tested; what is left conceptual is the deeper meta-tracing of an
-arbitrary computation through a $\lambda$ self-interpreter, of which the stream generator is the data
-instance. Read as Futamura projections \citeTODO{futamura}, specialising an interpreter to a program
-is a compiler and the trace cache is the tabling; the construction places that cache at the
-runtime's first-order state identity, the same fold that decides $\Omega$ as $\bot$ and folds a
-cyclic datum. Tracing just-in-time compilers \citeTODO{bolz-tracing} fold loops at a state-keyed
-trace cache by the same principle.
+The five pieces are executable and tested. Read as Futamura projections \citeTODO{futamura},
+specializing a program under a soundness analysis is an ahead-of-time compiler, and the fold that
+decides $\Omega$ as $\bot$ and folds a cyclic datum is the interpreter's default the analysis falls
+back to. Meta-tracing does not apply here: a meta-tracing just-in-time compiler
+\citeTODO{bolz-tracing} compiles traces of an interpreter, which requires the interpreter to be
+written in the traced language, a $\lambda$ self-interpreter, which this construction does not use;
+here the $\lambda$ term is the program and the interpreter folds its behaviour directly.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
