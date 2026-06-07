@@ -1191,10 +1191,12 @@ and run on host-encoded source terms, produces the same output as the original a
 
 \paragraph{A weak head and combinatory fusion: depth-bounded reduction.}
 The compiler's reference semantics fuses two reductions. A combinatory (SK) reduction pushes a
-substitution one constructor inward instead of copying the whole spine, which is efficient, but its
-$S$ rule, $(\lambda a.\,E_1\,E_2)\,b \to ((\lambda a.\,E_1)\,b)\,((\lambda a.\,E_2)\,b)$, turns the
-argument into suspensions that grow on every turn of a cycle, so the cycle never re-forms one interned
-node and the fold never fires; reducing the suspensions first (call by value) re-forms the node but
+substitution one constructor inward, as an explicit substitution calculus
+does~\citeTODO{abadi-curien-levy, benaissa-lescanne}, instead of copying the whole spine, which is
+efficient, but its $S$ rule, $(\lambda a.\,E_1\,E_2)\,b \to ((\lambda a.\,E_1)\,b)\,((\lambda a.\,E_2)\,b)$,
+turns the argument into suspensions that grow on every turn of a cycle (the sharing problem of
+combinator graph reduction~\citeTODO{wadsworth-graph, lamping}), so the cycle never re-forms one
+interned node and the fold never fires; reducing the suspensions first (call by value) re-forms the node but
 diverges on a productive cycle such as $Y\,(\mathtt{cons}\;0)$. The construction instead takes
 call-by-name beta, where the argument is inserted by reference rather than reduced, so tabling folds
 both $\Omega$ (to $\bot$) and $Y\,(\mathtt{cons}\;0)$ (to a finite cyclic graph), together with a depth
@@ -1203,7 +1205,8 @@ rather than substituting the whole, possibly infinite, tree. Because substitutio
 subterm by reference, closed cyclic data is shared and only the open redex-body spine is copied, the
 minimal traversal the fold requires. Bounding the reduction gives a family of structure maps between
 the raw term ($d = 0$) and the weak head normal form ($d$ large), with $d = 1$ the one-layer reading;
-growing $d$ climbs the $\bot$-completed approximation order, whose limit is the Levy-Longo reading. So
+growing $d$ climbs the $\bot$-completed approximation order~\citeTODO{barendregt, levy-longo}, whose
+limit is the Levy-Longo reading. So
 the semantics folds the common cycles, as weak head normalization does, while never doing the
 unbounded whole-tree substitution that motivates combinatory reduction.
 
