@@ -19,12 +19,13 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Iterator, cast, final
+from typing import Callable, Iterator, cast, final
 
 from first_order_lambda._ast import (
     BOTTOM,
     App,
     Lam,
+    Native,
     Node,
     ShapeBottom,
     Var,
@@ -51,7 +52,20 @@ class AppShape:
     argument: Node
 
 
-Shape = VarShape | LamShape | AppShape
+@final
+@dataclass(kw_only=True, slots=True, frozen=True, weakref_slot=True)
+class NativeShape:
+    """The shape of an under-applied foreign function: a value awaiting more arguments.
+
+    A saturated native fires and never surfaces this shape (its weak head normal form is the fired
+    result); only a bare or partially applied ``Native`` reads as a ``NativeShape``."""
+
+    run: "Callable[..., Node]"
+    arity: int
+    collected: tuple[Node, ...]
+
+
+Shape = VarShape | LamShape | AppShape | NativeShape
 
 
 class ReductionBudgetExceeded(RuntimeError):
@@ -105,12 +119,21 @@ def compute_weak_head_normal_form(node: Node) -> Shape | ShapeBottom:
             return VarShape(index=index)
         case Lam(body=body):
             return LamShape(body=body)
+        case Native(run=run, arity=arity):
+            if arity == 0:
+                return weak_head_normalize(run())
+            return NativeShape(run=run, arity=arity, collected=())
         case App(function=function, argument=argument):
             head = weak_head_normalize(function)
             match head:
                 case LamShape(body=lambda_body):
                     _consume_redex()
                     return weak_head_normalize(substitute(lambda_body, depth=0, argument=argument))
+                case NativeShape(run=run, arity=arity, collected=collected):
+                    saturated = (*collected, argument)
+                    if len(saturated) == arity:
+                        return weak_head_normalize(run(*saturated))
+                    return NativeShape(run=run, arity=arity, collected=saturated)
                 case VarShape() | AppShape():
                     return AppShape(function=function, argument=argument)
                 case ShapeBottom.BOTTOM:
@@ -145,12 +168,21 @@ def compute_head_normal_form(node: Node) -> Shape | ShapeBottom:
             if head_normalize(body) is BOTTOM:
                 return BOTTOM
             return LamShape(body=body)
+        case Native(run=run, arity=arity):
+            if arity == 0:
+                return head_normalize(run())
+            return NativeShape(run=run, arity=arity, collected=())
         case App(function=function, argument=argument):
             head = weak_head_normalize(function)
             match head:
                 case LamShape(body=lambda_body):
                     _consume_redex()
                     return head_normalize(substitute(lambda_body, depth=0, argument=argument))
+                case NativeShape(run=run, arity=arity, collected=collected):
+                    saturated = (*collected, argument)
+                    if len(saturated) == arity:
+                        return head_normalize(run(*saturated))
+                    return NativeShape(run=run, arity=arity, collected=saturated)
                 case VarShape() | AppShape():
                     return AppShape(function=function, argument=argument)
                 case ShapeBottom.BOTTOM:
@@ -185,6 +217,10 @@ def normalize_to_depth(node: Node, depth: int) -> Shape | ShapeBottom:
             return VarShape(index=index)
         case Lam(body=body):
             return LamShape(body=body)
+        case Native(run=run, arity=arity):
+            if arity == 0:
+                return normalize_to_depth(run(), depth)
+            return NativeShape(run=run, arity=arity, collected=())
         case App(function=function, argument=argument):
             head = normalize_to_depth(function, depth)
             match head:
@@ -193,6 +229,11 @@ def normalize_to_depth(node: Node, depth: int) -> Shape | ShapeBottom:
                         return AppShape(function=function, argument=argument)
                     fired = substitute(lambda_body, depth=0, argument=argument)
                     return normalize_to_depth(fired, depth - 1)
+                case NativeShape(run=run, arity=arity, collected=collected):
+                    saturated = (*collected, argument)
+                    if len(saturated) == arity:
+                        return normalize_to_depth(run(*saturated), depth)
+                    return NativeShape(run=run, arity=arity, collected=saturated)
                 case VarShape() | AppShape():
                     return AppShape(function=function, argument=argument)
                 case ShapeBottom.BOTTOM:

@@ -103,6 +103,23 @@ class App(Node):
     argument: Node
 
 
+@final
+@dataclass(kw_only=True, eq=False, repr=False)
+class Native(Node):
+    """A foreign-function node: a compiled Python callable embedded in the term graph (the FFI).
+
+    ``run`` takes ``arity`` argument ``Node``s and returns a result ``Node``; the Node graph is the
+    lingua franca, so a compiled island interoperates with the interpreter by consuming and producing
+    nodes. A closed island is ``arity == 0`` (``run()`` builds its result node). The interpreter
+    drives it: a saturated native fires ``run`` and continues normalizing the returned node, so a
+    compiled island sits inside an otherwise interpreted (folding) graph. A ``Native`` is always a
+    closed value (``loose_bound == 0``).
+    """
+
+    run: "Callable[..., Node]"
+    arity: int
+
+
 # Hash-consing: structurally-equal nodes (with already-interned children) become the SAME
 # object, so node identity is structural identity. This is what makes a cyclic structure a
 # finite set of positions: an Omega contractum, or a repeated stream cell produced by a Y
@@ -138,6 +155,12 @@ def make_app(function: Node, argument: Node) -> App:
     )
 
 
+def make_native(run: "Callable[..., Node]", arity: int) -> Native:
+    if arity < 0:
+        raise ValueError("native arity must be nonnegative")
+    return cast(Native, _intern_node(("Native", id(run), arity), lambda: Native(run=run, arity=arity)))
+
+
 def _loose_bound(node: Node) -> int:
     match node:
         case Var(index=index):
@@ -146,6 +169,8 @@ def _loose_bound(node: Node) -> int:
             return max(0, body.loose_bound - 1)
         case App(function=function, argument=argument):
             return max(function.loose_bound, argument.loose_bound)
+        case Native():
+            return 0
         case _:
             raise TypeError(f"Unknown node {node!r}")
 

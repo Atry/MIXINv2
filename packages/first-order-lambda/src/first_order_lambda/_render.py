@@ -21,7 +21,14 @@ from __future__ import annotations
 from typing import Callable
 
 from first_order_lambda._ast import Node, ShapeBottom
-from first_order_lambda._shape import AppShape, LamShape, Shape, VarShape, weak_head_normalize
+from first_order_lambda._shape import (
+    AppShape,
+    LamShape,
+    NativeShape,
+    Shape,
+    VarShape,
+    weak_head_normalize,
+)
 
 
 def render(
@@ -64,6 +71,9 @@ def render(
                 body = f"(λ {emit(lam_body)})"
             case AppShape(function=function, argument=argument):
                 body = f"({emit(function)} {emit(argument)})"
+            case NativeShape(arity=arity, collected=collected):
+                spine = "".join(f" {emit(argument)}" for argument in collected)
+                body = f"⟨native:{arity}{spine}⟩"
             case _:
                 raise TypeError(f"Unknown head {head!r}")
         if closed:

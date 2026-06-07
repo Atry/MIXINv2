@@ -26,8 +26,10 @@ from dataclasses import dataclass
 
 from typing import Callable
 
-from first_order_lambda._ast import App, Lam, Node, Var
+from first_order_lambda._ast import App, Lam, Native, Node, Var, make_native
 from first_order_lambda._compiler import Runtime, compile_to_source, runtime_globals
+from first_order_lambda._dsl import build
+from first_order_lambda._prelude import church
 from first_order_lambda._render import render
 
 
@@ -242,3 +244,38 @@ def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[...
         return result
 
     return solve
+
+
+# --- local specialization: a compiled island embedded in an interpreted graph -------------------
+# A closed compilable sub-term is wrapped as a Native (FFI) node, compiled once. Embedded in an
+# otherwise interpreted graph (e.g. inside a fold-requiring cyclic shell), the interpreter drives
+# the island and folds around it, so the program is neither all-interpreted nor all-compiled. The
+# boundary reifies the island's result back to a node; faithfulness is convergence to the unique
+# fixpoint, not structural identity, so the canonical reified shape is sound.
+
+
+def _decode_church_host(value: object, runtime: Runtime) -> int:
+    if runtime is Runtime.EAGER:
+        return value(lambda predecessor: predecessor + 1)(0)  # type: ignore[operator]
+    globals_ = runtime_globals(runtime)
+    thunk, force = globals_["Thunk"], globals_["force"]
+    successor = lambda counted: force(counted) + 1
+    return value(thunk(lambda: successor))(thunk(lambda: 0))  # type: ignore[operator]
+
+
+def church_island(node: Node, runtime: Runtime | None = None) -> Native:
+    """Wrap a CLOSED, Church-numeral-producing term as a compiled ``Native`` island (arity 0).
+
+    The term is compiled once; the island's ``run`` evaluates it and reifies the result Church
+    numeral back to a node, so the island composes with the interpreter through the Node graph. The
+    runtime defaults to EAGER when the term is simply typable, else LAZY.
+    """
+    if node.loose_bound != 0:
+        raise ValueError("church_island requires a closed term")
+    chosen = runtime if runtime is not None else (Runtime.EAGER if is_typable(node) else Runtime.LAZY)
+    compiled = compile_callable(node, chosen)
+
+    def run() -> Node:
+        return build(church(_decode_church_host(compiled, chosen)))
+
+    return make_native(run, 0)

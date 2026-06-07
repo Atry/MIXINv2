@@ -1,0 +1,4 @@
+# serializer version: 1
+# name: test_compiled_island_inside_cyclic_shell_matches_interpretation[cyclic_nines]
+  '(λ (λ ((v1 (λ (λ (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 v0)))))))))))) #0=(λ (λ ((v1 (λ (λ (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 v0)))))))))))) #0))))))'
+# ---
