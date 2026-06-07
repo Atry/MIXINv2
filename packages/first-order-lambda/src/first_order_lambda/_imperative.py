@@ -1,13 +1,21 @@
-"""Loops from folding: a code generator over a stream whose loop is tied by the runtime.
+"""Imperative specialization of a productive rational stream: loops from folding.
+
+This is a further specialization, beyond the EAGER/LAZY targets of ``_specialize``: a productive
+stream whose behaviour is rational compiles to an imperative Python generator with a ``while`` loop.
 
 ``GEN`` is a pure lambda term that maps a Scott stream ``cons h t`` to a quoted output stream
 ``Yield h (GEN t)`` (and ``nil`` to ``Stop``). It is an ordinary productive recursion with nothing
 loop-aware in it. Run on a *cyclic* source (e.g. ``Y (cons 0)``), the recursive ``GEN t`` re-enters
-the same interned state, so the runtime (``fixpoint_cached_property`` + interning) ties the back
+the same interned state, so the interpreter (``fixpoint_cached_property`` + interning) folds the back
 edge and the output is a *cyclic* quoted stream. The decoder walks that output with a visited set
 (as ``render`` does) and emits a Python generator whose ``while`` loop is exactly the folded back
 edge. On a finite source the same ``GEN`` yields a finite, loopless generator. The loop in the
-compiled program is the runtime's fold of the trace: tabling is the trace cache of a tracing JIT.
+compiled program is the interpreter's fold of the rational behaviour made imperative.
+
+This is not meta-tracing. Meta-tracing compiles traces *of an interpreter*, which requires the
+interpreter to be written in the traced language (a self-interpreter); here the lambda term ``GEN``
+is the program, and the interpreter folds *its* behaviour, so this is ahead-of-time specialization
+of a program, not a trace of an interpreter.
 """
 
 from __future__ import annotations

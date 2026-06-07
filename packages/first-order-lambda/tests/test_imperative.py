@@ -1,8 +1,9 @@
-"""Loops from folding: a cyclic source compiles to a Python ``while`` loop, a finite one does not.
+"""Imperative stream specialization: a cyclic source compiles to a ``while`` loop, a finite one not.
 
 ``GEN`` is an ordinary productive recursion with nothing loop-aware in it. On a cyclic source the
-runtime folds its re-entrant recursion, so the compiled generator has a ``while`` loop; on a finite
-source it is a finite, loopless generator. The loop is the runtime's fold of the trace.
+interpreter folds its re-entrant recursion, so the compiled generator has a ``while`` loop; on a
+finite source it is a finite, loopless generator. The loop is the interpreter's fold of the rational
+behaviour made imperative.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 import itertools
 
 from first_order_lambda._dsl import app
-from first_order_lambda._metatrace import compile_stream
+from first_order_lambda._imperative import compile_stream
 from first_order_lambda._prelude import SCOTT_CONS, SCOTT_NIL, ZERO, Y, church, cons
 
 
