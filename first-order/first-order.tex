@@ -19,6 +19,21 @@
 %% only mathtools needs to be added here.
 \usepackage{mathtools}
 
+%% listings renders the machine-generated Python in the compiler appendix.
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  language=Python,
+  xleftmargin=1em,
+  aboveskip=0.4\baselineskip,
+  belowskip=0.4\baselineskip,
+}
+
 % --- draft placeholder macro ------------------------------------------
 \newcommand{\TODO}[1]{\textcolor{red}{[\textbf{TODO:} #1]}}
 \newcommand{\citeTODO}[1]{\textcolor{red}{[\textbf{cite:} #1]}}
@@ -1132,7 +1147,8 @@ $\mathtt{QApp}\,f\,a$ (de Bruijn). The compiler is the pure term
 mapping an abstraction to a Python \texttt{lambda}, an application to a call, and a variable to a
 name; it threads the binder depth $d$ so a de Bruijn index $i$ becomes the level $d - 1 - i$
 (Church subtraction), giving stable parameter names. Compiled identity, $K$, Church numerals, and
-arithmetic applications execute in Python and compute what the source terms compute. The compiler
+arithmetic applications execute in Python and compute what the source terms compute, as the generated
+comparison under \emph{Compiled examples} below shows. The compiler
 emits one of three targets, selected by the analysis below: a strict (eager) target; a call-by-name
 lazy target; and a fixpoint target that is the interpreter itself, since the fixpoint-thunk graph is
 the AST. The eager and lazy targets differ from the interpreter only in evaluation strategy, so they
@@ -1140,6 +1156,12 @@ are sound only under the conditions the analysis certifies; the lazy target uses
 reference, the call-by-name semantics matching weak-head reduction, so every normalizing term
 computes its value, factorial and Fibonacci among them. The prelude arithmetic is cross-checked
 against the interpreter on the lazy target.
+
+\paragraph{Compiled examples.}
+Each example below pairs a source term with the Python the compiler emits for it, named so the two
+read off against each other; the listings are generated from the compiler, not written by hand, and
+the compiler compiled to itself is committed alongside as a generated module.
+\input{generated/compiler-examples}
 
 \paragraph{The soundness analysis.}
 A static analysis chooses the target. A term that is simply typable, decided by algorithm-W
