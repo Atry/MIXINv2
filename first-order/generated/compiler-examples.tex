@@ -36,7 +36,7 @@ lambda v0: lambda v1: lambda v2: v0(v1(v2))
 lambda v0: v0(lambda v1: lambda v2: lambda v3: v3)(lambda v1: lambda v2: v1)
 \end{lstlisting}
 
-\medskip\noindent\textbf{Identity, call-by-name target.}~\textnormal{(lazy runtime)}\quad $\lambda x.\, x$
+\medskip\noindent\textbf{Identity, call-by-name target.}~\textnormal{(call-by-name runtime)}\quad $\lambda x.\, x$
 \begin{lstlisting}
 lambda v0: force(v0)
 \end{lstlisting}

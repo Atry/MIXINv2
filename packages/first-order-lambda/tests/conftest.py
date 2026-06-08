@@ -2,11 +2,11 @@
 
 A backend observes a closed lambda term in a common domain: a Church numeral as an ``int`` and a
 Church boolean as a ``bool``. The interpreter backend reads the behaviour directly (counting the
-weak-head spine). The compiler backend compiles the term to Python for the LAZY thunk-based runtime
-and runs it, applying the Church numeral to a thunked successor and zero (or to ``True``/``False``).
-The LAZY runtime is call-by-name, so every normalizing term computes, matching the interpreter; the
-strict EAGER runtime, which diverges on Y recursion, is exercised in ``test_runtimes`` instead. The
-FIXPOINT target is the interpreter itself (interpret), so it is covered by the interpreter backend.
+weak-head spine). The compiler backend compiles the term to Python for the call-by-name thunk-based
+runtime and runs it, applying the Church numeral to a thunked successor and zero (or to
+``True``/``False``). Call-by-name computes every normalizing term, matching the interpreter; the
+strict call-by-value runtime, which diverges on Y recursion, is exercised in ``test_runtimes``
+instead. The interpret target is the interpreter itself, so it is covered by the interpreter backend.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ class _CompilerBackend:
 
 
 @pytest.fixture(
-    params=[_InterpreterBackend(), _CompilerBackend(Runtime.LAZY)],
+    params=[_InterpreterBackend(), _CompilerBackend(Runtime.CALL_BY_NAME)],
     ids=["interpreter", "compiler-lazy"],
 )
 def backend(request):

@@ -1,8 +1,8 @@
 """Analysis-driven specialization: the analysis classifies, and the chosen runtime agrees.
 
 The specializer interprets by default and compiles to Python only when an analysis certifies the
-result is unchanged: EAGER for a simply-typed (strongly normalizing) term, LAZY for a term whose
-interpreted behaviour is a finite normal form, FIXPOINT (interpret) otherwise. These tests check the
+result is unchanged: call-by-value for a simply-typed (strongly normalizing) term, call-by-name for a
+term whose interpreted behaviour is a finite normal form, interpret otherwise. These tests check the
 two classifiers (``is_typable``, ``choose_runtime``) and that the specialized output, run, equals
 the interpreter's value.
 """
@@ -64,7 +64,7 @@ def test_recursive_terms_are_not_simply_typed(name: str) -> None:
 @pytest.mark.parametrize("name", sorted(_TYPABLE))
 def test_typable_terms_choose_eager(name: str) -> None:
     # Strong normalization is certified, so the strict runtime is safe.
-    assert choose_runtime(_TYPABLE[name]) is Runtime.EAGER
+    assert choose_runtime(_TYPABLE[name]) is Runtime.CALL_BY_VALUE
 
 
 @pytest.mark.parametrize(
@@ -73,27 +73,27 @@ def test_typable_terms_choose_eager(name: str) -> None:
 )
 def test_normalizing_recursion_chooses_lazy(name: str, node) -> None:
     # Untypable but the interpreter reads a finite normal form (no fold), so call-by-name suffices.
-    assert choose_runtime(node) is Runtime.LAZY
+    assert choose_runtime(node) is Runtime.CALL_BY_NAME
 
 
 @pytest.mark.parametrize("name, node", [("Y (cons 0)", CYCLIC_ZEROS), ("OMEGA", OMEGA)])
 def test_cyclic_behaviour_stays_interpreted(name: str, node) -> None:
     # The interpreter folded a cycle (or hit bottom), so only the fixpoint default is correct.
-    assert choose_runtime(node) is Runtime.FIXPOINT
+    assert choose_runtime(node) is Runtime.INTERPRET
 
 
 def _run_church(node) -> int:
     """Observe a specialized closed Church numeral as an ``int``, per the chosen runtime."""
     runtime, source = specialize(node)
     match runtime:
-        case Runtime.FIXPOINT:
-            assert source is None, "FIXPOINT means interpret: no compiled source"
+        case Runtime.INTERPRET:
+            assert source is None, "the interpret target has no compiled source"
             return _church_to_int(node)
-        case Runtime.EAGER:
+        case Runtime.CALL_BY_VALUE:
             assert source is not None
             numeral = eval(source)
             return numeral(lambda predecessor: predecessor + 1)(0)
-        case Runtime.LAZY:
+        case Runtime.CALL_BY_NAME:
             assert source is not None
             environment = runtime_globals(runtime)
             numeral = eval(source, environment)
@@ -107,10 +107,10 @@ def _run_church(node) -> int:
 @pytest.mark.parametrize(
     "node",
     [
-        build(app(app(PLUS, church(2)), church(3))),  # EAGER
-        build(app(app(MULT, church(3)), church(4))),  # EAGER
-        build(app(FACTORIAL, church(4))),  # LAZY
-        build(app(FIBONACCI, church(5))),  # LAZY
+        build(app(app(PLUS, church(2)), church(3))),  # call-by-value
+        build(app(app(MULT, church(3)), church(4))),  # call-by-value
+        build(app(FACTORIAL, church(4))),  # call-by-name
+        build(app(FIBONACCI, church(5))),  # call-by-name
     ],
 )
 def test_specialized_output_matches_interpreter(node) -> None:

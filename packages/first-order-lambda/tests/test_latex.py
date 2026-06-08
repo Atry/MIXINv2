@@ -41,5 +41,5 @@ def test_term_to_latex_uses_readable_names() -> None:
 def test_latex_has_same_binder_count_as_compiled_python(builder) -> None:
     node = build(builder)
     latex_binders = len(re.findall(r"\\lambda", term_to_latex(node)))
-    python_binders = len(re.findall(r"\blambda\b", compile_to_source(node, Runtime.EAGER)))
+    python_binders = len(re.findall(r"\blambda\b", compile_to_source(node, Runtime.CALL_BY_VALUE)))
     assert latex_binders == python_binders

@@ -36,19 +36,27 @@ _PYTHON_HEADER = (
 )
 
 # (title, builder, runtime, latex): latex is None to auto-render the term with readable names, or a
-# named-combinator string for the composite terms whose full expansion would be unreadable. EAGER is
-# the strict (call-by-value) target; LAZY is the call-by-name target whose lambda term emits the
-# force/Thunk wrapping. The cyclic and divergent examples belong to the fixpoint (interpret) target,
-# which is reintroduced once that target's runtime lands.
+# named-combinator string for the composite terms whose full expansion would be unreadable. The
+# call-by-value target is strict; the call-by-name target emits the lambda term's force/Thunk
+# wrapping. The cyclic and divergent examples belong to the interpret target, which is reintroduced
+# once that target's runtime lands.
+
+# Readable runtime labels for the example headings (the enum name has underscores).
+_RUNTIME_LABEL = {
+    Runtime.CALL_BY_VALUE: "call-by-value",
+    Runtime.CALL_BY_NAME: "call-by-name",
+    Runtime.CALL_BY_NEED: "call-by-need",
+    Runtime.INTERPRET: "interpret",
+}
 _EXAMPLES: tuple[tuple[str, Builder, Runtime, str | None], ...] = (
-    ("Identity", IDENTITY, Runtime.EAGER, None),
-    ("The constant combinator $K$", KESTREL, Runtime.EAGER, None),
-    ("Church numeral $2$", church(2), Runtime.EAGER, None),
-    ("Successor", SUCC, Runtime.EAGER, None),
-    ("Addition", PLUS, Runtime.EAGER, None),
-    ("Multiplication", MULT, Runtime.EAGER, None),
-    ("Zero test", IS_ZERO, Runtime.EAGER, None),
-    ("Identity, call-by-name target", IDENTITY, Runtime.LAZY, None),
+    ("Identity", IDENTITY, Runtime.CALL_BY_VALUE, None),
+    ("The constant combinator $K$", KESTREL, Runtime.CALL_BY_VALUE, None),
+    ("Church numeral $2$", church(2), Runtime.CALL_BY_VALUE, None),
+    ("Successor", SUCC, Runtime.CALL_BY_VALUE, None),
+    ("Addition", PLUS, Runtime.CALL_BY_VALUE, None),
+    ("Multiplication", MULT, Runtime.CALL_BY_VALUE, None),
+    ("Zero test", IS_ZERO, Runtime.CALL_BY_VALUE, None),
+    ("Identity, call-by-name target", IDENTITY, Runtime.CALL_BY_NAME, None),
 )
 
 
@@ -59,7 +67,7 @@ def _listing(source: str) -> str:
 def _example_block(title: str, builder: Builder, runtime: Runtime, latex: str | None) -> str:
     node = build(builder)
     rendered = latex if latex is not None else term_to_latex(node)
-    note = "" if runtime is Runtime.EAGER else f"~\\textnormal{{({runtime.name.lower()} runtime)}}"
+    note = "" if runtime is Runtime.CALL_BY_VALUE else f"~\\textnormal{{({_RUNTIME_LABEL[runtime]} runtime)}}"
     heading = f"\\medskip\\noindent\\textbf{{{title}.}}{note}\\quad ${rendered}$\n"
     return heading + _listing(compile_to_source(node, runtime))
 

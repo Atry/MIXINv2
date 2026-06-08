@@ -3,21 +3,22 @@
 The interpreter is the default. A ``Node``'s ``weak_head_normal_form`` is a
 ``fixpoint_cached_property`` thunk, interned and possibly cyclic, so the term graph already *is*
 a fixpoint-thunk graph the interpreter folds; handing that graph back is the identity. The only
-compilations that change anything are the two that pick a different evaluation strategy, EAGER
-(strict, call-by-value) and LAZY (call-by-name), and they preserve the interpreter's result only
-under conditions a static analysis can certify:
+compilations that change anything are the two that pick a different evaluation strategy, call-by-value
+(strict) and call-by-name, and they preserve the interpreter's result only under conditions a static
+analysis can certify:
 
 - ``is_typable`` decides simple typability (STLC, algorithm-W style). A simply-typed term is
-  strongly normalizing, so strict evaluation terminates with the same normal form: EAGER is safe.
+  strongly normalizing, so strict evaluation terminates with the same normal form: call-by-value is
+  safe.
 - ``needs_folding`` consults the interpreter as a sound oracle: it reads the behaviour out and
   checks whether the fixpoint fold was used (a back-reference ``#`` or the ``⊥`` leaf). If the
-  behaviour is a finite normal form, the term is normalizing and LAZY (which recomputes, never
-  folds) reaches the same value.
+  behaviour is a finite normal form, the term is normalizing and call-by-name (which recomputes,
+  never folds) reaches the same value.
 
-``choose_runtime`` layers these: EAGER if typable; else LAZY if the behaviour is a finite normal
-form; else FIXPOINT, meaning leave the sub-term to the interpreter, which always folds correctly.
-This is a partial evaluator with a soundness analysis and the interpreter as the fixpoint fallback;
-no totality is claimed, and anything not certified stays interpreted.
+``choose_runtime`` layers these: call-by-value if typable; else call-by-name if the behaviour is a
+finite normal form; else interpret, meaning leave the sub-term to the interpreter, which always folds
+correctly. This is a partial evaluator with a soundness analysis and the interpreter as the fixpoint
+fallback; no totality is claimed, and anything not certified stays interpreted.
 """
 
 from __future__ import annotations
@@ -131,9 +132,9 @@ class _Inference:
 def is_typable(node: Node) -> bool:
     """Whether ``node`` is simply typable, a sound certificate of strong normalization.
 
-    A simply-typed term is strongly normalizing, so the strict EAGER runtime terminates with the
-    interpreter's normal form. This is sound but conservative: an untypable term may still
-    normalize (factorial does), so untypability only means EAGER is not certified, not unsafe.
+    A simply-typed term is strongly normalizing, so the strict call-by-value runtime terminates with
+    the interpreter's normal form. This is sound but conservative: an untypable term may still
+    normalize (factorial does), so untypability only means call-by-value is not certified, not unsafe.
     """
     inference = _Inference()
     inference.infer(node, ())
@@ -145,8 +146,8 @@ def needs_folding(node: Node) -> bool:
 
     The interpreter is a sound oracle: it always terminates on rational behaviour and folds cycles
     to a back-reference ``#`` (or ``⊥`` for an unproductive cycle). A behaviour with neither marker
-    is a finite normal form, so the term is normalizing and the LAZY runtime, which recomputes and
-    never folds, reaches the same value. Normalization is undecidable in general; running the safe
+    is a finite normal form, so the term is normalizing and the call-by-name runtime, which recomputes
+    and never folds, reaches the same value. Normalization is undecidable in general; running the safe
     interpreter and reading off whether it folded is the pragmatic sound test.
     """
     behaviour = render(node)
@@ -156,25 +157,26 @@ def needs_folding(node: Node) -> bool:
 def choose_runtime(node: Node) -> Runtime:
     """The fastest runtime certified to preserve ``node``'s interpreted behaviour.
 
-    EAGER if simply typable (strongly normalizing); else LAZY if the behaviour is a finite normal
-    form (normalizing); else FIXPOINT, meaning leave it to the interpreter, which folds correctly.
+    Call-by-value if simply typable (strongly normalizing); else call-by-name if the behaviour is a
+    finite normal form (normalizing); else interpret, leaving it to the interpreter, which folds
+    correctly.
     """
     if is_typable(node):
-        return Runtime.EAGER
+        return Runtime.CALL_BY_VALUE
     if not needs_folding(node):
-        return Runtime.LAZY
-    return Runtime.FIXPOINT
+        return Runtime.CALL_BY_NAME
+    return Runtime.INTERPRET
 
 
 def specialize(node: Node) -> tuple[Runtime, str | None]:
     """Specialize ``node`` to its certified runtime.
 
-    Returns the chosen runtime and, for EAGER/LAZY, the compiled Python source. FIXPOINT returns
-    ``None`` source, meaning "interpret": the fixpoint-thunk graph is the AST, so the interpreter
+    Returns the chosen runtime and, for the compiled targets, the compiled Python source. The
+    interpret target returns ``None`` source: the fixpoint-thunk graph is the AST, so the interpreter
     is the compilation.
     """
     runtime = choose_runtime(node)
-    if runtime is Runtime.FIXPOINT:
+    if runtime is Runtime.INTERPRET:
         return runtime, None
     return runtime, compile_to_source(node, runtime)
 
@@ -183,8 +185,8 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
 # A solution written in the lambda-calculus is compiled ONCE to a Python callable; the Python side
 # then feeds it many lambda-term inputs. Inputs and outputs stay lambda values (no Python-domain
 # marshalling): an input term is compiled to its host value under the same runtime and applied, and
-# the result is the host lambda value, which the caller observes however it likes. EAGER is chosen
-# for a simply-typed (strongly normalizing) solution, otherwise LAZY: call-by-name is faithful on
+# the result is the host lambda value, which the caller observes however it likes. Call-by-value is
+# chosen for a simply-typed (strongly normalizing) solution, otherwise call-by-name: it is faithful on
 # every terminating application (it reaches the unique fixpoint, the denotation, rather than
 # diverging), which is exactly the regime of concrete test inputs.
 
@@ -192,11 +194,11 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
 def compile_callable(node: Node, runtime: Runtime) -> Callable:
     """Compile ``node`` ONCE to a Python callable under ``runtime``.
 
-    EAGER source is strict and self-contained; LAZY/FIXPOINT source refers to the free names ``force``
-    and ``Thunk`` supplied by ``runtime_globals``.
+    Call-by-value source is strict and self-contained; call-by-name source refers to the free names
+    ``force`` and ``Thunk`` supplied by ``runtime_globals``.
     """
     source = compile_to_source(node, runtime)
-    if runtime is Runtime.EAGER:
+    if runtime is Runtime.CALL_BY_VALUE:
         return eval(source)
     return eval(source, runtime_globals(runtime))
 
@@ -213,10 +215,10 @@ def host_value(node: Node, runtime: Runtime) -> object:
 def apply_compiled(function: object, argument: object, runtime: Runtime) -> object:
     """Apply a compiled ``function`` to a compiled ``argument`` under ``runtime``'s calling convention.
 
-    EAGER passes the argument directly; LAZY/FIXPOINT pass it as a thunk, since the compiled body
-    forces its variables.
+    Call-by-value passes the argument directly; call-by-name passes it as a thunk, since the compiled
+    body forces its variables.
     """
-    if runtime is Runtime.EAGER:
+    if runtime is Runtime.CALL_BY_VALUE:
         return function(argument)  # type: ignore[operator]
     thunk = runtime_globals(runtime)["Thunk"]
     return function(thunk(lambda: argument))  # type: ignore[operator]
@@ -226,14 +228,15 @@ def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[...
     """Compile a reusable lambda function ONCE; return ``solve(*input_nodes)`` applying it to its
     inputs.
 
-    ``runtime`` defaults to EAGER if the solution is simply typable (strongly normalizing), else
-    LAZY. ``solve`` compiles each input term to a host value (cheap; the solution is the expensive
-    part, compiled once) and applies the function under the runtime's calling convention, returning
-    the host lambda value. The function is never classed FIXPOINT here: the caller is asserting it is
-    a function to be applied, and LAZY converges on every terminating application.
+    ``runtime`` defaults to call-by-value if the solution is simply typable (strongly normalizing),
+    else call-by-name. ``solve`` compiles each input term to a host value (cheap; the solution is the
+    expensive part, compiled once) and applies the function under the runtime's calling convention,
+    returning the host lambda value. The function is never classed interpret here: the caller is
+    asserting it is a function to be applied, and call-by-name converges on every terminating
+    application.
     """
     if runtime is None:
-        runtime = Runtime.EAGER if is_typable(node) else Runtime.LAZY
+        runtime = Runtime.CALL_BY_VALUE if is_typable(node) else Runtime.CALL_BY_NAME
     chosen = runtime
     function = compile_callable(node, chosen)
 
@@ -255,7 +258,7 @@ def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[...
 
 
 def _decode_church_host(value: object, runtime: Runtime) -> int:
-    if runtime is Runtime.EAGER:
+    if runtime is Runtime.CALL_BY_VALUE:
         return value(lambda predecessor: predecessor + 1)(0)  # type: ignore[operator]
     globals_ = runtime_globals(runtime)
     thunk, force = globals_["Thunk"], globals_["force"]
@@ -268,11 +271,11 @@ def church_island(node: Node, runtime: Runtime | None = None) -> Native:
 
     The term is compiled once; the island's ``run`` evaluates it and reifies the result Church
     numeral back to a node, so the island composes with the interpreter through the Node graph. The
-    runtime defaults to EAGER when the term is simply typable, else LAZY.
+    runtime defaults to call-by-value when the term is simply typable, else call-by-name.
     """
     if node.loose_bound != 0:
         raise ValueError("church_island requires a closed term")
-    chosen = runtime if runtime is not None else (Runtime.EAGER if is_typable(node) else Runtime.LAZY)
+    chosen = runtime if runtime is not None else (Runtime.CALL_BY_VALUE if is_typable(node) else Runtime.CALL_BY_NAME)
     compiled = compile_callable(node, chosen)
 
     def run() -> Node:

@@ -4,13 +4,13 @@ The source is a quoted lambda term, a Scott value over ``QVar i`` / ``QLam body`
 Bruijn). ``COMPILE`` is a pure lambda term that, GIVEN a compilation option, maps the quoted source to
 a quoted Python expression, a Scott value over ``PyVar level`` / ``PyLam level body`` / ``PyApp f a``
 / ``PyForce e`` / ``PyThunk e``. The option decides the target, in the lambda term itself: under the
-eager option an application is a strict call and a variable is a bare name; under the lazy option a
-variable is forced and an argument is thunked (``force``/``Thunk``), the call-by-name target matching
+call-by-value option an application is a strict call and a variable is a bare name; under the
+call-by-name option a variable is forced and an argument is thunked (``force``/``Thunk``), matching
 the interpreter's weak-head reduction. So the target-specific codegen lives in the lambda term; Python
 only quotes the input, supplies the option, runs the interpreter, and decodes the resulting Scott
 Python expression with a single generic decoder.
 
-The fixpoint target is not a compiled target. It means interpret: re-submit the term to the
+The interpret target is not a compiled target. It means interpret: re-submit the term to the
 interpreter, whose interning gives the genuine cross-graph tabling fold. (The old compiled fixpoint
 thunk, a ``fixpoint_cached_property`` per thunk, had no cross-graph tabling and is removed.)
 """
@@ -137,18 +137,21 @@ def quote(node: Node) -> Builder:
 
 
 class Runtime(Enum):
-    EAGER = auto()
-    LAZY = auto()
-    FIXPOINT = auto()
+    CALL_BY_VALUE = auto()  # strict: an argument is evaluated to a value before the call
+    CALL_BY_NAME = auto()  # an argument is a thunk recomputed on each force (no sharing)
+    CALL_BY_NEED = auto()  # call-by-name plus memoisation: the thunk computes once and shares
+    INTERPRET = auto()  # not a compiled target: re-submit the term to the interpreter
 
 
 def _option(runtime: Runtime) -> Builder:
     """The Scott compilation option for a compiled target: a Church boolean ``thunked``."""
-    if runtime is Runtime.EAGER:
+    if runtime is Runtime.CALL_BY_VALUE:
         return FALSE
-    if runtime is Runtime.LAZY:
+    if runtime is Runtime.CALL_BY_NAME:
         return TRUE
-    raise ValueError("the fixpoint target is interpreted, not compiled; compile EAGER or LAZY")
+    if runtime is Runtime.CALL_BY_NEED:
+        raise NotImplementedError("call-by-need codegen (explicit memoising thunks) is not built yet")
+    raise ValueError("the interpret target is not compiled; compile call-by-value or call-by-name")
 
 
 def compile_quoted(option: Builder, quoted: Builder) -> Node:
@@ -194,11 +197,11 @@ def _decode_pyast(node: Node) -> ast.expr:
             raise ValueError(f"unknown PyExpr tag {tag}")
 
 
-# --- runtime support for the compiled lazy target -----------------------------------------------
-# The lazy target's emitted Python refers to the free names ``force`` and ``Thunk``. An argument is a
-# thunk ``Thunk(lambda: a)`` recomputed on each ``force`` (call-by-name), matching the interpreter's
-# weak-head reduction so every normalizing term computes its value. (The eager target is strict and
-# self-contained; the fixpoint target is the interpreter, not a compiled runtime.)
+# --- runtime support for the compiled call-by-name target ---------------------------------------
+# The call-by-name target's emitted Python refers to the free names ``force`` and ``Thunk``. An
+# argument is a thunk ``Thunk(lambda: a)`` recomputed on each ``force``, matching the interpreter's
+# weak-head reduction so every normalizing term computes its value. (The call-by-value target is
+# strict and self-contained; the interpret target is the interpreter, not a compiled runtime.)
 
 
 class _Thunk:
@@ -223,20 +226,23 @@ def force(value):
 def runtime_globals(runtime: Runtime) -> dict:
     """The evaluation globals for a compiled program under the given runtime.
 
-    EAGER source is self-contained; LAZY source needs ``force`` and the call-by-name ``Thunk``.
+    Call-by-value source is self-contained; call-by-name source needs ``force`` and the
+    recompute-on-force ``Thunk``.
     """
-    if runtime is Runtime.EAGER:
+    if runtime is Runtime.CALL_BY_VALUE:
         return {}
-    if runtime is Runtime.LAZY:
+    if runtime is Runtime.CALL_BY_NAME:
         return {"force": force, "Thunk": _LazyThunk}
-    raise ValueError("the fixpoint target is interpreted; it has no compiled runtime globals")
+    if runtime is Runtime.CALL_BY_NEED:
+        raise NotImplementedError("call-by-need codegen (explicit memoising thunks) is not built yet")
+    raise ValueError("the interpret target is interpreted; it has no compiled runtime globals")
 
 
-def compile_to_source(node: Node, runtime: Runtime = Runtime.EAGER) -> str:
+def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
     """Compile an interpreter lambda term to Python source for the given compiled target.
 
-    EAGER yields a strict expression; LAZY yields the call-by-name expression (the lambda term emits
-    the ``force``/``Thunk`` wrapping). The fixpoint target is interpreted, not compiled.
+    Call-by-value yields a strict expression; call-by-name yields the expression with the lambda
+    term's ``force``/``Thunk`` wrapping. The interpret target is interpreted, not compiled.
     """
     compiled = compile_quoted(_option(runtime), quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_pyast(compiled)))
@@ -317,7 +323,7 @@ def compiled_compiler():
     return eval(compile_to_source(build(COMPILE)))
 
 
-def compile_with(compiler, node: Node, runtime: Runtime = Runtime.EAGER) -> str:
+def compile_with(compiler, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
     """Compile ``node`` using a host-Python compiler function (e.g. the self-compiled one)."""
-    result = compiler(_python_bool(runtime is Runtime.LAZY))(_python_church(0))(_python_quote(node))
+    result = compiler(_python_bool(runtime is Runtime.CALL_BY_NAME))(_python_church(0))(_python_quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_python_pyexpr(result)))

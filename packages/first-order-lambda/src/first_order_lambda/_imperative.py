@@ -1,6 +1,6 @@
 """Imperative specialization of a productive rational stream: loops from folding.
 
-This is a further specialization, beyond the EAGER/LAZY targets of ``_specialize``: a productive
+This is a further specialization, beyond the call-by-value/call-by-name targets of ``_specialize``: a productive
 stream whose behaviour is rational compiles to an imperative Python generator with a ``while`` loop.
 
 ``GEN`` is a pure lambda term that maps a Scott stream ``cons h t`` to a quoted output stream
