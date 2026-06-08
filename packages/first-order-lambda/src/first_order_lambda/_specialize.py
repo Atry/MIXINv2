@@ -27,12 +27,29 @@ from dataclasses import dataclass
 
 from typing import Callable
 
-from first_order_lambda._analysis import CLOSED
+import ast
+
+from first_order_lambda import _pybuild
+from first_order_lambda._analysis import CLOSED, IS_CLOSED
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
+    COMPILE,
     Runtime,
+    Z,
+    _BRANCH_ARGUMENT,
+    _BRANCH_BODY,
+    _BRANCH_FUNCTION,
+    _ex_name,
+    _fst,
+    _need_pair,
+    _one,
+    _option,
     _recursion_headroom,
+    _snd,
+    _st_assign,
+    _stmt,
+    _sym_path_codes,
     compile_interpreted,
     compile_to_source,
     quote,
@@ -40,8 +57,8 @@ from first_order_lambda._compiler import (
     value_island as _compiler_value_island,
 )
 from first_order_lambda._dsl import app, build, lam
-from first_order_lambda._prelude import AND, church
-from first_order_lambda._pyast import _church_to_int
+from first_order_lambda._prelude import AND, SCOTT_NIL, church, cons
+from first_order_lambda._pyast import _church_to_int, decode
 from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from first_order_lambda._render import render
 from first_order_lambda._typecheck import TYPABLE
@@ -244,6 +261,110 @@ def compile_specialized(node: Node) -> str:
         return compile_to_source(node, Runtime.CALL_BY_VALUE)
     islands = frozenset(id(island) for island in call_by_value_islands(node))
     return compile_interpreted(node, islands)
+
+
+# --- COMPILE_SPECIALIZED: the specializing compiler, entirely a lambda term ----------------------
+# One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above.
+# A closed simply-typable WHOLE term carries the by-value certificate, so it compiles to a strict
+# call-by-value expression (COMPILE at the eager option). Otherwise it compiles to an interpret-with-
+# islands A-normal-form module: the term is reconstructed with make_var/make_lam/make_app as one
+# assignment per node (so the deep term stays under CPython's parser nesting cap), but each maximal
+# closed simply-typable sub-term is spliced as value_island(<that sub-term compiled call-by-value>), an
+# FFI island the interpreter drives in place of interpreting the subtree. The module ends
+# compiled_compiler = interpret(<root>). Island detection uses the depth-free IS_CLOSED (interning-
+# shared, so the scan is linear) and the lambda TYPABLE certificate; the statement list is built with a
+# difference list (O(1) composition per node, so emission is linear). All of this is the lambda term;
+# Python only quotes the input, runs the interpreter, and decodes the result with the generic
+# _pyast.decode. (On normal programs this is fast; the COMPILE self-host artifact is heavy because full
+# lambda algorithm-W inference on the large island combinators is costly under the no-GC interner.)
+
+_ISLAND_CERTIFICATE: "object" = lam(lambda quoted: app(app(
+    AND, app(IS_CLOSED, quoted)), app(TYPABLE, quoted),
+))  # closed (depth-free LOOSE_BOUND, so interning shares it) and simply typable: a call-by-value island
+
+
+def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
+    """An ``ast.Call`` of a runtime global (``make_var``/``make_lam``/``make_app``/``value_island``/
+    ``interpret``) to the given argument expressions, built as the generic Scott AST."""
+    arguments = SCOTT_NIL
+    for argument in reversed(argument_expressions):
+        arguments = cons(_pybuild.field_node(argument), arguments)
+    return _pybuild.py_call(_pybuild.py_name(_pybuild.char_codes(name_text), _pybuild.py_load()), arguments)
+
+
+def _compile_call_by_value(quoted: "object") -> "object":
+    """The quoted sub-term compiled to a strict call-by-value expression by ``COMPILE``."""
+    return app(app(app(COMPILE, _option(Runtime.CALL_BY_VALUE)), church(0)), quoted)
+
+
+def _assign_stmt(path: "object", value: "object") -> "object":
+    """The statement field ``<temp> = value`` where ``temp`` is the node's path-derived name."""
+    return _stmt(_st_assign(_sym_path_codes(path), value))
+
+
+_COMPILED_COMPILER_CODES: "object" = _pybuild.char_codes("compiled_compiler")
+
+# self path quoted -> (emit, value). ``emit`` is a DIFFERENCE LIST (statements-after -> statements-with-
+# this-in-front), so a parent composes children in O(1) and the module is linear in the term. ``value``
+# names this node's temp. A maximal island is spliced; otherwise the node is reconstructed and recursed.
+_SPECIALIZE_REC: "object" = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda quoted: app(app(
+    app(_ISLAND_CERTIFICATE, quoted),
+    _need_pair(
+        lam(lambda rest: cons(
+            _assign_stmt(path, _runtime_call("value_island", (_compile_call_by_value(quoted),))), rest,
+        )),
+        _ex_name(_sym_path_codes(path)),
+    ),
+    ),
+    app(app(app(
+        quoted,
+        lam(lambda index: _need_pair(
+            lam(lambda rest: cons(
+                _assign_stmt(path, _runtime_call("make_var", (_pybuild.py_constant_int(index),))), rest,
+            )),
+            _ex_name(_sym_path_codes(path)),
+        )),
+        ),
+        lam(lambda body: app(lam(lambda compiled_body: _need_pair(
+            lam(lambda rest: app(_fst(compiled_body), cons(
+                _assign_stmt(path, _runtime_call("make_lam", (_snd(compiled_body),))), rest,
+            ))),
+            _ex_name(_sym_path_codes(path)),
+        )), app(app(self_recursion, cons(_BRANCH_BODY, path)), body))),
+        ),
+        lam(lambda function: lam(lambda argument: app(lam(lambda compiled_function: app(lam(lambda compiled_argument: _need_pair(
+            lam(lambda rest: app(_fst(compiled_function), app(_fst(compiled_argument), cons(
+                _assign_stmt(path, _runtime_call("make_app", (_snd(compiled_function), _snd(compiled_argument)))), rest,
+            )))),
+            _ex_name(_sym_path_codes(path)),
+        )), app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), argument))), app(app(self_recursion, cons(_BRANCH_FUNCTION, path)), function)))),
+    ),
+)))))
+
+
+COMPILE_SPECIALIZED: "object" = lam(lambda quoted: app(app(
+    app(_ISLAND_CERTIFICATE, quoted),
+    _compile_call_by_value(quoted),  # whole term is a by-value island: a strict expression
+    ),
+    app(lam(lambda root: _pybuild.py_module(app(_fst(root), _one(
+        _stmt(_st_assign(_COMPILED_COMPILER_CODES, _runtime_call("interpret", (_snd(root),)))),
+    )))), app(app(_SPECIALIZE_REC, SCOTT_NIL), quoted)),
+))
+
+
+def compile_specialized_lambda(node: Node) -> str:
+    """Compile ``node`` in specialized mode, entirely by the lambda term ``COMPILE_SPECIALIZED``.
+
+    Runs ``COMPILE_SPECIALIZED`` on the quoted term and decodes the result with the generic
+    ``_pyast.decode``. A closed simply-typable whole term yields a strict call-by-value expression;
+    otherwise an interpret-with-islands A-normal-form module whose maximal closed simply-typable
+    sub-terms are spliced as compiled by-value islands. The decision and the codegen are the lambda
+    term; Python only quotes, runs, and decodes. This is the all-lambda replacement for
+    ``compile_specialized``; it is fast on normal programs (the COMPILE self-host artifact is heavy).
+    """
+    return run_in_large_stack(
+        lambda: ast.unparse(ast.fix_missing_locations(decode(build(app(COMPILE_SPECIALIZED, quote(node)))))),
+    )
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------

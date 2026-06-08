@@ -48,6 +48,30 @@ CLOSED: Builder = app(
     )))),
 )
 
+# LOOSE_BOUND: a DEPTH-FREE closedness measure, so the interpreter's interning shares it across every
+# position. ``CLOSED`` above threads a binder depth, so ``CLOSED depth quoted`` at a node never coincides
+# with the depth-shifted internal calls and is recomputed per node (quadratic when a scan asks at every
+# node). ``LOOSE_BOUND quoted`` takes no depth, so ``app(LOOSE_BOUND, sub)`` is the SAME node for an
+# interned sub-term and is tabled once: a whole-tree scan is then linear. It returns the number of
+# enclosing binders the sub-term needs (the de Bruijn ``loose_bound``): a variable needs index+1, an
+# abstraction discharges one (floored at zero by ``PRED``), an application needs the larger of the two.
+# A sub-term is closed exactly when it needs none.
+_MAX: Builder = lam(lambda a: lam(lambda b: app(app(app(app(_AT_MOST, a), b), b), a)))  # a <= b ? b : a
+
+LOOSE_BOUND: Builder = app(Z, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
+    quoted,
+    lam(lambda index: app(SUCC, index)),  # QVar index: needs index+1 enclosing binders
+    ),
+    lam(lambda body: app(PRED, app(self_recursion, body))),  # QLam body: discharges one binder
+    ),
+    lam(lambda function: lam(lambda argument: app(
+        app(_MAX, app(self_recursion, function)), app(self_recursion, argument),
+    ))),  # QApp f a: the larger of the two
+))))
+
+IS_CLOSED: Builder = lam(lambda quoted: app(IS_ZERO, app(LOOSE_BOUND, quoted)))  # closed iff needs none
+
+
 _TRUE_MARKER = 7_100_001
 _FALSE_MARKER = 7_100_002
 
