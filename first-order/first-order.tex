@@ -1283,10 +1283,11 @@ The compiler compiles itself in specialized mode at a chosen island depth bound
 simply-typable sub-term shallower than the bound is certified as a strict call-by-value island, so a
 larger bound compiles more of the compiler as native code and descends further into the deep
 combinators to splice their sub-islands, at the price of typing deeper sub-terms while generating.
-Table~\ref{tab:self-compilation} benchmarks three stages, each regenerating the self-compiled compiler
-in a fresh process so its peak memory is its own; depth 8 is the small committed artifact and depth
-128 the large one. The island counts and artifact sizes are deterministic; the time and memory are a
-measured snapshot.
+Table~\ref{tab:self-compilation} benchmarks three versions, each regenerating the self-compiled
+compiler in a fresh process so its peak memory is its own: the interpreter-only version at depth 0
+splices no island and runs the whole compiler in the interpreter, depth 8 is the small committed
+artifact, and depth 128 the large one. The island counts and artifact sizes are deterministic; the
+time and memory are a measured snapshot.
 
 \begin{table}[h]
 \centering
