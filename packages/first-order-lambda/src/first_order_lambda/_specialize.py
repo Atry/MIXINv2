@@ -37,20 +37,8 @@ from first_order_lambda._compiler import (
     COMPILE,
     Runtime,
     Z,
-    _BRANCH_ARGUMENT,
-    _BRANCH_BODY,
-    _BRANCH_FUNCTION,
-    _NTH,
-    _ex_name,
-    _fst,
-    _need_pair,
-    _one,
     _option,
     _recursion_headroom,
-    _snd,
-    _st_assign,
-    _stmt,
-    _sym_path_codes,
     compile_interpreted,
     compile_to_source,
     quote,
@@ -294,12 +282,14 @@ def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
     arguments = SCOTT_NIL
     for argument in reversed(argument_expressions):
         arguments = cons(_pybuild.field_node(argument), arguments)
-    return _pybuild.py_call(_pybuild.py_name(_pybuild.char_codes(name_text), _pybuild.py_load()), arguments)
+    return _pybuild.py_call(
+        _pybuild.py_name(_pybuild.field_str(_pybuild.char_codes(name_text)), _pybuild.py_load()), arguments,
+    )
 
 
 def _compile_call_by_value(quoted: "object") -> "object":
     """The quoted sub-term compiled to a strict call-by-value expression by ``COMPILE``."""
-    return app(app(app(COMPILE, _option(Runtime.CALL_BY_VALUE)), church(0)), quoted)
+    return app(app(app(app(COMPILE, _option(Runtime.CALL_BY_VALUE)), SCOTT_NIL), SCOTT_NIL), quoted)
 
 
 # island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).

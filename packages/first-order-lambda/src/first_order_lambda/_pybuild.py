@@ -21,6 +21,7 @@ from first_order_lambda._dsl import Builder
 from first_order_lambda._prelude import SCOTT_NIL, church
 from first_order_lambda._pyast import (
     _K_BOOL,
+    _K_IDENT,
     _K_INT,
     _K_LIST,
     _K_NODE,
@@ -58,6 +59,13 @@ def field_str(char_codes: Builder) -> Builder:
     return _kind(_K_STR, char_codes)
 
 
+def field_ident(path: Builder) -> Builder:
+    """An identifier field; ``path`` is a Scott list of Nats (an AST path). The single ``_pyast``
+    decoder renders it ``v_<int>_<int>...`` for every runtime, so the lambda compiler emits only the
+    path, never a rendered string."""
+    return _kind(_K_IDENT, path)
+
+
 def field_bool(nat: Builder) -> Builder:
     return _kind(_K_BOOL, nat)
 
@@ -93,14 +101,15 @@ def py_is() -> Builder:
     return _node(ast.Is, [])
 
 
-def py_name(name_codes: Builder, ctx: Builder) -> Builder:
-    """``ast.Name(id=<name>, ctx=<ctx>)``; ``name_codes`` a Scott list of char codes."""
-    return _node(ast.Name, [field_str(name_codes), field_node(ctx)])
+def py_name(name_field: Builder, ctx: Builder) -> Builder:
+    """``ast.Name(id=<name>, ctx=<ctx>)``; ``name_field`` an already-kind-tagged name field
+    (``field_str`` for a fixed name, ``field_ident`` for a variable's AST path)."""
+    return _node(ast.Name, [name_field, field_node(ctx)])
 
 
-def py_arg(name_codes: Builder) -> Builder:
-    """``ast.arg(arg=<name>, annotation=None, type_comment=None)``."""
-    return _node(ast.arg, [field_str(name_codes), field_none(), field_none()])
+def py_arg(name_field: Builder) -> Builder:
+    """``ast.arg(arg=<name>, annotation=None, type_comment=None)``; ``name_field`` a name field."""
+    return _node(ast.arg, [name_field, field_none(), field_none()])
 
 
 def py_arguments(arg_fields: Builder) -> Builder:
@@ -120,9 +129,9 @@ def py_arguments(arg_fields: Builder) -> Builder:
     )
 
 
-def py_lambda(arg_codes: Builder, body: Builder) -> Builder:
-    """``lambda <arg>: <body>`` with a single positional parameter."""
-    args = py_arguments(_scott_list([field_node(py_arg(arg_codes))]))
+def py_lambda(arg_field: Builder, body: Builder) -> Builder:
+    """``lambda <arg>: <body>`` with a single positional parameter; ``arg_field`` a name field."""
+    args = py_arguments(_scott_list([field_node(py_arg(arg_field))]))
     return _node(ast.Lambda, [field_node(args), field_node(body)])
 
 
@@ -136,7 +145,7 @@ def py_call(func: Builder, arg_fields: Builder) -> Builder:
     return _node(ast.Call, [field_node(func), field_list(arg_fields), field_list(SCOTT_NIL)])
 
 
-def py_function_def(name_codes: Builder, args_node: Builder, body_fields: Builder) -> Builder:
+def py_function_def(name_field: Builder, args_node: Builder, body_fields: Builder) -> Builder:
     """``def <name>(<args>): <body>`` with no decorators/returns/type comment; ``body_fields`` a Scott
     list of ``field_node(stmt)``.
 
@@ -145,7 +154,7 @@ def py_function_def(name_codes: Builder, args_node: Builder, body_fields: Builde
     the generic decoder reflects, so the call-by-need target round-trips on 3.11 and on 3.12+ alike.
     """
     by_name = {
-        "name": field_str(name_codes),
+        "name": name_field,
         "args": field_node(args_node),
         "body": field_list(body_fields),
         "decorator_list": field_list(SCOTT_NIL),

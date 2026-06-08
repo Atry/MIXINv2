@@ -12,9 +12,12 @@ The arithmetic combinators (``BIN_SUCC``, ``BIN_ADD``, ``BIN_SUB``, ``BIN_MUL``,
 comparisons built on it) are pure lambda terms, recursing over the bit list with ``Y``; the
 interpreter runs them, tabling shared subproblems. Python ``int`` decoding is for tests and readouts.
 
-The same encoding also names the compiler's emitted Python identifiers: an identifier is a *list* of
-BinNats (an AST path), decoded to an underscore-joined name like ``v_12_3_567``, distinct paths giving
-distinct names, so uniqueness is by construction.
+BinNat is also the type checker's type-variable id type: fresh ids get O(log) ``BIN_EQUAL`` comparison
+during unification, where Church-id arithmetic would be O(id). ``binnat_list_to_identifier`` renders a
+*list* of BinNats to an underscore-joined name like ``v_12_3_567`` (distinct lists give distinct names,
+so uniqueness is by construction). The compiler's *emitted* Python identifiers share that
+underscore-joined shape, but are AST paths of small Church-numeral segments emitted as a list of Nats
+and rendered by the single generic ``_pyast`` decoder, so no identifier string is built in the lambda.
 """
 
 from __future__ import annotations

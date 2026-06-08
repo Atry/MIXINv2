@@ -40,7 +40,7 @@ _TAG = {cls: tag for tag, cls in enumerate(SUPPORTED)}
 _ARITY = tuple(len(cls._fields) for cls in SUPPORTED)
 
 # Field kind tags.
-_K_NODE, _K_LIST, _K_INT, _K_STR, _K_BOOL, _K_NONE = range(6)
+_K_NODE, _K_LIST, _K_INT, _K_STR, _K_BOOL, _K_NONE, _K_IDENT = range(7)
 
 # Disjoint free-variable bands used as meta markers (far above any real index; Scott values here
 # are closed, so the only free variables in a probed term are these markers).
@@ -182,8 +182,19 @@ def _decode_field(node: Node) -> object:
             return bool(_church_to_int(payload))
         case 5:  # NONE
             return None
+        case 6:  # IDENT: a list of Nats (an AST path) rendered to one underscore-joined identifier
+            return _path_to_identifier(payload)
         case _:
             raise ValueError(f"unknown field kind {kind}")
+
+
+# The single identifier decoder shared by every runtime: a variable's identifier is the list of Nats
+# naming its AST path, rendered ``v`` then ``_<segment>`` per segment (underscore-joined decimal
+# integers, an alphabetic prefix). Distinct paths give distinct names, so uniqueness is by construction;
+# the lambda compiler emits only the path (a list of Nats), never the rendered string.
+def _path_to_identifier(payload: Node) -> str:
+    segments = [_church_to_int(segment) for segment in _decode_scott_list(payload)]
+    return "_".join(["v", *(str(segment) for segment in segments)])
 
 
 def decode(node: Node) -> ast.AST:

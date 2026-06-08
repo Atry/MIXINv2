@@ -27,7 +27,7 @@ from typing import Iterator
 from first_order_lambda import _pybuild
 from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from first_order_lambda._dsl import Builder, app, build, lam
-from first_order_lambda._prelude import FALSE, PLUS, PRED, SCOTT_NIL, SUCC, TRUE, church, cons, map_list
+from first_order_lambda._prelude import FALSE, SCOTT_NIL, TRUE, church, cons, map_list
 from first_order_lambda._pyast import decode
 
 # The strict (call-by-value) fixpoint combinator Z = lambda f. (lambda x. f (lambda v. x x v)) (...).
@@ -67,20 +67,10 @@ def q_app(function: Builder, argument: Builder) -> Builder:
 
 
 # The compiler emits the GENERIC _pyast Scott encoding of a real Python ast (built with the lambda-term
-# smart constructors in _pybuild), decoded by the generic _pyast.decode. A variable at de Bruijn level
-# k is named ``v`` followed by k copies of ``x`` (unique, valid, built by Church iteration over the
-# level); the call-by-name target wraps a variable/function in ``force(...)`` and an argument in
-# ``Thunk(lambda: ...)``.
-
-# sub a b = a - b, by applying PRED to a, b times.
-_SUB: Builder = lam(lambda a: lam(lambda b: app(app(b, PRED), a)))
-
-# A level (Church numeral) to its identifier char codes: ``v`` :: (``x`` * level).
-_PREPEND_X: Builder = lam(lambda rest: cons(church(120), rest))
-
-
-def _level_codes(level: Builder) -> Builder:
-    return cons(church(118), app(app(level, _PREPEND_X), SCOTT_NIL))
+# smart constructors in _pybuild), decoded by the generic _pyast.decode. Every variable identifier is
+# emitted as a LIST OF NATS (its AST path) via _pybuild.field_ident; the single _pyast decoder renders it
+# ``v_<int>_<int>...`` for every runtime, so no identifier string is built inside the lambda term. The
+# call-by-name target wraps a variable/function in ``force(...)`` and an argument in ``Thunk(lambda: .)``.
 
 
 def _single_arg(expr: Builder) -> Builder:
@@ -88,8 +78,8 @@ def _single_arg(expr: Builder) -> Builder:
     return cons(_pybuild.field_node(expr), SCOTT_NIL)
 
 
-_FORCE_NAME: Builder = _pybuild.py_name(_pybuild.char_codes("force"), _pybuild.py_load())
-_THUNK_NAME: Builder = _pybuild.py_name(_pybuild.char_codes("Thunk"), _pybuild.py_load())
+_FORCE_NAME: Builder = _pybuild.py_name(_pybuild.field_str(_pybuild.char_codes("force")), _pybuild.py_load())
+_THUNK_NAME: Builder = _pybuild.py_name(_pybuild.field_str(_pybuild.char_codes("Thunk")), _pybuild.py_load())
 
 # Target wrappers, selected by the option (a Church boolean ``thunked``): the call-by-name target wraps
 # a variable and a function in ``force(...)`` and an argument in ``Thunk(lambda: ...)``; call-by-value
@@ -104,30 +94,8 @@ def _select_wrap(thunked: Builder, lazy_wrap: Builder) -> Builder:
     return app(app(thunked, lazy_wrap), _IDENTITY_WRAP)
 
 
-# COMPILE = lambda thunked. Z (lambda self. lambda d. lambda q.
-#   q (lambda i. wrapVar (Name "v<d-1-i>"))                                  -- QVar i
-#     (lambda b. Lambda "v<d>" (self (succ d) b))                           -- QLam b
-#     (lambda f. lambda a. Call (wrapFun (self d f)) [wrapArg (self d a)]))  -- QApp f a
-# wrapVar = wrapFun = (thunked ? force : id); wrapArg = (thunked ? Thunk(lambda: .) : id).
-COMPILE: Builder = lam(lambda thunked: app(
-    Z,
-    lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
-        quoted,
-        lam(lambda index: app(
-            _select_wrap(thunked, _FORCE_WRAP),
-            _pybuild.py_name(_level_codes(app(app(_SUB, depth), app(SUCC, index))), _pybuild.py_load()),
-        )),
-        ),
-        lam(lambda body: _pybuild.py_lambda(
-            _level_codes(depth), app(app(self_recursion, app(SUCC, depth)), body),
-        )),
-        ),
-        lam(lambda function: lam(lambda argument: _pybuild.py_call(
-            app(_select_wrap(thunked, _FORCE_WRAP), app(app(self_recursion, depth), function)),
-            _single_arg(app(_select_wrap(thunked, _THUNK_WRAP), app(app(self_recursion, depth), argument))),
-        ))),
-    )))),
-))
+# COMPILE (the call-by-value / call-by-name expression target) is defined after the shared AST-path
+# helpers below, since it now names variables by their binder's path (a list of Nats) like COMPILE_NEED.
 
 
 def quote(node: Node) -> Builder:
@@ -163,7 +131,7 @@ def _option(runtime: Runtime) -> Builder:
 
 def compile_quoted(option: Builder, quoted: Builder) -> Node:
     """Run ``COMPILE`` (at the given option) on a quoted source term, returning the Scott Python expr."""
-    return build(app(app(app(COMPILE, option), church(0)), quoted))
+    return build(app(app(app(app(COMPILE, option), SCOTT_NIL), SCOTT_NIL), quoted))
 
 
 # --- runtime support for the compiled call-by-name target ---------------------------------------
@@ -416,15 +384,18 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
     """Compile ``node`` with an interpret-headed compiler, a ``COMPILE`` ``Node`` run by the interpreter.
 
     ``compiler_node`` is what ``compile_interpreted(build(COMPILE))`` evaluates to: the compiler itself,
-    handed back to the interpreter. The interpreter applies it to the option, depth ``0``, and the
-    quoted program, and the resulting generic Scott Python AST is decoded by the same generic
+    handed back to the interpreter. The interpreter applies it to the option, the empty path and env,
+    and the quoted program, and the resulting generic Scott Python AST is decoded by the same generic
     ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
     interpret-headed Python, compiles any program to the same source as ``compile_to_source``: the
     bootstrap through the interpret target.
     """
     with _recursion_headroom():
         applied = make_app(
-            make_app(make_app(compiler_node, build(_option(runtime))), build(church(0))),
+            make_app(
+                make_app(make_app(compiler_node, build(_option(runtime))), build(SCOTT_NIL)),
+                build(SCOTT_NIL),
+            ),
             build(quote(node)),
         )
         return ast.unparse(ast.fix_missing_locations(decode(applied)))
@@ -508,26 +479,13 @@ def _snd(pair: Builder) -> Builder:
 
 _SENTINEL_NAME = "CALL_BY_NEED_SENTINEL"
 
-# Identifiers are built by the lambda term as char codes for the generic _pyast string field. A symbol
-# is the AST path (Church-numeral segments, each a single digit 0-3) rendered "v_<seg>_<seg>..."; the
-# two wrapper names are fixed char-code literals.
-_RENDER_PATH: Builder = app(Z, lam(lambda render: lam(lambda path: app(app(
-    path,
-    lam(lambda segment: lam(lambda rest: cons(
-        church(95), cons(app(app(PLUS, church(48)), segment), app(render, rest)),
-    ))),
-    ),
-    SCOTT_NIL,
-))))
-
-
-def _sym_path_codes(path: Builder) -> Builder:
-    return cons(church(118), app(_RENDER_PATH, path))  # 'v' :: ('_' :: digit :: ...)
-
-
-def _name_symbol_codes(kind: Builder, path: Builder) -> Builder:
-    """The char codes naming the ``kind`` identifier of the node at ``path`` (kind tag is the path head)."""
-    return _sym_path_codes(cons(kind, path))
+# Identifiers are emitted by the lambda term as a LIST OF NATS (the AST path), wrapped in an identifier
+# field; the single _pyast decoder renders it "v_<int>_<int>..." (the kind tag is the path head, so a
+# node's distinct roles -- thunk / cell / function / variable -- get distinct names). The two wrapper
+# names are fixed string fields (char-code literals).
+def _name_symbol_field(kind: Builder, path: Builder) -> Builder:
+    """The identifier field naming the ``kind`` role of the node at ``path`` (a list of Nats)."""
+    return _pybuild.field_ident(cons(kind, path))
 
 
 _PROGRAM_DEF_CODES: Builder = _pybuild.char_codes("_program")
@@ -535,12 +493,13 @@ _PROGRAM_BIND_CODES: Builder = _pybuild.char_codes("program")
 _SENTINEL_CODES: Builder = _pybuild.char_codes(_SENTINEL_NAME)
 
 
-# Expressions, built as the generic Scott Python AST via the _pybuild smart constructors.
-def _ex_name(codes: Builder) -> Builder:
-    return _pybuild.py_name(codes, _pybuild.py_load())
+# Expressions, built as the generic Scott Python AST via the _pybuild smart constructors. A name field
+# is ``field_ident`` of an AST path (a variable) or ``field_str`` of fixed char codes (a wrapper name).
+def _ex_name(name_field: Builder) -> Builder:
+    return _pybuild.py_name(name_field, _pybuild.py_load())
 
 
-_EX_SENTINEL: Builder = _ex_name(_SENTINEL_CODES)
+_EX_SENTINEL: Builder = _ex_name(_pybuild.field_str(_SENTINEL_CODES))
 
 
 def _ex_force(expr: Builder) -> Builder:
@@ -561,42 +520,42 @@ def _stmt(node: Builder) -> Builder:
 
 
 # Statements, built as the generic Scott Python AST. A body argument is a Scott list of statement
-# fields (``_stmt`` of each); a parameter/name list is a Scott list of char-code lists.
-def _st_func_def(name_codes: Builder, parameter_codes: Builder, body_fields: Builder) -> Builder:
+# fields (``_stmt`` of each); a parameter/name list is a Scott list of name fields.
+def _st_func_def(name_field: Builder, parameter_fields: Builder, body_fields: Builder) -> Builder:
     arguments = _pybuild.py_arguments(
-        map_list(lam(lambda code: _pybuild.field_node(_pybuild.py_arg(code))), parameter_codes),
+        map_list(lam(lambda field: _pybuild.field_node(_pybuild.py_arg(field))), parameter_fields),
     )
-    return _pybuild.py_function_def(name_codes, arguments, body_fields)
+    return _pybuild.py_function_def(name_field, arguments, body_fields)
 
 
-def _st_nonlocal(name_codes_list: Builder) -> Builder:
-    return _pybuild.py_nonlocal(map_list(lam(lambda code: _pybuild.field_str(code)), name_codes_list))
+def _st_nonlocal(name_fields: Builder) -> Builder:
+    return _pybuild.py_nonlocal(name_fields)
 
 
 def _st_if(test: Builder, body_fields: Builder) -> Builder:
     return _pybuild.py_if(test, body_fields)
 
 
-def _st_assign(target_codes: Builder, value: Builder) -> Builder:
-    return _pybuild.py_assign(_pybuild.py_name(target_codes, _pybuild.py_store()), value)
+def _st_assign(target_field: Builder, value: Builder) -> Builder:
+    return _pybuild.py_assign(_pybuild.py_name(target_field, _pybuild.py_store()), value)
 
 
 def _st_return(value: Builder) -> Builder:
     return _pybuild.py_return(value)
 
 
-def _thunk_scaffold(cell_codes: Builder, thunk_codes: Builder, compute_fields: Builder) -> Builder:
+def _thunk_scaffold(cell_field: Builder, thunk_field: Builder, compute_fields: Builder) -> Builder:
     """The two setup statement fields introducing a memoising thunk: the cell init and the thunk def."""
     body = cons(
-        _stmt(_st_nonlocal(_one(cell_codes))),
+        _stmt(_st_nonlocal(_one(cell_field))),
         cons(
-            _stmt(_st_if(_ex_is(_ex_name(cell_codes), _EX_SENTINEL), compute_fields)),
-            _one(_stmt(_st_return(_ex_name(cell_codes)))),
+            _stmt(_st_if(_ex_is(_ex_name(cell_field), _EX_SENTINEL), compute_fields)),
+            _one(_stmt(_st_return(_ex_name(cell_field)))),
         ),
     )
     return _two(
-        _stmt(_st_assign(cell_codes, _EX_SENTINEL)),
-        _stmt(_st_func_def(thunk_codes, SCOTT_NIL, body)),
+        _stmt(_st_assign(cell_field, _EX_SENTINEL)),
+        _stmt(_st_func_def(thunk_field, SCOTT_NIL, body)),
     )
 
 
@@ -610,26 +569,26 @@ _COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: 
         ),
         # QLam body: the value is an inner function; wrap it in a memoising thunk.
         lam(lambda body: _let(
-            _name_symbol_codes(_KIND_VARIABLE, path),
+            _name_symbol_field(_KIND_VARIABLE, path),
             lambda parameter: _let(
                 app(app(app(self_recursion, cons(_BRANCH_BODY, path)), cons(parameter, env)), body),
                 lambda compiled_body: _need_pair(
                     _thunk_scaffold(
-                        _name_symbol_codes(_KIND_CELL, path),
-                        _name_symbol_codes(_KIND_THUNK, path),
+                        _name_symbol_field(_KIND_CELL, path),
+                        _name_symbol_field(_KIND_THUNK, path),
                         _two(
                             _stmt(_st_func_def(
-                                _name_symbol_codes(_KIND_FUNCTION, path),
+                                _name_symbol_field(_KIND_FUNCTION, path),
                                 _one(parameter),
                                 _append(_fst(compiled_body), _one(_stmt(_st_return(_snd(compiled_body))))),
                             )),
                             _stmt(_st_assign(
-                                _name_symbol_codes(_KIND_CELL, path),
-                                _ex_name(_name_symbol_codes(_KIND_FUNCTION, path)),
+                                _name_symbol_field(_KIND_CELL, path),
+                                _ex_name(_name_symbol_field(_KIND_FUNCTION, path)),
                             )),
                         ),
                     ),
-                    _ex_name(_name_symbol_codes(_KIND_THUNK, path)),
+                    _ex_name(_name_symbol_field(_KIND_THUNK, path)),
                 ),
             ),
         )),
@@ -641,14 +600,14 @@ _COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: 
                 app(app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), env), argument),
                 lambda compiled_argument: _need_pair(
                     _thunk_scaffold(
-                        _name_symbol_codes(_KIND_CELL, path),
-                        _name_symbol_codes(_KIND_THUNK, path),
+                        _name_symbol_field(_KIND_CELL, path),
+                        _name_symbol_field(_KIND_THUNK, path),
                         _append(
                             _fst(compiled_function),
                             _append(
                                 _fst(compiled_argument),
                                 _one(_stmt(_st_assign(
-                                    _name_symbol_codes(_KIND_CELL, path),
+                                    _name_symbol_field(_KIND_CELL, path),
                                     # Force to WHNF: applying the function returns the body thunk, which
                                     # must itself be forced so this cell holds a value, not a thunk.
                                     _ex_force(_ex_app(
@@ -658,7 +617,7 @@ _COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: 
                             ),
                         ),
                     ),
-                    _ex_name(_name_symbol_codes(_KIND_THUNK, path)),
+                    _ex_name(_name_symbol_field(_KIND_THUNK, path)),
                 ),
             ),
         ))),
@@ -671,9 +630,14 @@ COMPILE_NEED: Builder = lam(lambda quoted: _let(
     app(app(app(_COMPILE_NEED_REC, SCOTT_NIL), SCOTT_NIL), quoted),
     lambda root: _pybuild.py_module(_two(
         _stmt(_st_func_def(
-            _PROGRAM_DEF_CODES, SCOTT_NIL, _append(_fst(root), _one(_stmt(_st_return(_snd(root))))),
+            _pybuild.field_str(_PROGRAM_DEF_CODES),
+            SCOTT_NIL,
+            _append(_fst(root), _one(_stmt(_st_return(_snd(root))))),
         )),
-        _stmt(_st_assign(_PROGRAM_BIND_CODES, _ex_force(_ex_name(_PROGRAM_DEF_CODES)))),
+        _stmt(_st_assign(
+            _pybuild.field_str(_PROGRAM_BIND_CODES),
+            _ex_force(_ex_name(_pybuild.field_str(_PROGRAM_DEF_CODES))),
+        )),
     )),
 ))
 
@@ -721,3 +685,43 @@ def compiled_compiler() -> Node:
     parser limit, so that artifact is reworked there. In process, the node IS the self-compiled compiler.)
     """
     return build(COMPILE)
+
+
+# COMPILE (call-by-value / call-by-name): self path env quoted -> Scott Python EXPRESSION. Like
+# COMPILE_NEED it names variables by their binder's AST path (a list of Nats, emitted via field_ident
+# and rendered by the one _pyast decoder), threading ``path`` (the current address) and ``env`` (the
+# list of in-scope binder name fields, innermost first). The option (a Church boolean ``thunked``)
+# selects the wraps: call-by-name forces a variable/function (``force``) and thunks an argument
+# (``Thunk(lambda: .)``); call-by-value wraps with identity.
+#   QVar i      -> wrapVar (Name (env !! i))
+#   QLam b      -> Lambda (v_<path>) (self (path.2) ((v_<path>) : env) b)
+#   QApp f a    -> Call (wrapFun (self (path.0) env f)) [wrapArg (self (path.1) env a)]
+COMPILE: Builder = lam(lambda thunked: app(
+    Z,
+    lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(lambda quoted: app(app(app(
+        quoted,
+        lam(lambda index: app(
+            _select_wrap(thunked, _FORCE_WRAP),
+            _pybuild.py_name(app(app(_NTH, index), env), _pybuild.py_load()),
+        )),
+        ),
+        lam(lambda body: _let(
+            _pybuild.field_ident(path),
+            lambda parameter: _pybuild.py_lambda(
+                parameter,
+                app(app(app(self_recursion, cons(_BRANCH_BODY, path)), cons(parameter, env)), body),
+            ),
+        )),
+        ),
+        lam(lambda function: lam(lambda argument: _pybuild.py_call(
+            app(
+                _select_wrap(thunked, _FORCE_WRAP),
+                app(app(app(self_recursion, cons(_BRANCH_FUNCTION, path)), env), function),
+            ),
+            _single_arg(app(
+                _select_wrap(thunked, _THUNK_WRAP),
+                app(app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), env), argument),
+            )),
+        ))),
+    )))))
+))

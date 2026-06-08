@@ -8,32 +8,32 @@ lambda v: v
 
 \medskip\noindent\textbf{The constant combinator $K$.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, \lambda y.\, x$
 \begin{lstlisting}
-lambda v: lambda vx: v
+lambda v: lambda v_2: v
 \end{lstlisting}
 
 \medskip\noindent\textbf{Church numeral $2$.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, \lambda y.\, x\, (x\, y)$
 \begin{lstlisting}
-lambda v: lambda vx: v(v(vx))
+lambda v: lambda v_2: v(v(v_2))
 \end{lstlisting}
 
 \medskip\noindent\textbf{Successor.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, \lambda y.\, \lambda z.\, y\, (x\, y\, z)$
 \begin{lstlisting}
-lambda v: lambda vx: lambda vxx: vx(v(vx)(vxx))
+lambda v: lambda v_2: lambda v_2_2: v_2(v(v_2)(v_2_2))
 \end{lstlisting}
 
 \medskip\noindent\textbf{Addition.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, \lambda y.\, \lambda z.\, \lambda w.\, x\, z\, (y\, z\, w)$
 \begin{lstlisting}
-lambda v: lambda vx: lambda vxx: lambda vxxx: v(vxx)(vx(vxx)(vxxx))
+lambda v: lambda v_2: lambda v_2_2: lambda v_2_2_2: v(v_2_2)(v_2(v_2_2)(v_2_2_2))
 \end{lstlisting}
 
 \medskip\noindent\textbf{Multiplication.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, \lambda y.\, \lambda z.\, x\, (y\, z)$
 \begin{lstlisting}
-lambda v: lambda vx: lambda vxx: v(vx(vxx))
+lambda v: lambda v_2: lambda v_2_2: v(v_2(v_2_2))
 \end{lstlisting}
 
 \medskip\noindent\textbf{Zero test.}~\textnormal{(specialized to call-by-value)}\quad $\lambda x.\, x\, (\lambda y.\, \lambda z.\, \lambda w.\, w)\, (\lambda y.\, \lambda z.\, y)$
 \begin{lstlisting}
-lambda v: v(lambda vx: lambda vxx: lambda vxxx: vxxx)(lambda vx: lambda vxx: vx)
+lambda v: v(lambda v_1_0_2: lambda v_2_1_0_2: lambda v_2_2_1_0_2: v_2_2_1_0_2)(lambda v_1_2: lambda v_2_1_2: v_1_2)
 \end{lstlisting}
 
 \medskip\noindent\textbf{Self-application.}~\textnormal{(specialized to call-by-need)}\quad $\lambda x.\, x\, x$
@@ -63,54 +63,59 @@ program = _program()
 \medskip\noindent\textbf{Local specialization in a cyclic term.}~\textnormal{(specialized to interpret)}\quad $Y\,(\mathtt{cons}\,(3 \times 3))$
 The cyclic stream is fold-requiring, so the whole term stays interpreted; its closed element $3 \times 3$ is simply typable, hence a call-by-value island compiled to strict Python:
 \begin{lstlisting}
-(lambda v: lambda vx: lambda vxx: v(vx(vxx)))(lambda v: lambda vx: v(v(v(vx))))(lambda v: lambda vx: v(v(v(vx))))
+(lambda v_0_0: lambda v_2_0_0: lambda v_2_2_0_0: v_0_0(v_2_0_0(v_2_2_0_0)))(lambda v_1_0: lambda v_2_1_0: v_1_0(v_1_0(v_1_0(v_2_1_0))))(lambda v_1: lambda v_2_1: v_1(v_1(v_1(v_2_1))))
 \end{lstlisting}
 The island runs and the interpreter folds around it, so the result is the same finite cyclic behaviour as pure interpretation, the stream $\mathtt{cons}\,9\,(\mathtt{cons}\,9\,\cdots)$ folded to a single cyclic node.
 
-\medskip\noindent\textbf{The compiler, specialized: finding call-by-value islands.}\quad The compiler is untypable as a whole, since its fixpoint combinator $Z$ self-applies, so it stays interpreted; the specializer finds its 14 maximal closed simply-typable sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, while the recursive skeleton is left to the interpreter. The 9 with compact compiled forms are shown (the larger combinators are elided):
+\medskip\noindent\textbf{The compiler, specialized: finding call-by-value islands.}\quad The compiler is untypable as a whole, since its fixpoint combinator $Z$ self-applies, so it stays interpreted; the specializer finds its 14 maximal closed simply-typable sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, while the recursive skeleton is left to the interpreter. The 10 with compact compiled forms are shown (the larger combinators are elided):
 \smallskip\noindent $\lambda x.\, x$
 \begin{lstlisting}
 lambda v: v
 \end{lstlisting}
 
-\smallskip\noindent $\lambda x.\, \lambda y.\, x\, (x\, (x\, y))$
-\begin{lstlisting}
-lambda v: lambda vx: v(v(v(vx)))
-\end{lstlisting}
-
-\smallskip\noindent $\lambda x.\, \lambda y.\, y\, (\lambda z.\, \lambda w.\, \lambda u.\, z\, (\lambda s.\, \lambda t.\, t\, (s\, w))\, (\lambda s.\, u)\, (\lambda s.\, s))\, x$
-\begin{lstlisting}
-lambda v: lambda vx: vx(lambda vxx: lambda vxxx: lambda vxxxx: vxx(lambda vxxxxx: lambda vxxxxxx: vxxxxxx(vxxxxx(vxxx)))(lambda vxxxxx: vxxxx)(lambda vxxxxx: vxxxxx))(v)
-\end{lstlisting}
-
-\smallskip\noindent $\lambda x.\, \lambda y.\, \lambda z.\, y\, (x\, y\, z)$
-\begin{lstlisting}
-lambda v: lambda vx: lambda vxx: vx(v(vx)(vxx))
-\end{lstlisting}
-
 \smallskip\noindent $\lambda x.\, \lambda y.\, y$
 \begin{lstlisting}
-lambda v: lambda vx: vx
+lambda v: lambda v_2: v_2
 \end{lstlisting}
 
 \smallskip\noindent $\lambda x.\, x\, (\lambda y.\, \lambda z.\, y\, z)\, (\lambda y.\, \lambda z.\, z)$
 \begin{lstlisting}
-lambda v: v(lambda vx: lambda vxx: vx(vxx))(lambda vx: lambda vxx: vxx)
+lambda v: v(lambda v_1_0_2: lambda v_2_1_0_2: v_1_0_2(v_2_1_0_2))(lambda v_1_2: lambda v_2_1_2: v_2_1_2)
 \end{lstlisting}
 
 \smallskip\noindent $\lambda x.\, \lambda y.\, x\, y$
 \begin{lstlisting}
-lambda v: lambda vx: v(vx)
+lambda v: lambda v_2: v(v_2)
 \end{lstlisting}
 
 \smallskip\noindent $\lambda x.\, \lambda y.\, \lambda z.\, \lambda w.\, z\, x\, y$
 \begin{lstlisting}
-lambda v: lambda vx: lambda vxx: lambda vxxx: vxx(v)(vx)
+lambda v: lambda v_2: lambda v_2_2: lambda v_2_2_2: v_2_2(v)(v_2)
 \end{lstlisting}
 
 \smallskip\noindent $\lambda x.\, x\, (\lambda y.\, \lambda z.\, y\, (y\, (y\, (y\, (y\, z)))))\, (\lambda y.\, \lambda z.\, z)$
 \begin{lstlisting}
-lambda v: v(lambda vx: lambda vxx: vx(vx(vx(vx(vx(vxx))))))(lambda vx: lambda vxx: vxx)
+lambda v: v(lambda v_1_0_2: lambda v_2_1_0_2: v_1_0_2(v_1_0_2(v_1_0_2(v_1_0_2(v_1_0_2(v_2_1_0_2))))))(lambda v_1_2: lambda v_2_1_2: v_2_1_2)
+\end{lstlisting}
+
+\smallskip\noindent $(\lambda x.\, \lambda y.\, \lambda z.\, \lambda w.\, z\, x\, y)\, (\lambda x.\, \lambda y.\, x\, (x\, y))$
+\begin{lstlisting}
+(lambda v_0: lambda v_2_0: lambda v_2_2_0: lambda v_2_2_2_0: v_2_2_0(v_0)(v_2_0))(lambda v_1: lambda v_2_1: v_1(v_1(v_2_1)))
+\end{lstlisting}
+
+\smallskip\noindent $\lambda x.\, \lambda y.\, x\, (x\, (x\, (x\, (x\, (x\, y)))))$
+\begin{lstlisting}
+lambda v: lambda v_2: v(v(v(v(v(v(v_2))))))
+\end{lstlisting}
+
+\smallskip\noindent $(\lambda x.\, \lambda y.\, \lambda z.\, \lambda w.\, z\, x\, y)\, (\lambda x.\, \lambda y.\, y)$
+\begin{lstlisting}
+(lambda v_0: lambda v_2_0: lambda v_2_2_0: lambda v_2_2_2_0: v_2_2_0(v_0)(v_2_0))(lambda v_1: lambda v_2_1: v_2_1)
+\end{lstlisting}
+
+\smallskip\noindent $(\lambda x.\, \lambda y.\, \lambda z.\, \lambda w.\, z\, x\, y)\, (\lambda x.\, \lambda y.\, x\, y)$
+\begin{lstlisting}
+(lambda v_0: lambda v_2_0: lambda v_2_2_0: lambda v_2_2_2_0: v_2_2_0(v_0)(v_2_0))(lambda v_1: lambda v_2_1: v_1(v_2_1))
 \end{lstlisting}
 
 \medskip\noindent\textbf{Self-hosting: the specialized interpret-with-islands form.}\quad A term with no whole-graph by-value certificate compiles to interpret-headed Python: it is reconstructed with the interpreter's node constructors and handed back to the interpreter, with its closed, shallow, simply-typable sub-terms spliced as compiled by-value islands. The compiler itself compiles this way; the full self-compiled compiler is committed as the generated module \texttt{\_generated\_compiler.py} (run by the interpreter on a quoted program, it emits the same Python as the in-process compiler). Here is a small term in the same form, $\mathtt{factorial}\,(2\times 3)$, whose multiplication sub-term is spliced as a by-value island:
@@ -122,11 +127,11 @@ _k3 = make_app(_k0, _k2)
 _k4 = make_lam(_k3)
 _k5 = make_app(_k4, _k4)
 _k6 = make_lam(_k5)
-_k7 = value_island(lambda v: v(lambda vx: lambda vxx: lambda vxxx: vxxx)(lambda vx: lambda vxx: vx))
+_k7 = value_island(lambda v: v(lambda v_1_0_2: lambda v_2_1_0_2: lambda v_2_2_1_0_2: v_2_2_1_0_2)(lambda v_1_2: lambda v_2_1_2: v_1_2))
 _k8 = make_app(_k7, _k1)
-_k9 = value_island(lambda v: lambda vx: v(vx))
+_k9 = value_island(lambda v: lambda v_2: v(v_2))
 _k10 = make_app(_k8, _k9)
-_k11 = value_island(lambda v: lambda vx: lambda vxx: v(vx(vxx)))
+_k11 = value_island(lambda v: lambda v_2: lambda v_2_2: v(v_2(v_2_2)))
 _k12 = make_app(_k11, _k1)
 _k13 = make_var(2)
 _k14 = make_var(3)
@@ -149,7 +154,7 @@ _k30 = make_app(_k10, _k29)
 _k31 = make_lam(_k30)
 _k32 = make_lam(_k31)
 _k33 = make_app(_k6, _k32)
-_k34 = (lambda v: lambda vx: lambda vxx: v(vx(vxx)))(lambda v: lambda vx: v(v(vx)))(lambda v: lambda vx: v(v(v(vx))))
+_k34 = (lambda v_0_0: lambda v_2_0_0: lambda v_2_2_0_0: v_0_0(v_2_0_0(v_2_2_0_0)))(lambda v_1_0: lambda v_2_1_0: v_1_0(v_1_0(v_2_1_0)))(lambda v_1: lambda v_2_1: v_1(v_1(v_1(v_2_1))))
 _k35 = value_island(_k34)
 _k36 = make_app(_k33, _k35)
 _k37 = interpret(_k36)

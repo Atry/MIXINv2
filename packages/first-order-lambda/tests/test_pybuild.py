@@ -23,23 +23,34 @@ def _nodes(*builders) -> "object":
     return _scott_list([B.field_node(item) for item in builders])
 
 
+def _str_name(text: str):
+    return B.py_name(B.field_str(B.char_codes(text)), B.py_load())
+
+
 def test_name_and_call_decode() -> None:
-    name = B.py_name(B.char_codes("force"), B.py_load())
-    assert _source(name) == "force"
-    call = B.py_call(B.py_name(B.char_codes("f"), B.py_load()), _nodes(B.py_name(B.char_codes("x"), B.py_load())))
+    assert _source(_str_name("force")) == "force"
+    call = B.py_call(_str_name("f"), _nodes(_str_name("x")))
     assert _source(call) == "f(x)"
-    forced = B.py_call(B.py_name(B.char_codes("v_0"), B.py_load()), _scott_list([]))
+    forced = B.py_call(_str_name("v_0"), _scott_list([]))
     assert _source(forced) == "v_0()"
 
 
+def test_ident_field_decodes_path_to_underscored_integers() -> None:
+    # A variable identifier is emitted as a list of Nats (its AST path); the one decoder renders it
+    # ``v_<int>_<int>...`` (an alphabetic prefix, underscore-segmented integers, unique by path).
+    path = _scott_list([church(2), church(0), church(1)])
+    assert _source(B.py_name(B.field_ident(path), B.py_load())) == "v_2_0_1"
+    assert _source(B.py_name(B.field_ident(_scott_list([])), B.py_load())) == "v"
+
+
 def test_lambda_decodes() -> None:
-    body = B.py_name(B.char_codes("v_0"), B.py_load())
-    assert _source(B.py_lambda(B.char_codes("v_0"), body)) == "lambda v_0: v_0"
+    body = B.py_name(B.field_ident(_scott_list([church(0)])), B.py_load())
+    assert _source(B.py_lambda(B.field_ident(_scott_list([church(0)])), body)) == "lambda v_0: v_0"
 
 
 def test_compare_is_decodes() -> None:
-    left = B.py_name(B.char_codes("v_0"), B.py_load())
-    right = B.py_name(B.char_codes("SENTINEL"), B.py_load())
+    left = _str_name("v_0")
+    right = _str_name("SENTINEL")
     assert _source(B.py_compare_is(left, right)) == "v_0 is SENTINEL"
 
 
@@ -50,12 +61,11 @@ def test_constant_int_decodes() -> None:
 def test_call_by_need_module_decodes_and_runs() -> None:
     # Assemble, purely with the smart constructors, the memoising-thunk module shape the call-by-need
     # target emits, and check it decodes to the right source and runs.
-    load = B.py_load
-    name = lambda text: B.py_name(B.char_codes(text), load())
+    name = _str_name
     sentinel = name("SENTINEL")
     cell = "v_0"
     inner_def = B.py_function_def(
-        B.char_codes("v_1"),
+        B.field_str(B.char_codes("v_1")),
         B.py_arguments(_scott_list([])),
         _nodes(
             B.py_nonlocal(_scott_list([B.field_str(B.char_codes(cell))])),
@@ -67,7 +77,7 @@ def test_call_by_need_module_decodes_and_runs() -> None:
         ),
     )
     program_def = B.py_function_def(
-        B.char_codes("_program"),
+        B.field_str(B.char_codes("_program")),
         B.py_arguments(_scott_list([])),
         _nodes(
             B.py_assign(name(cell), sentinel),
