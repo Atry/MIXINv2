@@ -29,7 +29,7 @@ normal-form Church boolean the interpreter reads back.
 from __future__ import annotations
 
 from first_order_lambda._ast import Node, make_app, make_var
-from first_order_lambda._binnat import BIN_EQUAL, BIN_SUCC, BIN_ZERO
+from first_order_lambda._binnat import BIN_ADD, BIN_EQUAL, BIN_SUCC, BIN_ZERO
 from first_order_lambda._compiler import Z, _recursion_headroom, quote
 from first_order_lambda._dsl import Builder, app, build, lam
 from first_order_lambda._prelude import FALSE, IS_ZERO, OR, PRED, TRUE
@@ -323,6 +323,191 @@ TYPABLE: Builder = lam(lambda quoted: _split(
 ))
 
 
+# === Bottom-up principal typing: one path-free fold the interpreter tables per distinct sub-term ===
+# ``TYPABLE`` above threads a fresh-id/substitution state, so the interpreter cannot share its
+# per-sub-term inference (the state differs at every position) and the substitution is an O(chain)
+# function. ``PRINCIPAL`` is PATH-FREE -- it takes only the node -- so ``app(PRINCIPAL, sub)`` is the
+# same interned node wherever ``sub`` occurs and the interpreter tables it ONCE per distinct sub-term
+# (the compiler's combinators reuse sub-combinators heavily, so this is the win). Each ``App`` unifies
+# in a FRESH LOCAL substitution, resolved and discarded, so there is no global chain. Type-variable
+# ids are BinNats (O(log) equality); de Bruijn indices stay Church (small, bounded by depth) and are
+# converted to BinNat only where they seed a type-variable id.
+#
+# A result is ``(next-fresh-id, context, type, failed)``: ``context`` is a Scott list of types indexed
+# by de Bruijn index (a fresh type per binder so siblings constrain them independently); ``type`` is
+# the sub-term's type with the local substitution applied; ``next-fresh-id`` (a BinNat) bounds the
+# type-variable ids used, so a sibling is renamed apart by adding it; ``failed`` is the occurs-check
+# verdict for the whole sub-tree.
+
+
+def _church_to_binnat(church_value: Builder) -> Builder:
+    """Convert a Church numeral (a de Bruijn index from ``quote``) to a BinNat type-variable id."""
+    return _ap(church_value, BIN_SUCC, BIN_ZERO)
+
+
+def _plus(a: Builder, b: Builder) -> Builder:
+    return _ap(BIN_ADD, a, b)
+
+
+def _result(next_id: Builder, context: Builder, type_: Builder, failed: Builder) -> Builder:
+    return _pair(next_id, _pair(context, _pair(type_, failed)))
+
+
+def _split_result(result: Builder, body) -> Builder:
+    """Destructure a principal-typing result for ``body`` (next-id, context, type, failed)."""
+    return _split(result, lambda next_id, rest1: _split(
+        rest1, lambda context, rest2: _split(rest2, lambda type_, failed: body(next_id, context, type_, failed)),
+    ))
+
+
+# build_vars count = [TVAR 0, TVAR 1, ..., TVAR (count-1)]: the fresh context for a variable at de
+# Bruijn index count-1, one distinct fresh type per enclosing binder (BinNat ids).
+_BUILD_VARS_GO: Builder = app(Z, lam(lambda self_recursion: lam(lambda current: lam(lambda count: _choose(
+    _equal(current, count),
+    _NIL,
+    _cons(_tvar(current), _ap(self_recursion, app(BIN_SUCC, current), count)),
+)))))
+
+
+def _build_vars(count: Builder) -> Builder:
+    return _ap(_BUILD_VARS_GO, BIN_ZERO, count)
+
+
+# shift_type offset type: add ``offset`` to every type-variable id (rename a whole type apart).
+_SHIFT_TYPE: Builder = app(Z, lam(lambda self_recursion: lam(lambda offset: lam(lambda type_: _match_type(
+    type_,
+    lam(lambda identifier: _tvar(_plus(offset, identifier))),
+    lam(lambda left: lam(lambda right: _tarrow(
+        _ap(self_recursion, offset, left), _ap(self_recursion, offset, right),
+    ))),
+)))))
+
+
+def _shift_type(offset: Builder, type_: Builder) -> Builder:
+    return _ap(_SHIFT_TYPE, offset, type_)
+
+
+# shift_context offset context: rename every type in a context apart by ``offset``.
+_SHIFT_CONTEXT: Builder = app(Z, lam(lambda self_recursion: lam(lambda offset: lam(lambda context: _ap(
+    context,
+    _NIL,
+    lam(lambda head: lam(lambda tail: _cons(_shift_type(offset, head), _ap(self_recursion, offset, tail)))),
+)))))
+
+
+def _shift_context(offset: Builder, context: Builder) -> Builder:
+    return _ap(_SHIFT_CONTEXT, offset, context)
+
+
+# apply_subst subst type: resolve ``type`` deeply, so the result carries no residual substitution.
+_APPLY_SUBST: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda type_: _match_type(
+    _resolve(subst, type_),
+    lam(lambda identifier: _tvar(identifier)),
+    lam(lambda left: lam(lambda right: _tarrow(
+        _ap(self_recursion, subst, left), _ap(self_recursion, subst, right),
+    ))),
+)))))
+
+
+def _apply_subst(subst: Builder, type_: Builder) -> Builder:
+    return _ap(_APPLY_SUBST, subst, type_)
+
+
+_APPLY_SUBST_CONTEXT: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda context: _ap(
+    context,
+    _NIL,
+    lam(lambda head: lam(lambda tail: _cons(_apply_subst(subst, head), _ap(self_recursion, subst, tail)))),
+)))))
+
+
+def _apply_subst_context(subst: Builder, context: Builder) -> Builder:
+    return _ap(_APPLY_SUBST_CONTEXT, subst, context)
+
+
+# merge state a b, state = (subst, failed): unify the shared prefix of two contexts (same de Bruijn
+# indices) and keep the tail of the longer; returns (state, merged-context).
+_MERGE: Builder = app(Z, lam(lambda self_recursion: lam(lambda state: lam(lambda a: lam(lambda b: _ap(
+    a,
+    _pair(state, b),  # a is nil: the merge is b
+    lam(lambda head_a: lam(lambda tail_a: _ap(
+        b,
+        _pair(state, _cons(head_a, tail_a)),  # b is nil: the merge is a
+        lam(lambda head_b: lam(lambda tail_b: _split(
+            _ap(self_recursion, _unify(state, head_a, head_b), tail_a, tail_b),
+            lambda merged_state, merged_tail: _pair(merged_state, _cons(head_a, merged_tail)),
+        ))),
+    ))),
+))))))
+
+
+def _merge(state: Builder, a: Builder, b: Builder) -> Builder:
+    return _ap(_MERGE, state, a, b)
+
+
+_INITIAL_PAIR: Builder = _pair(_EMPTY_SUBST, FALSE)
+
+
+# principal node: the bottom-up principal typing of a quoted term, the path-free fold described above.
+PRINCIPAL: Builder = app(Z, lam(lambda self_recursion: lam(lambda node: _ap(
+    node,
+    # QVar index: context [TVAR 0 .. TVAR index], type TVAR index (ids as BinNat).
+    lam(lambda index: _let(_church_to_binnat(index), lambda binnat_index: _result(
+        app(BIN_SUCC, binnat_index), _build_vars(app(BIN_SUCC, binnat_index)), _tvar(binnat_index), FALSE,
+    ))),
+    # QLam body: discharge de Bruijn index 0 (the binder's type) from the body's context.
+    lam(lambda body: _split_result(
+        app(self_recursion, body),
+        lambda next_body, context_body, type_body, failed_body: _ap(
+            context_body,
+            # body uses no enclosing binder: the parameter is a fresh, unconstrained type.
+            _result(app(BIN_SUCC, next_body), _NIL, _tarrow(_tvar(next_body), type_body), failed_body),
+            lam(lambda parameter: lam(lambda rest: _result(
+                next_body, rest, _tarrow(parameter, type_body), failed_body,
+            ))),
+        ),
+    )),
+    # QApp function argument: rename the argument's type-var band apart, merge the shared context,
+    # then unify the function's type with (argument-type -> fresh result).
+    lam(lambda function: lam(lambda argument: _split_result(
+        app(self_recursion, function),
+        lambda next_f, context_f, type_f, failed_f: _split_result(
+            app(self_recursion, argument),
+            lambda next_a, context_a, type_a, failed_a: _choose(
+                _or(failed_f, failed_a),
+                _result(app(BIN_SUCC, _plus(next_f, next_a)), _NIL, _tvar(BIN_ZERO), TRUE),
+                _let(_plus(next_f, next_a), lambda total: _let(
+                    _shift_context(next_f, context_a), lambda context_a_shifted: _let(
+                    _shift_type(next_f, type_a), lambda type_a_shifted: _let(
+                    _tvar(total), lambda result_type: _split(
+                        _merge(_INITIAL_PAIR, context_f, context_a_shifted),
+                        lambda merged_state, merged_context: _split(
+                            _unify(merged_state, type_f, _tarrow(type_a_shifted, result_type)),
+                            lambda final_subst, final_failed: _choose(
+                                final_failed,
+                                _result(app(BIN_SUCC, total), _NIL, _tvar(BIN_ZERO), TRUE),
+                                _result(
+                                    app(BIN_SUCC, total),
+                                    _apply_subst_context(final_subst, merged_context),
+                                    _apply_subst(final_subst, result_type),
+                                    FALSE,
+                                ),
+                            ),
+                        ),
+                    )))),
+                ),
+            ),
+        ),
+    ))),
+))))
+
+
+# TYPABLE_BU quoted: simply typable iff the bottom-up principal typing has no occurs-check failure.
+TYPABLE_BU: Builder = lam(lambda quoted: _split_result(
+    app(PRINCIPAL, quoted),
+    lambda next_id, context, type_, failed: app(_NOT, failed),
+))
+
+
 _TRUE_MARKER = 7_200_001
 _FALSE_MARKER = 7_200_002
 
@@ -349,4 +534,17 @@ def is_typable_lambda(node: Node) -> bool:
     """
     with _recursion_headroom():
         verdict = build(app(TYPABLE, quote(node)))
+        return _interpret_boolean(verdict)
+
+
+def typable_bu_lambda(node: Node) -> bool:
+    """Whether ``node`` is simply typable, decided by the path-free bottom-up fold ``TYPABLE_BU``.
+
+    ``PRINCIPAL`` types every distinct sub-term once (the interpreter tables it, since it is path-free)
+    and reconciles locally per application, so it shares work across the term DAG that the state-
+    threading ``TYPABLE`` cannot. This is the certificate the island specializer is intended to consult;
+    ``_specialize.is_typable`` remains the oracle it is checked against.
+    """
+    with _recursion_headroom():
+        verdict = build(app(TYPABLE_BU, quote(node)))
         return _interpret_boolean(verdict)
