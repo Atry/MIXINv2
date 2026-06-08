@@ -34,6 +34,7 @@ SUPPORTED: "tuple[type[ast.AST], ...]" = (
     ast.Call, ast.Name, ast.Load, ast.Store, ast.Constant,
     ast.BinOp, ast.Add, ast.Sub, ast.Mult,
     ast.Compare, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Eq,
+    ast.Nonlocal, ast.Is,
 )
 _TAG = {cls: tag for tag, cls in enumerate(SUPPORTED)}
 _ARITY = tuple(len(cls._fields) for cls in SUPPORTED)

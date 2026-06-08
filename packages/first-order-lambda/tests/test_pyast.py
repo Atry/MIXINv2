@@ -45,3 +45,21 @@ def test_module_with_a_loop_round_trips_and_runs() -> None:
 def test_scott_ast_decodes_and_executes() -> None:
     node = build(encode(ast.parse("(lambda v0: v0 + 1)(41)", mode="eval")))
     assert eval(to_python_source(node)) == 42
+
+
+def test_call_by_need_statement_shape_round_trips() -> None:
+    # The memoising-thunk shape the call-by-need target emits: def / nonlocal / if / assign / return /
+    # 'is' comparison. The generic codec (with ast.Nonlocal and ast.Is in SUPPORTED) round-trips it, so
+    # the call-by-need target can decode through _pyast.decode with no hand-written decoder.
+    source = (
+        "def _program():\n"
+        "    v_0 = SENTINEL\n"
+        "    def v_1():\n"
+        "        nonlocal v_0\n"
+        "        if v_0 is SENTINEL:\n"
+        "            v_0 = v_2()\n"
+        "        return v_0\n"
+        "    return v_1\n"
+        "program = _program()\n"
+    )
+    assert roundtrip(source, mode="exec") == ast.unparse(ast.parse(source))
