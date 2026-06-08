@@ -36,10 +36,12 @@ cycle-folding.
 - [x] Restore `_binnat.py` (encode/decode) and add the arithmetic: `succ`, `pred`, `add`, `sub`,
       compare (`<`, `==`), `min`, `max`, and multiplication, all on LSB-first bit lists.
 - [x] Tests for the arithmetic, cross-checked against Python ints.
-- [ ] Pick a genuinely hard problem that becomes trivial via tabling (automatic memoization) and
-      cycle-folding: a hard dynamic program (edit distance, longest common subsequence, knapsack, a
-      counting DP) or a hard graph problem (shortest path over a cyclic state graph, game-tree
-      minimax) where naive recursion plus tabling is automatically polynomial.
-- [ ] Write the solution as a lambda term; demonstrate the interpreter solving it (overlapping
-      subproblems memoized by state identity); cross-check against a reference implementation.
+- [x] Pick a genuinely hard problem that becomes trivial via tabling: **edit distance** (Levenshtein).
+      Its subproblems are pairs of suffixes of the inputs, which are shared interned sub-nodes, so a
+      repeated subproblem is the same `App` node and the interpreter memoizes it by identity. The
+      exponential naive recursion collapses to the O(mn) table with no memoization code. (Knapsack and
+      cyclic shortest path do not fit: computed capacities do not re-intern, and min over an infinite
+      domain through a cycle folds to bottom, not the answer.)
+- [x] Write the solution as a lambda term (`_editdistance.py`), memoized for free by the interpreter;
+      cross-check against the textbook DP reference, and check a moderate input stays fast.
 - [ ] Optionally a paper paragraph and a generated example.
