@@ -40,6 +40,7 @@ from first_order_lambda._compiler import (
     _BRANCH_ARGUMENT,
     _BRANCH_BODY,
     _BRANCH_FUNCTION,
+    _NTH,
     _ex_name,
     _fst,
     _need_pair,
@@ -57,11 +58,17 @@ from first_order_lambda._compiler import (
     value_island as _compiler_value_island,
 )
 from first_order_lambda._dsl import app, build, lam
-from first_order_lambda._prelude import AND, SCOTT_NIL, church, cons
+from first_order_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, church, cons
 from first_order_lambda._pyast import _church_to_int, decode
 from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from first_order_lambda._render import render
-from first_order_lambda._typecheck import TYPABLE
+from first_order_lambda._typecheck import (
+    TYPABLE,
+    _EMPTY_SUBST,
+    _UNIFY,
+    _tarrow,
+    _tvar,
+)
 
 
 @dataclass(frozen=True)
@@ -264,23 +271,37 @@ def compile_specialized(node: Node) -> str:
 
 
 # --- COMPILE_SPECIALIZED: the specializing compiler, entirely a lambda term ----------------------
-# One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above.
-# A closed simply-typable WHOLE term carries the by-value certificate, so it compiles to a strict
-# call-by-value expression (COMPILE at the eager option). Otherwise it compiles to an interpret-with-
-# islands A-normal-form module: the term is reconstructed with make_var/make_lam/make_app as one
-# assignment per node (so the deep term stays under CPython's parser nesting cap), but each maximal
-# closed simply-typable sub-term is spliced as value_island(<that sub-term compiled call-by-value>), an
-# FFI island the interpreter drives in place of interpreting the subtree. The module ends
-# compiled_compiler = interpret(<root>). Island detection uses the depth-free IS_CLOSED (interning-
-# shared, so the scan is linear) and the lambda TYPABLE certificate; the statement list is built with a
-# difference list (O(1) composition per node, so emission is linear). All of this is the lambda term;
-# Python only quotes the input, runs the interpreter, and decodes the result with the generic
-# _pyast.decode. (On normal programs this is fast; the COMPILE self-host artifact is heavy because full
-# lambda algorithm-W inference on the large island combinators is costly under the no-GC interner.)
+# One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above,
+# done as a SINGLE bottom-up pass. A closed simply-typable WHOLE term carries the by-value certificate,
+# so it compiles to a strict call-by-value expression (COMPILE at the eager option). Otherwise it
+# compiles to an interpret-with-islands A-normal-form module: the term is reconstructed with
+# make_var/make_lam/make_app as one assignment per node (so the deep term stays under CPython's parser
+# nesting cap), but each maximal closed simply-typable sub-term is spliced as value_island(<that sub-term
+# compiled call-by-value>), an FFI island the interpreter drives in place of interpreting the subtree.
+# The module ends compiled_compiler = interpret(<root>).
+#
+# Crucially, typability is woven INTO this one pass (algorithm-W threaded bottom-up), not run per island:
+# the recursion threads a (fresh-id counter, substitution) state and the typing context down, and returns
+# each node's type and a per-node failed flag (an occurs-check fired in its subtree). A node is an island
+# iff it is closed (depth-free IS_CLOSED) and not failed. Running inference once over the whole term is
+# far cheaper than the previous per-island full inference: the no-GC interner retains one pass, not the
+# 14 island inferences. Emission uses a difference list (O(1) composition per node). The recursion is in
+# continuation-passing style so it returns five values (state, emit, value, type, failed) without tuples.
 
-_ISLAND_CERTIFICATE: "object" = lam(lambda quoted: app(app(
-    AND, app(IS_CLOSED, quoted)), app(TYPABLE, quoted),
-))  # closed (depth-free LOOSE_BOUND, so interning shares it) and simply typable: a call-by-value island
+_NOT: "object" = lam(lambda boolean: app(app(boolean, FALSE), TRUE))
+
+
+def _ap(function: "object", *arguments: "object") -> "object":
+    """Left-folded application: ``_ap(f, x, y, z)`` is ``((f x) y) z``."""
+    result = function
+    for argument in arguments:
+        result = app(result, argument)
+    return result
+
+
+def _destruct(pair: "object", body) -> "object":
+    """Open a consume-style pair (``need_pair``/algorithm-W pair) for ``body`` (a Python lambda)."""
+    return app(pair, lam(lambda first: lam(lambda second: body(first, second))))
 
 
 def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
@@ -304,51 +325,93 @@ def _assign_stmt(path: "object", value: "object") -> "object":
 
 _COMPILED_COMPILER_CODES: "object" = _pybuild.char_codes("compiled_compiler")
 
-# self path quoted -> (emit, value). ``emit`` is a DIFFERENCE LIST (statements-after -> statements-with-
-# this-in-front), so a parent composes children in O(1) and the module is linear in the term. ``value``
-# names this node's temp. A maximal island is spliced; otherwise the node is reconstructed and recursed.
-_SPECIALIZE_REC: "object" = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda quoted: app(app(
-    app(_ISLAND_CERTIFICATE, quoted),
-    _need_pair(
+
+def _finish_node(continuation, state, path, quoted, reconstruct_emit, node_type, failed):
+    """Call the continuation with this node's results, choosing the island or reconstruction emission.
+
+    A node is an island iff it is closed and its subtree did not fail typing; then it emits
+    ``value_island(<call-by-value compile>)`` and is not reconstructed. Otherwise it emits the
+    reconstruction (``reconstruct_emit``, a difference list). ``value`` names the node's temp either way.
+    """
+    island = _ap(AND, app(IS_CLOSED, quoted), app(_NOT, failed))
+    island_emit = lam(lambda rest: cons(
+        _assign_stmt(path, _runtime_call("value_island", (_compile_call_by_value(quoted),))), rest,
+    ))
+    emit = _ap(island, island_emit, reconstruct_emit)
+    return _ap(continuation, state, emit, _ex_name(_sym_path_codes(path)), node_type, failed)
+
+
+# self ctx state path quoted continuation: a single bottom-up pass. ``ctx`` is the list of binder types
+# (de Bruijn indexed); ``state`` is the pair (fresh-id counter, substitution). The continuation receives
+# (state', emit, value, type, failed). A Var reads its binder's type (never closed, so reconstructed); a
+# Lam freshens a parameter type and arrows; an App freshens a result and unifies function with arg ->
+# result, OR-ing the children's and this unification's failure. The island choice (in _finish_node) uses
+# the woven failed flag, so typability is computed once over the whole term.
+_SPECIALIZE_REC: "object" = app(Z, lam(lambda self_recursion: lam(lambda ctx: lam(lambda state: lam(lambda path: lam(lambda quoted: lam(lambda continuation: _ap(
+    quoted,
+    # QVar index: type is the binder's type from the context; a lone variable is open, so never an island
+    lam(lambda index: _ap(
+        continuation,
+        state,
         lam(lambda rest: cons(
-            _assign_stmt(path, _runtime_call("value_island", (_compile_call_by_value(quoted),))), rest,
+            _assign_stmt(path, _runtime_call("make_var", (_pybuild.py_constant_int(index),))), rest,
         )),
         _ex_name(_sym_path_codes(path)),
-    ),
-    ),
-    app(app(app(
-        quoted,
-        lam(lambda index: _need_pair(
-            lam(lambda rest: cons(
-                _assign_stmt(path, _runtime_call("make_var", (_pybuild.py_constant_int(index),))), rest,
-            )),
-            _ex_name(_sym_path_codes(path)),
-        )),
-        ),
-        lam(lambda body: app(lam(lambda compiled_body: _need_pair(
-            lam(lambda rest: app(_fst(compiled_body), cons(
-                _assign_stmt(path, _runtime_call("make_lam", (_snd(compiled_body),))), rest,
-            ))),
-            _ex_name(_sym_path_codes(path)),
-        )), app(app(self_recursion, cons(_BRANCH_BODY, path)), body))),
-        ),
-        lam(lambda function: lam(lambda argument: app(lam(lambda compiled_function: app(lam(lambda compiled_argument: _need_pair(
-            lam(lambda rest: app(_fst(compiled_function), app(_fst(compiled_argument), cons(
-                _assign_stmt(path, _runtime_call("make_app", (_snd(compiled_function), _snd(compiled_argument)))), rest,
-            )))),
-            _ex_name(_sym_path_codes(path)),
-        )), app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), argument))), app(app(self_recursion, cons(_BRANCH_FUNCTION, path)), function)))),
-    ),
-)))))
+        _ap(_NTH, index, ctx),
+        FALSE,
+    )),
+    # QLam body: a fresh parameter type, recurse with it pushed on the context, arrow it to the body type
+    lam(lambda body: _destruct(state, lambda counter, subst: _ap(
+        self_recursion,
+        cons(_tvar(counter), ctx),
+        _need_pair(app(SUCC, counter), subst),
+        cons(_BRANCH_BODY, path),
+        body,
+        lam(lambda state_b: lam(lambda emit_b: lam(lambda value_b: lam(lambda type_b: lam(lambda failed_b:
+            _finish_node(
+                continuation, state_b, path, quoted,
+                lam(lambda rest: app(emit_b, cons(
+                    _assign_stmt(path, _runtime_call("make_lam", (value_b,))), rest,
+                ))),
+                _tarrow(_tvar(counter), type_b),
+                failed_b,
+            )
+        ))))),
+    ))),
+    # QApp function argument: infer both, freshen a result beta, unify function with (arg -> beta)
+    lam(lambda function: lam(lambda argument: _ap(
+        self_recursion, ctx, state, cons(_BRANCH_FUNCTION, path), function,
+        lam(lambda state_f: lam(lambda emit_f: lam(lambda value_f: lam(lambda type_f: lam(lambda failed_f: _ap(
+            self_recursion, ctx, state_f, cons(_BRANCH_ARGUMENT, path), argument,
+            lam(lambda state_a: lam(lambda emit_a: lam(lambda value_a: lam(lambda type_a: lam(lambda failed_a:
+                _destruct(state_a, lambda counter, subst: _destruct(
+                    _ap(_UNIFY, _need_pair(subst, FALSE), type_f, _tarrow(type_a, _tvar(counter))),
+                    lambda new_subst, unify_failed: _finish_node(
+                        continuation,
+                        _need_pair(app(SUCC, counter), new_subst),
+                        path, quoted,
+                        lam(lambda rest: app(emit_f, app(emit_a, cons(
+                            _assign_stmt(path, _runtime_call("make_app", (value_f, value_a))), rest,
+                        )))),
+                        _tvar(counter),
+                        _ap(OR, failed_f, _ap(OR, failed_a, unify_failed)),
+                    ),
+                ))
+            ))))),
+        ))))),
+    ))),
+)))))))))
 
 
-COMPILE_SPECIALIZED: "object" = lam(lambda quoted: app(app(
-    app(_ISLAND_CERTIFICATE, quoted),
-    _compile_call_by_value(quoted),  # whole term is a by-value island: a strict expression
-    ),
-    app(lam(lambda root: _pybuild.py_module(app(_fst(root), _one(
-        _stmt(_st_assign(_COMPILED_COMPILER_CODES, _runtime_call("interpret", (_snd(root),)))),
-    )))), app(app(_SPECIALIZE_REC, SCOTT_NIL), quoted)),
+COMPILE_SPECIALIZED: "object" = lam(lambda quoted: _ap(
+    _SPECIALIZE_REC, SCOTT_NIL, _need_pair(church(0), _EMPTY_SUBST), SCOTT_NIL, quoted,
+    lam(lambda final_state: lam(lambda emit: lam(lambda value: lam(lambda node_type: lam(lambda failed: _ap(
+        _ap(AND, app(IS_CLOSED, quoted), app(_NOT, failed)),
+        _compile_call_by_value(quoted),  # whole term closed and typable: a strict call-by-value expression
+        _pybuild.py_module(app(emit, _one(  # else the interpret-with-islands ANF module
+            _stmt(_st_assign(_COMPILED_COMPILER_CODES, _runtime_call("interpret", (value,)))),
+        ))),
+    )))))),
 ))
 
 
@@ -358,9 +421,8 @@ def compile_specialized_lambda(node: Node) -> str:
     Runs ``COMPILE_SPECIALIZED`` on the quoted term and decodes the result with the generic
     ``_pyast.decode``. A closed simply-typable whole term yields a strict call-by-value expression;
     otherwise an interpret-with-islands A-normal-form module whose maximal closed simply-typable
-    sub-terms are spliced as compiled by-value islands. The decision and the codegen are the lambda
-    term; Python only quotes, runs, and decodes. This is the all-lambda replacement for
-    ``compile_specialized``; it is fast on normal programs (the COMPILE self-host artifact is heavy).
+    sub-terms are spliced as compiled by-value islands. The typability is woven into the single pass, so
+    the decision and the codegen are one lambda reduction; Python only quotes, runs, and decodes.
     """
     return run_in_large_stack(
         lambda: ast.unparse(ast.fix_missing_locations(decode(build(app(COMPILE_SPECIALIZED, quote(node)))))),
