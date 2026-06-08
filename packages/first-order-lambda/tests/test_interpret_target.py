@@ -12,6 +12,10 @@ interpreter.
 
 from __future__ import annotations
 
+import os
+
+import pytest
+
 from first_order_lambda._compiler import (
     COMPILE,
     Runtime,
@@ -67,9 +71,15 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
     assert _church_to_int(_run(source)) == _church_to_int(node) == 720
 
 
+@pytest.mark.skipif(
+    os.environ.get("FOL_REGEN_HEAVY") != "1",
+    reason="specializing the whole compiler peaks ~12 GB / minutes; set FOL_REGEN_HEAVY=1 to run",
+)
 def test_the_compiler_itself_is_interpret_headed() -> None:
     # COMPILE is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
     # interpret-headed module with by-value islands spliced; the recursive skeleton is left to interpret.
+    # With the island depth bound removed this specializes the large maximal islands, so it is heavy
+    # (the no-GC interner retains every reduction); gated behind FOL_REGEN_HEAVY like test_generated.
     source = compile_specialized(build(COMPILE))
     assert "interpret(" in source
     assert "value_island(" in source
