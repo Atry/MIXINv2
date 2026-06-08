@@ -1,9 +1,10 @@
-"""The three target runtimes of the compiler: EAGER, LAZY, and FIXPOINT.
+"""The two compiled target runtimes of the compiler: EAGER and LAZY.
 
-EAGER is strict (call-by-value): a Y recursion through a Church conditional diverges. LAZY and
-FIXPOINT share one thunk-based target and differ only in the thunk: LAZY recomputes on each force
-(call-by-name), FIXPOINT memoises with ``fixpoint_cached_property`` (call-by-need), so a re-entrant
-force folds to BOTTOM, the same least-fixpoint fold the interpreter performs, rather than looping.
+EAGER is strict (call-by-value): a Y recursion through a Church conditional diverges. LAZY is the
+thunk-based call-by-name target: an argument is a ``Thunk`` recomputed on each ``force``, matching the
+interpreter's weak-head reduction, so every normalizing term computes its value (and Y recursion runs).
+The FIXPOINT target is not a compiled runtime: it means interpret (re-submit the term to the
+interpreter), so it has no thunk class here.
 """
 
 from __future__ import annotations
@@ -11,9 +12,7 @@ from __future__ import annotations
 import pytest
 
 from first_order_lambda._compiler import (
-    BOTTOM,
     Runtime,
-    _FixpointThunk,
     _LazyThunk,
     compile_to_source,
     force,
@@ -35,17 +34,15 @@ def _thunk_church(term, runtime: Runtime) -> int:
     return numeral(thunk(lambda: successor))(thunk(lambda: 0))
 
 
-def test_all_runtimes_agree_on_a_normalizing_term() -> None:
+def test_compiled_runtimes_agree_on_a_normalizing_term() -> None:
     term = app(app(PLUS, church(2)), church(3))  # Y-free, so even EAGER runs it
     assert _eager_church(term) == 5
     assert _thunk_church(term, Runtime.LAZY) == 5
-    assert _thunk_church(term, Runtime.FIXPOINT) == 5
 
 
-def test_thunk_runtimes_run_y_recursion() -> None:
+def test_lazy_runtime_runs_y_recursion() -> None:
     fact = app(FACTORIAL, church(4))
     assert _thunk_church(fact, Runtime.LAZY) == 24
-    assert _thunk_church(fact, Runtime.FIXPOINT) == 24
 
 
 def test_eager_runtime_diverges_on_y_recursion() -> None:
@@ -55,11 +52,8 @@ def test_eager_runtime_diverges_on_y_recursion() -> None:
         eval(source)
 
 
-def test_fixpoint_thunk_folds_a_reentrant_force() -> None:
-    # A self-referential thunk: forcing it forces itself. The fixpoint thunk folds to BOTTOM; the
-    # lazy thunk, which recomputes, recurses without bound.
-    fixpoint = _FixpointThunk(lambda: force(fixpoint))
-    assert force(fixpoint) is BOTTOM
+def test_lazy_thunk_recomputes_on_each_force() -> None:
+    # The call-by-name thunk recomputes on every force, so a self-referential force recurses unbounded.
     lazy = _LazyThunk(lambda: force(lazy))
     with pytest.raises(RecursionError):
         force(lazy)

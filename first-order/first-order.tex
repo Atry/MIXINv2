@@ -1161,10 +1161,8 @@ against the interpreter on the lazy target.
 \paragraph{Compiled examples.}
 Each example below pairs a source term with the Python the compiler emits for it; the lambda's bound
 variables are named for readability and its binder at level $k$ is the Python parameter $\mathtt{v}k$.
-The listings are generated from the compiler, not written by hand; the cyclic terms ($\Omega$, the
-stream $Y\,(\mathtt{cons}\;0)$, and $\mathtt{map}\,\mathtt{succ}$ over it) use the fixpoint runtime,
-whose memoising thunk folds the cycle, and the compiler compiled to itself is committed alongside as a
-generated module.
+The listings are generated from the compiler, not written by hand, and the compiler compiled to
+itself is committed alongside as a generated module.
 \input{generated/compiler-examples}
 
 \paragraph{The soundness analysis.}

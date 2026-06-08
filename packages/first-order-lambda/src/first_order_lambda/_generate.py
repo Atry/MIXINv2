@@ -10,7 +10,7 @@ paper writes it) for the larger composite terms, whose full expansion would be u
 from __future__ import annotations
 
 from first_order_lambda._compiler import COMPILE, Runtime, compile_to_source
-from first_order_lambda._dsl import Builder, app, build
+from first_order_lambda._dsl import Builder, build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import (
     IDENTITY,
@@ -18,13 +18,8 @@ from first_order_lambda._prelude import (
     KESTREL,
     MULT,
     PLUS,
-    SCOTT_CONS,
-    SELF_APPLY,
     SUCC,
-    Y,
-    ZERO,
     church,
-    map_list,
 )
 
 _LATEX_HEADER = (
@@ -40,14 +35,11 @@ _PYTHON_HEADER = (
     "# convention). Regenerate with: python3 first-order/generate_examples.py\n"
 )
 
-# The cyclic stream of zeros, written purely with Y, and a guarded map over it.
-_CYCLIC_ZEROS: Builder = app(Y, app(SCOTT_CONS, ZERO))
-_MAP_SUCC_CYCLIC: Builder = map_list(SUCC, _CYCLIC_ZEROS)
-
 # (title, builder, runtime, latex): latex is None to auto-render the term with readable names, or a
-# named-combinator string for the composite terms whose full expansion would be unreadable. The
-# strict (eager) target diverges on a cyclic term, so the cyclic examples use the fixpoint runtime,
-# whose memoising thunk folds the cycle (Omega to bottom, the streams to a finite cyclic graph).
+# named-combinator string for the composite terms whose full expansion would be unreadable. EAGER is
+# the strict (call-by-value) target; LAZY is the call-by-name target whose lambda term emits the
+# force/Thunk wrapping. The cyclic and divergent examples belong to the fixpoint (interpret) target,
+# which is reintroduced once that target's runtime lands.
 _EXAMPLES: tuple[tuple[str, Builder, Runtime, str | None], ...] = (
     ("Identity", IDENTITY, Runtime.EAGER, None),
     ("The constant combinator $K$", KESTREL, Runtime.EAGER, None),
@@ -57,14 +49,6 @@ _EXAMPLES: tuple[tuple[str, Builder, Runtime, str | None], ...] = (
     ("Multiplication", MULT, Runtime.EAGER, None),
     ("Zero test", IS_ZERO, Runtime.EAGER, None),
     ("Identity, call-by-name target", IDENTITY, Runtime.LAZY, None),
-    ("The divergent term $\\Omega$", app(SELF_APPLY, SELF_APPLY), Runtime.FIXPOINT, None),
-    ("Cyclic stream of zeros", _CYCLIC_ZEROS, Runtime.FIXPOINT, "Y\\,(\\mathtt{cons}\\;0)"),
-    (
-        "Mapping over the cyclic stream",
-        _MAP_SUCC_CYCLIC,
-        Runtime.FIXPOINT,
-        "\\mathtt{map}\\;\\mathtt{succ}\\;(Y\\,(\\mathtt{cons}\\;0))",
-    ),
 )
 
 

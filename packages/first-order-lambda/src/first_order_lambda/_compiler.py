@@ -1,13 +1,18 @@
 """A lambda-calculus to Python compiler written in the lambda-calculus.
 
-The source is a quoted lambda term, a Scott value over three constructors ``QVar i`` / ``QLam body``
-/ ``QApp f a`` (de Bruijn). ``COMPILE`` is a pure lambda term that maps it to a quoted Python
-expression, a Scott value over ``PyVar level`` / ``PyLam level body`` / ``PyApp f a``: an
-abstraction becomes a Python ``lambda``, an application a call, and a variable a name. The compiler
-threads the binder depth so that a de Bruijn index ``i`` at depth ``d`` becomes the level
-``d - 1 - i`` (computed with Church subtraction), giving stable parameter names ``v{level}``. A
-meta-level ``quote`` turns an interpreter ``Node`` into the quoted source, and a meta-level decoder
-turns the compiled Scott value, run in the interpreter, into a real Python ``ast`` expression.
+The source is a quoted lambda term, a Scott value over ``QVar i`` / ``QLam body`` / ``QApp f a`` (de
+Bruijn). ``COMPILE`` is a pure lambda term that, GIVEN a compilation option, maps the quoted source to
+a quoted Python expression, a Scott value over ``PyVar level`` / ``PyLam level body`` / ``PyApp f a``
+/ ``PyForce e`` / ``PyThunk e``. The option decides the target, in the lambda term itself: under the
+eager option an application is a strict call and a variable is a bare name; under the lazy option a
+variable is forced and an argument is thunked (``force``/``Thunk``), the call-by-name target matching
+the interpreter's weak-head reduction. So the target-specific codegen lives in the lambda term; Python
+only quotes the input, supplies the option, runs the interpreter, and decodes the resulting Scott
+Python expression with a single generic decoder.
+
+The fixpoint target is not a compiled target. It means interpret: re-submit the term to the
+interpreter, whose interning gives the genuine cross-graph tabling fold. (The old compiled fixpoint
+thunk, a ``fixpoint_cached_property`` per thunk, had no cross-graph tabling and is removed.)
 """
 
 from __future__ import annotations
@@ -15,11 +20,9 @@ from __future__ import annotations
 import ast
 from enum import Enum, auto
 
-from fixpoints._core import fixpoint_cached_property
-
 from first_order_lambda._ast import App, Lam, Node, Var
 from first_order_lambda._dsl import Builder, app, build, lam
-from first_order_lambda._prelude import PRED, SUCC, church
+from first_order_lambda._prelude import FALSE, PRED, SUCC, TRUE, church
 from first_order_lambda._pyast import _church_to_int, _extract
 
 _PY_BASE = 5_000_000
@@ -34,9 +37,10 @@ Z: Builder = lam(lambda f: app(
 ))
 
 
-def _scott3(tag: int, fields: "list[Builder]") -> Builder:
+def _scott(arity: int, tag: int, fields: "list[Builder]") -> Builder:
+    """A Scott constructor over ``arity`` cases: select the ``tag``-th handler and apply the fields."""
     def collect(handlers: "list[Builder]") -> Builder:
-        if len(handlers) == 3:
+        if len(handlers) == arity:
             applied = handlers[tag]
             for field in fields:
                 applied = app(applied, field)
@@ -46,51 +50,77 @@ def _scott3(tag: int, fields: "list[Builder]") -> Builder:
     return collect([])
 
 
+# Quoted source: three constructors (QVar/QLam/QApp).
 def q_var(index: Builder) -> Builder:
-    return _scott3(0, [index])
+    return _scott(3, 0, [index])
 
 
 def q_lam(body: Builder) -> Builder:
-    return _scott3(1, [body])
+    return _scott(3, 1, [body])
 
 
 def q_app(function: Builder, argument: Builder) -> Builder:
-    return _scott3(2, [function, argument])
+    return _scott(3, 2, [function, argument])
 
 
+# Quoted Python expression: five constructors (PyVar/PyLam/PyApp/PyForce/PyThunk).
 def _py_var(level: Builder) -> Builder:
-    return _scott3(0, [level])
+    return _scott(5, 0, [level])
 
 
 def _py_lam(level: Builder, body: Builder) -> Builder:
-    return _scott3(1, [level, body])
+    return _scott(5, 1, [level, body])
 
 
 def _py_app(function: Builder, argument: Builder) -> Builder:
-    return _scott3(2, [function, argument])
+    return _scott(5, 2, [function, argument])
+
+
+def _py_force(expr: Builder) -> Builder:
+    return _scott(5, 3, [expr])
+
+
+def _py_thunk(expr: Builder) -> Builder:
+    return _scott(5, 4, [expr])
 
 
 # sub a b = a - b, by applying PRED to a, b times.
 _SUB: Builder = lam(lambda a: lam(lambda b: app(app(b, PRED), a)))
 
-# COMPILE = Y (lambda self. lambda d. lambda q.
-#   q (lambda i. PyVar (sub d (succ i)))            -- QVar i
-#     (lambda b. PyLam d (self (succ d) b))         -- QLam b
-#     (lambda f. lambda a. PyApp (self d f) (self d a)))  -- QApp f a
-COMPILE: Builder = app(
+# Target wrappers, selected by the option (a Church boolean ``thunked``): the lazy target wraps a
+# variable and a function in PyForce and an argument in PyThunk; the eager target wraps with identity.
+_FORCE_WRAP: Builder = lam(lambda expr: _py_force(expr))
+_THUNK_WRAP: Builder = lam(lambda expr: _py_thunk(expr))
+_IDENTITY_WRAP: Builder = lam(lambda expr: expr)
+
+
+def _select_wrap(thunked: Builder, lazy_wrap: Builder) -> Builder:
+    # thunked is a Church boolean: it picks lazy_wrap when lazy (TRUE), identity when eager (FALSE).
+    return app(app(thunked, lazy_wrap), _IDENTITY_WRAP)
+
+
+# COMPILE = lambda thunked. Z (lambda self. lambda d. lambda q.
+#   q (lambda i. wrapVar (PyVar (sub d (succ i))))                    -- QVar i
+#     (lambda b. PyLam d (self (succ d) b))                          -- QLam b
+#     (lambda f. lambda a. PyApp (wrapFun (self d f)) (wrapArg (self d a))))  -- QApp f a
+# wrapVar = wrapFun = (thunked ? PyForce : id); wrapArg = (thunked ? PyThunk : id).
+COMPILE: Builder = lam(lambda thunked: app(
     Z,
     lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
         quoted,
-        lam(lambda index: _py_var(app(app(_SUB, depth), app(SUCC, index)))),
+        lam(lambda index: app(
+            _select_wrap(thunked, _FORCE_WRAP),
+            _py_var(app(app(_SUB, depth), app(SUCC, index))),
+        )),
         ),
         lam(lambda body: _py_lam(depth, app(app(self_recursion, app(SUCC, depth)), body))),
         ),
         lam(lambda function: lam(lambda argument: _py_app(
-            app(app(self_recursion, depth), function),
-            app(app(self_recursion, depth), argument),
+            app(_select_wrap(thunked, _FORCE_WRAP), app(app(self_recursion, depth), function)),
+            app(_select_wrap(thunked, _THUNK_WRAP), app(app(self_recursion, depth), argument)),
         ))),
     )))),
-)
+))
 
 
 def quote(node: Node) -> Builder:
@@ -106,56 +136,69 @@ def quote(node: Node) -> Builder:
             raise ValueError(f"cannot quote {node!r}")
 
 
-def compile_quoted(quoted: Builder) -> Node:
-    """Run ``COMPILE`` on a quoted source term, returning the compiled Scott Python expression."""
-    return build(app(app(COMPILE, church(0)), quoted))
-
-
-def _decode_pyexpr(node: Node) -> ast.expr:
-    tag, fields = _extract(node, (1, 2, 2), _PY_BASE)  # PyVar/PyLam/PyApp
-    match tag:
-        case 0:  # PyVar level
-            return ast.Name(id=f"v{_church_to_int(fields[0])}", ctx=ast.Load())
-        case 1:  # PyLam level body
-            name = f"v{_church_to_int(fields[0])}"
-            return ast.Lambda(
-                args=ast.arguments(
-                    posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[],
-                    kw_defaults=[], defaults=[],
-                ),
-                body=_decode_pyexpr(fields[1]),
-            )
-        case 2:  # PyApp function argument
-            return ast.Call(
-                func=_decode_pyexpr(fields[0]), args=[_decode_pyexpr(fields[1])], keywords=[],
-            )
-        case _:
-            raise ValueError(f"unknown PyExpr tag {tag}")
-
-
-# --- runtimes -----------------------------------------------------------------------------------
-# Three target runtimes select how the compiled Python evaluates. EAGER is strict (call-by-value):
-# an application f(a) evaluates a before the call, so a Church conditional's unselected branch is
-# forced and a Y recursion diverges. LAZY and FIXPOINT share one thunk-based target: an argument is
-# a thunk Thunk(lambda: a) and a variable reference forces it, so only the selected branch runs and
-# a Y recursion over a normalizing term terminates, matching the interpreter's weak-head reduction.
-# LAZY and FIXPOINT differ only in the thunk: LAZY recomputes on each force (call-by-name), while
-# FIXPOINT memoises the value with fixpoint_cached_property, so a re-entrant (self-referential) force
-# folds to BOTTOM rather than looping, the same least-fixpoint fold the interpreter performs.
-
-
 class Runtime(Enum):
     EAGER = auto()
     LAZY = auto()
     FIXPOINT = auto()
 
 
-class _Bottom:
-    def __repr__(self) -> str:
-        return "BOTTOM"
+def _option(runtime: Runtime) -> Builder:
+    """The Scott compilation option for a compiled target: a Church boolean ``thunked``."""
+    if runtime is Runtime.EAGER:
+        return FALSE
+    if runtime is Runtime.LAZY:
+        return TRUE
+    raise ValueError("the fixpoint target is interpreted, not compiled; compile EAGER or LAZY")
 
 
-BOTTOM = _Bottom()
+def compile_quoted(option: Builder, quoted: Builder) -> Node:
+    """Run ``COMPILE`` (at the given option) on a quoted source term, returning the Scott Python expr."""
+    return build(app(app(app(COMPILE, option), church(0)), quoted))
+
+
+def _arguments(name: str) -> ast.arguments:
+    return ast.arguments(
+        posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[], kw_defaults=[], defaults=[],
+    )
+
+
+def _no_args() -> ast.arguments:
+    return ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[])
+
+
+def _decode_pyast(node: Node) -> ast.expr:
+    """Decode a Scott Python expression (PyVar/PyLam/PyApp/PyForce/PyThunk) to a real ``ast`` node.
+
+    This is generic: the target-specific shape (force/thunk wrapping) was decided by the lambda term,
+    so the decoder just renders each constructor, with no target branching.
+    """
+    tag, fields = _extract(node, (1, 2, 2, 1, 1), _PY_BASE)
+    match tag:
+        case 0:  # PyVar level
+            return ast.Name(id=f"v{_church_to_int(fields[0])}", ctx=ast.Load())
+        case 1:  # PyLam level body
+            return ast.Lambda(args=_arguments(f"v{_church_to_int(fields[0])}"), body=_decode_pyast(fields[1]))
+        case 2:  # PyApp function argument
+            return ast.Call(func=_decode_pyast(fields[0]), args=[_decode_pyast(fields[1])], keywords=[])
+        case 3:  # PyForce expr -> force(expr)
+            return ast.Call(
+                func=ast.Name(id="force", ctx=ast.Load()), args=[_decode_pyast(fields[0])], keywords=[],
+            )
+        case 4:  # PyThunk expr -> Thunk(lambda: expr)
+            return ast.Call(
+                func=ast.Name(id="Thunk", ctx=ast.Load()),
+                args=[ast.Lambda(args=_no_args(), body=_decode_pyast(fields[0]))],
+                keywords=[],
+            )
+        case _:
+            raise ValueError(f"unknown PyExpr tag {tag}")
+
+
+# --- runtime support for the compiled lazy target -----------------------------------------------
+# The lazy target's emitted Python refers to the free names ``force`` and ``Thunk``. An argument is a
+# thunk ``Thunk(lambda: a)`` recomputed on each ``force`` (call-by-name), matching the interpreter's
+# weak-head reduction so every normalizing term computes its value. (The eager target is strict and
+# self-contained; the fixpoint target is the interpreter, not a compiled runtime.)
 
 
 class _Thunk:
@@ -173,75 +216,30 @@ class _LazyThunk(_Thunk):
         return self._fn()  # call-by-name: recompute on every force
 
 
-class _FixpointThunk(_Thunk):
-    @fixpoint_cached_property(bottom=lambda: BOTTOM)
-    def value(self):
-        return self._fn()  # call-by-need: memoised, and a re-entrant force folds to BOTTOM
-
-
 def force(value):
     return value.value if isinstance(value, _Thunk) else value
 
 
-_THUNK_CLASS = {Runtime.LAZY: _LazyThunk, Runtime.FIXPOINT: _FixpointThunk}
-
-
 def runtime_globals(runtime: Runtime) -> dict:
-    """The evaluation globals for a compiled thunk-based program under the given runtime."""
-    return {"force": force, "Thunk": _THUNK_CLASS[runtime]}
+    """The evaluation globals for a compiled program under the given runtime.
 
-
-def _no_args() -> ast.arguments:
-    return ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[])
-
-
-def _decode_pyexpr_thunk(node: Node) -> ast.expr:
-    # Shared target for LAZY and FIXPOINT: variables are forced, arguments are thunks.
-    tag, fields = _extract(node, (1, 2, 2), _PY_BASE)
-    match tag:
-        case 0:  # PyVar level: force(v{level})
-            name = f"v{_church_to_int(fields[0])}"
-            return ast.Call(
-                func=ast.Name(id="force", ctx=ast.Load()),
-                args=[ast.Name(id=name, ctx=ast.Load())],
-                keywords=[],
-            )
-        case 1:  # PyLam level body: lambda v{level}: body
-            name = f"v{_church_to_int(fields[0])}"
-            return ast.Lambda(
-                args=ast.arguments(
-                    posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[],
-                    kw_defaults=[], defaults=[],
-                ),
-                body=_decode_pyexpr_thunk(fields[1]),
-            )
-        case 2:  # PyApp function argument: force(function)(Thunk(lambda: argument))
-            return ast.Call(
-                func=ast.Call(
-                    func=ast.Name(id="force", ctx=ast.Load()),
-                    args=[_decode_pyexpr_thunk(fields[0])],
-                    keywords=[],
-                ),
-                args=[ast.Call(
-                    func=ast.Name(id="Thunk", ctx=ast.Load()),
-                    args=[ast.Lambda(args=_no_args(), body=_decode_pyexpr_thunk(fields[1]))],
-                    keywords=[],
-                )],
-                keywords=[],
-            )
-        case _:
-            raise ValueError(f"unknown PyExpr tag {tag}")
+    EAGER source is self-contained; LAZY source needs ``force`` and the call-by-name ``Thunk``.
+    """
+    if runtime is Runtime.EAGER:
+        return {}
+    if runtime is Runtime.LAZY:
+        return {"force": force, "Thunk": _LazyThunk}
+    raise ValueError("the fixpoint target is interpreted; it has no compiled runtime globals")
 
 
 def compile_to_source(node: Node, runtime: Runtime = Runtime.EAGER) -> str:
-    """Compile an interpreter lambda term to Python source for the given target runtime.
+    """Compile an interpreter lambda term to Python source for the given compiled target.
 
-    EAGER yields a strict expression; LAZY and FIXPOINT yield the same thunk-based expression
-    (referring to the free names ``force`` and ``Thunk``, supplied by ``runtime_globals``).
+    EAGER yields a strict expression; LAZY yields the call-by-name expression (the lambda term emits
+    the ``force``/``Thunk`` wrapping). The fixpoint target is interpreted, not compiled.
     """
-    compiled = compile_quoted(quote(node))
-    decode = _decode_pyexpr if runtime is Runtime.EAGER else _decode_pyexpr_thunk
-    return ast.unparse(ast.fix_missing_locations(decode(compiled)))
+    compiled = compile_quoted(_option(runtime), quote(node))
+    return ast.unparse(ast.fix_missing_locations(_decode_pyast(compiled)))
 
 
 # --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
@@ -261,6 +259,11 @@ def _python_church_to_int(numeral) -> int:
     return numeral(lambda k: k + 1)(0)
 
 
+def _python_bool(value: bool):
+    """A host (Python) Church boolean, matching the eager (FALSE) / lazy (TRUE) compile option."""
+    return (lambda a: lambda b: a) if value else (lambda a: lambda b: b)
+
+
 def _python_quote(node: Node):
     """Quote an interpreter Node into a host Scott value, matching the QVar/QLam/QApp eliminators."""
     match node:
@@ -276,12 +279,6 @@ def _python_quote(node: Node):
             return lambda v: lambda l: lambda a: a(quoted_function)(quoted_argument)
         case _:
             raise ValueError(f"cannot quote {node!r}")
-
-
-def _arguments(name: str) -> ast.arguments:
-    return ast.arguments(
-        posonlyargs=[], args=[ast.arg(arg=name)], kwonlyargs=[], kw_defaults=[], defaults=[],
-    )
 
 
 def _decode_python_pyexpr(value) -> ast.expr:
@@ -302,15 +299,25 @@ def _decode_python_pyexpr(value) -> ast.expr:
             keywords=[],
         )
 
-    return value(on_var)(on_lam)(on_app)
+    def on_force(expr):
+        return ast.Call(func=ast.Name(id="force", ctx=ast.Load()), args=[_decode_python_pyexpr(expr)], keywords=[])
+
+    def on_thunk(expr):
+        return ast.Call(
+            func=ast.Name(id="Thunk", ctx=ast.Load()),
+            args=[ast.Lambda(args=_no_args(), body=_decode_python_pyexpr(expr))],
+            keywords=[],
+        )
+
+    return value(on_var)(on_lam)(on_app)(on_force)(on_thunk)
 
 
 def compiled_compiler():
-    """The self-compiled compiler: COMPILE compiled to Python and evaluated as a Python function."""
+    """The self-compiled compiler: COMPILE compiled to Python (eager) and evaluated as a function."""
     return eval(compile_to_source(build(COMPILE)))
 
 
-def compile_with(compiler, node: Node) -> str:
+def compile_with(compiler, node: Node, runtime: Runtime = Runtime.EAGER) -> str:
     """Compile ``node`` using a host-Python compiler function (e.g. the self-compiled one)."""
-    result = compiler(_python_church(0))(_python_quote(node))
+    result = compiler(_python_bool(runtime is Runtime.LAZY))(_python_church(0))(_python_quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_python_pyexpr(result)))
