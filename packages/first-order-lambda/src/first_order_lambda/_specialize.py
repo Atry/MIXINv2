@@ -27,17 +27,24 @@ from dataclasses import dataclass
 
 from typing import Callable
 
+from first_order_lambda._analysis import CLOSED
 from first_order_lambda._ast import App, Lam, Native, Node, Var
+from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
     Runtime,
     _recursion_headroom,
     compile_interpreted,
     compile_to_source,
+    quote,
     runtime_globals,
     value_island as _compiler_value_island,
 )
-from first_order_lambda._dsl import build
+from first_order_lambda._dsl import app, build, lam
+from first_order_lambda._prelude import AND, church
+from first_order_lambda._pyast import _church_to_int
+from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from first_order_lambda._render import render
+from first_order_lambda._typecheck import TYPABLE
 
 
 @dataclass(frozen=True)
@@ -174,21 +181,40 @@ def needs_folding(node: Node) -> bool:
     return "#" in behaviour or "⊥" in behaviour or "…" in behaviour
 
 
-def choose_runtime(node: Node) -> Runtime:
-    """The fastest runtime certified to preserve ``node``'s interpreted behaviour.
+# CHOOSE_RUNTIME fuel quoted: the runtime tag (a Church numeral) certified to preserve the term's
+# interpreted behaviour, by the fixed priority of H'. Closed and simply typable -> call-by-value (tag 0,
+# strongly normalizing so strict is safe); else a finite normal form within the fuel -> call-by-need
+# (tag 1, the lazy regime is viable and call-by-need shares); else interpret (tag 2). The Church if is
+# lazy, so the expensive NORMALIZES branch is only reached for an untypable term. The whole decision is
+# the lambda term; Python only reads the tag back as a Runtime label.
+_RUNTIME_TAGS: "tuple[Runtime, ...]" = (Runtime.CALL_BY_VALUE, Runtime.CALL_BY_NEED, Runtime.INTERPRET)
 
-    Call-by-value if simply typable (strongly normalizing); else call-by-need if the behaviour is a
-    finite normal form (normalizing); else interpret, leaving it to the interpreter, which folds
-    correctly. Call-by-need, not call-by-name, is the lazy choice: it computes the same values and
-    terminates in the same cases (memoisation is referentially transparent in a pure calculus) and
-    only ever shares work, so call-by-name is never needed for correctness and the specializer never
-    picks it.
+CHOOSE_RUNTIME: "object" = lam(lambda fuel: lam(lambda quoted: app(app(
+    app(app(AND, app(app(CLOSED, church(0)), quoted)), app(TYPABLE, quoted)),
+    church(0),
+    ),
+    app(app(
+        app(app(NORMALIZES, fuel), quoted),
+        church(1),
+        ),
+        church(2),
+    ),
+)))
+
+
+def choose_runtime(node: Node, fuel: int = DEFAULT_FUEL) -> Runtime:
+    """The fastest runtime certified to preserve ``node``'s interpreted behaviour, decided by lambda.
+
+    Runs ``CHOOSE_RUNTIME`` on the quoted term and reads its Church-numeral tag: call-by-value if closed
+    and simply typable (strongly normalizing); else call-by-need if a finite normal form is observed
+    within ``fuel`` (normalizing, so the lazy regime is viable and call-by-need shares); else interpret.
+    The decision is the lambda term; Python only reads the tag back as a ``Runtime`` label. Call-by-name
+    is never selected even where viable: call-by-need is preferred for its sharing.
     """
-    if is_typable(node):
-        return Runtime.CALL_BY_VALUE
-    if not needs_folding(node):
-        return Runtime.CALL_BY_NEED
-    return Runtime.INTERPRET
+    tag = run_in_large_stack(
+        lambda: _church_to_int(build(app(app(CHOOSE_RUNTIME, int_to_binnat(fuel)), quote(node)))),
+    )
+    return _RUNTIME_TAGS[tag]
 
 
 def specialize(node: Node) -> tuple[Runtime, str | None]:
