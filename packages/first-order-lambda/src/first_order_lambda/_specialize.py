@@ -30,7 +30,7 @@ from typing import Callable
 import ast
 
 from first_order_lambda import _pybuild
-from first_order_lambda._analysis import CLOSED, IS_CLOSED
+from first_order_lambda._analysis import CLOSED, IS_CLOSED, depth_at_most
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
@@ -312,50 +312,78 @@ def _compile_call_by_value(quoted: "object") -> "object":
 # deciding which SUB-terms to splice as islands inside an interpret-headed reconstruction.
 _CLOSED_TYPABLE: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
 
-# The per-sub-term island certificate: closed AND simply typable. There is no depth bound: the
-# bottom-up TYPABLE_BU is path-free, so the interpreter tables it once per distinct sub-term and types
-# even the large maximal islands affordably (the depth bound only ever existed to cap the old top-down
-# algorithm-W, which the no-GC interner made super-linear). The AND short-circuits, so TYPABLE_BU only
-# runs on a closed sub-term.
-_ISLAND: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE_BU, quoted)))
+# The island depth bound trades island SIZE against generation MEMORY, not type-checking time (the
+# bottom-up TYPABLE_BU types even big islands affordably). A small bound keeps islands shallow so the
+# generation stays cheap (the default committed compiler); a larger or absent bound admits the bigger
+# maximal islands (more compiled, less interpreted) at a higher generation cost. So the specializer is
+# parameterized by the bound, and multiple compiler artifacts are generated at different bounds rather
+# than one fixed compiler (see ``_generate``).
+_ISLAND_DEPTH_SMALL: "object" = church(8)
 
 
-# reconstruct quoted -> generic Python AST. A maximal island becomes value_island(<call-by-value>);
-# otherwise the node is rebuilt with make_var/make_lam/make_app, recursing into children. Path-free, so
-# the interpreter tables it per distinct sub-term and the result is a shared graph.
-_RECONSTRUCT: "object" = app(Z, lam(lambda self_recursion: lam(lambda quoted: _ap(
-    app(_ISLAND, quoted),
-    _runtime_call("value_island", (_compile_call_by_value(quoted),)),
-    _ap(
-        quoted,
-        lam(lambda index: _runtime_call("make_var", (_pybuild.py_constant_int(index),))),
-        lam(lambda body: _runtime_call("make_lam", (app(self_recursion, body),))),
-        lam(lambda function: lam(lambda argument: _runtime_call(
-            "make_app", (app(self_recursion, function), app(self_recursion, argument)),
-        ))),
-    ),
-))))
+def _island_term(depth_bound: "object | None") -> "object":
+    """The per-sub-term island certificate at ``depth_bound`` (``None`` = unbounded): closed AND (shallow
+    enough) AND simply typable. The AND short-circuits, so TYPABLE_BU only runs on a closed sub-term."""
+    if depth_bound is None:
+        return lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE_BU, quoted)))
+    depth_ok = depth_at_most(depth_bound)
+    return lam(lambda quoted: _ap(
+        AND, app(IS_CLOSED, quoted), _ap(AND, app(depth_ok, quoted), app(TYPABLE_BU, quoted)),
+    ))
 
 
-COMPILE_SPECIALIZED: "object" = lam(lambda quoted: _ap(
-    app(_CLOSED_TYPABLE, quoted),
-    _compile_call_by_value(quoted),  # whole term closed and typable: a strict call-by-value expression
-    _runtime_call("interpret", (app(_RECONSTRUCT, quoted),)),  # else interpret the reconstruction graph
-))
+def _reconstruct_term(depth_bound: "object | None") -> "object":
+    """reconstruct quoted -> generic Python AST at ``depth_bound``. A maximal island becomes
+    value_island(<call-by-value>); otherwise the node is rebuilt with make_var/make_lam/make_app,
+    recursing. Path-free, so the interpreter tables it per distinct sub-term and the result is a shared
+    graph."""
+    island = _island_term(depth_bound)
+    return app(Z, lam(lambda self_recursion: lam(lambda quoted: _ap(
+        app(island, quoted),
+        _runtime_call("value_island", (_compile_call_by_value(quoted),)),
+        _ap(
+            quoted,
+            lam(lambda index: _runtime_call("make_var", (_pybuild.py_constant_int(index),))),
+            lam(lambda body: _runtime_call("make_lam", (app(self_recursion, body),))),
+            lam(lambda function: lam(lambda argument: _runtime_call(
+                "make_app", (app(self_recursion, function), app(self_recursion, argument)),
+            ))),
+        ),
+    ))))
 
 
-def compile_specialized_lambda(node: Node) -> str:
+def _compile_specialized_term(depth_bound: "object | None") -> "object":
+    """COMPILE_SPECIALIZED at ``depth_bound``: a closed simply-typable whole term is a strict
+    call-by-value expression; otherwise interpret(<reconstruction>) with the islands spliced."""
+    reconstruct = _reconstruct_term(depth_bound)
+    return lam(lambda quoted: _ap(
+        app(_CLOSED_TYPABLE, quoted),
+        _compile_call_by_value(quoted),
+        _runtime_call("interpret", (app(reconstruct, quoted),)),
+    ))
+
+
+# The default-bound (small-island) instances: the cheap, committed compiler and the in-process path.
+_ISLAND: "object" = _island_term(_ISLAND_DEPTH_SMALL)
+_RECONSTRUCT: "object" = _reconstruct_term(_ISLAND_DEPTH_SMALL)
+COMPILE_SPECIALIZED: "object" = _compile_specialized_term(_ISLAND_DEPTH_SMALL)
+
+
+def compile_specialized_lambda(node: Node, island_depth: "object | None" = _ISLAND_DEPTH_SMALL) -> str:
     """Compile ``node`` in specialized mode, entirely by the lambda term ``COMPILE_SPECIALIZED``.
 
-    Runs ``COMPILE_SPECIALIZED`` on the quoted term and decodes the result with the generic
-    ``_pyast.decode``. A closed simply-typable whole term yields a strict call-by-value expression;
-    otherwise ``interpret(<reconstruction>)`` with maximal closed simply-typable sub-terms spliced as
-    compiled by-value islands. The whole decision and codegen are the lambda term; Python only quotes,
-    runs, and decodes. (The reconstruction is a shared graph; serializing a compiler-scale graph
-    preserving that sharing, to stay under the parser's nesting cap, is the generic codec's concern.)
+    ``island_depth`` bounds which closed sub-terms become compiled by-value islands (a Church numeral,
+    the default a small bound for a cheap generation; ``None`` for unbounded, the largest islands).
+    Runs the specializer on the quoted term and decodes with the generic ``_pyast.decode``. A closed
+    simply-typable whole term yields a strict call-by-value expression; otherwise
+    ``interpret(<reconstruction>)`` with the maximal closed simply-typable sub-terms spliced as compiled
+    by-value islands. The whole decision and codegen are the lambda term; Python only quotes, runs, and
+    decodes. (The reconstruction is a shared graph; serializing a compiler-scale graph preserving that
+    sharing, to stay under the parser's nesting cap, is the generic codec's concern.)
     """
+    term = _compile_specialized_term(island_depth)
     return run_in_large_stack(
-        lambda: to_anf_source(build(app(COMPILE_SPECIALIZED, quote(node))), "compiled_compiler"),
+        lambda: to_anf_source(build(app(term, quote(node))), "compiled_compiler"),
     )
 
 

@@ -2,45 +2,25 @@
 
 The compiler-example LaTeX fragment and the self-compiled compiler module are committed so the paper
 build and the bootstrap test do not run Python generation. These tests assert each committed file is
-exactly the current builder output, so a compiler change that is not regenerated fails here.
-
-Regenerating the self-host artifact is heavy: with the island depth bound removed it splices the
-large maximal islands, and the generation's reuse working set is large, so it needs the unbounded
-(``inf``) interner retainer to keep memoization (a bounded retainer thrashes and never finishes),
-which peaks around 12 GB and takes several minutes. That would OOM a modest CI runner, so these
-currency checks are gated behind ``FOL_REGEN_HEAVY=1`` and skipped by default. Run them (and
-regenerate the committed files) explicitly after any change to the compiler or the type checker, with
-the unbounded retainer:
-
-    FOL_REGEN_HEAVY=1 FOL_INTERNER_RETAIN=inf PYTHONPATH=src:../fixpoints/src uv run ... -m pytest tests/test_generated.py
+exactly the current builder output, so a compiler change that is not regenerated fails here. The
+default committed compiler uses a small island depth bound, so this regeneration is cheap; larger
+island artifacts are generated and checked separately.
 """
 
 from __future__ import annotations
 
-import os
-
 from pathlib import Path
-
-import pytest
 
 from first_order_lambda import _generate, _generated_compiler
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _LATEX_FRAGMENT = _REPO_ROOT / "first-order" / "generated" / "compiler-examples.tex"
 
-_HEAVY_REGEN = os.environ.get("FOL_REGEN_HEAVY") == "1"
-_skip_heavy = pytest.mark.skipif(
-    not _HEAVY_REGEN,
-    reason="regenerating the self-host artifact peaks ~12 GB / minutes; set FOL_REGEN_HEAVY=1 to run",
-)
 
-
-@_skip_heavy
 def test_generated_compiler_module_is_current() -> None:
     committed = Path(_generated_compiler.__file__).read_text()
     assert committed == _generate.generated_compiler_module_text()
 
 
-@_skip_heavy
 def test_generated_latex_fragment_is_current() -> None:
     assert _LATEX_FRAGMENT.read_text() == _generate.compiler_examples_fragment()
