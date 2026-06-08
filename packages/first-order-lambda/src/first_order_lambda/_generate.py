@@ -20,6 +20,7 @@ from first_order_lambda._compiler import (
 from first_order_lambda._dsl import Builder, app, build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import (
+    FACTORIAL,
     IDENTITY,
     IS_ZERO,
     KESTREL,
@@ -116,20 +117,31 @@ def _cyclic_island_block() -> str:
     return heading + note + _listing(compile_to_source(element, Runtime.CALL_BY_VALUE)) + result
 
 
+_ISLAND_LISTING_MAX_LINE = 200  # the largest combinators compile to multi-thousand-character lines no
+# listing can typeset (their deep de Bruijn levels become long unary identifiers); show only the compact
+# islands and state the total.
+
+
 def _compiler_islands_block() -> str:
     """The flagship: the call-by-value islands the specializer finds inside the compiler itself."""
     islands = call_by_value_islands(build(COMPILE))
+    compiled = [(island, compile_to_source(island, Runtime.CALL_BY_VALUE)) for island in islands]
+    showable = [
+        (island, source)
+        for island, source in compiled
+        if max((len(line) for line in source.splitlines()), default=0) <= _ISLAND_LISTING_MAX_LINE
+    ]
     heading = (
         "\\medskip\\noindent\\textbf{The compiler, specialized: finding call-by-value islands.}\\quad "
         "The compiler is untypable as a whole, since its fixpoint combinator $Z$ self-applies, so it "
         f"stays interpreted; the specializer finds its {len(islands)} maximal closed simply-typable "
         "sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, "
-        "while the recursive skeleton is left to the interpreter:\n"
+        "while the recursive skeleton is left to the interpreter. The "
+        f"{len(showable)} with compact compiled forms are shown (the larger combinators are elided):\n"
     )
     parts = [
-        f"\\smallskip\\noindent ${term_to_latex(island)}$\n"
-        + _listing(compile_to_source(island, Runtime.CALL_BY_VALUE))
-        for island in islands
+        f"\\smallskip\\noindent ${term_to_latex(island)}$\n" + _listing(source)
+        for island, source in showable
     ]
     return heading + "\n".join(parts)
 
@@ -138,12 +150,15 @@ def compiler_examples_fragment() -> str:
     """The LaTeX fragment: the specializer's output per term, the islands it finds, and self-hosting."""
     whole_terms = [_whole_term_block(title, builder, latex) for title, builder, latex in _WHOLE_TERM_EXAMPLES]
     bootstrap = (
-        "\\medskip\\noindent\\textbf{The compiler itself, compiled in specialized mode (self-hosting).}\\quad "
-        "The compiler has no whole-graph by-value certificate, so it compiles to interpret-headed Python: "
-        "the compiler reconstructed as an interpreter term and handed back to the interpreter. This is the "
-        "self-compiled compiler committed as the generated module \\texttt{\\_generated\\_compiler.py}; run "
-        "by the interpreter on a quoted program, it emits the same Python as the in-process compiler:\n"
-        + _listing(compile_specialized(build(COMPILE)))
+        "\\medskip\\noindent\\textbf{Self-hosting: the specialized interpret-with-islands form.}\\quad "
+        "A term with no whole-graph by-value certificate compiles to interpret-headed Python: it is "
+        "reconstructed with the interpreter's node constructors and handed back to the interpreter, with "
+        "its closed, shallow, simply-typable sub-terms spliced as compiled by-value islands. The compiler "
+        "itself compiles this way; the full self-compiled compiler is committed as the generated module "
+        "\\texttt{\\_generated\\_compiler.py} (run by the interpreter on a quoted program, it emits the same "
+        "Python as the in-process compiler). Here is a small term in the same form, $\\mathtt{factorial}\\,"
+        "(2\\times 3)$, whose multiplication sub-term is spliced as a by-value island:\n"
+        + _listing(compile_specialized(build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))))
     )
     return (
         _LATEX_HEADER

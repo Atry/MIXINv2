@@ -187,7 +187,11 @@ _STACK_SIZE = 1024 * 1024 * 1024  # 1 GiB
 # the conservative "needs fold" verdict, so the budget trades precision for the cost of that case. Like
 # ``needs_folding``'s depth/node bounds, raising it only ever turns more terms call-by-need (never
 # unsound: exhaustion always falls back to interpret).
-DEFAULT_FUEL = 1024
+# A non-normalizing term runs the whole budget, driving the interpreter's substitution recursion that
+# deep, so the budget is kept modest enough that the recursion stays within the large-stack thread's C
+# stack; the corpus normalizes within a couple of hundred steps, so this is ample headroom. Raising it
+# only ever turns more terms call-by-need (never unsound), at the cost of deeper recursion.
+DEFAULT_FUEL = 256
 
 
 def run_in_large_stack(thunk):
