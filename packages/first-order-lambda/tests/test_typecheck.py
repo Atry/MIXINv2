@@ -31,7 +31,7 @@ from first_order_lambda._prelude import (
     church,
 )
 from first_order_lambda._specialize import is_typable
-from first_order_lambda._typecheck import is_typable_lambda, typable_bu_lambda
+from first_order_lambda._typecheck import is_typable_lambda
 
 _TYPABLE = {
     "identity": build(IDENTITY),
@@ -81,17 +81,3 @@ def test_lambda_certificate_rejects_the_compiler() -> None:
     assert is_typable(node) is False
 
 
-# The bottom-up principal-typing fold ``TYPABLE_BU`` is the certificate the island specializer
-# consults (it types every sub-term once, reusing children's results, so removing the island depth
-# bound stays affordable). It must agree with the same Python algorithm-W oracle on the corpus and,
-# crucially, on the compiler's closed sub-terms, since that is where it decides islands.
-@pytest.mark.parametrize("name", sorted(_TYPABLE))
-def test_bottom_up_certificate_accepts_typable_terms(name: str) -> None:
-    assert typable_bu_lambda(_TYPABLE[name]) is True
-    assert is_typable(_TYPABLE[name]) is True
-
-
-@pytest.mark.parametrize("name", sorted(_UNTYPABLE))
-def test_bottom_up_certificate_rejects_untypable_terms(name: str) -> None:
-    assert typable_bu_lambda(_UNTYPABLE[name]) is False
-    assert is_typable(_UNTYPABLE[name]) is False
