@@ -1,0 +1,45 @@
+# serializer version: 1
+# name: test_call_by_need_emits_explicit_memoising_thunks[call_by_need_source]
+  dict({
+    'constant_k': '''
+      def _program():
+          v_1 = CALL_BY_NEED_SENTINEL
+      
+          def v_0():
+              nonlocal v_1
+              if v_1 is CALL_BY_NEED_SENTINEL:
+      
+                  def v_2(v_3):
+                      v_1_2 = CALL_BY_NEED_SENTINEL
+      
+                      def v_0_2():
+                          nonlocal v_1_2
+                          if v_1_2 is CALL_BY_NEED_SENTINEL:
+      
+                              def v_2_2(v_3_2):
+                                  return v_3
+                              v_1_2 = v_2_2
+                          return v_1_2
+                      return v_0_2
+                  v_1 = v_2
+              return v_1
+          return v_0
+      program = _program()
+    ''',
+    'identity': '''
+      def _program():
+          v_1 = CALL_BY_NEED_SENTINEL
+      
+          def v_0():
+              nonlocal v_1
+              if v_1 is CALL_BY_NEED_SENTINEL:
+      
+                  def v_2(v_3):
+                      return v_3
+                  v_1 = v_2
+              return v_1
+          return v_0
+      program = _program()
+    ''',
+  })
+# ---

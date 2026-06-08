@@ -1,8 +1,0 @@
-# serializer version: 1
-# name: test_symbol_from_path_renders_underscore_identifier[identifiers]
-  dict({
-    'path_0_2_1': 'v_0_2_1',
-    'path_12_3_567': 'v_12_3_567',
-    'root': 'v',
-  })
-# ---

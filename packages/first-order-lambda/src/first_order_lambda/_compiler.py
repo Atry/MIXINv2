@@ -22,8 +22,8 @@ from enum import Enum, auto
 
 from first_order_lambda._ast import App, Lam, Node, Var
 from first_order_lambda._dsl import Builder, app, build, lam
-from first_order_lambda._prelude import FALSE, PRED, SUCC, TRUE, church
-from first_order_lambda._pyast import _church_to_int, _extract
+from first_order_lambda._prelude import FALSE, PRED, SCOTT_NIL, SUCC, TRUE, church, cons
+from first_order_lambda._pyast import _church_to_int, _decode_scott_list, _extract
 
 _PY_BASE = 5_000_000
 
@@ -234,7 +234,7 @@ def runtime_globals(runtime: Runtime) -> dict:
     if runtime is Runtime.CALL_BY_NAME:
         return {"force": force, "Thunk": _LazyThunk}
     if runtime is Runtime.CALL_BY_NEED:
-        raise NotImplementedError("call-by-need codegen (explicit memoising thunks) is not built yet")
+        return call_by_need_globals()
     raise ValueError("the interpret target is interpreted; it has no compiled runtime globals")
 
 
@@ -244,8 +244,334 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
     Call-by-value yields a strict expression; call-by-name yields the expression with the lambda
     term's ``force``/``Thunk`` wrapping. The interpret target is interpreted, not compiled.
     """
+    if runtime is Runtime.CALL_BY_NEED:
+        return _compile_need_source(node)
     compiled = compile_quoted(_option(runtime), quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_pyast(compiled)))
+
+
+# --- call-by-need: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term ---
+# Call-by-need adds sharing to call-by-name: a thunk computes once and caches. The cache and its
+# update need statements, so the target is statement-based, and the WHOLE structure (the def, the
+# nonlocal, the sentinel guard, the assignment, the return, the module wrapper) is emitted by the
+# COMPILE_NEED lambda term as a Scott-encoded Python AST. Python only decodes that AST 1:1; it
+# assembles nothing. Every sub-term compiles to a memoising thunk of the shape the design fixed:
+#
+#     v_<cell> = CALL_BY_NEED_SENTINEL
+#     def v_<thunk>():
+#         nonlocal v_<cell>
+#         if v_<cell> is CALL_BY_NEED_SENTINEL:
+#             <compute statements>
+#             v_<cell> = <compute expression>
+#         return v_<cell>
+#
+# Forcing a thunk is calling it; a bound variable arrives as a thunk and is forced on use; a lambda's
+# value is an inner ``def v_<func>(v_<param>)``. Every identifier is a SYMBOL: the path of the AST
+# node it belongs to, a list of Church-numeral segments (a branch index per descent, plus a kind tag),
+# decoded to an underscore-joined name like ``v_0_2_1`` that is unique by construction. A binder's
+# symbol is threaded down in an environment so a variable looks up its binder's name by de Bruijn
+# index. The program is wrapped in ``def _program(): ...; return <root thunk>`` so the ``nonlocal``
+# cells have an enclosing function scope, and ``program = _program()`` binds it.
+
+# Path segments: a branch index per descent (function/argument/lambda-body) and a kind tag per role.
+_BRANCH_FUNCTION: Builder = church(0)
+_BRANCH_ARGUMENT: Builder = church(1)
+_BRANCH_BODY: Builder = church(2)
+_KIND_THUNK: Builder = church(0)
+_KIND_CELL: Builder = church(1)
+_KIND_FUNCTION: Builder = church(2)
+_KIND_VARIABLE: Builder = church(3)
+
+
+def _let(value: Builder, body: "object") -> Builder:
+    """Bind ``value`` for ``body`` (a Python ``lambda`` over the bound Builder)."""
+    return app(lam(body), value)
+
+
+def _one(element: Builder) -> Builder:
+    return cons(element, SCOTT_NIL)
+
+
+def _two(first: Builder, second: Builder) -> Builder:
+    return cons(first, cons(second, SCOTT_NIL))
+
+
+# append xs ys = xs (lambda h. lambda t. cons h (self t ys)) ys, by Scott-list elimination.
+_APPEND: Builder = app(Z, lam(lambda self_recursion: lam(lambda xs: lam(lambda ys: app(
+    app(xs, lam(lambda head: lam(lambda tail: cons(head, app(app(self_recursion, tail), ys))))),
+    ys,
+)))))
+
+
+def _append(xs: Builder, ys: Builder) -> Builder:
+    return app(app(_APPEND, xs), ys)
+
+
+# tail/head by Scott-list elimination; nth drops ``index`` heads (Church iteration) then takes head.
+_TAIL: Builder = lam(lambda lst: app(app(lst, lam(lambda head: lam(lambda tail: tail))), SCOTT_NIL))
+_HEAD: Builder = lam(lambda lst: app(app(lst, lam(lambda head: lam(lambda tail: head))), SCOTT_NIL))
+_NTH: Builder = lam(lambda index: lam(lambda env: app(_HEAD, app(app(index, _TAIL), env))))
+
+
+# A compiled (sub)term is a Scott pair of its setup statements and its value expression.
+def _need_pair(setup: Builder, value: Builder) -> Builder:
+    return lam(lambda selector: app(app(selector, setup), value))
+
+
+def _fst(pair: Builder) -> Builder:
+    return app(pair, TRUE)
+
+
+def _snd(pair: Builder) -> Builder:
+    return app(pair, FALSE)
+
+
+# Scott Python AST constructors (the lambda term builds these; the decoder maps each 1:1 to ``ast``).
+# A symbol names an identifier: a path (list of Church segments) rendered ``v_<seg>_<seg>...``, or one
+# of the two fixed wrapper names.
+def _sym_path(path: Builder) -> Builder:
+    return _scott(3, 0, [path])
+
+
+_SYM_PROGRAM_DEF: Builder = _scott(3, 1, [])  # the wrapper function name ``_program``
+_SYM_PROGRAM_BIND: Builder = _scott(3, 2, [])  # the bound result name ``program``
+
+
+def _name_symbol(kind: Builder, path: Builder) -> Builder:
+    """The symbol naming the ``kind`` identifier of the node at ``path`` (kind tag is the path head)."""
+    return _sym_path(cons(kind, path))
+
+
+# Expressions.
+def _ex_name(symbol: Builder) -> Builder:
+    return _scott(5, 0, [symbol])
+
+
+_EX_SENTINEL: Builder = _scott(5, 1, [])  # the CALL_BY_NEED_SENTINEL name
+
+
+def _ex_force(expr: Builder) -> Builder:
+    return _scott(5, 2, [expr])  # expr()
+
+
+def _ex_app(function: Builder, argument: Builder) -> Builder:
+    return _scott(5, 3, [function, argument])  # function(argument)
+
+
+def _ex_is(left: Builder, right: Builder) -> Builder:
+    return _scott(5, 4, [left, right])  # left is right
+
+
+# Statements.
+def _st_func_def(name: Builder, parameters: Builder, body: Builder) -> Builder:
+    return _scott(5, 0, [name, parameters, body])
+
+
+def _st_nonlocal(names: Builder) -> Builder:
+    return _scott(5, 1, [names])
+
+
+def _st_if(test: Builder, body: Builder) -> Builder:
+    return _scott(5, 2, [test, body])
+
+
+def _st_assign(target: Builder, value: Builder) -> Builder:
+    return _scott(5, 3, [target, value])
+
+
+def _st_return(value: Builder) -> Builder:
+    return _scott(5, 4, [value])
+
+
+def _thunk_scaffold(cell: Builder, thunk: Builder, compute: Builder) -> Builder:
+    """The two setup statements introducing a memoising thunk: the cell init and the def."""
+    body = cons(
+        _st_nonlocal(_one(cell)),
+        cons(
+            _st_if(_ex_is(_ex_name(cell), _EX_SENTINEL), compute),
+            _one(_st_return(_ex_name(cell))),
+        ),
+    )
+    return _two(_st_assign(cell, _EX_SENTINEL), _st_func_def(thunk, SCOTT_NIL, body))
+
+
+# The recursion: self path env quoted -> (setup statements, value expression). ``path`` is the AST
+# address (Church segments, innermost first); ``env`` is the list of in-scope binder symbols.
+_COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
+    lambda quoted: app(app(app(
+        quoted,
+        # QVar index: the variable is its binder's thunk, looked up by de Bruijn index; no setup.
+        lam(lambda index: _need_pair(SCOTT_NIL, _ex_name(app(app(_NTH, index), env)))),
+        ),
+        # QLam body: the value is an inner function; wrap it in a memoising thunk.
+        lam(lambda body: _let(
+            _name_symbol(_KIND_VARIABLE, path),
+            lambda parameter: _let(
+                app(app(app(self_recursion, cons(_BRANCH_BODY, path)), cons(parameter, env)), body),
+                lambda compiled_body: _need_pair(
+                    _thunk_scaffold(
+                        _name_symbol(_KIND_CELL, path),
+                        _name_symbol(_KIND_THUNK, path),
+                        _two(
+                            _st_func_def(
+                                _name_symbol(_KIND_FUNCTION, path),
+                                _one(parameter),
+                                _append(_fst(compiled_body), _one(_st_return(_snd(compiled_body)))),
+                            ),
+                            _st_assign(
+                                _name_symbol(_KIND_CELL, path),
+                                _ex_name(_name_symbol(_KIND_FUNCTION, path)),
+                            ),
+                        ),
+                    ),
+                    _ex_name(_name_symbol(_KIND_THUNK, path)),
+                ),
+            ),
+        )),
+        ),
+        # QApp f a: force the function and apply the argument thunk; the result is a memoising thunk.
+        lam(lambda function: lam(lambda argument: _let(
+            app(app(app(self_recursion, cons(_BRANCH_FUNCTION, path)), env), function),
+            lambda compiled_function: _let(
+                app(app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), env), argument),
+                lambda compiled_argument: _need_pair(
+                    _thunk_scaffold(
+                        _name_symbol(_KIND_CELL, path),
+                        _name_symbol(_KIND_THUNK, path),
+                        _append(
+                            _fst(compiled_function),
+                            _append(
+                                _fst(compiled_argument),
+                                _one(_st_assign(
+                                    _name_symbol(_KIND_CELL, path),
+                                    # Force to WHNF: applying the function returns the body thunk, which
+                                    # must itself be forced so this cell holds a value, not a thunk.
+                                    _ex_force(_ex_app(
+                                        _ex_force(_snd(compiled_function)), _snd(compiled_argument),
+                                    )),
+                                )),
+                            ),
+                        ),
+                    ),
+                    _ex_name(_name_symbol(_KIND_THUNK, path)),
+                ),
+            ),
+        ))),
+    ))))))
+
+
+# COMPILE_NEED wraps the root's (statements, value) in def _program(): ...; return value, then
+# program = _program(), so the nonlocal cells have an enclosing function scope.
+COMPILE_NEED: Builder = lam(lambda quoted: _let(
+    app(app(app(_COMPILE_NEED_REC, SCOTT_NIL), SCOTT_NIL), quoted),
+    lambda root: _two(
+        _st_func_def(
+            _SYM_PROGRAM_DEF, SCOTT_NIL, _append(_fst(root), _one(_st_return(_snd(root)))),
+        ),
+        _st_assign(_SYM_PROGRAM_BIND, _ex_force(_ex_name(_SYM_PROGRAM_DEF))),
+    ),
+))
+
+
+_NEED_SYM_BASE = 6_000_000
+_NEED_EXPR_BASE = 6_500_000
+_NEED_STMT_BASE = 7_200_000
+
+_SENTINEL_NAME = "CALL_BY_NEED_SENTINEL"
+
+
+def _decode_symbol(node: Node) -> str:
+    tag, fields = _extract(node, (1, 0, 0), _NEED_SYM_BASE)
+    match tag:
+        case 0:  # a path symbol: v_<seg>_<seg>...
+            segments = [_church_to_int(segment) for segment in _decode_scott_list(fields[0])]
+            return "_".join(["v", *(str(segment) for segment in segments)])
+        case 1:
+            return "_program"
+        case 2:
+            return "program"
+        case _:
+            raise ValueError(f"unknown call-by-need symbol tag {tag}")
+
+
+def _decode_need_expr(node: Node) -> ast.expr:
+    tag, fields = _extract(node, (1, 0, 1, 2, 2), _NEED_EXPR_BASE)
+    match tag:
+        case 0:  # a name
+            return ast.Name(id=_decode_symbol(fields[0]), ctx=ast.Load())
+        case 1:  # the sentinel name
+            return ast.Name(id=_SENTINEL_NAME, ctx=ast.Load())
+        case 2:  # force: expr()
+            return ast.Call(func=_decode_need_expr(fields[0]), args=[], keywords=[])
+        case 3:  # function(argument)
+            return ast.Call(
+                func=_decode_need_expr(fields[0]), args=[_decode_need_expr(fields[1])], keywords=[],
+            )
+        case 4:  # left is right
+            return ast.Compare(
+                left=_decode_need_expr(fields[0]), ops=[ast.Is()],
+                comparators=[_decode_need_expr(fields[1])],
+            )
+        case _:
+            raise ValueError(f"unknown call-by-need expression tag {tag}")
+
+
+def _decode_need_statements(node: Node) -> "list[ast.stmt]":
+    return [_decode_need_statement(element) for element in _decode_scott_list(node)]
+
+
+def _decode_need_statement(node: Node) -> ast.stmt:
+    tag, fields = _extract(node, (3, 1, 2, 2, 1), _NEED_STMT_BASE)
+    match tag:
+        case 0:  # a function def
+            parameters = [_decode_symbol(parameter) for parameter in _decode_scott_list(fields[1])]
+            arguments = _arguments(*parameters) if parameters else _no_args()
+            return ast.FunctionDef(
+                name=_decode_symbol(fields[0]), args=arguments,
+                body=_decode_need_statements(fields[2]), decorator_list=[],
+            )
+        case 1:  # nonlocal names
+            return ast.Nonlocal(names=[_decode_symbol(name) for name in _decode_scott_list(fields[0])])
+        case 2:  # if test: body  (no else)
+            return ast.If(
+                test=_decode_need_expr(fields[0]), body=_decode_need_statements(fields[1]), orelse=[],
+            )
+        case 3:  # target = value
+            return ast.Assign(
+                targets=[ast.Name(id=_decode_symbol(fields[0]), ctx=ast.Store())],
+                value=_decode_need_expr(fields[1]),
+            )
+        case 4:  # return value
+            return ast.Return(value=_decode_need_expr(fields[0]))
+        case _:
+            raise ValueError(f"unknown call-by-need statement tag {tag}")
+
+
+def _decode_need_module(node: Node) -> ast.Module:
+    """Decode the call-by-need top-level statement list (built by COMPILE_NEED) to an ``ast.Module``."""
+    return ast.Module(body=_decode_need_statements(node), type_ignores=[])
+
+
+class _CallByNeedSentinel:
+    """The unforced marker stored in a memo cell before its thunk computes."""
+
+    def __repr__(self) -> str:
+        return _SENTINEL_NAME
+
+
+def call_by_need_globals() -> dict:
+    """The evaluation globals for a call-by-need program: just the unforced-cell sentinel.
+
+    Forcing is calling a thunk, so there is no ``force`` helper; the emitted module is self-contained
+    apart from the sentinel its memo cells compare against.
+    """
+    return {_SENTINEL_NAME: _CallByNeedSentinel()}
+
+
+def _compile_need_source(node: Node) -> str:
+    """Compile a term to the call-by-need module source (explicit memoising thunks)."""
+    module = build(app(COMPILE_NEED, quote(node)))
+    return ast.unparse(ast.fix_missing_locations(_decode_need_module(module)))
 
 
 # --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
