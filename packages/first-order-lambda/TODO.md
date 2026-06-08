@@ -16,6 +16,11 @@ call-by-value islands wherever the certificate fires inside it.
       `interpret`/`interpret_globals` hand it back to the interpreter.
 - [x] Whole-graph decision: `compile_specialized` is inline call-by-value when the term is closed and
       simply typable, `interpret(...)` otherwise. Top of `COMPILE` is `interpret(...)`.
+- [x] The `interpret` runtime and result reify reuse the existing FFI boundary (`_decode_pyast` for the
+      Scott Python-AST encoding, as `church_island`/`_pyast` do for theirs), not new NbE.
+- [x] Self-hosting through the interpret target: `compile_with_interpreted` runs the interpret-headed
+      compiler (the `COMPILE` node) on a program and reifies the result; it agrees with
+      `compile_to_source`.
 - [ ] Recurse into the interpret head: splice by-value-certified closed simply-typable sub-terms as
       inline islands rather than leaving the whole subgraph interpreted (the per-island step below).
 - [ ] Per-island reification classification: splice an island as runnable inline code only when its

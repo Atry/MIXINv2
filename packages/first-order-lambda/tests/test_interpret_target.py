@@ -10,9 +10,15 @@ interpret-headed source, run, agrees with interpreting the term directly.
 
 from __future__ import annotations
 
-from first_order_lambda._compiler import COMPILE, interpret_globals
+from first_order_lambda._compiler import (
+    COMPILE,
+    Runtime,
+    compile_to_source,
+    compile_with_interpreted,
+    interpret_globals,
+)
 from first_order_lambda._dsl import app, build
-from first_order_lambda._prelude import FACTORIAL, IS_ZERO, MULT, PLUS, SUCC, church
+from first_order_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
 from first_order_lambda._pyast import _church_to_int
 from first_order_lambda._specialize import compile_specialized
 
@@ -57,3 +63,15 @@ def test_typable_combinators_compile_inline() -> None:
     # The simply-typable prelude combinators all carry the by-value certificate (no interpret head).
     for builder in (SUCC, MULT, IS_ZERO, app(app(MULT, church(3)), church(4))):
         assert not compile_specialized(build(builder)).startswith("interpret(")
+
+
+def test_interpret_headed_compiler_self_hosts() -> None:
+    # The compiler compiled to interpret-headed Python, evaluated, is the COMPILE node handed back to
+    # the interpreter. Run as a compiler, it compiles any program to the same source as the in-process
+    # compiler: the bootstrap through the interpret target, reified by the existing _decode_pyast.
+    compiler_node = _eval_interpreted(compile_specialized(build(COMPILE)))
+    for builder in (IDENTITY, KESTREL, SUCC, MULT, app(app(PLUS, church(2)), church(3))):
+        program = build(builder)
+        assert compile_with_interpreted(compiler_node, program) == compile_to_source(
+            program, Runtime.CALL_BY_VALUE
+        )

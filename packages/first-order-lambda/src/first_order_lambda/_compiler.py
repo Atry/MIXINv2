@@ -304,6 +304,23 @@ def compile_interpreted(node: Node) -> str:
     return ast.unparse(ast.fix_missing_locations(call))
 
 
+def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
+    """Compile ``node`` with an interpret-headed compiler, a ``COMPILE`` ``Node`` run by the interpreter.
+
+    ``compiler_node`` is what ``compile_interpreted(build(COMPILE))`` evaluates to: the compiler itself,
+    handed back to the interpreter. The interpreter applies it to the option, depth ``0``, and the
+    quoted program, and the resulting Scott Python AST is reified by the same ``_decode_pyast`` boundary
+    the in-process compiler uses. So the self-hosted compiler, compiled to interpret-headed Python,
+    compiles any program to the same source as ``compile_to_source``: the bootstrap through the
+    interpret target.
+    """
+    applied = make_app(
+        make_app(make_app(compiler_node, build(_option(runtime))), build(church(0))),
+        build(quote(node)),
+    )
+    return ast.unparse(ast.fix_missing_locations(_decode_pyast(applied)))
+
+
 # --- call-by-need: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term ---
 # Call-by-need adds sharing to call-by-name: a thunk computes once and caches. The cache and its
 # update need statements, so the target is statement-based, and the WHOLE structure (the def, the
