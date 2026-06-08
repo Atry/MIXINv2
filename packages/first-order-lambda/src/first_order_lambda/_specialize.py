@@ -184,6 +184,50 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     return runtime, compile_to_source(node, runtime)
 
 
+# --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
+# The flagship of local specialization. A whole untypable program (a Y/Z recursion, the compiler
+# itself) is not call-by-value as a whole, but it contains closed simply-typable sub-terms, each
+# strongly normalizing, so each compiles soundly to a strict call-by-value island. The specializer
+# carves out the MAXIMAL such regions and leaves the untypable skeleton interpreted; the islands are
+# where the strict compiled code runs, the skeleton is where the interpreter folds.
+
+
+def call_by_value_islands(node: Node) -> tuple[Node, ...]:
+    """The maximal closed, simply-typable sub-terms of ``node``: its call-by-value islands.
+
+    A sub-term that is closed (no free variable) and simply typable is strongly normalizing, so strict
+    evaluation reaches the interpreter's normal form: it is a sound call-by-value island. ``Maximal``
+    means not contained in a larger such sub-term, so the result is the largest strict regions, not
+    every typable leaf. Scanning is top-down: a found island is not descended into. The complement,
+    the untypable skeleton (e.g. the ``Z`` fixpoint of the compiler), stays interpreted. Islands are
+    distinct by node identity, so a combinator the interning shares across positions is reported once.
+    """
+    found: list[Node] = []
+    seen: set[int] = set()
+
+    def visit(current: Node) -> None:
+        if current.loose_bound == 0 and is_typable(current):
+            if id(current) not in seen:
+                seen.add(id(current))
+                found.append(current)
+            return
+        match current:
+            case Var():
+                return
+            case Lam(body=body):
+                visit(body)
+            case App(function=function, argument=argument):
+                visit(function)
+                visit(argument)
+            case Native():
+                return
+            case _:
+                raise TypeError(f"cannot scan {current!r}")
+
+    visit(node)
+    return tuple(found)
+
+
 # --- compile once, run many: a reusable compiled function fed lambda-term inputs ----------------
 # A solution written in the lambda-calculus is compiled ONCE to a Python callable; the Python side
 # then feeds it many lambda-term inputs. Inputs and outputs stay lambda values (no Python-domain

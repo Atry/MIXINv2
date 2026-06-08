@@ -1159,10 +1159,16 @@ computes its value, factorial and Fibonacci among them. The prelude arithmetic i
 against the interpreter on the lazy target.
 
 \paragraph{Compiled examples.}
-Each example below pairs a source term with the Python the compiler emits for it; the lambda's bound
-variables are named for readability and its binder at level $k$ is the Python parameter $\mathtt{v}k$.
-The listings are generated from the compiler, not written by hand, and the compiler compiled to
-itself is committed alongside as a generated module.
+Each example below shows the specializer's output: a closed simply-typable term certified to the
+strict call-by-value target, an untypable but normalizing self-application to call-by-need, and a
+fold-requiring cyclic term left to the interpreter with its closed element compiled to a call-by-value
+island. The flagship is the compiler itself. Untypable as a whole, since its fixpoint combinator
+self-applies, it stays interpreted, but the specializer finds its maximal closed simply-typable
+sub-terms, the strongly-normalizing combinators, and compiles each to a strict island, carving
+call-by-value regions out of an otherwise interpreted program. A bound variable is named for
+readability and the binder at level $k$ is the Python parameter $\mathtt{v}k$; the listings are
+generated from the compiler, not written by hand, and the compiler compiled whole to Python is
+committed alongside as a generated module.
 \input{generated/compiler-examples}
 
 \paragraph{The soundness analysis.}

@@ -2,3 +2,27 @@
 # name: test_compiled_island_inside_cyclic_shell_matches_interpretation[cyclic_nines]
   '(λ (λ ((v1 (λ (λ (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 v0)))))))))))) #0=(λ (λ ((v1 (λ (λ (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 (v1 v0)))))))))))) #0))))))'
 # ---
+# name: test_compiler_call_by_value_islands[compiler_call_by_value_islands]
+  list([
+    dict({
+      'call_by_value': 'lambda v0: lambda v1: lambda v2: lambda v3: lambda v4: lambda v5: v4(v0)',
+      'lambda': '\\lambda x.\\, \\lambda y.\\, \\lambda z.\\, \\lambda w.\\, \\lambda u.\\, \\lambda s.\\, u\\, x',
+    }),
+    dict({
+      'call_by_value': 'lambda v0: v0',
+      'lambda': '\\lambda x.\\, x',
+    }),
+    dict({
+      'call_by_value': 'lambda v0: lambda v1: v1(lambda v2: lambda v3: lambda v4: v2(lambda v5: lambda v6: v6(v5(v3)))(lambda v5: v4)(lambda v5: v5))(v0)',
+      'lambda': '\\lambda x.\\, \\lambda y.\\, y\\, (\\lambda z.\\, \\lambda w.\\, \\lambda u.\\, z\\, (\\lambda s.\\, \\lambda t.\\, t\\, (s\\, w))\\, (\\lambda s.\\, u)\\, (\\lambda s.\\, s))\\, x',
+    }),
+    dict({
+      'call_by_value': 'lambda v0: lambda v1: lambda v2: v1(v0(v1)(v2))',
+      'lambda': '\\lambda x.\\, \\lambda y.\\, \\lambda z.\\, y\\, (x\\, y\\, z)',
+    }),
+    dict({
+      'call_by_value': 'lambda v0: lambda v1: lambda v2: lambda v3: lambda v4: lambda v5: v5(v0)',
+      'lambda': '\\lambda x.\\, \\lambda y.\\, \\lambda z.\\, \\lambda w.\\, \\lambda u.\\, \\lambda s.\\, s\\, x',
+    }),
+  ])
+# ---
