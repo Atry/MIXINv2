@@ -20,7 +20,7 @@ from first_order_lambda._compiler import (
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
 from first_order_lambda._pyast import _church_to_int
-from first_order_lambda._specialize import church_numeral_islands, compile_specialized
+from first_order_lambda._specialize import compile_specialized, island_map
 
 
 def _eval_interpreted(source: str):
@@ -56,7 +56,7 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
     # sub-terms (2 * 3 and the constants inside factorial) are spliced as compiled by-value islands, and
     # the spliced program agrees with pure interpretation.
     node = build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))
-    assert len(church_numeral_islands(node)) >= 1
+    assert len(island_map(node)) >= 1
     source = compile_specialized(node)
     assert source.startswith("interpret(")
     assert "church_island(" in source

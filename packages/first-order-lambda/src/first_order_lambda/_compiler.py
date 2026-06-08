@@ -260,16 +260,35 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
 # ``interpret(...)``.
 
 
-def _node_to_ast(node: Node, islands: "frozenset[int]") -> ast.expr:
+def _island_call(node: Node, kind: str, arity: int) -> ast.expr:
+    """The Python that splices ``node`` as a compiled island of the given ``kind``.
+
+    ``identity`` needs no compiled body (a closed ``a -> a`` term is the identity); ``church_data`` and
+    ``church_function`` embed the island compiled to call-by-value, which their runtimes drive.
+    """
+    if kind == "identity":
+        return ast.Call(func=ast.Name(id="identity_island", ctx=ast.Load()), args=[], keywords=[])
+    compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
+    if kind == "church_data":
+        return ast.Call(func=ast.Name(id="church_island", ctx=ast.Load()), args=[compiled], keywords=[])
+    if kind == "church_function":
+        return ast.Call(
+            func=ast.Name(id="church_function_island", ctx=ast.Load()),
+            args=[compiled, ast.Constant(value=arity)], keywords=[],
+        )
+    raise ValueError(f"unknown island kind {kind!r}")
+
+
+def _node_to_ast(node: Node, islands: "dict[int, tuple[str, int]]") -> ast.expr:
     """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``.
 
-    A node whose identity is in ``islands`` is a certified church-numeral island: rather than
-    reconstructing its subtree, emit ``church_island(<the island compiled to call-by-value>)``, a
-    compiled island the interpreter drives in place of interpreting the subtree.
+    A node whose identity is in ``islands`` is a certified by-value island: rather than reconstructing
+    its subtree, splice it as a compiled island (``_island_call``) the interpreter drives in place of
+    interpreting the subtree, reifying through the FFI scoped to the island's type.
     """
     if id(node) in islands:
-        compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
-        return ast.Call(func=ast.Name(id="church_island", ctx=ast.Load()), args=[compiled], keywords=[])
+        kind, arity = islands[id(node)]
+        return _island_call(node, kind, arity)
     match node:
         case Var(index=index):
             return ast.Call(
@@ -300,37 +319,73 @@ def interpret(node: Node) -> Node:
     return node
 
 
+def _host_church(n: int):
+    """A host Church numeral for ``n``: ``lambda s: lambda z: s^n z``."""
+    def successor(s):
+        def zero(z):
+            result = z
+            for _ in range(n):
+                result = s(result)
+            return result
+        return zero
+    return successor
+
+
+def _decode_host_church(value) -> int:
+    return value(lambda predecessor: predecessor + 1)(0)
+
+
+def identity_island() -> Node:
+    """The island for a closed ``a -> a`` term: by parametricity it is the identity, so a passthrough
+    ``Native`` returning its argument node unchanged, sound on any argument encoding."""
+    return make_native(lambda argument: argument, 1)
+
+
 def church_island(compiled_value) -> Node:
-    """A church-numeral island as an interpreter ``Node``: a compiled, closed, church-producing term.
+    """A church-numeral DATA island (a closed church-producing term, no arguments).
 
-    ``compiled_value`` is the island compiled to call-by-value and evaluated (a host Church numeral).
-    The FFI ``Native`` (arity 0) evaluates it, decodes the Church numeral to an integer, and reifies it
-    as a Church-numeral node, so the island runs compiled while the interpreter folds around it. The
-    boundary is scoped to the Church encoding, the same reify the local-specialization ``church_island``
-    uses; faithfulness is convergence to the same value, not structural identity.
+    The FFI ``Native`` (arity 0) evaluates the compiled call-by-value code, decodes the Church numeral,
+    and reifies it as a Church-numeral node, so the island runs compiled while the interpreter folds
+    around it. Faithfulness is convergence to the same value, not structural identity.
     """
-    def run() -> Node:
-        return build(church(compiled_value(lambda predecessor: predecessor + 1)(0)))
+    return make_native(lambda: build(church(_decode_host_church(compiled_value))), 0)
 
-    return make_native(run, 0)
+
+def church_function_island(compiled_value, arity: int) -> Node:
+    """A church-function island: a closed term of type ``church -> ... -> church`` (``arity`` arrows).
+
+    The ``Native`` collects ``arity`` Church-numeral argument nodes, decodes each to an integer and
+    rebuilds a host Church numeral, applies the compiled call-by-value function, and reifies the
+    Church-numeral result. Sound where the island is applied to Church numerals, which is its typing.
+    """
+    def run(*argument_nodes: Node) -> Node:
+        result = compiled_value
+        for argument_node in argument_nodes:
+            result = result(_host_church(_church_to_int(argument_node)))
+        return build(church(_decode_host_church(result)))
+
+    return make_native(run, arity)
 
 
 def interpret_globals() -> dict:
     """The evaluation globals for interpret-headed source: node constructors, ``interpret``, islands."""
     return {
-        "make_var": make_var, "make_lam": make_lam, "make_app": make_app,
-        "interpret": interpret, "church_island": church_island,
+        "make_var": make_var, "make_lam": make_lam, "make_app": make_app, "interpret": interpret,
+        "identity_island": identity_island, "church_island": church_island,
+        "church_function_island": church_function_island,
     }
 
 
-def compile_interpreted(node: Node, islands: "frozenset[int]" = frozenset()) -> str:
+def compile_interpreted(node: Node, islands: "dict[int, tuple[str, int]] | None" = None) -> str:
     """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``.
 
-    Sub-nodes whose identity is in ``islands`` are spliced as compiled church-numeral islands rather
-    than reconstructed, so they run compiled inside the interpreted skeleton.
+    Sub-nodes whose identity is in ``islands`` (mapping identity to a ``(kind, arity)`` classification)
+    are spliced as compiled islands rather than reconstructed, so they run compiled inside the
+    interpreted skeleton.
     """
     call = ast.Call(
-        func=ast.Name(id="interpret", ctx=ast.Load()), args=[_node_to_ast(node, islands)], keywords=[],
+        func=ast.Name(id="interpret", ctx=ast.Load()),
+        args=[_node_to_ast(node, islands if islands is not None else {})], keywords=[],
     )
     return ast.unparse(ast.fix_missing_locations(call))
 
@@ -686,5 +741,12 @@ def _compile_need_source(node: Node) -> str:
 
 
 def compiled_compiler() -> Node:
-    """The self-compiled compiler: COMPILE compiled to interpret-headed Python, evaluated to its node."""
-    return eval(compile_interpreted(build(COMPILE)), interpret_globals())
+    """The self-compiled compiler: COMPILE compiled in specialized mode, evaluated to its node.
+
+    COMPILE is untypable, so this is interpret-headed Python with its certified by-value islands
+    (identity, successor, predecessor) spliced. The specializer lives in ``_specialize`` (which imports
+    this module), so it is imported lazily here to break the cycle.
+    """
+    from first_order_lambda._specialize import compile_specialized
+
+    return eval(compile_specialized(build(COMPILE)), interpret_globals())

@@ -210,33 +210,61 @@ def _resolve_deep(inference: _Inference, type_: _Type) -> _Type:
     return type_
 
 
-def _is_church_type(node: Node) -> bool:
-    """Whether ``node``'s principal simple type is the Church-numeral type ``(a -> a) -> a -> a``.
+def _is_church_type(type_: _Type) -> bool:
+    """Whether ``type_`` is the Church-numeral type ``(a -> a) -> a -> a`` for a single variable ``a``.
 
-    By parametricity a closed term of this type IS a Church numeral, so this is a SOUND certificate that
-    a closed island is church-producing, hence reifiable by ``church_island``. A behavioural probe is
-    not sound: ``identity`` (``a -> a``) applied to two markers coincides with the Church numeral one,
-    yet is not a numeral; the type tells them apart, and excludes ``succ`` (``church -> church``) too.
+    By parametricity a closed term of this type IS a Church numeral, so it is church-producing.
     """
-    inference = _Inference()
-    inferred = inference.infer(node, ())
-    if inference.failed:
-        return False
-    match _resolve_deep(inference, inferred):
+    match type_:
         case _TArrow(left=_TArrow(left=a, right=b), right=_TArrow(left=c, right=d)):
             return isinstance(a, _TVar) and a == b == c == d
         case _:
             return False
 
 
-def church_numeral_islands(node: Node) -> "frozenset[int]":
-    """The identities of ``node``'s maximal closed simply-typable sub-terms of Church-numeral type.
+def _classify_island(node: Node) -> "tuple[str, int] | None":
+    """Classify a closed island by its principal type into a reify kind, or ``None`` if not reifiable.
 
-    These are the by-value islands the interpret target can splice and run compiled through the FFI's
-    church reification; a higher-order island (the compiler's combinators) stays interpreted, since the
-    FFI reify here is scoped to the Church encoding.
+    By parametricity the closed type pins the term: ``a -> a`` is the identity (a passthrough island,
+    sound on any encoding); ``(a -> a) -> a -> a`` is a Church numeral (a church-data island); a chain
+    of Church-numeral arrows ending in a Church numeral, ``church -> ... -> church``, is an arithmetic
+    function (a church-function island, sound where applied to Church numerals). A behavioural probe
+    cannot do this: ``identity`` coincides with the numeral one under succ/zero. Anything else, e.g. a
+    Scott constructor, has no church reify here and stays interpreted.
     """
-    return frozenset(id(island) for island in call_by_value_islands(node) if _is_church_type(island))
+    inference = _Inference()
+    inferred = inference.infer(node, ())
+    if inference.failed:
+        return None
+    resolved = _resolve_deep(inference, inferred)
+    match resolved:
+        case _TArrow(left=a, right=b) if isinstance(a, _TVar) and a == b:
+            return ("identity", 1)
+    if _is_church_type(resolved):
+        return ("church_data", 0)
+    arity = 0
+    current = resolved
+    while isinstance(current, _TArrow) and _is_church_type(current.left):
+        arity += 1
+        current = current.right
+    if arity > 0 and _is_church_type(current):
+        return ("church_function", arity)
+    return None
+
+
+def island_map(node: Node) -> "dict[int, tuple[str, int]]":
+    """Map each of ``node``'s maximal closed reifiable islands (by identity) to its reify kind.
+
+    These are the by-value islands the interpret target splices and runs compiled through the FFI,
+    scoped to the island's type (identity passthrough, church data, church function). An island with no
+    church reify here (a Scott constructor) is omitted and stays interpreted.
+    """
+    classified: "dict[int, tuple[str, int]]" = {}
+    for island in call_by_value_islands(node):
+        classification = _classify_island(island)
+        if classification is not None:
+            classified[id(island)] = classification
+    return classified
 
 
 def compile_specialized(node: Node) -> str:
@@ -250,7 +278,7 @@ def compile_specialized(node: Node) -> str:
     """
     if node.loose_bound == 0 and is_typable(node):
         return compile_to_source(node, Runtime.CALL_BY_VALUE)
-    return compile_interpreted(node, church_numeral_islands(node))
+    return compile_interpreted(node, island_map(node))
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
