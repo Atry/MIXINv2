@@ -1165,8 +1165,10 @@ fold-requiring cyclic term left to the interpreter with its closed element compi
 island. The flagship is the compiler itself. Untypable as a whole, since its fixpoint combinator
 self-applies, it stays interpreted, but the specializer finds its maximal closed simply-typable
 sub-terms, the strongly-normalizing combinators, and compiles each to a strict island, carving
-call-by-value regions out of an otherwise interpreted program. A bound variable is named for
-readability and the binder at level $k$ is the Python parameter $\mathtt{v}k$; the listings are
+call-by-value regions out of an otherwise interpreted program. A bound variable is named by its
+binder's syntax-tree path: the compiler emits the path as a list of naturals and a single decoder,
+shared by every target, renders it as the Python identifier \texttt{v} with an underscore-separated
+integer per path segment, so distinct binders get distinct names by construction. The listings are
 generated from the compiler, not written by hand, and the compiler compiled whole to Python is
 committed alongside as a generated module.
 \input{generated/compiler-examples}
@@ -1274,6 +1276,36 @@ back to. Meta-tracing does not apply here: a meta-tracing just-in-time compiler
 \citeTODO{bolz-tracing} compiles traces of an interpreter, which requires the interpreter to be
 written in the traced language, a $\lambda$ self-interpreter, which this construction does not use;
 here the $\lambda$ term is the program and the interpreter folds its behaviour directly.
+
+\section{Self-Compilation Across Island-Depth Stages}\label{app:benchmark}
+The compiler compiles itself in specialized mode at a chosen island depth bound
+(Appendix~\ref{app:compiler}), and the bound trades island size against generation cost. A closed
+simply-typable sub-term shallower than the bound is certified as a strict call-by-value island, so a
+larger bound compiles more of the compiler as native code and descends further into the deep
+combinators to splice their sub-islands, at the price of typing deeper sub-terms while generating.
+Table~\ref{tab:self-compilation} benchmarks three stages, each regenerating the self-compiled compiler
+in a fresh process so its peak memory is its own; depth 8 is the small committed artifact and depth
+128 the large one. The island counts and artifact sizes are deterministic; the time and memory are a
+measured snapshot.
+
+\begin{table}[h]
+\centering
+\input{generated/self-compilation-benchmark}
+\caption{The self-hosted compiler regenerated at three island depth bounds: the call-by-value islands
+spliced, and the wall-clock time, peak resident memory, and source size of one generation.}
+\label{tab:self-compilation}
+\end{table}
+
+The compiler's maximal islands are small, at most 36 nodes and all shallower than depth 32, except for
+two deep combinators of 264 and 345 nodes at depth 188 and 191, with no maximal island between. The
+bounds in the table all stay below those two, so they differ only in which shallow islands they admit
+and how deeply they splice sub-islands of the deep ones. Admitting the two deep combinators as whole
+islands needs a bound past depth 188, where a single specialization pass peaks near twelve gigabytes,
+because typing every closed sub-term to decide islands accumulates across the whole tree in one
+interner session. The islands themselves are not the cost: the 345-node combinator compiles on its own
+in about four seconds under half a gigabyte, so a staged generator that finds the islands and compiles
+each independently reaches the full ceiling, the largest closed simply-typable sub-term, at the
+per-island cost rather than the whole-program sum.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
