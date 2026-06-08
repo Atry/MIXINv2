@@ -50,3 +50,14 @@ def test_interpreter_and_committed_compiler_agree_on_self() -> None:
     interpreter_output = compile_to_source(build(COMPILE))
     committed_output = compile_with_interpreted(committed_compiler, build(COMPILE))
     assert committed_output == interpreter_output
+
+
+def test_large_island_compiler_is_a_working_compiler() -> None:
+    # The larger-island committed compiler (island depth bound 128) is the same COMPILE, just with more
+    # and bigger sub-terms compiled as by-value islands rather than interpreted, so it compiles programs
+    # to exactly the same Python as the reference compiler.
+    from first_order_lambda._generated_compiler_large import compiled_compiler as large_compiler
+
+    for term in (IDENTITY, KESTREL, church(3), app(app(PLUS, church(1)), church(2))):
+        node = build(term)
+        assert compile_with_interpreted(large_compiler, node) == compile_to_source(node)
