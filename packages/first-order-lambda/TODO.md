@@ -11,12 +11,13 @@ simply typable), or `interpret(<that sub-term>)`, which re-submits it to the int
 fold oracle is bounded), so the self-hosted compiler's Python is `interpret(...)`-headed with inline
 call-by-value islands wherever the certificate fires inside it.
 
-- [ ] Add a `PyInterpret` constructor to the compiled Python AST, emitted for any node classified
-      `INTERPRET`.
-- [ ] Add the `interpret(...)` runtime function: reconstruct the sub-term `Node`, run the interpreter,
-      reify the result (a Scott Python-AST value) back to the host.
-- [ ] `compile_to_source` recurses: inline call-by-value for by-value-certified closed simply-typable
-      sub-terms (islands), `interpret(<sub-term>)` otherwise. Top of `COMPILE` is `interpret(...)`.
+- [x] Emit interpret-headed Python: `compile_interpreted` reconstructs the node with
+      `make_var`/`make_lam`/`make_app` inside an `interpret(...)` call (self-contained text), and
+      `interpret`/`interpret_globals` hand it back to the interpreter.
+- [x] Whole-graph decision: `compile_specialized` is inline call-by-value when the term is closed and
+      simply typable, `interpret(...)` otherwise. Top of `COMPILE` is `interpret(...)`.
+- [ ] Recurse into the interpret head: splice by-value-certified closed simply-typable sub-terms as
+      inline islands rather than leaving the whole subgraph interpreted (the per-island step below).
 - [ ] Per-island reification classification: splice an island as runnable inline code only when its
       arguments and result reify across the boundary (the church-numeral and identity islands, e.g.
       successor, predecessor, identity, applied to church-numeral depths); the Scott-constructor

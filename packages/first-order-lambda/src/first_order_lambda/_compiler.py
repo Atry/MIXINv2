@@ -20,7 +20,7 @@ from __future__ import annotations
 import ast
 from enum import Enum, auto
 
-from first_order_lambda._ast import App, Lam, Node, Var
+from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_var
 from first_order_lambda._dsl import Builder, app, build, lam
 from first_order_lambda._prelude import FALSE, PRED, SCOTT_NIL, SUCC, TRUE, church, cons
 from first_order_lambda._pyast import _church_to_int, _decode_scott_list, _extract
@@ -248,6 +248,60 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
         return _compile_need_source(node)
     compiled = compile_quoted(_option(runtime), quote(node))
     return ast.unparse(ast.fix_missing_locations(_decode_pyast(compiled)))
+
+
+# --- the interpret target: emit Python that re-submits the term to the interpreter ---------------
+# A term the analysis does not certify for a compiled target keeps the interpreter. Its compiled
+# Python is an ``interpret(...)`` call whose argument reconstructs the term as an interpreter ``Node``
+# with ``make_var`` / ``make_lam`` / ``make_app`` (the interning constructors), so the emitted source
+# is self-contained text given the four names in ``interpret_globals``. ``interpret`` hands the node
+# to the interpreter; the node is the value, normalized lazily when the result is observed. This is
+# the head of a specialized program: a by-value-certified subgraph compiles inline, the rest reads
+# ``interpret(...)``.
+
+
+def _node_to_ast(node: Node) -> ast.expr:
+    """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``."""
+    match node:
+        case Var(index=index):
+            return ast.Call(
+                func=ast.Name(id="make_var", ctx=ast.Load()),
+                args=[ast.Constant(value=index)], keywords=[],
+            )
+        case Lam(body=body):
+            return ast.Call(
+                func=ast.Name(id="make_lam", ctx=ast.Load()), args=[_node_to_ast(body)], keywords=[],
+            )
+        case App(function=function, argument=argument):
+            return ast.Call(
+                func=ast.Name(id="make_app", ctx=ast.Load()),
+                args=[_node_to_ast(function), _node_to_ast(argument)], keywords=[],
+            )
+        case _:
+            raise ValueError(f"cannot reconstruct {node!r}")
+
+
+def interpret(node: Node) -> Node:
+    """The interpret boundary: a reconstructed term handed back to the interpreter.
+
+    The node is the value; the interpreter computes its weak head normal form lazily when the result
+    is observed (decoded, rendered, or applied at the node level). This is the runtime hook a compiled
+    by-value island is spliced around in a specialized program.
+    """
+    return node
+
+
+def interpret_globals() -> dict:
+    """The evaluation globals for interpret-headed source: the node constructors and ``interpret``."""
+    return {"make_var": make_var, "make_lam": make_lam, "make_app": make_app, "interpret": interpret}
+
+
+def compile_interpreted(node: Node) -> str:
+    """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``."""
+    call = ast.Call(
+        func=ast.Name(id="interpret", ctx=ast.Load()), args=[_node_to_ast(node)], keywords=[],
+    )
+    return ast.unparse(ast.fix_missing_locations(call))
 
 
 # --- call-by-need: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term ---

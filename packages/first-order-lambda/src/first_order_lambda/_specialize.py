@@ -28,7 +28,12 @@ from dataclasses import dataclass
 from typing import Callable
 
 from first_order_lambda._ast import App, Lam, Native, Node, Var, make_native
-from first_order_lambda._compiler import Runtime, compile_to_source, runtime_globals
+from first_order_lambda._compiler import (
+    Runtime,
+    compile_interpreted,
+    compile_to_source,
+    runtime_globals,
+)
 from first_order_lambda._dsl import build
 from first_order_lambda._prelude import church
 from first_order_lambda._render import render
@@ -195,6 +200,19 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     if runtime is Runtime.INTERPRET:
         return runtime, None
     return runtime, compile_to_source(node, runtime)
+
+
+def compile_specialized(node: Node) -> str:
+    """Compile ``node`` in specialized mode, always returning Python.
+
+    The head is non-interpreter code when the whole graph carries the by-value certificate (closed and
+    simply typable, hence strongly normalizing, so strict evaluation reaches the interpreter's normal
+    form); otherwise it is an ``interpret(...)`` call that re-submits the term to the interpreter. This
+    is the compiler in the sense the paper means: interpret by default, compile the certified parts.
+    """
+    if node.loose_bound == 0 and is_typable(node):
+        return compile_to_source(node, Runtime.CALL_BY_VALUE)
+    return compile_interpreted(node)
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
