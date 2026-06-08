@@ -45,10 +45,10 @@ def test_self_compiled_output_runs() -> None:
 
 
 @pytest.mark.xfail(
-    reason="committed standalone self-host artifact reworked in the bootstrap stage: the "
-    "generic-encoding COMPILE's full make_* reconstruction exceeds Python's parser recursion limit, "
-    "so _generated_compiler.py needs a scalable form",
-    raises=RecursionError,
+    reason="committed standalone self-host artifact reworked in the bootstrap stage: the committed "
+    "_generated_compiler.py is the old PyExpr reconstruction (now decoded by the generic _pyast.decode) "
+    "and the generic-encoding COMPILE's full reconstruction exceeds CPython's parser nesting cap, so "
+    "the artifact needs a scalable (ANF) regeneration there",
     strict=False,
 )
 def test_interpreter_and_committed_compiler_agree_on_self() -> None:
