@@ -20,12 +20,11 @@ from __future__ import annotations
 import ast
 from enum import Enum, auto
 
+from first_order_lambda import _pybuild
 from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from first_order_lambda._dsl import Builder, app, build, lam
 from first_order_lambda._prelude import FALSE, PRED, SCOTT_NIL, SUCC, TRUE, church, cons
-from first_order_lambda._pyast import _church_to_int, _decode_scott_list, _extract
-
-_PY_BASE = 5_000_000
+from first_order_lambda._pyast import _church_to_int, _decode_scott_list, _extract, decode
 
 # The strict (call-by-value) fixpoint combinator Z = lambda f. (lambda x. f (lambda v. x x v)) (...).
 # Unlike Y it is eta-expanded under the recursive call, so the compiled Python (a strict language)
@@ -63,34 +62,36 @@ def q_app(function: Builder, argument: Builder) -> Builder:
     return _scott(3, 2, [function, argument])
 
 
-# Quoted Python expression: five constructors (PyVar/PyLam/PyApp/PyForce/PyThunk).
-def _py_var(level: Builder) -> Builder:
-    return _scott(5, 0, [level])
-
-
-def _py_lam(level: Builder, body: Builder) -> Builder:
-    return _scott(5, 1, [level, body])
-
-
-def _py_app(function: Builder, argument: Builder) -> Builder:
-    return _scott(5, 2, [function, argument])
-
-
-def _py_force(expr: Builder) -> Builder:
-    return _scott(5, 3, [expr])
-
-
-def _py_thunk(expr: Builder) -> Builder:
-    return _scott(5, 4, [expr])
-
+# The compiler emits the GENERIC _pyast Scott encoding of a real Python ast (built with the lambda-term
+# smart constructors in _pybuild), decoded by the generic _pyast.decode. A variable at de Bruijn level
+# k is named ``v`` followed by k copies of ``x`` (unique, valid, built by Church iteration over the
+# level); the call-by-name target wraps a variable/function in ``force(...)`` and an argument in
+# ``Thunk(lambda: ...)``.
 
 # sub a b = a - b, by applying PRED to a, b times.
 _SUB: Builder = lam(lambda a: lam(lambda b: app(app(b, PRED), a)))
 
-# Target wrappers, selected by the option (a Church boolean ``thunked``): the lazy target wraps a
-# variable and a function in PyForce and an argument in PyThunk; the eager target wraps with identity.
-_FORCE_WRAP: Builder = lam(lambda expr: _py_force(expr))
-_THUNK_WRAP: Builder = lam(lambda expr: _py_thunk(expr))
+# A level (Church numeral) to its identifier char codes: ``v`` :: (``x`` * level).
+_PREPEND_X: Builder = lam(lambda rest: cons(church(120), rest))
+
+
+def _level_codes(level: Builder) -> Builder:
+    return cons(church(118), app(app(level, _PREPEND_X), SCOTT_NIL))
+
+
+def _single_arg(expr: Builder) -> Builder:
+    """The argument list of a Call with one positional argument (a Scott list of one node field)."""
+    return cons(_pybuild.field_node(expr), SCOTT_NIL)
+
+
+_FORCE_NAME: Builder = _pybuild.py_name(_pybuild.char_codes("force"), _pybuild.py_load())
+_THUNK_NAME: Builder = _pybuild.py_name(_pybuild.char_codes("Thunk"), _pybuild.py_load())
+
+# Target wrappers, selected by the option (a Church boolean ``thunked``): the call-by-name target wraps
+# a variable and a function in ``force(...)`` and an argument in ``Thunk(lambda: ...)``; call-by-value
+# wraps with identity.
+_FORCE_WRAP: Builder = lam(lambda expr: _pybuild.py_call(_FORCE_NAME, _single_arg(expr)))
+_THUNK_WRAP: Builder = lam(lambda expr: _pybuild.py_call(_THUNK_NAME, _single_arg(_pybuild.py_lambda0(expr))))
 _IDENTITY_WRAP: Builder = lam(lambda expr: expr)
 
 
@@ -100,24 +101,26 @@ def _select_wrap(thunked: Builder, lazy_wrap: Builder) -> Builder:
 
 
 # COMPILE = lambda thunked. Z (lambda self. lambda d. lambda q.
-#   q (lambda i. wrapVar (PyVar (sub d (succ i))))                    -- QVar i
-#     (lambda b. PyLam d (self (succ d) b))                          -- QLam b
-#     (lambda f. lambda a. PyApp (wrapFun (self d f)) (wrapArg (self d a))))  -- QApp f a
-# wrapVar = wrapFun = (thunked ? PyForce : id); wrapArg = (thunked ? PyThunk : id).
+#   q (lambda i. wrapVar (Name "v<d-1-i>"))                                  -- QVar i
+#     (lambda b. Lambda "v<d>" (self (succ d) b))                           -- QLam b
+#     (lambda f. lambda a. Call (wrapFun (self d f)) [wrapArg (self d a)]))  -- QApp f a
+# wrapVar = wrapFun = (thunked ? force : id); wrapArg = (thunked ? Thunk(lambda: .) : id).
 COMPILE: Builder = lam(lambda thunked: app(
     Z,
     lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
         quoted,
         lam(lambda index: app(
             _select_wrap(thunked, _FORCE_WRAP),
-            _py_var(app(app(_SUB, depth), app(SUCC, index))),
+            _pybuild.py_name(_level_codes(app(app(_SUB, depth), app(SUCC, index))), _pybuild.py_load()),
         )),
         ),
-        lam(lambda body: _py_lam(depth, app(app(self_recursion, app(SUCC, depth)), body))),
+        lam(lambda body: _pybuild.py_lambda(
+            _level_codes(depth), app(app(self_recursion, app(SUCC, depth)), body),
+        )),
         ),
-        lam(lambda function: lam(lambda argument: _py_app(
+        lam(lambda function: lam(lambda argument: _pybuild.py_call(
             app(_select_wrap(thunked, _FORCE_WRAP), app(app(self_recursion, depth), function)),
-            app(_select_wrap(thunked, _THUNK_WRAP), app(app(self_recursion, depth), argument)),
+            _single_arg(app(_select_wrap(thunked, _THUNK_WRAP), app(app(self_recursion, depth), argument))),
         ))),
     )))),
 ))
@@ -167,34 +170,6 @@ def _arguments(name: str) -> ast.arguments:
 
 def _no_args() -> ast.arguments:
     return ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[])
-
-
-def _decode_pyast(node: Node) -> ast.expr:
-    """Decode a Scott Python expression (PyVar/PyLam/PyApp/PyForce/PyThunk) to a real ``ast`` node.
-
-    This is generic: the target-specific shape (force/thunk wrapping) was decided by the lambda term,
-    so the decoder just renders each constructor, with no target branching.
-    """
-    tag, fields = _extract(node, (1, 2, 2, 1, 1), _PY_BASE)
-    match tag:
-        case 0:  # PyVar level
-            return ast.Name(id=f"v{_church_to_int(fields[0])}", ctx=ast.Load())
-        case 1:  # PyLam level body
-            return ast.Lambda(args=_arguments(f"v{_church_to_int(fields[0])}"), body=_decode_pyast(fields[1]))
-        case 2:  # PyApp function argument
-            return ast.Call(func=_decode_pyast(fields[0]), args=[_decode_pyast(fields[1])], keywords=[])
-        case 3:  # PyForce expr -> force(expr)
-            return ast.Call(
-                func=ast.Name(id="force", ctx=ast.Load()), args=[_decode_pyast(fields[0])], keywords=[],
-            )
-        case 4:  # PyThunk expr -> Thunk(lambda: expr)
-            return ast.Call(
-                func=ast.Name(id="Thunk", ctx=ast.Load()),
-                args=[ast.Lambda(args=_no_args(), body=_decode_pyast(fields[0]))],
-                keywords=[],
-            )
-        case _:
-            raise ValueError(f"unknown PyExpr tag {tag}")
 
 
 # --- runtime support for the compiled call-by-name target ---------------------------------------
@@ -247,7 +222,7 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
     if runtime is Runtime.CALL_BY_NEED:
         return _compile_need_source(node)
     compiled = compile_quoted(_option(runtime), quote(node))
-    return ast.unparse(ast.fix_missing_locations(_decode_pyast(compiled)))
+    return ast.unparse(ast.fix_missing_locations(decode(compiled)))
 
 
 # --- the interpret target: emit Python that re-submits the term to the interpreter ---------------
@@ -395,16 +370,16 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
 
     ``compiler_node`` is what ``compile_interpreted(build(COMPILE))`` evaluates to: the compiler itself,
     handed back to the interpreter. The interpreter applies it to the option, depth ``0``, and the
-    quoted program, and the resulting Scott Python AST is reified by the same ``_decode_pyast`` boundary
-    the in-process compiler uses. So the self-hosted compiler, compiled to interpret-headed Python,
-    compiles any program to the same source as ``compile_to_source``: the bootstrap through the
-    interpret target.
+    quoted program, and the resulting generic Scott Python AST is decoded by the same generic
+    ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
+    interpret-headed Python, compiles any program to the same source as ``compile_to_source``: the
+    bootstrap through the interpret target.
     """
     applied = make_app(
         make_app(make_app(compiler_node, build(_option(runtime))), build(church(0))),
         build(quote(node)),
     )
-    return ast.unparse(ast.fix_missing_locations(_decode_pyast(applied)))
+    return ast.unparse(ast.fix_missing_locations(decode(applied)))
 
 
 # --- call-by-need: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term ---
@@ -741,12 +716,11 @@ def _compile_need_source(node: Node) -> str:
 
 
 def compiled_compiler() -> Node:
-    """The self-compiled compiler: COMPILE compiled in specialized mode, evaluated to its node.
+    """The self-hosted compiler as an interpreter ``Node``: COMPILE handed back to the interpreter.
 
-    COMPILE is untypable, so this is interpret-headed Python with its certified by-value islands
-    (identity, successor, predecessor) spliced. The specializer lives in ``_specialize`` (which imports
-    this module), so it is imported lazily here to break the cycle.
+    COMPILE is untypable, so the interpret target is the COMPILE node itself; ``compile_with_interpreted``
+    runs it as a compiler. (The committed standalone source artifact, ``_generated_compiler.py``, is the
+    business of the bootstrap stage; the generic-encoding COMPILE's full reconstruction exceeds Python's
+    parser limit, so that artifact is reworked there. In process, the node IS the self-compiled compiler.)
     """
-    from first_order_lambda._specialize import compile_specialized
-
-    return eval(compile_specialized(build(COMPILE)), interpret_globals())
+    return build(COMPILE)

@@ -126,6 +126,11 @@ def py_lambda(arg_codes: Builder, body: Builder) -> Builder:
     return _node(ast.Lambda, [field_node(args), field_node(body)])
 
 
+def py_lambda0(body: Builder) -> Builder:
+    """``lambda: <body>`` with no parameters (for a call-by-name ``Thunk(lambda: e)``)."""
+    return _node(ast.Lambda, [field_node(py_arguments(SCOTT_NIL)), field_node(body)])
+
+
 def py_call(func: Builder, arg_fields: Builder) -> Builder:
     """``<func>(<args...>)``; ``arg_fields`` a Scott list of ``field_node(arg)``; no keywords."""
     return _node(ast.Call, [field_node(func), field_list(arg_fields), field_list(SCOTT_NIL)])

@@ -13,7 +13,9 @@ from first_order_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS, church
 
 
 def test_compiles_identity_and_kestrel() -> None:
-    assert compile_to_source(build(IDENTITY)) == "lambda v0: v0"
+    # A binder at de Bruijn level k is named "v" followed by k copies of "x" (built by the lambda
+    # term over the level), so identity is "lambda v: v" and K names its two binders "v" and "vx".
+    assert compile_to_source(build(IDENTITY)) == "lambda v: v"
     assert eval(compile_to_source(build(IDENTITY)))(7) == 7
     kestrel = eval(compile_to_source(build(KESTREL)))
     assert kestrel("a")("b") == "a"

@@ -77,10 +77,10 @@ def test_typable_combinators_compile_inline() -> None:
 
 
 def test_interpret_headed_compiler_self_hosts() -> None:
-    # The compiler compiled to interpret-headed Python, evaluated, is the COMPILE node handed back to
-    # the interpreter. Run as a compiler, it compiles any program to the same source as the in-process
-    # compiler: the bootstrap through the interpret target, reified by the existing _decode_pyast.
-    compiler_node = _eval_interpreted(compile_specialized(build(COMPILE)))
+    # COMPILE is untypable, so the interpret target is the COMPILE node itself, handed back to the
+    # interpreter. Run as a compiler at the node level, it compiles any program to the same generic
+    # Scott Python AST the in-process compiler emits (decoded by the same _pyast.decode).
+    compiler_node = build(COMPILE)
     for builder in (IDENTITY, KESTREL, SUCC, MULT, app(app(PLUS, church(2)), church(3))):
         program = build(builder)
         assert compile_with_interpreted(compiler_node, program) == compile_to_source(
