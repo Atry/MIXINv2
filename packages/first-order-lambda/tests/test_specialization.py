@@ -1,7 +1,7 @@
 """Analysis-driven specialization: the analysis classifies, and the chosen runtime agrees.
 
 The specializer interprets by default and compiles to Python only when an analysis certifies the
-result is unchanged: call-by-value for a simply-typed (strongly normalizing) term, call-by-name for a
+result is unchanged: call-by-value for a simply-typed (strongly normalizing) term, call-by-need for a
 term whose interpreted behaviour is a finite normal form, interpret otherwise. These tests check the
 two classifiers (``is_typable``, ``choose_runtime``) and that the specialized output, run, equals
 the interpreter's value.
@@ -71,9 +71,10 @@ def test_typable_terms_choose_eager(name: str) -> None:
     "name, node",
     [("factorial 4", build(app(FACTORIAL, church(4)))), ("fibonacci 5", build(app(FIBONACCI, church(5))))],
 )
-def test_normalizing_recursion_chooses_lazy(name: str, node) -> None:
-    # Untypable but the interpreter reads a finite normal form (no fold), so call-by-name suffices.
-    assert choose_runtime(node) is Runtime.CALL_BY_NAME
+def test_normalizing_recursion_chooses_call_by_need(name: str, node) -> None:
+    # Untypable but the interpreter reads a finite normal form (no fold), so the lazy choice is safe.
+    # The lazy choice is call-by-need (it shares; call-by-name is never needed for correctness).
+    assert choose_runtime(node) is Runtime.CALL_BY_NEED
 
 
 @pytest.mark.parametrize("name, node", [("Y (cons 0)", CYCLIC_ZEROS), ("OMEGA", OMEGA)])
@@ -93,13 +94,12 @@ def _run_church(node) -> int:
             assert source is not None
             numeral = eval(source)
             return numeral(lambda predecessor: predecessor + 1)(0)
-        case Runtime.CALL_BY_NAME:
+        case Runtime.CALL_BY_NEED:
             assert source is not None
             environment = runtime_globals(runtime)
-            numeral = eval(source, environment)
-            thunk, force = environment["Thunk"], environment["force"]
-            successor = lambda counted: force(counted) + 1
-            return numeral(thunk(lambda: successor))(thunk(lambda: 0))
+            exec(source, environment)  # call-by-need source is a module binding ``program``
+            successor = lambda argument_thunk: (lambda: argument_thunk() + 1)
+            return environment["program"]()(lambda: successor)()(lambda: 0)()
         case _:
             raise ValueError(f"unexpected runtime {runtime!r}")
 
@@ -109,8 +109,8 @@ def _run_church(node) -> int:
     [
         build(app(app(PLUS, church(2)), church(3))),  # call-by-value
         build(app(app(MULT, church(3)), church(4))),  # call-by-value
-        build(app(FACTORIAL, church(4))),  # call-by-name
-        build(app(FIBONACCI, church(5))),  # call-by-name
+        build(app(FACTORIAL, church(4))),  # call-by-need
+        build(app(FIBONACCI, church(5))),  # call-by-need
     ],
 )
 def test_specialized_output_matches_interpreter(node) -> None:

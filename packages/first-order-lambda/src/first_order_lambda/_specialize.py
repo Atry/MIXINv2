@@ -157,14 +157,17 @@ def needs_folding(node: Node) -> bool:
 def choose_runtime(node: Node) -> Runtime:
     """The fastest runtime certified to preserve ``node``'s interpreted behaviour.
 
-    Call-by-value if simply typable (strongly normalizing); else call-by-name if the behaviour is a
+    Call-by-value if simply typable (strongly normalizing); else call-by-need if the behaviour is a
     finite normal form (normalizing); else interpret, leaving it to the interpreter, which folds
-    correctly.
+    correctly. Call-by-need, not call-by-name, is the lazy choice: it computes the same values and
+    terminates in the same cases (memoisation is referentially transparent in a pure calculus) and
+    only ever shares work, so call-by-name is never needed for correctness and the specializer never
+    picks it.
     """
     if is_typable(node):
         return Runtime.CALL_BY_VALUE
     if not needs_folding(node):
-        return Runtime.CALL_BY_NAME
+        return Runtime.CALL_BY_NEED
     return Runtime.INTERPRET
 
 
