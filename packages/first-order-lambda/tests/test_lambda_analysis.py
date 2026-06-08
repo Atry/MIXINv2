@@ -16,7 +16,7 @@ from first_order_lambda._ast import make_app, make_lam, make_var
 from first_order_lambda._dsl import app, build, lam
 from first_order_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, Y, church
 from first_order_lambda._render import render
-from first_order_lambda._specialize import church_island
+from first_order_lambda._specialize import value_island
 
 
 @pytest.mark.parametrize(
@@ -42,7 +42,7 @@ def test_lambda_verdict_drives_local_specialization() -> None:
     assert is_closed(element) is True
     y_node, cons_node = build(Y), build(SCOTT_CONS)
     pure = make_app(y_node, make_app(cons_node, element))
-    hybrid = make_app(y_node, make_app(cons_node, church_island(element)))
+    hybrid = make_app(y_node, make_app(cons_node, value_island(element)))
     assert render(hybrid) == render(pure)
 
 

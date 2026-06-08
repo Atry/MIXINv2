@@ -27,15 +27,16 @@ from dataclasses import dataclass
 
 from typing import Callable
 
-from first_order_lambda._ast import App, Lam, Native, Node, Var, make_native
+from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._compiler import (
     Runtime,
+    _recursion_headroom,
     compile_interpreted,
     compile_to_source,
     runtime_globals,
+    value_island as _compiler_value_island,
 )
 from first_order_lambda._dsl import build
-from first_order_lambda._prelude import church
 from first_order_lambda._render import render
 
 
@@ -142,7 +143,8 @@ def is_typable(node: Node) -> bool:
     normalize (factorial does), so untypability only means call-by-value is not certified, not unsafe.
     """
     inference = _Inference()
-    inference.infer(node, ())
+    with _recursion_headroom():
+        inference.infer(node, ())
     return not inference.failed
 
 
@@ -202,83 +204,20 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     return runtime, compile_to_source(node, runtime)
 
 
-def _resolve_deep(inference: _Inference, type_: _Type) -> _Type:
-    """Fully resolve a type through the substitution, inside arrows as well as at the top."""
-    type_ = inference._resolve(type_)
-    if isinstance(type_, _TArrow):
-        return _TArrow(_resolve_deep(inference, type_.left), _resolve_deep(inference, type_.right))
-    return type_
-
-
-def _is_church_type(type_: _Type) -> bool:
-    """Whether ``type_`` is the Church-numeral type ``(a -> a) -> a -> a`` for a single variable ``a``.
-
-    By parametricity a closed term of this type IS a Church numeral, so it is church-producing.
-    """
-    match type_:
-        case _TArrow(left=_TArrow(left=a, right=b), right=_TArrow(left=c, right=d)):
-            return isinstance(a, _TVar) and a == b == c == d
-        case _:
-            return False
-
-
-def _classify_island(node: Node) -> "tuple[str, int] | None":
-    """Classify a closed island by its principal type into a reify kind, or ``None`` if not reifiable.
-
-    By parametricity the closed type pins the term: ``a -> a`` is the identity (a passthrough island,
-    sound on any encoding); ``(a -> a) -> a -> a`` is a Church numeral (a church-data island); a chain
-    of Church-numeral arrows ending in a Church numeral, ``church -> ... -> church``, is an arithmetic
-    function (a church-function island, sound where applied to Church numerals). A behavioural probe
-    cannot do this: ``identity`` coincides with the numeral one under succ/zero. Anything else, e.g. a
-    Scott constructor, has no church reify here and stays interpreted.
-    """
-    inference = _Inference()
-    inferred = inference.infer(node, ())
-    if inference.failed:
-        return None
-    resolved = _resolve_deep(inference, inferred)
-    match resolved:
-        case _TArrow(left=a, right=b) if isinstance(a, _TVar) and a == b:
-            return ("identity", 1)
-    if _is_church_type(resolved):
-        return ("church_data", 0)
-    arity = 0
-    current = resolved
-    while isinstance(current, _TArrow) and _is_church_type(current.left):
-        arity += 1
-        current = current.right
-    if arity > 0 and _is_church_type(current):
-        return ("church_function", arity)
-    return None
-
-
-def island_map(node: Node) -> "dict[int, tuple[str, int]]":
-    """Map each of ``node``'s maximal closed reifiable islands (by identity) to its reify kind.
-
-    These are the by-value islands the interpret target splices and runs compiled through the FFI,
-    scoped to the island's type (identity passthrough, church data, church function). An island with no
-    church reify here (a Scott constructor) is omitted and stays interpreted.
-    """
-    classified: "dict[int, tuple[str, int]]" = {}
-    for island in call_by_value_islands(node):
-        classification = _classify_island(island)
-        if classification is not None:
-            classified[id(island)] = classification
-    return classified
-
-
 def compile_specialized(node: Node) -> str:
     """Compile ``node`` in specialized mode, always returning Python.
 
     The head is non-interpreter code when the whole graph carries the by-value certificate (closed and
     simply typable, hence strongly normalizing, so strict evaluation reaches the interpreter's normal
     form); otherwise it is an ``interpret(...)`` call that re-submits the term to the interpreter, with
-    its certified church-numeral sub-terms spliced as compiled by-value islands. This is the compiler in
-    the sense the paper means: interpret by default, compile the certified parts.
+    its maximal closed simply-typable sub-terms spliced as compiled by-value islands (run, then reified
+    to a pure node by NbE read-back). This is the compiler in the sense the paper means: interpret by
+    default, compile the certified parts; the island reify is church-agnostic, not type-classified.
     """
     if node.loose_bound == 0 and is_typable(node):
         return compile_to_source(node, Runtime.CALL_BY_VALUE)
-    return compile_interpreted(node, island_map(node))
+    islands = frozenset(id(island) for island in call_by_value_islands(node))
+    return compile_interpreted(node, islands)
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
@@ -321,7 +260,8 @@ def call_by_value_islands(node: Node) -> tuple[Node, ...]:
             case _:
                 raise TypeError(f"cannot scan {current!r}")
 
-    visit(node)
+    with _recursion_headroom():
+        visit(node)
     return tuple(found)
 
 
@@ -401,28 +341,15 @@ def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[...
 # fixpoint, not structural identity, so the canonical reified shape is sound.
 
 
-def _decode_church_host(value: object, runtime: Runtime) -> int:
-    if runtime is Runtime.CALL_BY_VALUE:
-        return value(lambda predecessor: predecessor + 1)(0)  # type: ignore[operator]
-    globals_ = runtime_globals(runtime)
-    thunk, force = globals_["Thunk"], globals_["force"]
-    successor = lambda counted: force(counted) + 1
-    return value(thunk(lambda: successor))(thunk(lambda: 0))  # type: ignore[operator]
+def value_island(node: Node) -> Native:
+    """Wrap a CLOSED, simply-typable (strongly normalizing) term as a compiled by-value ``Native`` island.
 
-
-def church_island(node: Node, runtime: Runtime | None = None) -> Native:
-    """Wrap a CLOSED, Church-numeral-producing term as a compiled ``Native`` island (arity 0).
-
-    The term is compiled once; the island's ``run`` evaluates it and reifies the result Church
-    numeral back to a node, so the island composes with the interpreter through the Node graph. The
-    runtime defaults to call-by-value when the term is simply typable, else call-by-name.
+    The term is compiled once to strict Python and run; its normal form is reified to a PURE Scott node
+    by NbE read-back (``_compiler.value_island``), so the island composes with the interpreter through
+    the node graph and the generic decoder reads it. The reify is church-agnostic (it reifies a Church
+    numeral, a Scott value, or a function alike); faithfulness is convergence to the same value, not
+    structural identity.
     """
     if node.loose_bound != 0:
-        raise ValueError("church_island requires a closed term")
-    chosen = runtime if runtime is not None else (Runtime.CALL_BY_VALUE if is_typable(node) else Runtime.CALL_BY_NAME)
-    compiled = compile_callable(node, chosen)
-
-    def run() -> Node:
-        return build(church(_decode_church_host(compiled, chosen)))
-
-    return make_native(run, 0)
+        raise ValueError("value_island requires a closed term")
+    return _compiler_value_island(compile_callable(node, Runtime.CALL_BY_VALUE))

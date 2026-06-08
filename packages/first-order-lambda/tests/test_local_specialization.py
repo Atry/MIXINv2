@@ -10,7 +10,6 @@ an under-applied one reads as a value.
 
 from __future__ import annotations
 
-import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from first_order_lambda._ast import Native, make_app, make_native
@@ -20,7 +19,7 @@ from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, SCOTT_NIL, Y, church
 from first_order_lambda._pyast import _church_to_int
 from first_order_lambda._render import render
-from first_order_lambda._specialize import call_by_value_islands, church_island, is_typable
+from first_order_lambda._specialize import call_by_value_islands, value_island, is_typable
 
 
 def test_compiled_island_inside_cyclic_shell_matches_interpretation(snapshot: SnapshotAssertion) -> None:
@@ -30,8 +29,8 @@ def test_compiled_island_inside_cyclic_shell_matches_interpretation(snapshot: Sn
     y_node, cons_node = build(Y), build(SCOTT_CONS)
     element = build(app(app(MULT, church(3)), church(3)))
     pure = make_app(y_node, make_app(cons_node, element))
-    hybrid = make_app(y_node, make_app(cons_node, church_island(element)))
-    assert isinstance(church_island(element), Native)
+    hybrid = make_app(y_node, make_app(cons_node, value_island(element)))
+    assert isinstance(value_island(element), Native)
     assert render(hybrid) == render(pure)
     assert render(hybrid) == snapshot(name="cyclic_nines")
 
@@ -41,7 +40,7 @@ def test_compiled_island_inside_finite_shell_matches_interpretation() -> None:
     cons_node, nil_node = build(SCOTT_CONS), build(SCOTT_NIL)
     element = build(app(app(MULT, church(2)), church(4)))
     pure = make_app(make_app(cons_node, element), nil_node)
-    hybrid = make_app(make_app(cons_node, church_island(element)), nil_node)
+    hybrid = make_app(make_app(cons_node, value_island(element)), nil_node)
     assert render(hybrid) == render(pure)
 
 
@@ -71,11 +70,6 @@ def test_every_island_is_closed_and_typable() -> None:
         assert is_typable(island) is True
 
 
-@pytest.mark.xfail(
-    reason="local specialization of the compiler is reworked in the reflect/reify stage; the "
-    "generic-encoding COMPILE is much larger, so analyzing its islands recurses past the default limit",
-    strict=False,
-)
 def test_compiler_call_by_value_islands(snapshot: SnapshotAssertion) -> None:
     # The flagship: the compiler is untypable as a whole (its Z fixpoint self-applies), so it stays
     # interpreted, but the specializer finds its maximal closed simply-typable sub-terms, the

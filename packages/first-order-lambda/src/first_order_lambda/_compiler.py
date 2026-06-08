@@ -2,13 +2,14 @@
 
 The source is a quoted lambda term, a Scott value over ``QVar i`` / ``QLam body`` / ``QApp f a`` (de
 Bruijn). ``COMPILE`` is a pure lambda term that, GIVEN a compilation option, maps the quoted source to
-a quoted Python expression, a Scott value over ``PyVar level`` / ``PyLam level body`` / ``PyApp f a``
-/ ``PyForce e`` / ``PyThunk e``. The option decides the target, in the lambda term itself: under the
-call-by-value option an application is a strict call and a variable is a bare name; under the
-call-by-name option a variable is forced and an argument is thunked (``force``/``Thunk``), matching
-the interpreter's weak-head reduction. So the target-specific codegen lives in the lambda term; Python
-only quotes the input, supplies the option, runs the interpreter, and decodes the resulting Scott
-Python expression with a single generic decoder.
+the generic Scott-encoded Python AST (the same encoding ``_pyast`` derives by reflection on ``ast``: a
+``Name``/``Lambda``/``Call`` spine for the expression targets, a ``Module`` of memoising-thunk defs for
+call-by-need). The option decides the target, in the lambda term itself: under the call-by-value option
+an application is a strict call and a variable is a bare name; under the call-by-name option a variable
+is forced and an argument is thunked (``force``/``Thunk``), matching the interpreter's weak-head
+reduction. So the target-specific codegen lives in the lambda term; Python only quotes the input,
+supplies the option, runs the interpreter, and decodes the resulting Scott Python AST with the single
+generic ``_pyast.decode`` (no hand-written decoder).
 
 The interpret target is not a compiled target. It means interpret: re-submit the term to the
 interpreter, whose interning gives the genuine cross-graph tabling fold. (The old compiled fixpoint
@@ -27,7 +28,7 @@ from first_order_lambda import _pybuild
 from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from first_order_lambda._dsl import Builder, app, build, lam
 from first_order_lambda._prelude import FALSE, PLUS, PRED, SCOTT_NIL, SUCC, TRUE, church, cons, map_list
-from first_order_lambda._pyast import _church_to_int, decode
+from first_order_lambda._pyast import decode
 
 # The strict (call-by-value) fixpoint combinator Z = lambda f. (lambda x. f (lambda v. x x v)) (...).
 # Unlike Y it is eta-expanded under the recursive call, so the compiled Python (a strict language)
@@ -247,35 +248,16 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
 # ``interpret(...)``.
 
 
-def _island_call(node: Node, kind: str, arity: int) -> ast.expr:
-    """The Python that splices ``node`` as a compiled island of the given ``kind``.
-
-    ``identity`` needs no compiled body (a closed ``a -> a`` term is the identity); ``church_data`` and
-    ``church_function`` embed the island compiled to call-by-value, which their runtimes drive.
-    """
-    if kind == "identity":
-        return ast.Call(func=ast.Name(id="identity_island", ctx=ast.Load()), args=[], keywords=[])
-    compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
-    if kind == "church_data":
-        return ast.Call(func=ast.Name(id="church_island", ctx=ast.Load()), args=[compiled], keywords=[])
-    if kind == "church_function":
-        return ast.Call(
-            func=ast.Name(id="church_function_island", ctx=ast.Load()),
-            args=[compiled, ast.Constant(value=arity)], keywords=[],
-        )
-    raise ValueError(f"unknown island kind {kind!r}")
-
-
-def _node_to_ast(node: Node, islands: "dict[int, tuple[str, int]]") -> ast.expr:
+def _node_to_ast(node: Node, islands: "frozenset[int]") -> ast.expr:
     """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``.
 
     A node whose identity is in ``islands`` is a certified by-value island: rather than reconstructing
-    its subtree, splice it as a compiled island (``_island_call``) the interpreter drives in place of
-    interpreting the subtree, reifying through the FFI scoped to the island's type.
+    its subtree, splice ``value_island(<the island compiled to call-by-value>)``, an FFI ``Native`` the
+    interpreter drives in place of interpreting the subtree.
     """
     if id(node) in islands:
-        kind, arity = islands[id(node)]
-        return _island_call(node, kind, arity)
+        compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
+        return ast.Call(func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[])
     match node:
         case Var(index=index):
             return ast.Call(
@@ -306,75 +288,128 @@ def interpret(node: Node) -> Node:
     return node
 
 
-def _host_church(n: int):
-    """A host Church numeral for ``n``: ``lambda s: lambda z: s^n z``."""
-    def successor(s):
-        def zero(z):
-            result = z
-            for _ in range(n):
-                result = s(result)
-            return result
-        return zero
-    return successor
+# --- universal reflect/reify (NbE read-back): a decoder-safe by-value island --------------------
+# A by-value island is a closed, simply-typable (strongly normalizing) sub-term compiled to strict
+# Python and run; its host normal form is quoted back to a PURE Scott node (Var/Lam/App) by NbE
+# read-back, so the interpreter folds around it and the generic ``_pyast.decode`` reads it (no residual
+# ``Native`` escapes into the output, which would break the marker-spine decode). This is
+# church-agnostic: the same read-back reifies a Church numeral, a Scott value, or a function.
 
 
-def _decode_host_church(value) -> int:
-    return value(lambda predecessor: predecessor + 1)(0)
+class _Neutral:
+    """A neutral host value in NbE read-back: a bound variable (by de Bruijn level) applied to host
+    arguments. It is the only non-callable a by-value island value meets when probed under binders."""
+
+    __slots__ = ("level", "spine")
+
+    def __init__(self, level: int, spine: "tuple" = ()) -> None:
+        self.level = level
+        self.spine = spine
+
+    def __call__(self, argument) -> "_Neutral":
+        return _Neutral(self.level, (*self.spine, argument))
 
 
-def identity_island() -> Node:
-    """The island for a closed ``a -> a`` term: by parametricity it is the identity, so a passthrough
-    ``Native`` returning its argument node unchanged, sound on any argument encoding."""
-    return make_native(lambda argument: argument, 1)
+def _quote(host, depth: int) -> Node:
+    """Quote a host value (a by-value normal form) to a pure Scott node: a binder per function layer, a
+    neutral read as a variable-headed spine. Terminates because islands are strongly normalizing."""
+    if isinstance(host, _Neutral):
+        node: Node = make_var(depth - 1 - host.level)
+        for argument in host.spine:
+            node = make_app(node, _quote(argument, depth))
+        return node
+    return make_lam(_quote(host(_Neutral(depth)), depth + 1))
 
 
-def church_island(compiled_value) -> Node:
-    """A church-numeral DATA island (a closed church-producing term, no arguments).
-
-    The FFI ``Native`` (arity 0) evaluates the compiled call-by-value code, decodes the Church numeral,
-    and reifies it as a Church-numeral node, so the island runs compiled while the interpreter folds
-    around it. Faithfulness is convergence to the same value, not structural identity.
-    """
-    return make_native(lambda: build(church(_decode_host_church(compiled_value))), 0)
-
-
-def church_function_island(compiled_value, arity: int) -> Node:
-    """A church-function island: a closed term of type ``church -> ... -> church`` (``arity`` arrows).
-
-    The ``Native`` collects ``arity`` Church-numeral argument nodes, decodes each to an integer and
-    rebuilds a host Church numeral, applies the compiled call-by-value function, and reifies the
-    Church-numeral result. Sound where the island is applied to Church numerals, which is its typing.
-    """
-    def run(*argument_nodes: Node) -> Node:
-        result = compiled_value
-        for argument_node in argument_nodes:
-            result = result(_host_church(_church_to_int(argument_node)))
-        return build(church(_decode_host_church(result)))
-
-    return make_native(run, arity)
+def value_island(compiled_value) -> Node:
+    """A by-value island as an interpreter ``Node``: run the compiled (strongly normalizing) term and
+    quote its host normal form back to a pure Scott node, so the interpreter drives it in place of
+    interpreting the subtree. Faithfulness is convergence to the same value, not structural identity."""
+    return make_native(lambda: _quote(compiled_value, 0), 0)
 
 
 def interpret_globals() -> dict:
-    """The evaluation globals for interpret-headed source: node constructors, ``interpret``, islands."""
+    """The evaluation globals for interpret-headed source: node constructors, ``interpret``, and the
+    universal ``value_island`` reify."""
     return {
-        "make_var": make_var, "make_lam": make_lam, "make_app": make_app, "interpret": interpret,
-        "identity_island": identity_island, "church_island": church_island,
-        "church_function_island": church_function_island,
+        "make_var": make_var, "make_lam": make_lam, "make_app": make_app,
+        "interpret": interpret, "value_island": value_island,
     }
 
 
-def compile_interpreted(node: Node, islands: "dict[int, tuple[str, int]] | None" = None) -> str:
+def compile_interpreted(node: Node, islands: "frozenset[int] | None" = None) -> str:
     """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``.
 
-    Sub-nodes whose identity is in ``islands`` (mapping identity to a ``(kind, arity)`` classification)
-    are spliced as compiled islands rather than reconstructed, so they run compiled inside the
-    interpreted skeleton.
+    Sub-nodes whose identity is in ``islands`` are spliced as ``value_island(...)`` compiled islands
+    rather than reconstructed, so they run compiled inside the interpreted skeleton. This nests
+    deeply for a large term; for a standalone module use ``compile_interpreted_module``.
     """
     call = ast.Call(
         func=ast.Name(id="interpret", ctx=ast.Load()),
-        args=[_node_to_ast(node, islands if islands is not None else {})], keywords=[],
+        args=[_node_to_ast(node, islands if islands is not None else frozenset())], keywords=[],
     )
     return ast.unparse(ast.fix_missing_locations(call))
+
+
+def compile_interpreted_module(node: Node, islands: "frozenset[int] | None" = None) -> str:
+    """Compile ``node`` to an interpret-headed Python MODULE in A-normal form.
+
+    The nested ``interpret(make_...(...))`` reconstruction grows as deep as the term, which overflows
+    CPython's fixed parser nesting cap for a large term like the compiler itself. This emits the same
+    reconstruction flattened to a statement sequence binding one temporary per node (shared by node
+    identity, so interned sub-terms are built once), ending in
+    ``compiled_compiler = interpret(<root temp>)``. The result is shallow (parseable) and small, and a
+    sub-node in ``islands`` is bound to a ``value_island(...)`` compiled island.
+    """
+    island_set = islands if islands is not None else frozenset()
+    statements: "list[ast.stmt]" = []
+    names: "dict[int, str]" = {}
+
+    def emit(current: Node) -> str:
+        if id(current) in names:
+            return names[id(current)]
+        if id(current) in island_set:
+            compiled = ast.parse(compile_to_source(current, Runtime.CALL_BY_VALUE), mode="eval").body
+            value: ast.expr = ast.Call(
+                func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[],
+            )
+        else:
+            match current:
+                case Var(index=index):
+                    value = ast.Call(
+                        func=ast.Name(id="make_var", ctx=ast.Load()),
+                        args=[ast.Constant(value=index)], keywords=[],
+                    )
+                case Lam(body=body):
+                    value = ast.Call(
+                        func=ast.Name(id="make_lam", ctx=ast.Load()),
+                        args=[ast.Name(id=emit(body), ctx=ast.Load())], keywords=[],
+                    )
+                case App(function=function, argument=argument):
+                    value = ast.Call(
+                        func=ast.Name(id="make_app", ctx=ast.Load()),
+                        args=[
+                            ast.Name(id=emit(function), ctx=ast.Load()),
+                            ast.Name(id=emit(argument), ctx=ast.Load()),
+                        ], keywords=[],
+                    )
+                case _:
+                    raise ValueError(f"cannot reconstruct {current!r}")
+        name = f"_{len(names)}"
+        statements.append(ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=value))
+        names[id(current)] = name
+        return name
+
+    with _recursion_headroom():
+        root = emit(node)
+        statements.append(ast.Assign(
+            targets=[ast.Name(id="compiled_compiler", ctx=ast.Store())],
+            value=ast.Call(
+                func=ast.Name(id="interpret", ctx=ast.Load()),
+                args=[ast.Name(id=root, ctx=ast.Load())], keywords=[],
+            ),
+        ))
+        return ast.unparse(ast.fix_missing_locations(ast.Module(body=statements, type_ignores=[])))
 
 
 def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
@@ -672,9 +707,9 @@ def _compile_need_source(node: Node) -> str:
 # COMPILE compiled in specialized mode is interpret-headed (COMPILE is untypable: its Z fixpoint
 # self-applies), so the self-hosted compiler is the COMPILE node handed back to the interpreter.
 # ``compiled_compiler`` evaluates that interpret-headed source to the node; ``compile_with_interpreted``
-# runs it as a compiler, reifying the Scott Python-AST result through ``_decode_pyast``, the same
-# boundary the in-process compiler uses. So the compiler compiled by itself, through interpret, is a
-# working compiler agreeing with ``compile_to_source``.
+# runs it as a compiler, reifying the Scott Python-AST result through the generic ``_pyast.decode``, the
+# same boundary the in-process compiler uses. So the compiler compiled by itself, through interpret, is
+# a working compiler agreeing with ``compile_to_source``.
 
 
 def compiled_compiler() -> Node:
