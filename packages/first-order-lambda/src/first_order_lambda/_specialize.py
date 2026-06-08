@@ -255,19 +255,16 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
 
 
 def compile_specialized(node: Node) -> str:
-    """Compile ``node`` in specialized mode, always returning Python.
+    """Compile ``node`` in specialized mode, entirely by the lambda term (see ``compile_specialized_lambda``).
 
-    The head is non-interpreter code when the whole graph carries the by-value certificate (closed and
-    simply typable, hence strongly normalizing, so strict evaluation reaches the interpreter's normal
-    form); otherwise it is an ``interpret(...)`` call that re-submits the term to the interpreter, with
-    its maximal closed simply-typable sub-terms spliced as compiled by-value islands (run, then reified
-    to a pure node by NbE read-back). This is the compiler in the sense the paper means: interpret by
-    default, compile the certified parts; the island reify is church-agnostic, not type-classified.
+    A closed simply-typable whole term yields a strict call-by-value value; otherwise an
+    interpret-with-islands A-normal-form module whose closed, shallow, simply-typable sub-terms are
+    spliced as compiled by-value islands. Either way the decision and codegen are the lambda term
+    ``COMPILE_SPECIALIZED``; Python only quotes, runs the interpreter, and serializes with the generic
+    codec. The Python ``is_typable``/``needs_folding``/``call_by_value_islands`` below are no longer on
+    this compile path; they remain only as the test oracle for the lambda certificates.
     """
-    if node.loose_bound == 0 and is_typable(node):
-        return compile_to_source(node, Runtime.CALL_BY_VALUE)
-    islands = frozenset(id(island) for island in call_by_value_islands(node))
-    return compile_interpreted(node, islands)
+    return compile_specialized_lambda(node)
 
 
 # --- COMPILE_SPECIALIZED: the specializing compiler, entirely a lambda term ----------------------
@@ -316,6 +313,15 @@ def _compile_call_by_value(quoted: "object") -> "object":
 # expensive algorithm-W: a deep closed sub-term (a large combinator) is left reconstructed as an
 # interpreted graph rather than driving the inference, which keeps the self-host compilation within the
 # interner's memory; the AND short-circuits, so TYPABLE only runs on a closed, shallow sub-term.
+# The WHOLE-term by-value certificate: closed and simply typable, with NO depth bound. A whole typable
+# program (however deep) compiles to a strict call-by-value value; the depth bound below is only for
+# deciding which SUB-terms to splice as islands inside an interpret-headed reconstruction.
+_CLOSED_TYPABLE: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
+
+# The per-sub-term island certificate: closed AND shallow enough AND simply typable. The depth bound
+# gates the expensive algorithm-W so a deep closed sub-term (a large combinator) is left reconstructed
+# as an interpreted graph rather than driving the inference, keeping the self-host compilation within the
+# interner's memory; the AND short-circuits, so TYPABLE only runs on a closed, shallow sub-term.
 _ISLAND_DEPTH_BOUND: "object" = church(8)
 _DEPTH_OK: "object" = depth_at_most(_ISLAND_DEPTH_BOUND)
 _ISLAND: "object" = lam(lambda quoted: _ap(
@@ -341,7 +347,7 @@ _RECONSTRUCT: "object" = app(Z, lam(lambda self_recursion: lam(lambda quoted: _a
 
 
 COMPILE_SPECIALIZED: "object" = lam(lambda quoted: _ap(
-    app(_ISLAND, quoted),
+    app(_CLOSED_TYPABLE, quoted),
     _compile_call_by_value(quoted),  # whole term closed and typable: a strict call-by-value expression
     _runtime_call("interpret", (app(_RECONSTRUCT, quoted),)),  # else interpret the reconstruction graph
 ))

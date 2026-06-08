@@ -1,11 +1,13 @@
-"""The interpret-emitting target: the compiler always returns Python, interpret-headed when uncertified.
+"""The specializing compiler is a lambda term; its output is interpret-headed when uncertified.
 
-``compile_specialized`` returns Python whose head is non-interpreter code when the whole graph carries
-the by-value certificate (closed and simply typable), and an ``interpret(...)`` call otherwise. The
-``interpret(...)`` argument reconstructs the term with ``make_var``/``make_lam``/``make_app``, so the
-source is self-contained given ``interpret_globals``; ``interpret`` hands the node back to the
-interpreter, which computes the value when it is observed. These tests check both heads and that the
-interpret-headed source, run, agrees with interpreting the term directly.
+``compile_specialized`` is now produced entirely by the lambda term ``COMPILE_SPECIALIZED`` and
+serialized to an A-normal-form module binding ``compiled_compiler`` (via the generic codec). A closed
+simply-typable whole term binds a strict call-by-value value (no ``interpret`` head); otherwise it binds
+``interpret(<reconstruction>)``, the term rebuilt with ``make_var``/``make_lam``/``make_app`` and its
+closed, shallow, simply-typable sub-terms spliced as compiled by-value islands (``value_island``). The
+module is self-contained given ``interpret_globals``; ``interpret`` hands the node back to the
+interpreter. These tests check both shapes and that the interpret-headed module, run, agrees with the
+interpreter.
 """
 
 from __future__ import annotations
@@ -20,19 +22,22 @@ from first_order_lambda._compiler import (
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
 from first_order_lambda._pyast import _church_to_int
-from first_order_lambda._specialize import call_by_value_islands, compile_specialized
+from first_order_lambda._specialize import compile_specialized
 
 
-def _eval_interpreted(source: str):
-    return eval(source, interpret_globals())  # noqa: S307 - evaluating our own generated source
+def _run(source: str):
+    """Execute a specialized module and return its ``compiled_compiler`` binding."""
+    namespace = dict(interpret_globals())
+    exec(source, namespace)  # noqa: S102 - running our own generated source
+    return namespace["compiled_compiler"]
 
 
 def test_typable_whole_graph_compiles_to_inline_call_by_value() -> None:
-    # plus 2 3 is closed and simply typable, so it carries the by-value certificate and compiles inline
-    # (no interpret head); it runs as strict Python.
+    # plus 2 3 is closed and simply typable, so it carries the by-value certificate: the module binds a
+    # strict call-by-value value (no interpret head), which runs as strict Python.
     source = compile_specialized(build(app(app(PLUS, church(2)), church(3))))
-    assert not source.startswith("interpret(")
-    assert eval(source)(lambda predecessor: predecessor + 1)(0) == 5  # noqa: S307
+    assert "interpret(" not in source
+    assert _run(source)(lambda predecessor: predecessor + 1)(0) == 5
 
 
 def test_untypable_term_is_interpret_headed_and_agrees_with_the_interpreter() -> None:
@@ -40,40 +45,40 @@ def test_untypable_term_is_interpret_headed_and_agrees_with_the_interpreter() ->
     # interpreted, computes the same value as the source term.
     node = build(app(FACTORIAL, church(3)))
     source = compile_specialized(node)
-    assert source.startswith("interpret(make_app(")
-    assert _church_to_int(_eval_interpreted(source)) == _church_to_int(node) == 6
+    assert "interpret(" in source
+    assert _church_to_int(_run(source)) == _church_to_int(node) == 6
 
 
 def test_interpret_headed_source_is_self_contained() -> None:
-    # The interpret-headed source evaluates with only interpret_globals in scope: it is self-contained
-    # text (the node constructors, interpret, and value_island), no NameError for an undefined free.
+    # The interpret-headed module runs with only interpret_globals in scope: self-contained text (the
+    # node constructors, interpret, value_island), no NameError for an undefined free.
     source = compile_specialized(build(app(FACTORIAL, church(4))))
-    assert eval(source, interpret_globals()) is not None  # noqa: S307
+    assert _run(source) is not None
 
 
 def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
-    # factorial (2 * 3) is untypable as a whole, so it is interpret-headed; its closed church-producing
-    # sub-terms (2 * 3 and the constants inside factorial) are spliced as compiled by-value islands, and
-    # the spliced program agrees with pure interpretation.
+    # factorial (2 * 3) is untypable as a whole, so it is interpret-headed; its closed, shallow,
+    # simply-typable sub-terms are spliced as compiled by-value islands, and the spliced program agrees
+    # with pure interpretation.
     node = build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))
-    assert len(call_by_value_islands(node)) >= 1
     source = compile_specialized(node)
-    assert source.startswith("interpret(")
+    assert "interpret(" in source
     assert "value_island(" in source
-    assert _church_to_int(_eval_interpreted(source)) == _church_to_int(node) == 720
+    assert _church_to_int(_run(source)) == _church_to_int(node) == 720
 
 
 def test_the_compiler_itself_is_interpret_headed() -> None:
-    # COMPILE is untypable (its Z fixpoint self-applies), so the compiler compiles itself to
-    # interpret-headed Python: the recursive skeleton is left to the interpreter.
+    # COMPILE is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
+    # interpret-headed module with by-value islands spliced; the recursive skeleton is left to interpret.
     source = compile_specialized(build(COMPILE))
-    assert source.startswith("interpret(make_lam(")
+    assert "interpret(" in source
+    assert "value_island(" in source
 
 
 def test_typable_combinators_compile_inline() -> None:
     # The simply-typable prelude combinators all carry the by-value certificate (no interpret head).
     for builder in (SUCC, MULT, IS_ZERO, app(app(MULT, church(3)), church(4))):
-        assert not compile_specialized(build(builder)).startswith("interpret(")
+        assert "interpret(" not in compile_specialized(build(builder))
 
 
 def test_interpret_headed_compiler_self_hosts() -> None:

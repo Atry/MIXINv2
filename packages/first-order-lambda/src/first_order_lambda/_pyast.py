@@ -239,8 +239,6 @@ def to_anf_source(node: Node, binding_name: str) -> str:
         return ast.Name(id=name, ctx=ast.Load())
 
     root = emit(node)
-    if not statements:
-        return ast.unparse(ast.fix_missing_locations(root))
     statements.append(ast.Assign(targets=[ast.Name(id=binding_name, ctx=ast.Store())], value=root))
     return ast.unparse(ast.fix_missing_locations(ast.Module(body=statements, type_ignores=[])))
 
