@@ -73,7 +73,8 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
 
 @pytest.mark.skipif(
     os.environ.get("FOL_REGEN_HEAVY") != "1",
-    reason="specializing the whole compiler peaks ~12 GB / minutes; set FOL_REGEN_HEAVY=1 to run",
+    reason="specializing the whole compiler peaks ~12 GB / minutes (needs FOL_INTERNER_RETAIN=inf); "
+    "set FOL_REGEN_HEAVY=1 to run",
 )
 def test_the_compiler_itself_is_interpret_headed() -> None:
     # COMPILE is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an

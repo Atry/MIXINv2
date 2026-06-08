@@ -5,12 +5,14 @@ build and the bootstrap test do not run Python generation. These tests assert ea
 exactly the current builder output, so a compiler change that is not regenerated fails here.
 
 Regenerating the self-host artifact is heavy: with the island depth bound removed it splices the
-large maximal islands, and the no-GC interner retains every reduction, so generation peaks around
-12 GB and takes several minutes. That would OOM a modest CI runner, so these currency checks are
-gated behind ``FOL_REGEN_HEAVY=1`` and skipped by default. Run them (and regenerate the committed
-files) explicitly after any change to the compiler or the type checker:
+large maximal islands, and the generation's reuse working set is large, so it needs the unbounded
+(``inf``) interner retainer to keep memoization (a bounded retainer thrashes and never finishes),
+which peaks around 12 GB and takes several minutes. That would OOM a modest CI runner, so these
+currency checks are gated behind ``FOL_REGEN_HEAVY=1`` and skipped by default. Run them (and
+regenerate the committed files) explicitly after any change to the compiler or the type checker, with
+the unbounded retainer:
 
-    FOL_REGEN_HEAVY=1 PYTHONPATH=src:../fixpoints/src uv run ... -m pytest tests/test_generated.py
+    FOL_REGEN_HEAVY=1 FOL_INTERNER_RETAIN=inf PYTHONPATH=src:../fixpoints/src uv run ... -m pytest tests/test_generated.py
 """
 
 from __future__ import annotations

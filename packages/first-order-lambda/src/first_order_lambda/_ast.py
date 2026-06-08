@@ -125,15 +125,73 @@ class Native(Node):
 # finite set of positions: an Omega contractum, or a repeated stream cell produced by a Y
 # recursion, interns back to an existing node, so the least-fixpoint merge folds it. No
 # recursion binder is needed; Y suffices, since the calculus stays pure.
-_intern: dict[tuple[object, ...], Node] = {}
+#
+# The canonical map is WEAK (``WeakValueDictionary``): a key maps to a node iff that node is still
+# alive, so an unreferenced reduction is reclaimed by CPython's refcounting rather than retained
+# forever (the old plain dict made specializing the whole compiler peak ~12 GB). This is
+# correctness-safe for cycle folding: a node under computation, or reachable from a live result, is
+# strongly referenced (call stack, the fixpoint context's participant refs), so it is NOT dropped;
+# folding only needs the contractum to intern back while the node is live, and a weak map guarantees
+# there are never two structurally-equal LIVE nodes (so the pointer test never sees a duplicate).
+#
+# ``FOL_INTERNER_RETAIN`` sizes a strong retainer layered on top (it only ADDS strong refs, never
+# changes the canonical mapping, so it can never create a duplicate). One knob, three regimes:
+#   "0"            : no retainer -- pure weak, minimal memory, but a dropped node loses its cached
+#                    weak-head normal form and is recomputed, so tabling speed is lost (the whole
+#                    suite then runs many times slower).
+#   N (an int)     : a bounded LRU of the N most-recently-used nodes (the default). Keeps the hot,
+#                    frequently-reused nodes and their cached normal forms alive so tabling speed is
+#                    preserved within reuse distance N, while the cold tail is reclaimed -- memory
+#                    bounded near max(live working set, N).
+#   "inf"          : never evicts -- every node stays alive (the old no-GC behaviour); used for the
+#                    memory-heavy self-host regeneration, whose reuse distance exceeds any practical N.
+# The LRU is a stdlib ``OrderedDict`` (C-backed move-to-end / popitem); cachetools / lru-dict were
+# considered but add a dependency (and, for lru-dict, a C build under Nix) for no behavioural gain here.
+import os as _os
+import weakref as _weakref
+from collections import OrderedDict as _OrderedDict
+
+_INTERNER_RETAIN = _os.environ.get("FOL_INTERNER_RETAIN", "1000000")
+
+_canonical: "_weakref.WeakValueDictionary[tuple[object, ...], Node]" = _weakref.WeakValueDictionary()
+# ``_retain_max``: 0 -> no retainer; -1 -> unbounded strong dict; >0 -> bounded LRU OrderedDict.
+if _INTERNER_RETAIN == "inf":
+    _retainer: "dict[tuple[object, ...], Node] | None" = {}
+    _retain_max = -1
+elif _INTERNER_RETAIN == "0":
+    _retainer = None
+    _retain_max = 0
+else:
+    _retainer = _OrderedDict()
+    _retain_max = int(_INTERNER_RETAIN)
+
+
+def _retain(key: tuple[object, ...], node: Node) -> None:
+    """Mark ``key -> node`` most-recently-used in the strong retainer (evicting the oldest if over the
+    bound). A canonical-map hit may name a node that was already evicted from the retainer while it
+    stayed alive elsewhere, so an absent key is re-inserted rather than moved (move-to-end would raise)."""
+    if _retainer is None:
+        return
+    if _retain_max < 0:  # unbounded strong dict
+        _retainer[key] = node
+        return
+    ordered = cast("OrderedDict", _retainer)
+    if key in ordered:
+        ordered.move_to_end(key)
+    else:
+        ordered[key] = node
+        if len(ordered) > _retain_max:
+            ordered.popitem(last=False)
 
 
 def _intern_node(key: tuple[object, ...], make: Callable[[], Node]) -> Node:
-    existing = _intern.get(key)
+    existing = _canonical.get(key)
     if existing is not None:
+        _retain(key, existing)
         return existing
     node = make()
-    _intern[key] = node
+    _canonical[key] = node
+    _retain(key, node)
     return node
 
 
