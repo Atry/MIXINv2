@@ -20,7 +20,7 @@ from first_order_lambda._compiler import (
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
 from first_order_lambda._pyast import _church_to_int
-from first_order_lambda._specialize import compile_specialized
+from first_order_lambda._specialize import church_numeral_islands, compile_specialized
 
 
 def _eval_interpreted(source: str):
@@ -45,11 +45,22 @@ def test_untypable_term_is_interpret_headed_and_agrees_with_the_interpreter() ->
 
 
 def test_interpret_headed_source_is_self_contained() -> None:
-    # The only free names the interpret-headed source uses are the four in interpret_globals.
+    # The interpret-headed source evaluates with only interpret_globals in scope: it is self-contained
+    # text (the node constructors, interpret, and church_island), no NameError for an undefined free.
     source = compile_specialized(build(app(FACTORIAL, church(4))))
-    permitted = set(interpret_globals()) | {"interpret"}
-    used = {token for token in __import__("re").findall(r"[A-Za-z_]\w*", source)}
-    assert used <= permitted
+    assert eval(source, interpret_globals()) is not None  # noqa: S307
+
+
+def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
+    # factorial (2 * 3) is untypable as a whole, so it is interpret-headed; its closed church-producing
+    # sub-terms (2 * 3 and the constants inside factorial) are spliced as compiled by-value islands, and
+    # the spliced program agrees with pure interpretation.
+    node = build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))
+    assert len(church_numeral_islands(node)) >= 1
+    source = compile_specialized(node)
+    assert source.startswith("interpret(")
+    assert "church_island(" in source
+    assert _church_to_int(_eval_interpreted(source)) == _church_to_int(node) == 720
 
 
 def test_the_compiler_itself_is_interpret_headed() -> None:

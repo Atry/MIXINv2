@@ -20,7 +20,7 @@ from __future__ import annotations
 import ast
 from enum import Enum, auto
 
-from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_var
+from first_order_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from first_order_lambda._dsl import Builder, app, build, lam
 from first_order_lambda._prelude import FALSE, PRED, SCOTT_NIL, SUCC, TRUE, church, cons
 from first_order_lambda._pyast import _church_to_int, _decode_scott_list, _extract
@@ -260,8 +260,16 @@ def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> s
 # ``interpret(...)``.
 
 
-def _node_to_ast(node: Node) -> ast.expr:
-    """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``."""
+def _node_to_ast(node: Node, islands: "frozenset[int]") -> ast.expr:
+    """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``.
+
+    A node whose identity is in ``islands`` is a certified church-numeral island: rather than
+    reconstructing its subtree, emit ``church_island(<the island compiled to call-by-value>)``, a
+    compiled island the interpreter drives in place of interpreting the subtree.
+    """
+    if id(node) in islands:
+        compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
+        return ast.Call(func=ast.Name(id="church_island", ctx=ast.Load()), args=[compiled], keywords=[])
     match node:
         case Var(index=index):
             return ast.Call(
@@ -270,12 +278,13 @@ def _node_to_ast(node: Node) -> ast.expr:
             )
         case Lam(body=body):
             return ast.Call(
-                func=ast.Name(id="make_lam", ctx=ast.Load()), args=[_node_to_ast(body)], keywords=[],
+                func=ast.Name(id="make_lam", ctx=ast.Load()), args=[_node_to_ast(body, islands)],
+                keywords=[],
             )
         case App(function=function, argument=argument):
             return ast.Call(
                 func=ast.Name(id="make_app", ctx=ast.Load()),
-                args=[_node_to_ast(function), _node_to_ast(argument)], keywords=[],
+                args=[_node_to_ast(function, islands), _node_to_ast(argument, islands)], keywords=[],
             )
         case _:
             raise ValueError(f"cannot reconstruct {node!r}")
@@ -291,15 +300,37 @@ def interpret(node: Node) -> Node:
     return node
 
 
+def church_island(compiled_value) -> Node:
+    """A church-numeral island as an interpreter ``Node``: a compiled, closed, church-producing term.
+
+    ``compiled_value`` is the island compiled to call-by-value and evaluated (a host Church numeral).
+    The FFI ``Native`` (arity 0) evaluates it, decodes the Church numeral to an integer, and reifies it
+    as a Church-numeral node, so the island runs compiled while the interpreter folds around it. The
+    boundary is scoped to the Church encoding, the same reify the local-specialization ``church_island``
+    uses; faithfulness is convergence to the same value, not structural identity.
+    """
+    def run() -> Node:
+        return build(church(compiled_value(lambda predecessor: predecessor + 1)(0)))
+
+    return make_native(run, 0)
+
+
 def interpret_globals() -> dict:
-    """The evaluation globals for interpret-headed source: the node constructors and ``interpret``."""
-    return {"make_var": make_var, "make_lam": make_lam, "make_app": make_app, "interpret": interpret}
+    """The evaluation globals for interpret-headed source: node constructors, ``interpret``, islands."""
+    return {
+        "make_var": make_var, "make_lam": make_lam, "make_app": make_app,
+        "interpret": interpret, "church_island": church_island,
+    }
 
 
-def compile_interpreted(node: Node) -> str:
-    """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``."""
+def compile_interpreted(node: Node, islands: "frozenset[int]" = frozenset()) -> str:
+    """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``.
+
+    Sub-nodes whose identity is in ``islands`` are spliced as compiled church-numeral islands rather
+    than reconstructed, so they run compiled inside the interpreted skeleton.
+    """
     call = ast.Call(
-        func=ast.Name(id="interpret", ctx=ast.Load()), args=[_node_to_ast(node)], keywords=[],
+        func=ast.Name(id="interpret", ctx=ast.Load()), args=[_node_to_ast(node, islands)], keywords=[],
     )
     return ast.unparse(ast.fix_missing_locations(call))
 

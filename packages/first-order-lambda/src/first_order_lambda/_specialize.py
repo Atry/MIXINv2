@@ -202,17 +202,55 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     return runtime, compile_to_source(node, runtime)
 
 
+def _resolve_deep(inference: _Inference, type_: _Type) -> _Type:
+    """Fully resolve a type through the substitution, inside arrows as well as at the top."""
+    type_ = inference._resolve(type_)
+    if isinstance(type_, _TArrow):
+        return _TArrow(_resolve_deep(inference, type_.left), _resolve_deep(inference, type_.right))
+    return type_
+
+
+def _is_church_type(node: Node) -> bool:
+    """Whether ``node``'s principal simple type is the Church-numeral type ``(a -> a) -> a -> a``.
+
+    By parametricity a closed term of this type IS a Church numeral, so this is a SOUND certificate that
+    a closed island is church-producing, hence reifiable by ``church_island``. A behavioural probe is
+    not sound: ``identity`` (``a -> a``) applied to two markers coincides with the Church numeral one,
+    yet is not a numeral; the type tells them apart, and excludes ``succ`` (``church -> church``) too.
+    """
+    inference = _Inference()
+    inferred = inference.infer(node, ())
+    if inference.failed:
+        return False
+    match _resolve_deep(inference, inferred):
+        case _TArrow(left=_TArrow(left=a, right=b), right=_TArrow(left=c, right=d)):
+            return isinstance(a, _TVar) and a == b == c == d
+        case _:
+            return False
+
+
+def church_numeral_islands(node: Node) -> "frozenset[int]":
+    """The identities of ``node``'s maximal closed simply-typable sub-terms of Church-numeral type.
+
+    These are the by-value islands the interpret target can splice and run compiled through the FFI's
+    church reification; a higher-order island (the compiler's combinators) stays interpreted, since the
+    FFI reify here is scoped to the Church encoding.
+    """
+    return frozenset(id(island) for island in call_by_value_islands(node) if _is_church_type(island))
+
+
 def compile_specialized(node: Node) -> str:
     """Compile ``node`` in specialized mode, always returning Python.
 
     The head is non-interpreter code when the whole graph carries the by-value certificate (closed and
     simply typable, hence strongly normalizing, so strict evaluation reaches the interpreter's normal
-    form); otherwise it is an ``interpret(...)`` call that re-submits the term to the interpreter. This
-    is the compiler in the sense the paper means: interpret by default, compile the certified parts.
+    form); otherwise it is an ``interpret(...)`` call that re-submits the term to the interpreter, with
+    its certified church-numeral sub-terms spliced as compiled by-value islands. This is the compiler in
+    the sense the paper means: interpret by default, compile the certified parts.
     """
     if node.loose_bound == 0 and is_typable(node):
         return compile_to_source(node, Runtime.CALL_BY_VALUE)
-    return compile_interpreted(node)
+    return compile_interpreted(node, church_numeral_islands(node))
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------

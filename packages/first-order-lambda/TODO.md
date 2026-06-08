@@ -21,16 +21,17 @@ call-by-value islands wherever the certificate fires inside it.
 - [x] Self-hosting through the interpret target: `compile_with_interpreted` runs the interpret-headed
       compiler (the `COMPILE` node) on a program and reifies the result; it agrees with
       `compile_to_source`.
-- [ ] Recurse into the interpret head: splice by-value-certified closed simply-typable sub-terms as
-      inline islands rather than leaving the whole subgraph interpreted (the per-island step below).
-- [ ] Per-island reification classification: splice an island as runnable inline code only when its
-      arguments and result reify across the boundary (the church-numeral and identity islands, e.g.
-      successor, predecessor, identity, applied to church-numeral depths); the Scott-constructor
-      islands take Scott-value (function) arguments, which do not reify, so they stay interpreted.
-- [ ] Make `_generated_compiler.py` the specialized self-compilation (`interpret(...)`-headed Python
-      with reifiable islands inlined); update the bootstrap (`compiled_compiler`, `compile_with`) and
-      `test_bootstrap` to the new artifact.
-- [ ] Tests; regenerate the `compiler-examples` fragment.
+- [x] Recurse into the interpret head: `compile_interpreted(node, islands)` splices certified closed
+      sub-terms as compiled `church_island(...)` calls rather than reconstructing them, so they run
+      compiled inside the interpreted skeleton; `compile_specialized` passes `church_numeral_islands`.
+- [x] Per-island reification classification, SOUND: an island is spliced only when its principal type
+      is the Church-numeral type `(a -> a) -> a -> a` (`_is_church_type`), which by parametricity means
+      it is a Church numeral. A behavioural probe is unsound (`identity` coincides with one under
+      succ/zero); the type test excludes `identity`, `succ`, and the Scott constructors, so the
+      compiler's higher-order islands stay interpreted (the FFI reify here is scoped to Church).
+- [x] Make `_generated_compiler.py` the specialized self-compilation (`interpret(...)`-headed Python);
+      bootstrap (`compiled_compiler`, `compile_with_interpreted`) and `test_bootstrap` use it.
+- [x] Tests; regenerated the `compiler-examples` fragment (self-hosting block is interpret-headed).
 
 ## 2. BinNat arithmetic library + a hard problem solved trivially in lambda terms
 
