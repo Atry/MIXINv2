@@ -30,7 +30,7 @@ from typing import Callable
 import ast
 
 from first_order_lambda import _pybuild
-from first_order_lambda._analysis import CLOSED, IS_CLOSED
+from first_order_lambda._analysis import CLOSED, IS_CLOSED, depth_at_most
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
@@ -312,7 +312,15 @@ def _compile_call_by_value(quoted: "object") -> "object":
 
 
 # island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).
-_ISLAND: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
+# An island is closed, shallow enough to type cheaply, and simply typable. The depth bound gates the
+# expensive algorithm-W: a deep closed sub-term (a large combinator) is left reconstructed as an
+# interpreted graph rather than driving the inference, which keeps the self-host compilation within the
+# interner's memory; the AND short-circuits, so TYPABLE only runs on a closed, shallow sub-term.
+_ISLAND_DEPTH_BOUND: "object" = church(8)
+_DEPTH_OK: "object" = depth_at_most(_ISLAND_DEPTH_BOUND)
+_ISLAND: "object" = lam(lambda quoted: _ap(
+    AND, app(IS_CLOSED, quoted), _ap(AND, app(_DEPTH_OK, quoted), app(TYPABLE, quoted)),
+))
 
 
 # reconstruct quoted -> generic Python AST. A maximal island becomes value_island(<call-by-value>);

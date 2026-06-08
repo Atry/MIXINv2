@@ -72,6 +72,29 @@ LOOSE_BOUND: Builder = app(Z, lam(lambda self_recursion: lam(lambda quoted: app(
 IS_CLOSED: Builder = lam(lambda quoted: app(IS_ZERO, app(LOOSE_BOUND, quoted)))  # closed iff needs none
 
 
+# DEPTH: the nesting depth of a quoted term (a Church numeral), a cheap path-free measure the interner
+# shares per distinct sub-term. It bounds the simple-typability check: running algorithm-W on a large
+# (deep) closed combinator is expensive and the no-GC interner retains every reduction, so a specializer
+# only certifies an island when the sub-term is shallow enough (``DEPTH_AT_MOST``), leaving a deep closed
+# region reconstructed as an interpreted graph rather than flattened to a strict island. The bound only
+# ever makes the certificate MORE conservative (fewer islands), never unsound.
+DEPTH: Builder = app(Z, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
+    quoted,
+    lam(lambda index: church(0)),  # QVar: a leaf
+    ),
+    lam(lambda body: app(SUCC, app(self_recursion, body))),  # QLam: one deeper
+    ),
+    lam(lambda function: lam(lambda argument: app(SUCC, app(
+        app(_MAX, app(self_recursion, function)), app(self_recursion, argument),
+    )))),  # QApp: one past the deeper side
+))))
+
+
+def depth_at_most(bound: Builder) -> Builder:
+    """``lambda quoted. DEPTH quoted <= bound`` (a Church boolean): the shallow-enough certificate."""
+    return lam(lambda quoted: app(app(_AT_MOST, app(DEPTH, quoted)), bound))
+
+
 _TRUE_MARKER = 7_100_001
 _FALSE_MARKER = 7_100_002
 
