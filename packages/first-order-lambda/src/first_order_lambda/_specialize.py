@@ -30,7 +30,7 @@ from typing import Callable
 import ast
 
 from first_order_lambda import _pybuild
-from first_order_lambda._analysis import CLOSED, IS_CLOSED, depth_at_most
+from first_order_lambda._analysis import CLOSED, IS_CLOSED
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
@@ -62,13 +62,7 @@ from first_order_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, c
 from first_order_lambda._pyast import _church_to_int, decode, to_anf_source
 from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from first_order_lambda._render import render
-from first_order_lambda._typecheck import (
-    TYPABLE,
-    _EMPTY_SUBST,
-    _UNIFY,
-    _tarrow,
-    _tvar,
-)
+from first_order_lambda._typecheck import TYPABLE, TYPABLE_BU
 
 
 @dataclass(frozen=True)
@@ -318,15 +312,12 @@ def _compile_call_by_value(quoted: "object") -> "object":
 # deciding which SUB-terms to splice as islands inside an interpret-headed reconstruction.
 _CLOSED_TYPABLE: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
 
-# The per-sub-term island certificate: closed AND shallow enough AND simply typable. The depth bound
-# gates the expensive algorithm-W so a deep closed sub-term (a large combinator) is left reconstructed
-# as an interpreted graph rather than driving the inference, keeping the self-host compilation within the
-# interner's memory; the AND short-circuits, so TYPABLE only runs on a closed, shallow sub-term.
-_ISLAND_DEPTH_BOUND: "object" = church(8)
-_DEPTH_OK: "object" = depth_at_most(_ISLAND_DEPTH_BOUND)
-_ISLAND: "object" = lam(lambda quoted: _ap(
-    AND, app(IS_CLOSED, quoted), _ap(AND, app(_DEPTH_OK, quoted), app(TYPABLE, quoted)),
-))
+# The per-sub-term island certificate: closed AND simply typable. There is no depth bound: the
+# bottom-up TYPABLE_BU is path-free, so the interpreter tables it once per distinct sub-term and types
+# even the large maximal islands affordably (the depth bound only ever existed to cap the old top-down
+# algorithm-W, which the no-GC interner made super-linear). The AND short-circuits, so TYPABLE_BU only
+# runs on a closed sub-term.
+_ISLAND: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE_BU, quoted)))
 
 
 # reconstruct quoted -> generic Python AST. A maximal island becomes value_island(<call-by-value>);
