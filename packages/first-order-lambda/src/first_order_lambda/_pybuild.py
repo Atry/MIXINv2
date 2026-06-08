@@ -138,18 +138,22 @@ def py_call(func: Builder, arg_fields: Builder) -> Builder:
 
 def py_function_def(name_codes: Builder, args_node: Builder, body_fields: Builder) -> Builder:
     """``def <name>(<args>): <body>`` with no decorators/returns/type comment; ``body_fields`` a Scott
-    list of ``field_node(stmt)``. Order: name, args, body, decorator_list, returns, type_comment."""
-    return _node(
-        ast.FunctionDef,
-        [
-            field_str(name_codes),
-            field_node(args_node),
-            field_list(body_fields),
-            field_list(SCOTT_NIL),
-            field_none(),
-            field_none(),
-        ],
-    )
+    list of ``field_node(stmt)``.
+
+    The fields are keyed by name and ordered by the RUNNING ``ast.FunctionDef._fields``, so the emitted
+    node matches the host Python version: Python 3.12+ added ``type_params`` (an empty list here), which
+    the generic decoder reflects, so the call-by-need target round-trips on 3.11 and on 3.12+ alike.
+    """
+    by_name = {
+        "name": field_str(name_codes),
+        "args": field_node(args_node),
+        "body": field_list(body_fields),
+        "decorator_list": field_list(SCOTT_NIL),
+        "returns": field_none(),
+        "type_comment": field_none(),
+        "type_params": field_list(SCOTT_NIL),
+    }
+    return _node(ast.FunctionDef, [by_name[name] for name in ast.FunctionDef._fields])
 
 
 def py_assign(target: Builder, value: Builder) -> Builder:
