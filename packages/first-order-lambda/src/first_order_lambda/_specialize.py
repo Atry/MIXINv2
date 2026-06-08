@@ -141,17 +141,30 @@ def is_typable(node: Node) -> bool:
     return not inference.failed
 
 
-def needs_folding(node: Node) -> bool:
-    """Whether the interpreter used the fixpoint fold to read ``node``'s behaviour.
+# The fold oracle reads the behaviour out under two bounds. A finite normal form fits well within them
+# (a Church numeral is a short spine); a non-rational behaviour (the open inner structure of a fixpoint
+# combinator, e.g. the compiler's Z, which never folds) is infinite, so a branch past the bounds
+# truncates to a ``…`` leaf, read as fold-requiring. ``_FOLD_ORACLE_DEPTH`` caps the rendering recursion
+# depth well under the interpreter's stack limit (a leaf also walks the node for ``loose_bound`` and its
+# weak head normal form, which recurse to a comparable depth); ``_FOLD_ORACLE_NODES`` caps total work,
+# since the behaviour tree branches. Conservative past either (a bigger normal form is left interpreted,
+# never miscompiled).
+_FOLD_ORACLE_DEPTH = 400
+_FOLD_ORACLE_NODES = 50_000
 
-    The interpreter is a sound oracle: it always terminates on rational behaviour and folds cycles
-    to a back-reference ``#`` (or ``⊥`` for an unproductive cycle). A behaviour with neither marker
-    is a finite normal form, so the term is normalizing and the call-by-name runtime, which recomputes
-    and never folds, reaches the same value. Normalization is undecidable in general; running the safe
-    interpreter and reading off whether it folded is the pragmatic sound test.
+
+def needs_folding(node: Node) -> bool:
+    """Whether reading ``node``'s behaviour needs the fixpoint fold (so it is not a finite normal form).
+
+    The interpreter is a sound oracle: it folds a cycle to a back-reference ``#`` (or ``⊥`` for an
+    unproductive cycle). A behaviour rendered in full with neither marker is a finite normal form, so
+    the term is normalizing and the call-by-need runtime, which never folds, reaches the same value.
+    Reading is bounded in depth and node count: a non-rational behaviour truncates to ``…``, which
+    counts as fold-requiring, so call-by-need is chosen only when a complete finite normal form was
+    positively observed. Normalization is undecidable; the bounded read is the pragmatic sound test.
     """
-    behaviour = render(node)
-    return "#" in behaviour or "⊥" in behaviour
+    behaviour = render(node, budget=_FOLD_ORACLE_DEPTH, max_nodes=_FOLD_ORACLE_NODES)
+    return "#" in behaviour or "⊥" in behaviour or "…" in behaviour
 
 
 def choose_runtime(node: Node) -> Runtime:

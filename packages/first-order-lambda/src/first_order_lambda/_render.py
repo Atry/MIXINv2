@@ -36,18 +36,30 @@ def render(
     *,
     fold_cycles: bool = True,
     normalize: Callable[[Node], "Shape | ShapeBottom"] = weak_head_normalize,
+    budget: int | None = None,
+    max_nodes: int | None = None,
 ) -> str:
     """Print the rational graph of ``node``, labelling back-reference targets ``#N``.
 
     ``normalize`` is the structure map ``out``; the default ``weak_head_normalize`` gives the
     Levy-Longo tree, ``head_normalize`` the Boehm tree. Both fold on the same node identity.
+
+    The fold at closed nodes makes a *rational* behaviour finite, but a non-rational one (the open
+    inner structure of a fixpoint combinator, which never folds) has an infinite tree; two bounds
+    truncate a branch to a ``…`` leaf instead of descending forever. ``budget`` caps the emission
+    depth (stack safety on a deep spine) and ``max_nodes`` caps the total nodes emitted (work, since
+    the tree also branches). Both ``None`` is unbounded, the exact rational graph.
     """
     labels: dict[int, int] = {}
     on_path: set[int] = set()
     next_label = 0
+    emitted = 0
 
-    def emit(current: Node) -> str:
-        nonlocal next_label
+    def emit(current: Node, depth: int) -> str:
+        nonlocal next_label, emitted
+        if (budget is not None and depth >= budget) or (max_nodes is not None and emitted >= max_nodes):
+            return "…"  # a bound reached: a non-rational behaviour, truncated rather than looped
+        emitted += 1
         closed = current.loose_bound == 0
         key = id(current)
         if closed and key in on_path:
@@ -68,11 +80,11 @@ def render(
             case VarShape(index=index):
                 body = f"v{index}"
             case LamShape(body=lam_body):
-                body = f"(λ {emit(lam_body)})"
+                body = f"(λ {emit(lam_body, depth + 1)})"
             case AppShape(function=function, argument=argument):
-                body = f"({emit(function)} {emit(argument)})"
+                body = f"({emit(function, depth + 1)} {emit(argument, depth + 1)})"
             case NativeShape(arity=arity, collected=collected):
-                spine = "".join(f" {emit(argument)}" for argument in collected)
+                spine = "".join(f" {emit(argument, depth + 1)}" for argument in collected)
                 body = f"⟨native:{arity}{spine}⟩"
             case _:
                 raise TypeError(f"Unknown head {head!r}")
@@ -82,4 +94,4 @@ def render(
                 body = f"#{labels[key]}={body}"
         return body
 
-    return emit(node)
+    return emit(node, 0)

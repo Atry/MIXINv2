@@ -83,6 +83,15 @@ def test_cyclic_behaviour_stays_interpreted(name: str, node) -> None:
     assert choose_runtime(node) is Runtime.INTERPRET
 
 
+def test_choose_runtime_terminates_on_the_compiler() -> None:
+    # The fold oracle is bounded, so the analysis is total even on the compiler itself: COMPILE is
+    # untypable (its Z fixpoint self-applies) and has no finite normal form, so the bounded read
+    # truncates and it is left interpreted rather than the oracle rendering forever.
+    from first_order_lambda._compiler import COMPILE
+
+    assert choose_runtime(build(COMPILE)) is Runtime.INTERPRET
+
+
 def _run_church(node) -> int:
     """Observe a specialized closed Church numeral as an ``int``, per the chosen runtime."""
     runtime, source = specialize(node)
