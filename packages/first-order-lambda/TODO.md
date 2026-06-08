@@ -33,9 +33,9 @@ arithmetic, so naturals are O(log n) rather than Church's O(n), then solve a gen
 as a lambda term the interpreter solves, leaning on its tabling (automatic memoization) and
 cycle-folding.
 
-- [ ] Restore `_binnat.py` (encode/decode) and add the arithmetic: `succ`, `pred`, `add`, `sub`,
-      compare (`<`, `==`), `min`, and multiplication, all on LSB-first bit lists.
-- [ ] Tests for the arithmetic, cross-checked against Python ints.
+- [x] Restore `_binnat.py` (encode/decode) and add the arithmetic: `succ`, `pred`, `add`, `sub`,
+      compare (`<`, `==`), `min`, `max`, and multiplication, all on LSB-first bit lists.
+- [x] Tests for the arithmetic, cross-checked against Python ints.
 - [ ] Pick a genuinely hard problem that becomes trivial via tabling (automatic memoization) and
       cycle-folding: a hard dynamic program (edit distance, longest common subsequence, knapsack, a
       counting DP) or a hard graph problem (shortest path over a cyclic state graph, game-tree
