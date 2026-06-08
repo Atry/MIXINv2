@@ -645,82 +645,15 @@ def _compile_need_source(node: Node) -> str:
     return ast.unparse(ast.fix_missing_locations(_decode_need_module(module)))
 
 
-# --- bootstrap: run the self-compiled compiler, as a Python function, on Python-encoded input ---
-
-def _python_church(n: int):
-    def successor(s):
-        def zero(z):
-            result = z
-            for _ in range(n):
-                result = s(result)
-            return result
-        return zero
-    return successor
+# --- bootstrap: the self-compiled compiler, run through the interpret target --------------------
+# COMPILE compiled in specialized mode is interpret-headed (COMPILE is untypable: its Z fixpoint
+# self-applies), so the self-hosted compiler is the COMPILE node handed back to the interpreter.
+# ``compiled_compiler`` evaluates that interpret-headed source to the node; ``compile_with_interpreted``
+# runs it as a compiler, reifying the Scott Python-AST result through ``_decode_pyast``, the same
+# boundary the in-process compiler uses. So the compiler compiled by itself, through interpret, is a
+# working compiler agreeing with ``compile_to_source``.
 
 
-def _python_church_to_int(numeral) -> int:
-    return numeral(lambda k: k + 1)(0)
-
-
-def _python_bool(value: bool):
-    """A host (Python) Church boolean, matching the eager (FALSE) / lazy (TRUE) compile option."""
-    return (lambda a: lambda b: a) if value else (lambda a: lambda b: b)
-
-
-def _python_quote(node: Node):
-    """Quote an interpreter Node into a host Scott value, matching the QVar/QLam/QApp eliminators."""
-    match node:
-        case Var(index=index):
-            i = _python_church(index)
-            return lambda v: lambda l: lambda a: v(i)
-        case Lam(body=body):
-            quoted_body = _python_quote(body)
-            return lambda v: lambda l: lambda a: l(quoted_body)
-        case App(function=function, argument=argument):
-            quoted_function = _python_quote(function)
-            quoted_argument = _python_quote(argument)
-            return lambda v: lambda l: lambda a: a(quoted_function)(quoted_argument)
-        case _:
-            raise ValueError(f"cannot quote {node!r}")
-
-
-def _decode_python_pyexpr(value) -> ast.expr:
-    """Decode a host (Python) Scott PyExpr value, produced by the self-compiled compiler."""
-    def on_var(level):
-        return ast.Name(id=f"v{_python_church_to_int(level)}", ctx=ast.Load())
-
-    def on_lam(level):
-        return lambda body: ast.Lambda(
-            args=_arguments(f"v{_python_church_to_int(level)}"),
-            body=_decode_python_pyexpr(body),
-        )
-
-    def on_app(function):
-        return lambda argument: ast.Call(
-            func=_decode_python_pyexpr(function),
-            args=[_decode_python_pyexpr(argument)],
-            keywords=[],
-        )
-
-    def on_force(expr):
-        return ast.Call(func=ast.Name(id="force", ctx=ast.Load()), args=[_decode_python_pyexpr(expr)], keywords=[])
-
-    def on_thunk(expr):
-        return ast.Call(
-            func=ast.Name(id="Thunk", ctx=ast.Load()),
-            args=[ast.Lambda(args=_no_args(), body=_decode_python_pyexpr(expr))],
-            keywords=[],
-        )
-
-    return value(on_var)(on_lam)(on_app)(on_force)(on_thunk)
-
-
-def compiled_compiler():
-    """The self-compiled compiler: COMPILE compiled to Python (eager) and evaluated as a function."""
-    return eval(compile_to_source(build(COMPILE)))
-
-
-def compile_with(compiler, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
-    """Compile ``node`` using a host-Python compiler function (e.g. the self-compiled one)."""
-    result = compiler(_python_bool(runtime is Runtime.CALL_BY_NAME))(_python_church(0))(_python_quote(node))
-    return ast.unparse(ast.fix_missing_locations(_decode_python_pyexpr(result)))
+def compiled_compiler() -> Node:
+    """The self-compiled compiler: COMPILE compiled to interpret-headed Python, evaluated to its node."""
+    return eval(compile_interpreted(build(COMPILE)), interpret_globals())
