@@ -59,7 +59,7 @@ from first_order_lambda._compiler import (
 )
 from first_order_lambda._dsl import app, build, lam
 from first_order_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, church, cons
-from first_order_lambda._pyast import _church_to_int, decode
+from first_order_lambda._pyast import _church_to_int, decode, to_anf_source
 from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from first_order_lambda._render import render
 from first_order_lambda._typecheck import (
@@ -350,7 +350,7 @@ def compile_specialized_lambda(node: Node) -> str:
     preserving that sharing, to stay under the parser's nesting cap, is the generic codec's concern.)
     """
     return run_in_large_stack(
-        lambda: ast.unparse(ast.fix_missing_locations(decode(build(app(COMPILE_SPECIALIZED, quote(node)))))),
+        lambda: to_anf_source(build(app(COMPILE_SPECIALIZED, quote(node))), "compiled_compiler"),
     )
 
 

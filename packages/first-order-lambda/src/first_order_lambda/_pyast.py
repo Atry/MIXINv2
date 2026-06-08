@@ -198,6 +198,53 @@ def to_python_source(node: Node) -> str:
     return ast.unparse(ast.fix_missing_locations(decode(node)))
 
 
+def _field_payload(field_node: Node) -> Node:
+    """The payload Scott node of a ``<kind, payload>`` field (without decoding the payload)."""
+    _, parts = _extract(field_node, (2,), _FIELD_BASE)
+    return parts[1]
+
+
+def to_anf_source(node: Node, binding_name: str) -> str:
+    """Serialize a Scott-encoded Python AST to A-normal-form source, sharing sub-expressions by identity.
+
+    A generic, graph-preserving serialization (not program-specific): each distinct ``ast.Call`` node in
+    the Scott value becomes ONE assignment to a fresh temporary, so a sub-graph shared across the term
+    (the interpreter hash-conses, so a repeated sub-term is the SAME node) is emitted once rather than
+    unfolded, and a deeply nested reconstruction stays under CPython's parser nesting cap. Each distinct
+    node is forced once (``_extract`` memoised by node identity), which keeps a compiler-scale graph from
+    blowing up the interner. Non-``Call`` nodes (``Name``/``Constant``/``Lambda``/...) are inlined whole.
+    If the whole value is not a ``Call`` (for example a call-by-value expression), the bare expression
+    source is returned; otherwise a module of the temp assignments ending ``<binding_name> = <root>``.
+    """
+    memo: "dict[int, str]" = {}
+    statements: "list[ast.stmt]" = []
+    counter = 0
+
+    def emit(scott_node: Node) -> ast.expr:
+        nonlocal counter
+        key = id(scott_node)
+        if key in memo:
+            return ast.Name(id=memo[key], ctx=ast.Load())
+        tag, fields = _extract(scott_node, _ARITY, _CTOR_BASE)
+        cls = SUPPORTED[tag]
+        if cls is not ast.Call:
+            return decode(scott_node)  # a leaf or opaque expression (Name/Constant/Lambda/...): inline it
+        function = decode(_field_payload(fields[0]))
+        arguments = [emit(_field_payload(argument)) for argument in _decode_scott_list(_field_payload(fields[1]))]
+        call = ast.Call(func=function, args=arguments, keywords=[])
+        name = f"_k{counter}"
+        counter += 1
+        statements.append(ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=call))
+        memo[key] = name
+        return ast.Name(id=name, ctx=ast.Load())
+
+    root = emit(node)
+    if not statements:
+        return ast.unparse(ast.fix_missing_locations(root))
+    statements.append(ast.Assign(targets=[ast.Name(id=binding_name, ctx=ast.Store())], value=root))
+    return ast.unparse(ast.fix_missing_locations(ast.Module(body=statements, type_ignores=[])))
+
+
 def roundtrip(source: str, *, mode: str = "eval") -> str:
     """Parse ``source``, encode it to a Scott value, decode it, and unparse: a faithfulness check."""
     return to_python_source(build(encode(ast.parse(source, mode=mode))))
