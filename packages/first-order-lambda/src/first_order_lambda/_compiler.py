@@ -1,7 +1,7 @@
 """A lambda-calculus to Python compiler written in the lambda-calculus.
 
 The source is a quoted lambda term, a Scott value over ``QVar i`` / ``QLam body`` / ``QApp f a`` (de
-Bruijn). ``COMPILE`` is a pure lambda term that, GIVEN a compilation option, maps the quoted source to
+Bruijn). ``CODEGEN`` is a pure lambda term that, GIVEN a compilation option, maps the quoted source to
 the generic Scott-encoded Python AST (the same encoding ``_pyast`` derives by reflection on ``ast``: a
 ``Name``/``Lambda``/``Call`` spine for the expression targets, a ``Module`` of memoising-thunk defs for
 call-by-need). The option decides the target, in the lambda term itself: under the call-by-value option
@@ -94,8 +94,8 @@ def _select_wrap(thunked: Builder, lazy_wrap: Builder) -> Builder:
     return app(app(thunked, lazy_wrap), _IDENTITY_WRAP)
 
 
-# COMPILE (the call-by-value / call-by-name expression target) is defined after the shared AST-path
-# helpers below, since it now names variables by their binder's path (a list of Nats) like COMPILE_NEED.
+# CODEGEN (the call-by-value / call-by-name expression target) is defined after the shared AST-path
+# helpers below, since it now names variables by their binder's path (a list of Nats) like CODEGEN_NEED.
 
 
 def quote(node: Node) -> Builder:
@@ -130,8 +130,8 @@ def _option(runtime: Runtime) -> Builder:
 
 
 def compile_quoted(option: Builder, quoted: Builder) -> Node:
-    """Run ``COMPILE`` (at the given option) on a quoted source term, returning the Scott Python expr."""
-    return build(app(app(app(app(COMPILE, option), SCOTT_NIL), SCOTT_NIL), quoted))
+    """Run ``CODEGEN`` (at the given option) on a quoted source term, returning the Scott Python expr."""
+    return build(app(app(app(app(CODEGEN, option), SCOTT_NIL), SCOTT_NIL), quoted))
 
 
 # --- runtime support for the compiled call-by-name target ---------------------------------------
@@ -381,9 +381,9 @@ def compile_interpreted_module(node: Node, islands: "frozenset[int] | None" = No
 
 
 def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
-    """Compile ``node`` with an interpret-headed compiler, a ``COMPILE`` ``Node`` run by the interpreter.
+    """Compile ``node`` with an interpret-headed compiler, a ``CODEGEN`` ``Node`` run by the interpreter.
 
-    ``compiler_node`` is what ``compile_interpreted(build(COMPILE))`` evaluates to: the compiler itself,
+    ``compiler_node`` is what ``compile_interpreted(build(CODEGEN))`` evaluates to: the compiler itself,
     handed back to the interpreter. The interpreter applies it to the option, the empty path and env,
     and the quoted program, and the resulting generic Scott Python AST is decoded by the same generic
     ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
@@ -401,11 +401,11 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
         return ast.unparse(ast.fix_missing_locations(decode(applied)))
 
 
-# --- call-by-need: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term ---
+# --- call-by-need: explicit memoising thunks, emitted entirely by the CODEGEN_NEED lambda term ---
 # Call-by-need adds sharing to call-by-name: a thunk computes once and caches. The cache and its
 # update need statements, so the target is statement-based, and the WHOLE structure (the def, the
 # nonlocal, the sentinel guard, the assignment, the return, the module wrapper) is emitted by the
-# COMPILE_NEED lambda term as a Scott-encoded Python AST. Python only decodes that AST 1:1; it
+# CODEGEN_NEED lambda term as a Scott-encoded Python AST. Python only decodes that AST 1:1; it
 # assembles nothing. Every sub-term compiles to a memoising thunk of the shape the design fixed:
 #
 #     v_<cell> = CALL_BY_NEED_SENTINEL
@@ -561,7 +561,7 @@ def _thunk_scaffold(cell_field: Builder, thunk_field: Builder, compute_fields: B
 
 # The recursion: self path env quoted -> (setup statements, value expression). ``path`` is the AST
 # address (Church segments, innermost first); ``env`` is the list of in-scope binder symbols.
-_COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
+_CODEGEN_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
     lambda quoted: app(app(app(
         quoted,
         # QVar index: the variable is its binder's thunk, looked up by de Bruijn index; no setup.
@@ -624,10 +624,10 @@ _COMPILE_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: 
     ))))))
 
 
-# COMPILE_NEED wraps the root's (statements, value) in def _program(): ...; return value, then
+# CODEGEN_NEED wraps the root's (statements, value) in def _program(): ...; return value, then
 # program = _program(), all as a generic Scott ``ast.Module``.
-COMPILE_NEED: Builder = lam(lambda quoted: _let(
-    app(app(app(_COMPILE_NEED_REC, SCOTT_NIL), SCOTT_NIL), quoted),
+CODEGEN_NEED: Builder = lam(lambda quoted: _let(
+    app(app(app(_CODEGEN_NEED_REC, SCOTT_NIL), SCOTT_NIL), quoted),
     lambda root: _pybuild.py_module(_two(
         _stmt(_st_func_def(
             _pybuild.field_str(_PROGRAM_DEF_CODES),
@@ -661,15 +661,15 @@ def call_by_need_globals() -> dict:
 def _compile_need_source(node: Node) -> str:
     """Compile a term to the call-by-need module source (explicit memoising thunks).
 
-    COMPILE_NEED emits the generic Scott ``ast.Module`` directly, decoded by the generic ``_pyast.decode``.
+    CODEGEN_NEED emits the generic Scott ``ast.Module`` directly, decoded by the generic ``_pyast.decode``.
     """
-    module = build(app(COMPILE_NEED, quote(node)))
+    module = build(app(CODEGEN_NEED, quote(node)))
     return ast.unparse(ast.fix_missing_locations(decode(module)))
 
 
 # --- bootstrap: the self-compiled compiler, run through the interpret target --------------------
-# COMPILE compiled in specialized mode is interpret-headed (COMPILE is untypable: its Z fixpoint
-# self-applies), so the self-hosted compiler is the COMPILE node handed back to the interpreter.
+# CODEGEN compiled in specialized mode is interpret-headed (CODEGEN is untypable: its Z fixpoint
+# self-applies), so the self-hosted compiler is the CODEGEN node handed back to the interpreter.
 # ``compiled_compiler`` evaluates that interpret-headed source to the node; ``compile_with_interpreted``
 # runs it as a compiler, reifying the Scott Python-AST result through the generic ``_pyast.decode``, the
 # same boundary the in-process compiler uses. So the compiler compiled by itself, through interpret, is
@@ -677,18 +677,18 @@ def _compile_need_source(node: Node) -> str:
 
 
 def compiled_compiler() -> Node:
-    """The self-hosted compiler as an interpreter ``Node``: COMPILE handed back to the interpreter.
+    """The self-hosted compiler as an interpreter ``Node``: CODEGEN handed back to the interpreter.
 
-    COMPILE is untypable, so the interpret target is the COMPILE node itself; ``compile_with_interpreted``
+    CODEGEN is untypable, so the interpret target is the CODEGEN node itself; ``compile_with_interpreted``
     runs it as a compiler. (The committed standalone source artifact, ``_generated_compiler.py``, is the
-    business of the bootstrap stage; the generic-encoding COMPILE's full reconstruction exceeds Python's
+    business of the bootstrap stage; the generic-encoding CODEGEN's full reconstruction exceeds Python's
     parser limit, so that artifact is reworked there. In process, the node IS the self-compiled compiler.)
     """
-    return build(COMPILE)
+    return build(CODEGEN)
 
 
-# COMPILE (call-by-value / call-by-name): self path env quoted -> Scott Python EXPRESSION. Like
-# COMPILE_NEED it names variables by their binder's AST path (a list of Nats, emitted via field_ident
+# CODEGEN (call-by-value / call-by-name): self path env quoted -> Scott Python EXPRESSION. Like
+# CODEGEN_NEED it names variables by their binder's AST path (a list of Nats, emitted via field_ident
 # and rendered by the one _pyast decoder), threading ``path`` (the current address) and ``env`` (the
 # list of in-scope binder name fields, innermost first). The option (a Church boolean ``thunked``)
 # selects the wraps: call-by-name forces a variable/function (``force``) and thunks an argument
@@ -696,7 +696,7 @@ def compiled_compiler() -> Node:
 #   QVar i      -> wrapVar (Name (env !! i))
 #   QLam b      -> Lambda (v_<path>) (self (path.2) ((v_<path>) : env) b)
 #   QApp f a    -> Call (wrapFun (self (path.0) env f)) [wrapArg (self (path.1) env a)]
-COMPILE: Builder = lam(lambda thunked: app(
+CODEGEN: Builder = lam(lambda thunked: app(
     Z,
     lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(lambda quoted: app(app(app(
         quoted,

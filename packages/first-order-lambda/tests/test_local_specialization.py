@@ -13,7 +13,7 @@ from __future__ import annotations
 from syrupy.assertion import SnapshotAssertion
 
 from first_order_lambda._ast import Native, make_app, make_native
-from first_order_lambda._compiler import COMPILE, Runtime, compile_to_source
+from first_order_lambda._compiler import CODEGEN, Runtime, compile_to_source
 from first_order_lambda._dsl import app, build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, SCOTT_NIL, Y, church
@@ -65,7 +65,7 @@ def test_a_closed_typable_whole_term_is_a_single_island() -> None:
 
 def test_every_island_is_closed_and_typable() -> None:
     # The contract: each found island is a closed, simply-typable sub-term (a sound call-by-value region).
-    for island in call_by_value_islands(build(COMPILE)):
+    for island in call_by_value_islands(build(CODEGEN)):
         assert island.loose_bound == 0
         assert is_typable(island) is True
 
@@ -74,7 +74,7 @@ def test_compiler_call_by_value_islands(snapshot: SnapshotAssertion) -> None:
     # The flagship: the compiler is untypable as a whole (its Z fixpoint self-applies), so it stays
     # interpreted, but the specializer finds its maximal closed simply-typable sub-terms, the
     # strongly-normalizing combinators, each compiled to a strict call-by-value island.
-    islands = call_by_value_islands(build(COMPILE))
+    islands = call_by_value_islands(build(CODEGEN))
     rendered = [
         {"lambda": term_to_latex(island), "call_by_value": compile_to_source(island, Runtime.CALL_BY_VALUE)}
         for island in islands

@@ -1,4 +1,4 @@
-"""The call-by-need target: explicit memoising thunks, emitted entirely by the COMPILE_NEED lambda term.
+"""The call-by-need target: explicit memoising thunks, emitted entirely by the CODEGEN_NEED lambda term.
 
 Every sub-term compiles to a sentinel-guarded memoising thunk (compute once, cache, return the cache),
 a lambda to an inner ``def``, and a variable to a forced thunk looked up by de Bruijn index. The whole

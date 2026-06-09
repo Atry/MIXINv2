@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from first_order_lambda._ast import make_lam, make_var
-from first_order_lambda._compiler import COMPILE
+from first_order_lambda._compiler import CODEGEN
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import (
     EXP,
@@ -74,9 +74,9 @@ def test_lambda_certificate_rejects_untypable_terms(name: str) -> None:
 
 
 def test_lambda_certificate_rejects_the_compiler() -> None:
-    # COMPILE is untypable (its Z fixpoint self-applies); the failure short-circuit keeps the lambda
+    # CODEGEN is untypable (its Z fixpoint self-applies); the failure short-circuit keeps the lambda
     # certificate fast on this large term, agreeing with the oracle.
-    node = build(COMPILE)
+    node = build(CODEGEN)
     assert is_typable_lambda(node) is False
     assert is_typable(node) is False
 

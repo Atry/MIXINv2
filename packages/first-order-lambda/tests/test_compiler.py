@@ -1,6 +1,6 @@
 """A lambda-to-Python compiler written in the lambda-calculus, checked semantically.
 
-``compile_to_source`` quotes an interpreter lambda term, runs the pure-lambda ``COMPILE`` on it, and
+``compile_to_source`` quotes an interpreter lambda term, runs the pure-lambda ``CODEGEN`` on it, and
 decodes the resulting Scott Python expression to real Python source. The compiled Python is executed
 and checked to compute what the source lambda term computes, so the compiler is verified end to end.
 """

@@ -2,7 +2,7 @@
 
 Each constructor in ``_pybuild`` builds a Scott value that ``_pyast.decode`` reads back as the intended
 real ``ast`` node, including all the boilerplate fields the generic decoder requires. These tests pin
-that correspondence in isolation, before ``COMPILE`` is retargeted onto these constructors.
+that correspondence in isolation, before ``CODEGEN`` is retargeted onto these constructors.
 """
 
 from __future__ import annotations

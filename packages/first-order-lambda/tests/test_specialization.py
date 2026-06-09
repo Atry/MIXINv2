@@ -84,12 +84,12 @@ def test_cyclic_behaviour_stays_interpreted(name: str, node) -> None:
 
 
 def test_choose_runtime_terminates_on_the_compiler() -> None:
-    # The fold oracle is bounded, so the analysis is total even on the compiler itself: COMPILE is
+    # The fold oracle is bounded, so the analysis is total even on the compiler itself: CODEGEN is
     # untypable (its Z fixpoint self-applies) and has no finite normal form, so the bounded read
     # truncates and it is left interpreted rather than the oracle rendering forever.
-    from first_order_lambda._compiler import COMPILE
+    from first_order_lambda._compiler import CODEGEN
 
-    assert choose_runtime(build(COMPILE)) is Runtime.INTERPRET
+    assert choose_runtime(build(CODEGEN)) is Runtime.INTERPRET
 
 
 def _run_church(node) -> int:

@@ -1,6 +1,6 @@
 """The specializing compiler is a lambda term; its output is interpret-headed when uncertified.
 
-``compile_specialized`` is now produced entirely by the lambda term ``COMPILE_SPECIALIZED`` and
+``compile_specialized`` is now produced entirely by the lambda term ``COMPILE`` and
 serialized to an A-normal-form module binding ``compiled_compiler`` (via the generic codec). A closed
 simply-typable whole term binds a strict call-by-value value (no ``interpret`` head); otherwise it binds
 ``interpret(<reconstruction>)``, the term rebuilt with ``make_var``/``make_lam``/``make_app`` and its
@@ -13,7 +13,7 @@ interpreter.
 from __future__ import annotations
 
 from first_order_lambda._compiler import (
-    COMPILE,
+    CODEGEN,
     Runtime,
     compile_to_source,
     compile_with_interpreted,
@@ -68,10 +68,10 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
 
 
 def test_the_compiler_itself_is_interpret_headed() -> None:
-    # COMPILE is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
+    # CODEGEN is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
     # interpret-headed module with by-value islands spliced; the recursive skeleton is left to interpret.
     # The default specializer uses a small island depth bound, so this stays cheap.
-    source = compile_specialized(build(COMPILE))
+    source = compile_specialized(build(CODEGEN))
     assert "interpret(" in source
     assert "value_island(" in source
 
@@ -83,10 +83,10 @@ def test_typable_combinators_compile_inline() -> None:
 
 
 def test_interpret_headed_compiler_self_hosts() -> None:
-    # COMPILE is untypable, so the interpret target is the COMPILE node itself, handed back to the
+    # CODEGEN is untypable, so the interpret target is the CODEGEN node itself, handed back to the
     # interpreter. Run as a compiler at the node level, it compiles any program to the same generic
     # Scott Python AST the in-process compiler emits (decoded by the same _pyast.decode).
-    compiler_node = build(COMPILE)
+    compiler_node = build(CODEGEN)
     for builder in (IDENTITY, KESTREL, SUCC, MULT, app(app(PLUS, church(2)), church(3))):
         program = build(builder)
         assert compile_with_interpreted(compiler_node, program) == compile_to_source(

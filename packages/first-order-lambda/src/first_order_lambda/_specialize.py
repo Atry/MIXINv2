@@ -34,7 +34,7 @@ from first_order_lambda._analysis import CLOSED, IS_CLOSED, depth_at_most
 from first_order_lambda._ast import App, Lam, Native, Node, Var
 from first_order_lambda._binnat import int_to_binnat
 from first_order_lambda._compiler import (
-    COMPILE,
+    CODEGEN,
     Runtime,
     Z,
     _option,
@@ -242,17 +242,17 @@ def compile_specialized(node: Node) -> str:
     A closed simply-typable whole term yields a strict call-by-value value; otherwise an
     interpret-with-islands A-normal-form module whose closed, shallow, simply-typable sub-terms are
     spliced as compiled by-value islands. Either way the decision and codegen are the lambda term
-    ``COMPILE_SPECIALIZED``; Python only quotes, runs the interpreter, and serializes with the generic
+    ``COMPILE``; Python only quotes, runs the interpreter, and serializes with the generic
     codec. The Python ``is_typable``/``needs_folding``/``call_by_value_islands`` below are no longer on
     this compile path; they remain only as the test oracle for the lambda certificates.
     """
     return compile_specialized_lambda(node)
 
 
-# --- COMPILE_SPECIALIZED: the specializing compiler, entirely a lambda term ----------------------
+# --- COMPILE: the specializing compiler, entirely a lambda term ----------------------
 # One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above.
 # A closed simply-typable WHOLE term carries the by-value certificate, so it compiles to a strict
-# call-by-value expression (COMPILE at the eager option). Otherwise it reconstructs the term with
+# call-by-value expression (CODEGEN at the eager option). Otherwise it reconstructs the term with
 # make_var/make_lam/make_app, splicing each maximal closed simply-typable sub-term as
 # value_island(<that sub-term compiled call-by-value>), and hands the reconstruction to interpret(...).
 #
@@ -288,8 +288,8 @@ def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
 
 
 def _compile_call_by_value(quoted: "object") -> "object":
-    """The quoted sub-term compiled to a strict call-by-value expression by ``COMPILE``."""
-    return app(app(app(app(COMPILE, _option(Runtime.CALL_BY_VALUE)), SCOTT_NIL), SCOTT_NIL), quoted)
+    """The quoted sub-term compiled to a strict call-by-value expression by ``CODEGEN``."""
+    return app(app(app(app(CODEGEN, _option(Runtime.CALL_BY_VALUE)), SCOTT_NIL), SCOTT_NIL), quoted)
 
 
 # island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).
@@ -343,7 +343,7 @@ def _reconstruct_term(depth_bound: "object | None") -> "object":
 
 
 def _compile_specialized_term(depth_bound: "object | None") -> "object":
-    """COMPILE_SPECIALIZED at ``depth_bound``: a closed simply-typable whole term is a strict
+    """COMPILE at ``depth_bound``: a closed simply-typable whole term is a strict
     call-by-value expression; otherwise interpret(<reconstruction>) with the islands spliced."""
     reconstruct = _reconstruct_term(depth_bound)
     return lam(lambda quoted: _ap(
@@ -356,11 +356,11 @@ def _compile_specialized_term(depth_bound: "object | None") -> "object":
 # The default-bound (small-island) instances: the cheap, committed compiler and the in-process path.
 _ISLAND: "object" = _island_term(_ISLAND_DEPTH_SMALL)
 _RECONSTRUCT: "object" = _reconstruct_term(_ISLAND_DEPTH_SMALL)
-COMPILE_SPECIALIZED: "object" = _compile_specialized_term(_ISLAND_DEPTH_SMALL)
+COMPILE: "object" = _compile_specialized_term(_ISLAND_DEPTH_SMALL)
 
 
 def compile_specialized_lambda(node: Node, island_depth: "object | None" = _ISLAND_DEPTH_SMALL) -> str:
-    """Compile ``node`` in specialized mode, entirely by the lambda term ``COMPILE_SPECIALIZED``.
+    """Compile ``node`` in specialized mode, entirely by the lambda term ``COMPILE``.
 
     ``island_depth`` bounds which closed sub-terms become compiled by-value islands (a Church numeral,
     the default a small bound for a cheap generation; ``None`` for unbounded, the largest islands).
