@@ -106,7 +106,11 @@ layer of behaviour and names the successor states. Its \emph{behaviour}\footnote
   denotation, and not the operational behaviour in the sense of a reduction sequence or contextual
   equivalence. In the $\lambda$-instance (Section~\ref{sec:bridge}) it is the L\'evy--Longo or B\"ohm
   tree; the reduction is the internal process the structure map collapses, while the behaviour is the
-tree that process exposes. Two terms may thus share a behaviour yet reduce differently.} is the
+tree that process exposes. Two terms may thus share a behaviour yet reduce differently. This tree is the
+  first-order datum over the signature $F$, not the extensional behaviour of a higher-order value; and
+  behavioural \emph{equivalence}, sharing that tree, is strictly coarser than the structural identity the
+  tabling folds on, and in the $\lambda$-instance is B\"ohm-tree equality, hence undecidable, so it is not
+  the relation the construction computes (Section~\ref{sec:intro}).} is the
 unfolding of that map: the possibly infinite tree obtained by exposing layer after layer. We make one
 observation about this unfolding and pursue its consequences. When the behaviour is
 \emph{rational},\footnote{Throughout, \emph{rational} qualifies a behaviour, that is, a tree: the
@@ -483,8 +487,10 @@ faithfully (Proposition~\ref{prop:outwd}).
       behaviours, the gap being the dead-subterm witnesses ($Y\,F\,\underline{0}$ with
       $F=\lambda s.\lambda n.\,\mathtt{cons}\,0\,(s\,(\mathtt{succ}\,n))$); folding additionally any
       positions of equal behaviour enlarges it, and in the limit, folding all behaviourally equal
-      positions, the tabling halts iff the behaviour is rational. By (1) no sound identity pushes the
-      halting set beyond the rational fragment.
+      positions (a coarser identification than structural identity, and in the $\lambda$-instance not
+      decidable, so an ideal limit rather than the relation the implementation folds on), the tabling
+      halts iff the behaviour is rational. By (1) no sound identity pushes the halting set beyond the
+      rational fragment.
   \end{enumerate}
 \end{theorem}
 \begin{proof}
@@ -838,9 +844,19 @@ are the unfolding and its limit, separated by how much they remember.
 \paragraph{Coalgebra, final semantics, and rational fixpoints.}
 Reading behaviour as the unique map into a final coalgebra is the coalgebraic method
 \citeTODO{rutten, jacobs}; the finite cyclic graphs are the rational fixpoint between the initial
-algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition-refinement
-minimisation of automata \citeTODO{hopcroft, paige-tarjan} folds on structural identity, but only for
-automata, not for an arbitrary signature functor.
+algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition refinement
+\citeTODO{hopcroft, paige-tarjan}, and its generic coalgebraic form CoPaR \citeTODO{copar,
+wissmann-modular-partition-refinement} for any zippable functor on $\mathbf{Set}$, solves the dual
+problem under a different identification. It is \emph{given} a finite coalgebra and computes its quotient
+by \emph{behavioural equivalence} (the coarsest bisimulation, the kernel of the map into the final
+coalgebra); we are given a $\lambda$-term, an infinite reduction system, and read off its reachable
+rational graph. The two equivalences differ, and the distinction is the one this paper turns on. Our
+tabling folds on \emph{structural identity} of states, decidable because the states are first-order graph
+nodes (Section~\ref{sec:intro}); behavioural equivalence is strictly coarser, and in the $\lambda$-instance
+it is B\"ohm-tree equality, which is undecidable, so it is not the relation we fold on. Behavioural
+equivalence is also, for CoPaR's branching functors, an equivalence that abstracts the branching of a
+state-based system; our behaviour is the first-order $\Sigma$-tree a state unfolds to, never the
+extensional behaviour of a higher-order value.
 
 \paragraph{Iteration, the delay monad, and Elgot monads.}
 Iteration in a (complete) Elgot monad
