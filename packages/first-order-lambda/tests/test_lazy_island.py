@@ -27,3 +27,17 @@ def test_lazy_island_reifies_normalizing_untypable_terms(lazy_runtime: Runtime) 
         assert not is_typable(node)  # untypable: it recurses through Y
         # but normalizing, so the lazy island reifies to the interpreter's value, under either thunk regime
         assert _church_to_int(lazy_island(node, lazy_runtime).run()) == _church_to_int(node)
+
+
+def test_lazy_island_rejects_terms_without_a_finite_normal_form() -> None:
+    """A bare recursive function has no finite normal form, so read-back would diverge: reject it loudly.
+
+    ``FACTORIAL`` applied to a numeral normalizes, but ``FACTORIAL`` on its own is a closed function whose
+    behaviour folds (the Y/Z recursion never terminates structurally). The lazy-island read-back probes a
+    function under a fresh binder, which would drive that fold into a divergent loop, so ``lazy_island``
+    must refuse it up front (leaving it for the interpreter) rather than crash with a ``RecursionError``.
+    """
+    bare_recursion = build(FACTORIAL)
+    assert not is_typable(bare_recursion)
+    with pytest.raises(ValueError, match="finite normal form"):
+        lazy_island(bare_recursion)

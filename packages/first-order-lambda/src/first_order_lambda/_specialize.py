@@ -542,16 +542,29 @@ def value_island(node: Node) -> Native:
 
 
 def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Native:
-    """Wrap a CLOSED, normalizing-but-untypable term (a terminating Y/Z recursion) as a compiled lazy island.
+    """Wrap a CLOSED term with a FINITE NORMAL FORM (a terminating Y/Z recursion) as a compiled lazy island.
 
     Compiled by the call-by-name codegen (an expression, so it splices like a by-value island) and read
     back by the fuel-bounded ``value_island_by_name``. The ``lazy_runtime`` option chooses the thunk
     semantics, the same codegen either way: ``CALL_BY_NEED`` (default) memoises, computing each shared
     sub-result once, the efficient choice for a recursion that reuses sub-terms; ``CALL_BY_NAME``
     recomputes on every force, which a reuse-heavy term makes exponential, so it is only for comparison.
+
+    Soundness restriction: the read-back ``_quote_lazy`` reifies a value by forcing it and probing a
+    function under a fresh binder, which terminates exactly when the term reaches a finite normal form.
+    A closed term WITHOUT a finite normal form (a bare recursive function such as ``FACTORIAL``, whose
+    behaviour folds rather than terminating) would drive that probe into the live recursion and diverge,
+    so it is rejected here and left for the interpreter, which folds the cycle via lfp tabling. We do not
+    detect-and-fall-back at read-back time: that would only re-derive the interpreter's tabling and add
+    nothing. ``needs_folding`` is the existing sound oracle for "no finite normal form".
     """
     if node.loose_bound != 0:
         raise ValueError("lazy_island requires a closed term")
+    if needs_folding(node):
+        raise ValueError(
+            "lazy_island requires a term with a finite normal form; this term's behaviour folds "
+            "(no finite normal form), so it must stay interpreted rather than become a lazy island"
+        )
     if lazy_runtime not in (Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED):
         raise ValueError("a lazy island is call-by-name or call-by-need")
     source = compile_to_source(node, Runtime.CALL_BY_NAME)
