@@ -1324,9 +1324,19 @@ that does not force diverges under read-back. So the per-step work is performed 
 way; the native code helps only where the driver and the data are already native, which the untypable
 recursion driver is not. That, not the size of the islands, is why the matrix is flat and the two regimes
 coincide. The cost grows only with the target depth, because a deeper target types deeper sub-terms.
-A real speedup would need the recursion itself to run natively, that is an analysis whose recursion is
-structurally total and so an island in its own right, a redesign of the analysis rather than a
-compilation option.
+The deeper obstacle is that soundness and performance are not the same kind of property here. That a
+compiled island converges exactly where the interpreter does is a local fact, provable for one island in
+isolation. Performance is global: the interpreter's tabling is a single cache shared across the whole
+compilation, so carving a recursion into an island, which keeps its own memo, gives up the cross-term
+sharing the analysis was built on (the closedness measure, for instance, is deliberately depth-free so
+the interner shares it at every position and a whole-tree scan is linear). Removing one such computation
+from the shared cache is sound but can slow code arbitrarily far away that depended on the same entry,
+and no local analysis can rule that out. A sound speedup of the hot path therefore cannot be licensed by
+a static local certificate; it would need a feedback-directed heuristic, in the spirit of hardware branch
+prediction or a tracing just-in-time compiler, that uses an observed execution profile to predict which
+regions repay native compilation and leaves the rest to the shared interpreter, correcting itself when a
+prediction does not pay. Speeding up the shared interpreter itself is the complementary alternative whose
+benefit is global by construction and so cannot regress a distant cache.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
