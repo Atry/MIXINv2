@@ -354,6 +354,37 @@ def interpret_globals(call_by_need: bool = True) -> dict:
     }
 
 
+# A real import header so a generated interpret-headed module is self-contained and directly callable
+# (``import``ed, or ``python -m``), rather than only runnable inside an ``interpret_globals`` namespace.
+# It binds exactly the free names the generated source refers to. ``Thunk`` defaults to the memoising
+# ``_NeedThunk`` (call-by-need); a loader may pre-bind ``Thunk`` in the exec namespace to override the
+# lazy regime (``globals().get`` picks that up), which is how the benchmark measures call-by-name without
+# changing the committed source. This is added at serialization time, not by the ``COMPILE`` lambda term.
+_GENERATED_MODULE_HEADER = (
+    "# Generated, self-contained module: the import header is added at serialization time (see\n"
+    "# first_order_lambda._compiler.runnable_module); the body is emitted by the COMPILE lambda term.\n"
+    "from first_order_lambda._ast import make_app, make_lam, make_var\n"
+    "from first_order_lambda._compiler import (\n"
+    "    _NeedThunk,\n"
+    "    force,\n"
+    "    interpret,\n"
+    "    value_island,\n"
+    "    value_island_by_name,\n"
+    ")\n"
+    "Thunk = globals().get(\"Thunk\", _NeedThunk)\n"
+)
+
+
+def runnable_module(anf_source: str) -> str:
+    """Prepend the import header so an interpret-headed A-normal-form module runs on its own.
+
+    The header binds ``make_*``, ``interpret``, ``value_island``, ``value_island_by_name``, ``force`` and
+    ``Thunk``, so ``import``ing the module (or ``python -m``) builds the node graph and binds
+    ``compiled_compiler`` with no injected namespace. Building the graph is cheap: each island's read-back
+    is deferred (a ``Native`` thunk), so importing does not run the islands."""
+    return _GENERATED_MODULE_HEADER + "\n" + anf_source
+
+
 def compile_interpreted(node: Node, islands: "frozenset[int] | None" = None) -> str:
     """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``.
 

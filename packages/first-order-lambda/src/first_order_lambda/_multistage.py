@@ -26,7 +26,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from first_order_lambda._compiler import interpret_globals, quote
+from first_order_lambda._compiler import _LazyThunk, quote, runnable_module
 from first_order_lambda._dsl import build
 from first_order_lambda._pyast import to_anf_source
 from first_order_lambda._reduce import run_in_large_stack
@@ -60,9 +60,12 @@ def stage_filename(size: int) -> str:
 def _load(module_text: str, *, call_by_need: bool = True) -> object:
     """Execute a generated compiler module and return its ``compiled_compiler`` node (the engine).
 
-    ``call_by_need`` selects the lazy-island regime via the module's ``Thunk`` (memoise vs recompute);
-    the engine's output is identical either way, so this only changes how fast the engine runs."""
-    namespace = dict(interpret_globals(call_by_need=call_by_need))
+    The module is self-contained (its import header binds the runtime names), so the namespace is empty
+    except for the optional lazy-regime override: ``call_by_need=False`` pre-binds ``Thunk`` to the
+    recompute ``_LazyThunk`` (call-by-name), which the header's ``globals().get`` honors; the default
+    leaves the header's memoising ``_NeedThunk`` (call-by-need). The output is identical either way, so
+    this only changes how fast the engine runs."""
+    namespace: dict = {} if call_by_need else {"Thunk": _LazyThunk}
     exec(module_text, namespace)  # noqa: S102 - running our own generated compiler
     return namespace["compiled_compiler"]
 
@@ -93,7 +96,8 @@ def multi_stage_compile(island_sizes: "tuple[int, ...]", *, out_dir: Path) -> "l
     for stage, size in enumerate(island_sizes, start=1):
         option = SpecializedOption(size)
         start = time.perf_counter()
-        artifact = compile(source, option) if engine is None else _run_compiler(engine, source, option)
+        anf = compile(source, option) if engine is None else _run_compiler(engine, source, option)
+        artifact = runnable_module(anf)  # add the real import header so the stage module is callable
         elapsed = time.perf_counter() - start
         peak_rss_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
         path = out_dir / stage_filename(size)

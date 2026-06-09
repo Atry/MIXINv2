@@ -1,3 +1,15 @@
+# Generated, self-contained module: the import header is added at serialization time (see
+# first_order_lambda._compiler.runnable_module); the body is emitted by the COMPILE lambda term.
+from first_order_lambda._ast import make_app, make_lam, make_var
+from first_order_lambda._compiler import (
+    _NeedThunk,
+    force,
+    interpret,
+    value_island,
+    value_island_by_name,
+)
+Thunk = globals().get("Thunk", _NeedThunk)
+
 _k0 = make_var(1)
 _k1 = value_island(lambda v: lambda v_2: v(v_2)(lambda v_1_2_2: lambda v_2_1_2_2: v_2_1_2_2))
 _k2 = value_island(lambda v: v(lambda v_1_0_2: lambda v_2_1_0_2: lambda v_2_2_1_0_2: v_2_2_1_0_2)(lambda v_1_2: lambda v_2_1_2: v_1_2))

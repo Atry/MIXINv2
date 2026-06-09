@@ -58,6 +58,7 @@ def _cell(engine_spec: str, target: int, regime: str, write_path: "str | None") 
     recompute); it changes only how fast an engine WITH lazy islands runs, never its output. The
     ``INTERP`` row compiles in-process (the lambda ``COMPILE`` interpreted), which does not execute lazy
     islands, so it is regime-independent."""
+    from first_order_lambda._compiler import runnable_module
     from first_order_lambda._multistage import _load, _run_compiler
     from first_order_lambda._specialize import SpecializedOption, compile
 
@@ -72,7 +73,7 @@ def _cell(engine_spec: str, target: int, regime: str, write_path: "str | None") 
     elapsed = time.perf_counter() - start
     peak_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
     if write_path is not None:
-        Path(write_path).write_text(output)
+        Path(write_path).write_text(runnable_module(output))  # self-contained, callable engine module
     cbv = output.count("value_island(")
     lazy = output.count("value_island_by_name(")
     print(f"{cbv} {lazy} {elapsed:.6f} {peak_gb:.6f} {len(output)}")
