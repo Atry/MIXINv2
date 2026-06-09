@@ -33,9 +33,9 @@ from first_order_lambda._prelude import (
     church,
 )
 from first_order_lambda._specialize import (
+    SpecializedOption,
     call_by_value_islands,
-    compile_specialized,
-    compile_specialized_lambda,
+    compile,
     specialize,
 )
 
@@ -148,7 +148,7 @@ def compiler_examples_fragment() -> str:
         "\\texttt{\\_generated\\_compiler.py} (run by the interpreter on a quoted program, it emits the same "
         "Python as the in-process compiler). Here is a small term in the same form, $\\mathtt{factorial}\\,"
         "(2\\times 3)$, whose multiplication sub-term is spliced as a by-value island:\n"
-        + _listing(compile_specialized(build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))))
+        + _listing(compile(build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))))
     )
     return (
         _LATEX_HEADER
@@ -169,14 +169,14 @@ def compiler_examples_fragment() -> str:
 # monster combinators whose simple typing would drive generation to ~12 GB -- the reconstruction
 # descends into those and splices their sub-islands instead, so the larger compiler is still cheap to
 # generate (~1.4 GB, seconds).
-_ISLAND_DEPTH_SMALL = church(8)
-_ISLAND_DEPTH_LARGE = church(128)
+_ISLAND_DEPTH_SMALL = 8
+_ISLAND_DEPTH_LARGE = 128
 
 
-def _module_text(island_depth: "object", depth_label: str) -> str:
+def _module_text(island_depth: int, depth_label: str) -> str:
     """CODEGEN specialized at ``island_depth`` (label for the header), serialized to a runnable module.
 
-    ``compile_specialized_lambda`` runs COMPILE on the quoted CODEGEN and serializes the
+    ``compile`` runs COMPILE on the quoted CODEGEN and serializes the
     reconstruction graph to A-normal-form Python (sharing sub-expressions by node identity). CODEGEN is
     untypable, so the module binds ``compiled_compiler`` to ``interpret(<reconstruction>)`` with its
     closed, simply-typable sub-terms (up to the island depth bound) spliced as ``value_island`` islands;
@@ -197,7 +197,7 @@ def _module_text(island_depth: "object", depth_label: str) -> str:
         header
         + "\nfrom first_order_lambda._ast import make_app, make_lam, make_var\n"
         + "from first_order_lambda._compiler import interpret, value_island\n\n"
-        + compile_specialized_lambda(build(CODEGEN), island_depth)
+        + compile(build(CODEGEN), SpecializedOption(island_depth))
         + "\n"
     )
 

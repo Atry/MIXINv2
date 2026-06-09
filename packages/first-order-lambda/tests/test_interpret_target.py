@@ -1,6 +1,6 @@
 """The specializing compiler is a lambda term; its output is interpret-headed when uncertified.
 
-``compile_specialized`` is now produced entirely by the lambda term ``COMPILE`` and
+``compile`` is now produced entirely by the lambda term ``COMPILE`` and
 serialized to an A-normal-form module binding ``compiled_compiler`` (via the generic codec). A closed
 simply-typable whole term binds a strict call-by-value value (no ``interpret`` head); otherwise it binds
 ``interpret(<reconstruction>)``, the term rebuilt with ``make_var``/``make_lam``/``make_app`` and its
@@ -22,7 +22,7 @@ from first_order_lambda._compiler import (
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
 from first_order_lambda._pyast import _church_to_int
-from first_order_lambda._specialize import compile_specialized
+from first_order_lambda._specialize import compile
 
 
 def _run(source: str):
@@ -35,7 +35,7 @@ def _run(source: str):
 def test_typable_whole_graph_compiles_to_inline_call_by_value() -> None:
     # plus 2 3 is closed and simply typable, so it carries the by-value certificate: the module binds a
     # strict call-by-value value (no interpret head), which runs as strict Python.
-    source = compile_specialized(build(app(app(PLUS, church(2)), church(3))))
+    source = compile(build(app(app(PLUS, church(2)), church(3))))
     assert "interpret(" not in source
     assert _run(source)(lambda predecessor: predecessor + 1)(0) == 5
 
@@ -44,7 +44,7 @@ def test_untypable_term_is_interpret_headed_and_agrees_with_the_interpreter() ->
     # factorial 3 is untypable (its Y self-applies), so it is interpret-headed; the reconstructed node,
     # interpreted, computes the same value as the source term.
     node = build(app(FACTORIAL, church(3)))
-    source = compile_specialized(node)
+    source = compile(node)
     assert "interpret(" in source
     assert _church_to_int(_run(source)) == _church_to_int(node) == 6
 
@@ -52,7 +52,7 @@ def test_untypable_term_is_interpret_headed_and_agrees_with_the_interpreter() ->
 def test_interpret_headed_source_is_self_contained() -> None:
     # The interpret-headed module runs with only interpret_globals in scope: self-contained text (the
     # node constructors, interpret, value_island), no NameError for an undefined free.
-    source = compile_specialized(build(app(FACTORIAL, church(4))))
+    source = compile(build(app(FACTORIAL, church(4))))
     assert _run(source) is not None
 
 
@@ -61,7 +61,7 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
     # simply-typable sub-terms are spliced as compiled by-value islands, and the spliced program agrees
     # with pure interpretation.
     node = build(app(FACTORIAL, app(app(MULT, church(2)), church(3))))
-    source = compile_specialized(node)
+    source = compile(node)
     assert "interpret(" in source
     assert "value_island(" in source
     assert _church_to_int(_run(source)) == _church_to_int(node) == 720
@@ -71,7 +71,7 @@ def test_the_compiler_itself_is_interpret_headed() -> None:
     # CODEGEN is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
     # interpret-headed module with by-value islands spliced; the recursive skeleton is left to interpret.
     # The default specializer uses a small island depth bound, so this stays cheap.
-    source = compile_specialized(build(CODEGEN))
+    source = compile(build(CODEGEN))
     assert "interpret(" in source
     assert "value_island(" in source
 
@@ -79,7 +79,7 @@ def test_the_compiler_itself_is_interpret_headed() -> None:
 def test_typable_combinators_compile_inline() -> None:
     # The simply-typable prelude combinators all carry the by-value certificate (no interpret head).
     for builder in (SUCC, MULT, IS_ZERO, app(app(MULT, church(3)), church(4))):
-        assert "interpret(" not in compile_specialized(build(builder))
+        assert "interpret(" not in compile(build(builder))
 
 
 def test_interpret_headed_compiler_self_hosts() -> None:

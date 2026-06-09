@@ -236,19 +236,6 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     return runtime, compile_to_source(node, runtime)
 
 
-def compile_specialized(node: Node) -> str:
-    """Compile ``node`` in specialized mode, entirely by the lambda term (see ``compile_specialized_lambda``).
-
-    A closed simply-typable whole term yields a strict call-by-value value; otherwise an
-    interpret-with-islands A-normal-form module whose closed, shallow, simply-typable sub-terms are
-    spliced as compiled by-value islands. Either way the decision and codegen are the lambda term
-    ``COMPILE``; Python only quotes, runs the interpreter, and serializes with the generic
-    codec. The Python ``is_typable``/``needs_folding``/``call_by_value_islands`` below are no longer on
-    this compile path; they remain only as the test oracle for the lambda certificates.
-    """
-    return compile_specialized_lambda(node)
-
-
 # --- COMPILE: the specializing compiler, entirely a lambda term ----------------------
 # One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above.
 # A closed simply-typable WHOLE term carries the by-value certificate, so it compiles to a strict
@@ -302,13 +289,13 @@ def _compile_call_by_value(quoted: "object") -> "object":
 # deciding which SUB-terms to splice as islands inside an interpret-headed reconstruction.
 _CLOSED_TYPABLE: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
 
-# The island depth bound trades island SIZE against generation MEMORY, not type-checking time (the
-# bottom-up TYPABLE_BU types even big islands affordably). A small bound keeps islands shallow so the
-# generation stays cheap (the default committed compiler); a larger or absent bound admits the bigger
-# maximal islands (more compiled, less interpreted) at a higher generation cost. So the specializer is
-# parameterized by the bound, and multiple compiler artifacts are generated at different bounds rather
-# than one fixed compiler (see ``_generate``).
-_ISLAND_DEPTH_SMALL: "object" = church(8)
+# The island depth is the compiler's analysis-depth OPTION: a larger depth admits bigger islands (more
+# compiled, less interpreted). It is a runtime Church-numeral argument of the one compiler (``COMPILE``
+# below), so a self-hosted compiler accepts any depth without rebuilding. A depth that exceeds the
+# compiler's deepest sub-term (its deepest maximal island is depth 191) admits every island, i.e. the
+# largest possible local specialization.
+_ISLAND_DEPTH_SMALL = 8
+_ISLAND_DEPTH_LARGEST = 256
 
 
 def _island_term(depth_bound: "object | None") -> "object":
@@ -342,39 +329,77 @@ def _reconstruct_term(depth_bound: "object | None") -> "object":
     ))))
 
 
-def _compile_specialized_term(depth_bound: "object | None") -> "object":
-    """COMPILE at ``depth_bound``: a closed simply-typable whole term is a strict
-    call-by-value expression; otherwise interpret(<reconstruction>) with the islands spliced."""
-    reconstruct = _reconstruct_term(depth_bound)
-    return lam(lambda quoted: _ap(
+def _specialized_output(depth: "object", quoted: "object") -> "object":
+    """The locally-specialized output of ``quoted`` at island depth ``depth`` (a runtime Church numeral):
+    a closed simply-typable whole term is a strict call-by-value expression; otherwise
+    interpret(<reconstruction>) with the maximal islands up to ``depth`` spliced."""
+    return _ap(
         app(_CLOSED_TYPABLE, quoted),
         _compile_call_by_value(quoted),
-        _runtime_call("interpret", (app(reconstruct, quoted),)),
-    ))
-
-
-# The default-bound (small-island) instances: the cheap, committed compiler and the in-process path.
-_ISLAND: "object" = _island_term(_ISLAND_DEPTH_SMALL)
-_RECONSTRUCT: "object" = _reconstruct_term(_ISLAND_DEPTH_SMALL)
-COMPILE: "object" = _compile_specialized_term(_ISLAND_DEPTH_SMALL)
-
-
-def compile_specialized_lambda(node: Node, island_depth: "object | None" = _ISLAND_DEPTH_SMALL) -> str:
-    """Compile ``node`` in specialized mode, entirely by the lambda term ``COMPILE``.
-
-    ``island_depth`` bounds which closed sub-terms become compiled by-value islands (a Church numeral,
-    the default a small bound for a cheap generation; ``None`` for unbounded, the largest islands).
-    Runs the specializer on the quoted term and decodes with the generic ``_pyast.decode``. A closed
-    simply-typable whole term yields a strict call-by-value expression; otherwise
-    ``interpret(<reconstruction>)`` with the maximal closed simply-typable sub-terms spliced as compiled
-    by-value islands. The whole decision and codegen are the lambda term; Python only quotes, runs, and
-    decodes. (The reconstruction is a shared graph; serializing a compiler-scale graph preserving that
-    sharing, to stay under the parser's nesting cap, is the generic codec's concern.)
-    """
-    term = _compile_specialized_term(island_depth)
-    return run_in_large_stack(
-        lambda: to_anf_source(build(app(term, quote(node))), "compiled_compiler"),
+        _runtime_call("interpret", (app(_reconstruct_term(depth), quoted),)),
     )
+
+
+def _whole_output(thunked: "object", quoted: "object") -> "object":
+    """The test-only whole-program call-by-value/name output of ``quoted`` (``thunked`` the Church
+    boolean), delegating to the internal code generator ``CODEGEN``."""
+    return app(app(app(app(CODEGEN, thunked), SCOTT_NIL), SCOTT_NIL), quoted)
+
+
+# COMPILE: the one compiler, a single lambda term taking an all-in-one option and a quoted program. The
+# option is a Scott tagged union the compiler destructures by applying it to two handlers:
+#   Specialized(island_depth) = lam s. lam w. s island_depth   -> the default, locally-specialized output
+#   Whole(thunked)            = lam s. lam w. w thunked         -> the test-only whole-program target
+COMPILE: "object" = lam(lambda option: lam(lambda quoted: app(
+    app(option, lam(lambda depth: _specialized_output(depth, quoted))),
+    lam(lambda thunked: _whole_output(thunked, quoted)),
+)))
+
+
+@dataclass(frozen=True)
+class SpecializedOption:
+    """The default compiler option: emit locally-specialized Python with islands up to ``island_depth``
+    (a depth past the deepest sub-term admits every island)."""
+
+    island_depth: int = _ISLAND_DEPTH_SMALL
+
+    def scott(self) -> "object":
+        return lam(lambda specialized: lam(lambda whole: app(specialized, church(self.island_depth))))
+
+
+@dataclass(frozen=True)
+class WholeOption:
+    """A test-only compiler option: the whole-program ``runtime`` target (call-by-value / call-by-name;
+    call-by-need is the separate ``CODEGEN_NEED`` path, dispatched by ``compile``)."""
+
+    runtime: Runtime
+
+    def scott(self) -> "object":
+        return lam(lambda specialized: lam(lambda whole: app(whole, _option(self.runtime))))
+
+
+CompileOption = "SpecializedOption | WholeOption"
+
+
+def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedOption()) -> str:
+    """The one compiler. By default (``SpecializedOption``) it emits locally-specialized Python: a closed
+    simply-typable whole term is a strict call-by-value expression, otherwise ``interpret(<reconstruction>)``
+    with the maximal closed simply-typable sub-terms up to the island depth spliced as compiled by-value
+    islands. ``WholeOption(runtime)`` selects a test-only whole-program target. The decision and codegen
+    are the lambda term ``COMPILE``; Python only quotes, runs the interpreter, and serializes (the
+    specialized output is a shared interpret-headed graph, serialized to A-normal form; a whole-program
+    target is a single expression).
+    """
+    if isinstance(option, WholeOption) and option.runtime in (Runtime.CALL_BY_NEED, Runtime.INTERPRET):
+        return compile_to_source(node, option.runtime)
+
+    def _run() -> str:
+        result = build(app(app(COMPILE, option.scott()), quote(node)))
+        if isinstance(option, SpecializedOption):
+            return to_anf_source(result, "compiled_compiler")
+        return ast.unparse(ast.fix_missing_locations(decode(result)))
+
+    return run_in_large_stack(_run)
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
