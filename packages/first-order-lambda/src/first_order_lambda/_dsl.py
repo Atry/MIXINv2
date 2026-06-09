@@ -10,6 +10,8 @@ lambdas run once at build time; the result is a pure first-order tree.
 
 from __future__ import annotations
 
+import inspect
+
 from typing import Callable
 
 from first_order_lambda._ast import Node, make_app, make_lam, make_var
@@ -50,6 +52,24 @@ def lam(body: Callable[[Builder], Builder]) -> Builder:
 
 def app(function: Builder, argument: Builder) -> Builder:
     return _by_depth(lambda depth: make_app(function(depth), argument(depth)))
+
+
+def curry(body: "Callable[..., Builder]") -> Builder:
+    """Expand an N-argument Python function into a curried HOAS lambda.
+
+    ``curry(lambda a, b, c: e)`` is ``lam(lambda a: lam(lambda b: lam(lambda c: e)))``: the
+    function's parameter count (read with ``inspect``) fixes the binder arity, and each parameter
+    is the ``Builder`` for a bound variable. A zero-argument ``body`` builds no binder and returns
+    ``body()`` directly. This is sugar for the nested ``lam`` chains that multi-argument terms need.
+    """
+    arity = len(inspect.signature(body).parameters)
+
+    def collect(arguments: "list[Builder]") -> Builder:
+        if len(arguments) == arity:
+            return body(*arguments)
+        return lam(lambda bound: collect([*arguments, bound]))
+
+    return collect([])
 
 
 def build(term: Builder) -> Node:

@@ -45,7 +45,7 @@ from first_order_lambda._compiler import (
     runtime_globals,
     value_island as _compiler_value_island,
 )
-from first_order_lambda._dsl import app, build, lam
+from first_order_lambda._dsl import app, build, curry, lam
 from first_order_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, church, cons
 from first_order_lambda._pyast import _church_to_int, decode, to_anf_source
 from first_order_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
@@ -350,10 +350,10 @@ def _whole_output(thunked: "object", quoted: "object") -> "object":
 # option is a Scott tagged union the compiler destructures by applying it to two handlers:
 #   Specialized(island_depth) = lam s. lam w. s island_depth   -> the default, locally-specialized output
 #   Whole(thunked)            = lam s. lam w. w thunked         -> the test-only whole-program target
-COMPILE: "object" = lam(lambda option: lam(lambda quoted: app(
+COMPILE: "object" = curry(lambda option, quoted: app(
     app(option, lam(lambda depth: _specialized_output(depth, quoted))),
     lam(lambda thunked: _whole_output(thunked, quoted)),
-)))
+))
 
 
 @dataclass(frozen=True)
@@ -364,7 +364,7 @@ class SpecializedOption:
     island_depth: int = _ISLAND_DEPTH_SMALL
 
     def scott(self) -> "object":
-        return lam(lambda specialized: lam(lambda whole: app(specialized, church(self.island_depth))))
+        return curry(lambda specialized, whole: app(specialized, church(self.island_depth)))
 
 
 @dataclass(frozen=True)
@@ -375,7 +375,7 @@ class WholeOption:
     runtime: Runtime
 
     def scott(self) -> "object":
-        return lam(lambda specialized: lam(lambda whole: app(whole, _option(self.runtime))))
+        return curry(lambda specialized, whole: app(whole, _option(self.runtime)))
 
 
 CompileOption = "SpecializedOption | WholeOption"

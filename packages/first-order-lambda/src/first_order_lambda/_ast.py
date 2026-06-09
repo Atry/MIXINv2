@@ -82,6 +82,15 @@ class Node(ABC):
 
         return compute_head_normal_form(self)
 
+    def __call__(self, *arguments: "Node") -> "Node":
+        """Curried application: ``function(a, b, c)`` builds ``make_app(make_app(make_app(function,
+        a), b), c)``. Sugar for the nested ``make_app`` chains that applying a node to several
+        arguments needs (the node-level counterpart of the HOAS ``app``)."""
+        result: Node = self
+        for argument in arguments:
+            result = make_app(result, argument)
+        return result
+
 
 @final
 @dataclass(kw_only=True, eq=False)

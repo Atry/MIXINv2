@@ -391,12 +391,8 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
     bootstrap through the interpret target.
     """
     with _recursion_headroom():
-        applied = make_app(
-            make_app(
-                make_app(make_app(compiler_node, build(_option(runtime))), build(SCOTT_NIL)),
-                build(SCOTT_NIL),
-            ),
-            build(quote(node)),
+        applied = compiler_node(
+            build(_option(runtime)), build(SCOTT_NIL), build(SCOTT_NIL), build(quote(node)),
         )
         return ast.unparse(ast.fix_missing_locations(decode(applied)))
 
