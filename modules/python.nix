@@ -1,7 +1,7 @@
 topLevel@{ ... }: {
   imports = [ ./dev.nix ];
   partitions.dev.module = { inputs, ... }: {
-    perSystem = { pkgs, lib, ... }:
+    perSystem = { pkgs, lib, system, ... }:
       let
         workspace =
           inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ../.; };
@@ -113,6 +113,40 @@ topLevel@{ ... }: {
           workspace.deps.all).overrideAttrs
           (old: { venvIgnoreCollisions = [ "*" ]; });
 
+        # --- PyPy runtime for first-order-lambda-benchmark ---
+        # The benchmark is CPU-bound interpreter/compiler work (deep tree walks, beta reduction),
+        # the workload PyPy's JIT accelerates. The dev partition's pkgs follows the project nixpkgs,
+        # so pkgs.pypy3 is PyPy 7.3.20 (Python 3.11), satisfying requires-python >= 3.11. The dev
+        # shell stays on CPython (above); only this runtime venv uses PyPy.
+        pythonPypy = pkgs.pypy3;
+
+        pythonSetPypy = (pkgs.callPackage inputs.pyproject-nix.build.packages {
+          python = pythonPypy;
+        }).overrideScope (lib.composeManyExtensions [
+          inputs.pyproject-build-systems.overlays.wheel
+          (workspace.mkPyprojectOverlay {
+            sourcePreference = "wheel";
+            dependencies = workspace.deps.default;
+          })
+          (inputs.uv2nix_hammer_overrides.overrides pkgs)
+          pyprojectOverrides
+          (final: prev: {
+            pyflyby = prev.pyflyby.overrideAttrs (old: {
+              propagatedBuildInputs = old.buildInputs or [ ] ++ [ pkgs.ninja ];
+            });
+          })
+        ]);
+
+        firstOrderLambdaBenchmarkPypy =
+          (pythonSetPypy.mkVirtualEnv "first-order-lambda-benchmark-pypy"
+            (builtins.removeAttrs workspace.deps.default [ "mixinv2-workspace" ])).overrideAttrs
+          (old: {
+            venvIgnoreCollisions = [ "*" ];
+            meta = (old.meta or { }) // {
+              mainProgram = "first-order-lambda-benchmark";
+            };
+          });
+
         # --- Supplementary material for double-blind review ---
 
         # Identity anonymization shared by every supplementary bundle. The from/to pairs are
@@ -216,7 +250,7 @@ topLevel@{ ... }: {
 
           ## Running Tests
 
-          Requires Python >= 3.13 and [uv](https://docs.astral.sh/uv/).
+          Requires Python >= 3.11 and [uv](https://docs.astral.sh/uv/).
 
           ```
           uv sync
@@ -448,7 +482,7 @@ topLevel@{ ... }: {
 
           ## Running tests
 
-          Requires Python >= 3.13 and [uv](https://docs.astral.sh/uv/).
+          Requires Python >= 3.11 and [uv](https://docs.astral.sh/uv/).
 
           ```
           uv sync
@@ -517,6 +551,7 @@ topLevel@{ ... }: {
             [ "mixinv2-workspace" ])).overrideAttrs
           (old: { venvIgnoreCollisions = [ "*" ]; });
         packages.mixinv2-dev-env = mixinv2-dev-env;
+        packages.first-order-lambda-benchmark-pypy = firstOrderLambdaBenchmarkPypy;
         packages.supplementary-material = supplementaryMaterial;
         packages.first-order-supplementary-material = firstOrderSupplementaryMaterial;
 
