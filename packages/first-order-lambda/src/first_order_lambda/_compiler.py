@@ -296,12 +296,44 @@ def value_island(compiled_value) -> Node:
     return make_native(lambda: _quote(compiled_value, 0), 0)
 
 
+# A lazy (call-by-name) island read-back, fuel-bounded. A call-by-name value is a thunk, so it must be
+# FORCED before it is a function or a neutral, and a function is applied to a THUNKED neutral (its body
+# forces its argument). The fuel bounds the walk: a normalizing term (which the analysis certifies before
+# choosing a lazy island) reads back well within it; the bound only guards against a term that the fuel
+# of the normalization check was too small to reject, so the island fails loudly instead of diverging.
+_LAZY_ISLAND_READBACK_FUEL = 1_000_000
+
+
+def _quote_lazy(host, depth: int, fuel: int) -> Node:
+    """Quote a call-by-name host value to a pure Scott node, forcing thunks and thunking the neutral
+    arguments a forced function consumes. Fuel-bounded so a non-normalizing value fails rather than loops."""
+    if fuel <= 0:
+        raise ValueError("lazy island read-back exceeded its fuel; the term may not normalize")
+    value = force(host)
+    if isinstance(value, _Neutral):
+        node: Node = make_var(depth - 1 - value.level)
+        for argument in value.spine:
+            node = make_app(node, _quote_lazy(argument, depth, fuel - 1))
+        return node
+    return make_lam(_quote_lazy(value(_LazyThunk(lambda: _Neutral(depth))), depth + 1, fuel - 1))
+
+
+def value_island_by_name(compiled_value) -> Node:
+    """A call-by-name island as an interpreter ``Node``: run the compiled, normalizing (but not
+    necessarily typable) term and quote its lazy normal form back to a pure Scott node. The dual of
+    ``value_island`` for the lazy tier, sharing the interpreter boundary; faithfulness is convergence
+    to the same value."""
+    return make_native(lambda: _quote_lazy(compiled_value, 0, _LAZY_ISLAND_READBACK_FUEL), 0)
+
+
 def interpret_globals() -> dict:
-    """The evaluation globals for interpret-headed source: node constructors, ``interpret``, and the
-    universal ``value_island`` reify."""
+    """The evaluation globals for interpret-headed source: node constructors, ``interpret``, the
+    universal ``value_island`` reify, and the lazy tier (``value_island_by_name`` and the
+    ``force``/``Thunk`` a call-by-name island's body refers to)."""
     return {
         "make_var": make_var, "make_lam": make_lam, "make_app": make_app,
         "interpret": interpret, "value_island": value_island,
+        "value_island_by_name": value_island_by_name, "force": force, "Thunk": _LazyThunk,
     }
 
 
