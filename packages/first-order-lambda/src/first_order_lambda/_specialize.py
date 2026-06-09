@@ -37,13 +37,17 @@ from first_order_lambda._compiler import (
     CODEGEN,
     Runtime,
     Z,
+    _LazyThunk,
+    _NeedThunk,
     _option,
     _recursion_headroom,
     compile_interpreted,
     compile_to_source,
+    force,
     quote,
     runtime_globals,
     value_island as _compiler_value_island,
+    value_island_by_name as _compiler_value_island_by_name,
 )
 from first_order_lambda._dsl import app, build, curry, lam
 from first_order_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, church, cons
@@ -535,3 +539,22 @@ def value_island(node: Node) -> Native:
     if node.loose_bound != 0:
         raise ValueError("value_island requires a closed term")
     return _compiler_value_island(compile_callable(node, Runtime.CALL_BY_VALUE))
+
+
+def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Native:
+    """Wrap a CLOSED, normalizing-but-untypable term (a terminating Y/Z recursion) as a compiled lazy island.
+
+    Compiled by the call-by-name codegen (an expression, so it splices like a by-value island) and read
+    back by the fuel-bounded ``value_island_by_name``. The ``lazy_runtime`` option chooses the thunk
+    semantics, the same codegen either way: ``CALL_BY_NEED`` (default) memoises, computing each shared
+    sub-result once, the efficient choice for a recursion that reuses sub-terms; ``CALL_BY_NAME``
+    recomputes on every force, which a reuse-heavy term makes exponential, so it is only for comparison.
+    """
+    if node.loose_bound != 0:
+        raise ValueError("lazy_island requires a closed term")
+    if lazy_runtime not in (Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED):
+        raise ValueError("a lazy island is call-by-name or call-by-need")
+    source = compile_to_source(node, Runtime.CALL_BY_NAME)
+    thunk = _NeedThunk if lazy_runtime is Runtime.CALL_BY_NEED else _LazyThunk
+    value = eval(source, {"force": force, "Thunk": thunk})  # noqa: S307 - our own generated source
+    return _compiler_value_island_by_name(value)

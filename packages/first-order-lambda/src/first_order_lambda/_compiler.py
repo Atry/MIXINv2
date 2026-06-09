@@ -156,6 +156,15 @@ class _LazyThunk(_Thunk):
         return self._fn()  # call-by-name: recompute on every force
 
 
+class _NeedThunk(_Thunk):
+    @property
+    def value(self):  # call-by-need: compute once and share (memoise)
+        memo = self.__dict__
+        if "_memo" not in memo:
+            memo["_memo"] = self._fn()
+        return memo["_memo"]
+
+
 def force(value):
     return value.value if isinstance(value, _Thunk) else value
 
