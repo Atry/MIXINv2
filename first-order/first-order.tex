@@ -1279,38 +1279,48 @@ here the $\lambda$ term is the program and the interpreter folds its behaviour d
 
 \section{Self-Compilation: The Multi-Stage Climb as a Matrix}\label{app:benchmark}
 The compiler compiles itself, and the island depth is its option (Appendix~\ref{app:compiler}): a larger
-depth compiles more of the compiler as native call-by-value islands and leaves less to the interpreter.
-A progressive bootstrap tests whether that makes the compiler faster: the compiler run on the
-interpreter compiles the compiler into a small-island compiler; that compiler compiles the compiler into
-a larger-island compiler; and so on, each stage compiled by the previous, climbing to the largest island
-at depth 192, where the two deep combinators below become whole islands.
-Table~\ref{tab:self-compilation} expands the climb into a matrix: every version of the compiler (the
-interpreter, then the compiler self-compiled at each island depth) compiles the compiler's own source at
-every target depth, each in a fresh process, reporting wall-clock time and peak resident memory.
+depth compiles more of the compiler as native islands and leaves less to the interpreter. Each closed
+sub-term is certified one of three ways: a simply-typable sub-term becomes a strict call-by-value island,
+a normalizing but untypable sub-term becomes a lazy island (call-by-need or call-by-name), and the rest
+stays interpreted. A progressive bootstrap tests whether that makes the compiler faster: the compiler run
+on the interpreter compiles the compiler into a small-island compiler; that compiler compiles the
+compiler into a larger-island compiler; and so on, each stage compiled by the previous.
+Table~\ref{tab:self-compilation} expands the climb into a matrix (every compiler version compiling the
+compiler's own source at every target depth, each in a fresh process, reporting wall-clock time and peak
+resident memory), doubled across the two lazy-island regimes (call-by-need memoises shared sub-results,
+call-by-name recomputes them). The matrix is shown to target depth 64; the depth 128 and 192 columns each
+need several gigabytes per cell, so they are not run here, though the staged compilers are committed for
+every depth (the depth-192 compiler carries the two deep combinators below as whole islands).
 
 \begin{table}[h]
 \centering
 \input{generated/self-compilation-benchmark}
-\caption{The multi-stage climb as a matrix: rows are the compiler version doing the compiling (the
-interpreter, then the compiler self-compiled at each island depth), columns the target island depth. The
-upper block is wall-clock time in seconds, the lower block peak resident memory in gigabytes, each of one
-fresh process compiling the compiler's own source. The linear bootstrap is the diagonal.}
+\caption{The multi-stage climb as a matrix, doubled across the two lazy-island regimes (call-by-need
+memoise and call-by-name recompute): rows are the compiler version doing the compiling (the interpreter,
+then the compiler self-compiled at each island depth), columns the target island depth. Within each
+regime block the upper tabular is wall-clock time in seconds and the lower is peak resident memory in
+gigabytes, each of one fresh process compiling the compiler's own source. The linear bootstrap is the
+diagonal.}
 \label{tab:self-compilation}
 \end{table}
 
-The matrix is flat down every column: for a fixed target depth the interpreter and every self-compiled
-engine take the same time and the same memory, so the cost is set by the target depth alone, not by
-which version of the compiler does the compiling. The reason is that the compiler's hot path is its type
-checker, which decides for each closed sub-term whether it is a simply-typable island; that check is
-driven by the same Y/Z recursion that makes the compiler untypable, so the recursion can never itself be
-a call-by-value island and runs interpreted identically in every engine. The islands a self-compiled
-engine carries are the typable leaf combinators off that hot path, so they leave the cost unchanged.
-The cost grows only with the target depth, because a deeper target types deeper sub-terms: the
-maximal islands are small (at most 36 nodes, all shallower than depth 32) except for the two deep
-combinators of 264 and 345 nodes at depth 188 and 191, which the depth-192 column types and compiles.
-Making self-compilation pay would mean compiling the recursive hot path, which needs the lazy
-(call-by-name or call-by-need) islands that admit a normalizing but untypable recursion, a target the
-analysis does not yet certify.
+The matrix is flat down every column, and the two regimes coincide: for a fixed target depth the
+interpreter and every self-compiled engine take essentially the same time and the same memory, and
+call-by-need and call-by-name agree. So the cost is set by the target depth alone, not by which version
+of the compiler does the compiling nor by the lazy regime. The reason is the soundness discipline the
+islands obey: a compiled island must converge exactly where the interpreter does. The compiler's hot path
+is its analysis, the typability and normalization checks that decide each sub-term's island, driven by
+the same $Z$ fixpoint that makes the compiler untypable. As a value that recursion has no normal form, so
+it can be neither a call-by-value island (which requires strong normalization) nor a lazy island (which
+requires a finite normal form); it stays interpreted in every engine. The islands a self-compiled engine
+does carry, the simply-typable call-by-value leaves and the few small normalizing lazy sub-terms, are
+negligible next to that interpreted recursion, which is why the cost is unchanged and the two regimes are
+indistinguishable. The cost grows only with the target depth, because a deeper target types deeper
+sub-terms: the maximal islands are small (at most 36 nodes, all shallower than depth 32) except for the
+two deep combinators of 264 and 345 nodes at depth 188 and 191, which the committed depth-192 compiler
+carries as islands. Making self-compilation pay would mean compiling the recursive hot path itself, which
+no sound island can do; it would require redesigning the analysis to be structurally total, an island in
+its own right, a change to the compiler rather than a compilation option.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
