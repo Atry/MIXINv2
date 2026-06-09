@@ -1312,15 +1312,19 @@ islands obey: a compiled island must converge exactly where the interpreter does
 is its analysis, the typability and normalization checks that decide each sub-term's island, driven by
 the same $Z$ fixpoint that makes the compiler untypable. As a value that recursion has no normal form, so
 it can be neither a call-by-value island (which requires strong normalization) nor a lazy island (which
-requires a finite normal form); it stays interpreted in every engine. The islands a self-compiled engine
-does carry, the simply-typable call-by-value leaves and the few small normalizing lazy sub-terms, are
-negligible next to that interpreted recursion, which is why the cost is unchanged and the two regimes are
-indistinguishable. The cost grows only with the target depth, because a deeper target types deeper
-sub-terms: the maximal islands are small (at most 36 nodes, all shallower than depth 32) except for the
-two deep combinators of 264 and 345 nodes at depth 188 and 191, which the committed depth-192 compiler
-carries as islands. Making self-compilation pay would mean compiling the recursive hot path itself, which
-no sound island can do; it would require redesigning the analysis to be structurally total, an island in
-its own right, a change to the compiler rather than a compilation option.
+requires a finite normal form); it stays interpreted in every engine. Its per-step body is a different
+matter: that body is a closed term that uses the recursive call only as a parameter (no self-application),
+so several of the analysis step bodies are simply typable and are compiled as islands. They do not change
+the cost, though, because of the island-application boundary: a function island is read back to a
+$\lambda$ node (the reify is nullary), and the interpreter then applies that node on every step, so the
+native code runs once to produce the node and the per-application work stays interpreted. That, not the
+size of the islands, is why the matrix is flat and the two regimes coincide. The cost grows only with the
+target depth, because a deeper target types deeper sub-terms. Compiling part of the hot path is therefore
+possible but not yet paying: it needs a positive-arity island that runs the step body natively on each
+application (reflecting the node arguments to host values and reifying the result, falling back to
+interpretation on a non-productive cycle), and whether that boundary nets a speedup against the small
+step bodies is an empirical question. Compiling the recursion scheme itself, by contrast, no sound island
+can do.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
