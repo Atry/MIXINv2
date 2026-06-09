@@ -245,3 +245,4 @@ experiment_results.db
 /inheritance-calculus/arxiv-submission.tar.gz
 node_modules/
 inheritance-calculus/comment.cut
+first-order/generated/stages/

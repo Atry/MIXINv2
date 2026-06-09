@@ -1277,36 +1277,36 @@ back to. Meta-tracing does not apply here: a meta-tracing just-in-time compiler
 written in the traced language, a $\lambda$ self-interpreter, which this construction does not use;
 here the $\lambda$ term is the program and the interpreter folds its behaviour directly.
 
-\section{Self-Compilation Across Island-Depth Stages}\label{app:benchmark}
-The compiler compiles itself in specialized mode at a chosen island depth bound
-(Appendix~\ref{app:compiler}), and the bound trades island size against generation cost. A closed
-simply-typable sub-term shallower than the bound is certified as a strict call-by-value island, so a
-larger bound compiles more of the compiler as native code and descends further into the deep
-combinators to splice their sub-islands, at the price of typing deeper sub-terms while generating.
-Table~\ref{tab:self-compilation} benchmarks three versions, each regenerating the self-compiled
-compiler in a fresh process so its peak memory is its own: the interpreter-only version at depth 0
-splices no island and runs the whole compiler in the interpreter, depth 8 is the small committed
-artifact, and depth 128 the large one. The island counts and artifact sizes are deterministic; the
-time and memory are a measured snapshot.
+\section{Self-Compilation: The Multi-Stage Climb as a Matrix}\label{app:benchmark}
+The compiler compiles itself, and the island depth is its option (Appendix~\ref{app:compiler}): a larger
+depth makes more of the compiler run as native call-by-value islands and less by the interpreter, so a
+larger-island compiler is faster and lighter. That drives a progressive bootstrap. The compiler run on
+the interpreter compiles the compiler into a small-island compiler; that compiler compiles the compiler
+into a larger-island compiler; and so on, each stage compiled by the previous, climbing toward the
+largest island. Table~\ref{tab:self-compilation} expands the linear climb into a matrix: every version
+of the compiler (the interpreter, then the compiler self-compiled at each island depth) compiles the
+compiler's own source at every target depth, each in a fresh process, reporting wall-clock time and peak
+resident memory. The linear bootstrap is the matrix's near-diagonal; the off-diagonal shows whether a
+faster, larger-island engine reaches a target depth the interpreter cannot. Within a column a
+larger-island engine is the faster, lighter one, so a row that does not improve on the one above would
+mean the engine's islands are not running natively.
 
 \begin{table}[h]
 \centering
 \input{generated/self-compilation-benchmark}
-\caption{The self-hosted compiler regenerated at three island depth bounds: the call-by-value islands
-spliced, and the wall-clock time, peak resident memory, and source size of one generation.}
+\caption{The multi-stage climb as a matrix: rows are the compiler version doing the compiling (the
+interpreter, then the compiler self-compiled at each island depth), columns the target island depth. The
+upper block is wall-clock time in seconds, the lower block peak resident memory in gigabytes, each of one
+fresh process compiling the compiler's own source. The linear bootstrap is the diagonal.}
 \label{tab:self-compilation}
 \end{table}
 
 The compiler's maximal islands are small, at most 36 nodes and all shallower than depth 32, except for
-two deep combinators of 264 and 345 nodes at depth 188 and 191, with no maximal island between. The
-bounds in the table all stay below those two, so they differ only in which shallow islands they admit
-and how deeply they splice sub-islands of the deep ones. Admitting the two deep combinators as whole
-islands needs a bound past depth 188, where a single specialization pass peaks near twelve gigabytes,
-because typing every closed sub-term to decide islands accumulates across the whole tree in one
-interner session. The islands themselves are not the cost: the 345-node combinator compiles on its own
-in about four seconds under half a gigabyte, so a staged generator that finds the islands and compiles
-each independently reaches the full ceiling, the largest closed simply-typable sub-term, at the
-per-island cost rather than the whole-program sum.
+two deep combinators of 264 and 345 nodes at depth 188 and 191, with no maximal island between, so the
+largest rung of the climb is a target depth past 188. Reaching that rung from the interpreter alone is
+the costly case the bootstrap is meant to relieve: typing every closed sub-term to decide islands
+accumulates in one interner session, whereas a faster larger-island engine compiles the two deep
+combinators by running its own islands natively.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
