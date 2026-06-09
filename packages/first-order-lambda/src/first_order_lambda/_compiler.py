@@ -201,12 +201,14 @@ def _recursion_headroom() -> "Iterator[None]":
         sys.setrecursionlimit(previous)
 
 
-def compile_to_source(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
-    """Compile an interpreter lambda term to Python source for the given compiled target.
+def codegen(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
+    """Run the ``CODEGEN`` lambda term to emit Python source for ``node`` under a compiled ``runtime``.
 
-    Call-by-value yields a strict expression; call-by-name yields the expression with the lambda
-    term's ``force``/``Thunk`` wrapping; call-by-need yields a memoising-thunk module. Every target is
-    built as the generic Scott ast and decoded by ``_pyast.decode``. The interpret target is not here.
+    This is the code generator: the Python ``codegen`` builds and runs the lambda ``CODEGEN`` (hence the
+    matching names). Call-by-value yields a strict expression; call-by-name yields the expression with
+    the lambda term's ``force``/``Thunk`` wrapping; call-by-need yields a memoising-thunk module. Every
+    target is built as the generic Scott ast and decoded by ``_pyast.decode``. The interpret target is
+    not here. The single public compile entry stays ``_specialize.compile``.
     """
     with _recursion_headroom():
         if runtime is Runtime.CALL_BY_NEED:
@@ -233,7 +235,7 @@ def _node_to_ast(node: Node, islands: "frozenset[int]") -> ast.expr:
     interpreter drives in place of interpreting the subtree.
     """
     if id(node) in islands:
-        compiled = ast.parse(compile_to_source(node, Runtime.CALL_BY_VALUE), mode="eval").body
+        compiled = ast.parse(codegen(node, Runtime.CALL_BY_VALUE), mode="eval").body
         return ast.Call(func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[])
     match node:
         case Var(index=index):
@@ -378,7 +380,7 @@ def compile_interpreted_module(node: Node, islands: "frozenset[int] | None" = No
         if id(current) in names:
             return names[id(current)]
         if id(current) in island_set:
-            compiled = ast.parse(compile_to_source(current, Runtime.CALL_BY_VALUE), mode="eval").body
+            compiled = ast.parse(codegen(current, Runtime.CALL_BY_VALUE), mode="eval").body
             value: ast.expr = ast.Call(
                 func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[],
             )
@@ -428,7 +430,7 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
     handed back to the interpreter. The interpreter applies it to the option, the empty path and env,
     and the quoted program, and the resulting generic Scott Python AST is decoded by the same generic
     ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
-    interpret-headed Python, compiles any program to the same source as ``compile_to_source``: the
+    interpret-headed Python, compiles any program to the same source as ``codegen``: the
     bootstrap through the interpret target.
     """
     with _recursion_headroom():
@@ -710,7 +712,7 @@ def _compile_need_source(node: Node) -> str:
 # ``compiled_compiler`` evaluates that interpret-headed source to the node; ``compile_with_interpreted``
 # runs it as a compiler, reifying the Scott Python-AST result through the generic ``_pyast.decode``, the
 # same boundary the in-process compiler uses. So the compiler compiled by itself, through interpret, is
-# a working compiler agreeing with ``compile_to_source``.
+# a working compiler agreeing with ``codegen``.
 
 
 def compiled_compiler() -> Node:

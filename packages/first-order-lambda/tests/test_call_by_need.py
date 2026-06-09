@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from first_order_lambda._compiler import Runtime, call_by_need_globals, compile_to_source
+from first_order_lambda._compiler import Runtime, call_by_need_globals, codegen
 from first_order_lambda._dsl import app, build
 from first_order_lambda._prelude import (
     FACTORIAL,
@@ -30,7 +30,7 @@ def _run_church(term) -> int:
     A value is a thunk (a nullary callable) whose forcing (calling it) yields a function of one thunk,
     matching the emitted protocol. The successor takes a thunk and returns a thunk computing +1.
     """
-    source = compile_to_source(build(term), Runtime.CALL_BY_NEED)
+    source = codegen(build(term), Runtime.CALL_BY_NEED)
     environment = call_by_need_globals()
     exec(source, environment)
     successor = lambda argument_thunk: (lambda: argument_thunk() + 1)
@@ -39,8 +39,8 @@ def _run_church(term) -> int:
 
 def test_call_by_need_emits_explicit_memoising_thunks(snapshot: SnapshotAssertion) -> None:
     emitted = {
-        "identity": compile_to_source(build(IDENTITY), Runtime.CALL_BY_NEED),
-        "constant_k": compile_to_source(build(KESTREL), Runtime.CALL_BY_NEED),
+        "identity": codegen(build(IDENTITY), Runtime.CALL_BY_NEED),
+        "constant_k": codegen(build(KESTREL), Runtime.CALL_BY_NEED),
     }
     assert emitted == snapshot(name="call_by_need_source")
 

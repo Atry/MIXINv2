@@ -13,7 +13,7 @@ from __future__ import annotations
 from syrupy.assertion import SnapshotAssertion
 
 from first_order_lambda._ast import Native, make_app, make_native
-from first_order_lambda._compiler import CODEGEN, Runtime, compile_to_source
+from first_order_lambda._compiler import CODEGEN, Runtime, codegen
 from first_order_lambda._dsl import app, build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, SCOTT_NIL, Y, church
@@ -76,7 +76,7 @@ def test_compiler_call_by_value_islands(snapshot: SnapshotAssertion) -> None:
     # strongly-normalizing combinators, each compiled to a strict call-by-value island.
     islands = call_by_value_islands(build(CODEGEN))
     rendered = [
-        {"lambda": term_to_latex(island), "call_by_value": compile_to_source(island, Runtime.CALL_BY_VALUE)}
+        {"lambda": term_to_latex(island), "call_by_value": codegen(island, Runtime.CALL_BY_VALUE)}
         for island in islands
     ]
     assert rendered == snapshot(name="compiler_call_by_value_islands")

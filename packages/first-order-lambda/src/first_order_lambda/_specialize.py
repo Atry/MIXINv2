@@ -42,7 +42,7 @@ from first_order_lambda._compiler import (
     _option,
     _recursion_headroom,
     compile_interpreted,
-    compile_to_source,
+    codegen,
     force,
     quote,
     runtime_globals,
@@ -237,7 +237,7 @@ def specialize(node: Node) -> tuple[Runtime, str | None]:
     runtime = choose_runtime(node)
     if runtime is Runtime.INTERPRET:
         return runtime, None
-    return runtime, compile_to_source(node, runtime)
+    return runtime, codegen(node, runtime)
 
 
 # --- COMPILE: the specializing compiler, entirely a lambda term ----------------------
@@ -395,7 +395,7 @@ def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedO
     target is a single expression).
     """
     if isinstance(option, WholeOption) and option.runtime in (Runtime.CALL_BY_NEED, Runtime.INTERPRET):
-        return compile_to_source(node, option.runtime)
+        return codegen(node, option.runtime)
 
     def _run() -> str:
         result = build(app(app(COMPILE, option.scott()), quote(node)))
@@ -467,7 +467,7 @@ def compile_callable(node: Node, runtime: Runtime) -> Callable:
     Call-by-value source is strict and self-contained; call-by-name source refers to the free names
     ``force`` and ``Thunk`` supplied by ``runtime_globals``.
     """
-    source = compile_to_source(node, runtime)
+    source = codegen(node, runtime)
     if runtime is Runtime.CALL_BY_VALUE:
         return eval(source)
     return eval(source, runtime_globals(runtime))
@@ -567,7 +567,7 @@ def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Nat
         )
     if lazy_runtime not in (Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED):
         raise ValueError("a lazy island is call-by-name or call-by-need")
-    source = compile_to_source(node, Runtime.CALL_BY_NAME)
+    source = codegen(node, Runtime.CALL_BY_NAME)
     thunk = _NeedThunk if lazy_runtime is Runtime.CALL_BY_NEED else _LazyThunk
     value = eval(source, {"force": force, "Thunk": thunk})  # noqa: S307 - our own generated source
     return _compiler_value_island_by_name(value)

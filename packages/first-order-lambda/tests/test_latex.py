@@ -13,7 +13,7 @@ import re
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from first_order_lambda._compiler import Runtime, compile_to_source
+from first_order_lambda._compiler import Runtime, codegen
 from first_order_lambda._dsl import build
 from first_order_lambda._latex import term_to_latex
 from first_order_lambda._prelude import IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
@@ -41,5 +41,5 @@ def test_term_to_latex_uses_readable_names() -> None:
 def test_latex_has_same_binder_count_as_compiled_python(builder) -> None:
     node = build(builder)
     latex_binders = len(re.findall(r"\\lambda", term_to_latex(node)))
-    python_binders = len(re.findall(r"\blambda\b", compile_to_source(node, Runtime.CALL_BY_VALUE)))
+    python_binders = len(re.findall(r"\blambda\b", codegen(node, Runtime.CALL_BY_VALUE)))
     assert latex_binders == python_binders

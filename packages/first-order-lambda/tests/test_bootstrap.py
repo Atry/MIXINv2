@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from first_order_lambda._compiler import (
     CODEGEN,
-    compile_to_source,
+    codegen,
     compile_with_interpreted,
     compiled_compiler,
 )
@@ -32,7 +32,7 @@ def test_self_compiled_compiler_matches_the_original() -> None:
     ]
     for term in terms:
         node = build(term)
-        assert compile_with_interpreted(compiler, node) == compile_to_source(node)
+        assert compile_with_interpreted(compiler, node) == codegen(node)
 
 
 def test_self_compiled_output_runs() -> None:
@@ -47,7 +47,7 @@ def test_interpreter_and_committed_compiler_agree_on_self() -> None:
     # interpret-headed Python in A-normal form) compile the compiler ITSELF to the same Python.
     from first_order_lambda._generated_compiler import compiled_compiler as committed_compiler
 
-    interpreter_output = compile_to_source(build(CODEGEN))
+    interpreter_output = codegen(build(CODEGEN))
     committed_output = compile_with_interpreted(committed_compiler, build(CODEGEN))
     assert committed_output == interpreter_output
 
@@ -60,4 +60,4 @@ def test_large_island_compiler_is_a_working_compiler() -> None:
 
     for term in (IDENTITY, KESTREL, church(3), app(app(PLUS, church(1)), church(2))):
         node = build(term)
-        assert compile_with_interpreted(large_compiler, node) == compile_to_source(node)
+        assert compile_with_interpreted(large_compiler, node) == codegen(node)

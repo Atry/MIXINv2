@@ -101,15 +101,18 @@ def _tabular(rows: "list[tuple[str, list[tuple[float, float] | None]]]", metric:
 
 
 def main() -> None:
+    from first_order_lambda._multistage import stage_filename
+
     out_dir = _OUTPUT.parent / "stages"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Phase 1: the bootstrap climb -- each engine file produced by the previous engine. Reuse an engine
-    # file that already exists (the committed stages), so the matrix run need not re-bootstrap them.
+    # file that already exists (the committed stages), so the matrix run need not re-bootstrap them. The
+    # filename is Python-version tagged, so a 3.13 run regenerates rather than reusing a 3.11 file.
     engines: "list[tuple[str, str]]" = [("interpreter", "INTERP")]
     previous = "INTERP"
     for size in _SIZES:
-        engine_path = out_dir / f"_generated_compiler_island_{size}.py"
+        engine_path = out_dir / stage_filename(size)
         if not engine_path.exists():
             _run_cell(previous, size, str(engine_path))
         engines.append((f"island {size}", str(engine_path)))

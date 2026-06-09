@@ -14,7 +14,7 @@ import pytest
 from first_order_lambda._compiler import (
     Runtime,
     _LazyThunk,
-    compile_to_source,
+    codegen,
     force,
     runtime_globals,
 )
@@ -23,12 +23,12 @@ from first_order_lambda._prelude import FACTORIAL, PLUS, church
 
 
 def _eager_church(term) -> int:
-    return eval(compile_to_source(build(term), Runtime.CALL_BY_VALUE))(lambda k: k + 1)(0)
+    return eval(codegen(build(term), Runtime.CALL_BY_VALUE))(lambda k: k + 1)(0)
 
 
 def _thunk_church(term, runtime: Runtime) -> int:
     environment = runtime_globals(runtime)
-    numeral = eval(compile_to_source(build(term), runtime), environment)
+    numeral = eval(codegen(build(term), runtime), environment)
     thunk, force_fn = environment["Thunk"], environment["force"]
     successor = lambda t: force_fn(t) + 1
     return numeral(thunk(lambda: successor))(thunk(lambda: 0))
@@ -47,7 +47,7 @@ def test_lazy_runtime_runs_y_recursion() -> None:
 
 def test_eager_runtime_diverges_on_y_recursion() -> None:
     # Strict evaluation forces the conditional's recursive branch at the base case, so Y diverges.
-    source = compile_to_source(build(app(FACTORIAL, church(3))), Runtime.CALL_BY_VALUE)
+    source = codegen(build(app(FACTORIAL, church(3))), Runtime.CALL_BY_VALUE)
     with pytest.raises(RecursionError):
         eval(source)
 

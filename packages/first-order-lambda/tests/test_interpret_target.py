@@ -15,7 +15,7 @@ from __future__ import annotations
 from first_order_lambda._compiler import (
     CODEGEN,
     Runtime,
-    compile_to_source,
+    codegen,
     compile_with_interpreted,
     interpret_globals,
 )
@@ -89,6 +89,6 @@ def test_interpret_headed_compiler_self_hosts() -> None:
     compiler_node = build(CODEGEN)
     for builder in (IDENTITY, KESTREL, SUCC, MULT, app(app(PLUS, church(2)), church(3))):
         program = build(builder)
-        assert compile_with_interpreted(compiler_node, program) == compile_to_source(
+        assert compile_with_interpreted(compiler_node, program) == codegen(
             program, Runtime.CALL_BY_VALUE
         )

@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 
 from first_order_lambda._ast import make_app, make_var
-from first_order_lambda._compiler import Runtime, compile_to_source, runtime_globals
+from first_order_lambda._compiler import Runtime, codegen, runtime_globals
 from first_order_lambda._dsl import Builder, build
 from first_order_lambda._pyast import _church_to_int
 from first_order_lambda._shape import VarShape
@@ -52,7 +52,7 @@ class _CompilerBackend:
 
     def _evaluate(self, term: Builder):
         environment = runtime_globals(self.runtime)
-        return eval(compile_to_source(build(term), self.runtime), environment), environment
+        return eval(codegen(build(term), self.runtime), environment), environment
 
     def church(self, term: Builder) -> int:
         numeral, environment = self._evaluate(term)

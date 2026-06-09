@@ -20,6 +20,7 @@ realized, hence in speed and memory.
 from __future__ import annotations
 
 import resource
+import sys
 import time
 
 from dataclasses import dataclass
@@ -42,6 +43,18 @@ class StageResult:
     islands: int
     seconds: float
     peak_rss_gb: float
+
+
+def _python_tag() -> str:
+    """A Python-version tag for stage filenames, e.g. ``py313``. The value islands are rendered with
+    ``ast.unparse``, whose formatting can differ between Python versions, so a stage compiled under one
+    interpreter must not be reused under another; the tag in the filename keeps the artifacts distinct."""
+    return f"py{sys.version_info.major}{sys.version_info.minor}"
+
+
+def stage_filename(size: int) -> str:
+    """The version-tagged stage filename for island ``size`` under the running interpreter."""
+    return f"_generated_compiler_island_{size}_{_python_tag()}.py"
 
 
 def _load(module_text: str) -> object:
@@ -67,7 +80,8 @@ def multi_stage_compile(island_sizes: "tuple[int, ...]", *, out_dir: Path) -> "l
 
     Stage 1 uses the interpreter; stage ``k`` (k>=1 after the first) runs stage ``k-1``'s compiled
     compiler. The fixed source is the compiler's own source ``build(COMPILE)``. Each stage's compiler is
-    written to ``out_dir/_generated_compiler_island_<size>.py``. Returns one ``StageResult`` per stage.
+    written to ``out_dir/_generated_compiler_island_<size>_<python tag>.py`` (see ``stage_filename``).
+    Returns one ``StageResult`` per stage.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     source = run_in_large_stack(lambda: build(COMPILE))
@@ -79,7 +93,7 @@ def multi_stage_compile(island_sizes: "tuple[int, ...]", *, out_dir: Path) -> "l
         artifact = compile(source, option) if engine is None else _run_compiler(engine, source, option)
         elapsed = time.perf_counter() - start
         peak_rss_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
-        path = out_dir / f"_generated_compiler_island_{size}.py"
+        path = out_dir / stage_filename(size)
         path.write_text(artifact)
         engine = _load(artifact)
         results.append(StageResult(

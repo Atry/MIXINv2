@@ -15,7 +15,7 @@ from __future__ import annotations
 from first_order_lambda._compiler import (
     CODEGEN,
     Runtime,
-    compile_to_source,
+    codegen,
 )
 from first_order_lambda._dsl import Builder, app, build
 from first_order_lambda._latex import term_to_latex
@@ -104,7 +104,7 @@ def _cyclic_island_block() -> str:
         "behaviour as pure interpretation, the stream $\\mathtt{cons}\\,9\\,(\\mathtt{cons}\\,9\\,\\cdots)$ "
         "folded to a single cyclic node.\n"
     )
-    return heading + note + _listing(compile_to_source(element, Runtime.CALL_BY_VALUE)) + result
+    return heading + note + _listing(codegen(element, Runtime.CALL_BY_VALUE)) + result
 
 
 _ISLAND_LISTING_MAX_LINE = 200  # the largest combinators compile to multi-thousand-character lines no
@@ -115,7 +115,7 @@ _ISLAND_LISTING_MAX_LINE = 200  # the largest combinators compile to multi-thous
 def _compiler_islands_block() -> str:
     """The flagship: the call-by-value islands the specializer finds inside the compiler itself."""
     islands = call_by_value_islands(build(CODEGEN))
-    compiled = [(island, compile_to_source(island, Runtime.CALL_BY_VALUE)) for island in islands]
+    compiled = [(island, codegen(island, Runtime.CALL_BY_VALUE)) for island in islands]
     showable = [
         (island, source)
         for island, source in compiled
