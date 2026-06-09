@@ -1279,17 +1279,14 @@ here the $\lambda$ term is the program and the interpreter folds its behaviour d
 
 \section{Self-Compilation: The Multi-Stage Climb as a Matrix}\label{app:benchmark}
 The compiler compiles itself, and the island depth is its option (Appendix~\ref{app:compiler}): a larger
-depth makes more of the compiler run as native call-by-value islands and less by the interpreter, so a
-larger-island compiler is faster and lighter. That drives a progressive bootstrap. The compiler run on
-the interpreter compiles the compiler into a small-island compiler; that compiler compiles the compiler
-into a larger-island compiler; and so on, each stage compiled by the previous, climbing toward the
-largest island. Table~\ref{tab:self-compilation} expands the linear climb into a matrix: every version
-of the compiler (the interpreter, then the compiler self-compiled at each island depth) compiles the
-compiler's own source at every target depth, each in a fresh process, reporting wall-clock time and peak
-resident memory. The linear bootstrap is the matrix's near-diagonal; the off-diagonal shows whether a
-faster, larger-island engine reaches a target depth the interpreter cannot. Within a column a
-larger-island engine is the faster, lighter one, so a row that does not improve on the one above would
-mean the engine's islands are not running natively.
+depth compiles more of the compiler as native call-by-value islands and leaves less to the interpreter.
+A progressive bootstrap tests whether that makes the compiler faster: the compiler run on the
+interpreter compiles the compiler into a small-island compiler; that compiler compiles the compiler into
+a larger-island compiler; and so on, each stage compiled by the previous, climbing to the largest island
+at depth 192, where the two deep combinators below become whole islands.
+Table~\ref{tab:self-compilation} expands the climb into a matrix: every version of the compiler (the
+interpreter, then the compiler self-compiled at each island depth) compiles the compiler's own source at
+every target depth, each in a fresh process, reporting wall-clock time and peak resident memory.
 
 \begin{table}[h]
 \centering
@@ -1301,12 +1298,19 @@ fresh process compiling the compiler's own source. The linear bootstrap is the d
 \label{tab:self-compilation}
 \end{table}
 
-The compiler's maximal islands are small, at most 36 nodes and all shallower than depth 32, except for
-two deep combinators of 264 and 345 nodes at depth 188 and 191, with no maximal island between, so the
-largest rung of the climb is a target depth past 188. Reaching that rung from the interpreter alone is
-the costly case the bootstrap is meant to relieve: typing every closed sub-term to decide islands
-accumulates in one interner session, whereas a faster larger-island engine compiles the two deep
-combinators by running its own islands natively.
+The matrix is flat down every column: for a fixed target depth the interpreter and every self-compiled
+engine take the same time and the same memory, so the cost is set by the target depth alone, not by
+which version of the compiler does the compiling. The reason is that the compiler's hot path is its type
+checker, which decides for each closed sub-term whether it is a simply-typable island; that check is
+driven by the same Y/Z recursion that makes the compiler untypable, so the recursion can never itself be
+a call-by-value island and runs interpreted identically in every engine. The islands a self-compiled
+engine carries are the typable leaf combinators off that hot path, so they leave the cost unchanged.
+The cost grows only with the target depth, because a deeper target types deeper sub-terms: the
+maximal islands are small (at most 36 nodes, all shallower than depth 32) except for the two deep
+combinators of 264 and 345 nodes at depth 188 and 191, which the depth-192 column types and compiles.
+Making self-compilation pay would mean compiling the recursive hot path, which needs the lazy
+(call-by-name or call-by-need) islands that admit a normalizing but untypable recursion, a target the
+analysis does not yet certify.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so

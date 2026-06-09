@@ -33,10 +33,10 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _OUTPUT = _REPO_ROOT / "first-order" / "generated" / "self-compilation-benchmark.tex"
 
-# Increasing island depths. Configurable via FOL_BENCH_SIZES (comma-separated); the default stays below
-# the depth-188/191 monster combinators so the matrix is feasible to run end to end.
-_SIZES = tuple(int(size) for size in os.environ.get("FOL_BENCH_SIZES", "8,32,128").split(","))
-_CELL_TIMEOUT = int(os.environ.get("FOL_BENCH_TIMEOUT", "1800"))
+# Increasing island depths (configurable via FOL_BENCH_SIZES, comma-separated). 0 is the flattened AST
+# (no islands); 192 admits the deepest combinators (depth 191), the largest island.
+_SIZES = tuple(int(size) for size in os.environ.get("FOL_BENCH_SIZES", "0,8,32,64,128,192").split(","))
+_CELL_TIMEOUT = int(os.environ.get("FOL_BENCH_TIMEOUT", "600"))
 
 
 def _build_source():
@@ -104,12 +104,14 @@ def main() -> None:
     out_dir = _OUTPUT.parent / "stages"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Phase 1: the bootstrap climb -- produce each engine file from the previous engine.
+    # Phase 1: the bootstrap climb -- each engine file produced by the previous engine. Reuse an engine
+    # file that already exists (the committed stages), so the matrix run need not re-bootstrap them.
     engines: "list[tuple[str, str]]" = [("interpreter", "INTERP")]
     previous = "INTERP"
     for size in _SIZES:
         engine_path = out_dir / f"_generated_compiler_island_{size}.py"
-        _run_cell(previous, size, str(engine_path))
+        if not engine_path.exists():
+            _run_cell(previous, size, str(engine_path))
         engines.append((f"island {size}", str(engine_path)))
         previous = str(engine_path)
 
