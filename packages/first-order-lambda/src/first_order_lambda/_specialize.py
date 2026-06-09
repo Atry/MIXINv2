@@ -283,6 +283,14 @@ def _compile_call_by_value(quoted: "object") -> "object":
     return app(app(app(app(CODEGEN, _option(Runtime.CALL_BY_VALUE)), SCOTT_NIL), SCOTT_NIL), quoted)
 
 
+def _compile_call_by_name(quoted: "object") -> "object":
+    """The quoted sub-term compiled to a call-by-name expression by ``CODEGEN`` (it refers to the free
+    names ``force``/``Thunk``). A lazy island splices this; the load-time ``Thunk`` choice (``_NeedThunk``
+    by default = call-by-need, ``_LazyThunk`` = call-by-name) decides the regime, the same source either
+    way."""
+    return app(app(app(app(CODEGEN, _option(Runtime.CALL_BY_NAME)), SCOTT_NIL), SCOTT_NIL), quoted)
+
+
 # island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).
 # An island is closed, shallow enough to type cheaply, and simply typable. The depth bound gates the
 # expensive algorithm-W: a deep closed sub-term (a large combinator) is left reconstructed as an
@@ -313,22 +321,53 @@ def _island_term(depth_bound: "object | None") -> "object":
     ))
 
 
+# The lazy-island fuel: NORMALIZES certifies a FINITE FULL normal form within this many steps, the same
+# notion the eager read-back (value_island_by_name -> _quote_lazy) needs to terminate. A sub-term that
+# does not normalize within the fuel (a fixpoint combinator such as Z, which has no normal form) is
+# conservatively left interpreted, NEVER made a lazy island. This is what keeps the lazy tier sound: it
+# never turns a converging term into a divergent (or fuel-exhausting) read-back.
+_LAZY_ISLAND_FUEL: "object" = int_to_binnat(DEFAULT_FUEL)
+
+
+def _lazy_island_term(depth_bound: "object | None") -> "object":
+    """The per-sub-term LAZY island certificate at ``depth_bound`` (``None`` = unbounded): closed AND
+    (shallow enough) AND NORMALIZES (a finite full normal form within ``_LAZY_ISLAND_FUEL``). Tested only
+    after the call-by-value certificate fails, so it fires on a closed, shallow, untypable-but-normalizing
+    sub-term. The AND short-circuits, so the expensive NORMALIZES runs only on a closed (and shallow)
+    sub-term."""
+    normalizes = lam(lambda quoted: _ap(NORMALIZES, _LAZY_ISLAND_FUEL, quoted))
+    if depth_bound is None:
+        return lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(normalizes, quoted)))
+    depth_ok = depth_at_most(depth_bound)
+    return lam(lambda quoted: _ap(
+        AND, app(IS_CLOSED, quoted), _ap(AND, app(depth_ok, quoted), app(normalizes, quoted)),
+    ))
+
+
 def _reconstruct_term(depth_bound: "object | None") -> "object":
-    """reconstruct quoted -> generic Python AST at ``depth_bound``. A maximal island becomes
-    value_island(<call-by-value>); otherwise the node is rebuilt with make_var/make_lam/make_app,
-    recursing. Path-free, so the interpreter tables it per distinct sub-term and the result is a shared
-    graph."""
-    island = _island_term(depth_bound)
+    """reconstruct quoted -> generic Python AST at ``depth_bound``. A maximal closed simply-typable island
+    becomes value_island(<call-by-value>); failing that, a maximal closed normalizing-but-untypable island
+    becomes value_island_by_name(<call-by-name>) (the lazy tier); otherwise the node is rebuilt with
+    make_var/make_lam/make_app, recursing. The call-by-value certificate is tested first (a typable term
+    is strongly normalizing, so strict is safe and optimal); the lazy certificate is the sound fallback
+    for an untypable term WITH a finite normal form. Path-free, so the interpreter tables it per distinct
+    sub-term and the result is a shared graph."""
+    cbv_island = _island_term(depth_bound)
+    lazy_island = _lazy_island_term(depth_bound)
     return app(Z, lam(lambda self_recursion: lam(lambda quoted: _ap(
-        app(island, quoted),
+        app(cbv_island, quoted),
         _runtime_call("value_island", (_compile_call_by_value(quoted),)),
         _ap(
-            quoted,
-            lam(lambda index: _runtime_call("make_var", (_pybuild.py_constant_int(index),))),
-            lam(lambda body: _runtime_call("make_lam", (app(self_recursion, body),))),
-            lam(lambda function: lam(lambda argument: _runtime_call(
-                "make_app", (app(self_recursion, function), app(self_recursion, argument)),
-            ))),
+            app(lazy_island, quoted),
+            _runtime_call("value_island_by_name", (_compile_call_by_name(quoted),)),
+            _ap(
+                quoted,
+                lam(lambda index: _runtime_call("make_var", (_pybuild.py_constant_int(index),))),
+                lam(lambda body: _runtime_call("make_lam", (app(self_recursion, body),))),
+                lam(lambda function: lam(lambda argument: _runtime_call(
+                    "make_app", (app(self_recursion, function), app(self_recursion, argument)),
+                ))),
+            ),
         ),
     ))))
 

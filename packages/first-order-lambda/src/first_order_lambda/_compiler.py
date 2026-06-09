@@ -337,14 +337,20 @@ def value_island_by_name(compiled_value) -> Node:
     return make_native(lambda: _quote_lazy(compiled_value, 0, _LAZY_ISLAND_READBACK_FUEL), 0)
 
 
-def interpret_globals() -> dict:
+def interpret_globals(call_by_need: bool = True) -> dict:
     """The evaluation globals for interpret-headed source: node constructors, ``interpret``, the
     universal ``value_island`` reify, and the lazy tier (``value_island_by_name`` and the
-    ``force``/``Thunk`` a call-by-name island's body refers to)."""
+    ``force``/``Thunk`` a call-by-name island's body refers to).
+
+    ``call_by_need`` (the default) binds ``Thunk`` to the memoising ``_NeedThunk`` (each shared
+    sub-result computed once); ``call_by_need=False`` binds the recompute-on-force ``_LazyThunk``
+    (call-by-name). The lazy regime is this load-time ``Thunk`` choice: the generated source is identical
+    either way and both reach the same normal form, so only time and memory differ, never the output."""
     return {
         "make_var": make_var, "make_lam": make_lam, "make_app": make_app,
         "interpret": interpret, "value_island": value_island,
-        "value_island_by_name": value_island_by_name, "force": force, "Thunk": _LazyThunk,
+        "value_island_by_name": value_island_by_name, "force": force,
+        "Thunk": _NeedThunk if call_by_need else _LazyThunk,
     }
 
 
