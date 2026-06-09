@@ -118,7 +118,7 @@ lambda v: lambda v_2: v(v(v(v(v(v(v_2))))))
 (lambda v_0: lambda v_2_0: lambda v_2_2_0: lambda v_2_2_2_0: v_2_2_0(v_0)(v_2_0))(lambda v_1: lambda v_2_1: v_1(v_2_1))
 \end{lstlisting}
 
-\medskip\noindent\textbf{Self-hosting: the specialized interpret-with-islands form.}\quad A term with no whole-graph by-value certificate compiles to interpret-headed Python: it is reconstructed with the interpreter's node constructors and handed back to the interpreter, with its closed, shallow, simply-typable sub-terms spliced as compiled by-value islands. The compiler itself compiles this way; the full self-compiled compiler is committed as the generated module \texttt{\_generated\_compiler.py} (run by the interpreter on a quoted program, it emits the same Python as the in-process compiler). Here is a small term in the same form, $\mathtt{factorial}\,(2\times 3)$, whose multiplication sub-term is spliced as a by-value island:
+\medskip\noindent\textbf{Self-hosting: the specialized interpret-with-islands form.}\quad A term with no whole-graph by-value certificate compiles to interpret-headed Python: it is reconstructed with the interpreter's node constructors and handed back to the interpreter, with its closed, shallow, simply-typable sub-terms spliced as compiled by-value islands. The compiler itself compiles this way; the full self-compiled compilers are committed under \texttt{first-order/generated/stages/} (one per island depth and Python version; run by the interpreter on a quoted program, each emits the same Python as the in-process compiler). Here is a small term in the same form, $\mathtt{factorial}\,(2\times 3)$, whose multiplication sub-term is spliced as a by-value island:
 \begin{lstlisting}
 _k0 = make_var(1)
 _k1 = make_var(0)

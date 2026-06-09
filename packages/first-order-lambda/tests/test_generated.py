@@ -1,32 +1,19 @@
-"""The committed generated artifacts must match what the generator produces now (no drift).
+"""The committed generated LaTeX fragment must match what the generator produces now (no drift).
 
-The compiler-example LaTeX fragment and the self-compiled compiler module are committed so the paper
-build and the bootstrap test do not run Python generation. These tests assert each committed file is
-exactly the current builder output, so a compiler change that is not regenerated fails here. The
-default committed compiler uses a small island depth bound, so this regeneration is cheap; larger
-island artifacts are generated and checked separately.
+The compiler-example LaTeX fragment is committed so the paper build stays pure LaTeX. This test asserts
+the committed file is exactly the current builder output, so a compiler change that is not regenerated
+fails here. (The self-compiled compilers are the staged compilers under
+``first-order/generated/stages/``, regenerated and checked by the multi-stage bootstrap, not here.)
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from first_order_lambda import _generate, _generated_compiler, _generated_compiler_large
+from first_order_lambda import _generate
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _LATEX_FRAGMENT = _REPO_ROOT / "first-order" / "generated" / "compiler-examples.tex"
-
-
-def test_generated_compiler_module_is_current() -> None:
-    committed = Path(_generated_compiler.__file__).read_text()
-    assert committed == _generate.generated_compiler_module_text()
-
-
-def test_generated_large_compiler_module_is_current() -> None:
-    # The larger-island compiler (island depth bound 128): more and bigger islands than the small
-    # default, still cheap to regenerate because the two monster combinators are excluded.
-    committed = Path(_generated_compiler_large.__file__).read_text()
-    assert committed == _generate.generated_compiler_large_module_text()
 
 
 def test_generated_latex_fragment_is_current() -> None:

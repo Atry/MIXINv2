@@ -11,7 +11,6 @@ and that its output runs.
 from __future__ import annotations
 
 from first_order_lambda._compiler import (
-    CODEGEN,
     codegen,
     compile_with_interpreted,
     compiled_compiler,
@@ -40,24 +39,3 @@ def test_self_compiled_output_runs() -> None:
     successor = lambda k: k + 1
     source = compile_with_interpreted(compiler, build(church(3)))
     assert eval(source)(successor)(0) == 3
-
-
-def test_interpreter_and_committed_compiler_agree_on_self() -> None:
-    # The compiler run on the interpreter and the committed self-compiled compiler (the generated
-    # interpret-headed Python in A-normal form) compile the compiler ITSELF to the same Python.
-    from first_order_lambda._generated_compiler import compiled_compiler as committed_compiler
-
-    interpreter_output = codegen(build(CODEGEN))
-    committed_output = compile_with_interpreted(committed_compiler, build(CODEGEN))
-    assert committed_output == interpreter_output
-
-
-def test_large_island_compiler_is_a_working_compiler() -> None:
-    # The larger-island committed compiler (island depth bound 128) is the same CODEGEN, just with more
-    # and bigger sub-terms compiled as by-value islands rather than interpreted, so it compiles programs
-    # to exactly the same Python as the reference compiler.
-    from first_order_lambda._generated_compiler_large import compiled_compiler as large_compiler
-
-    for term in (IDENTITY, KESTREL, church(3), app(app(PLUS, church(1)), church(2))):
-        node = build(term)
-        assert compile_with_interpreted(large_compiler, node) == codegen(node)

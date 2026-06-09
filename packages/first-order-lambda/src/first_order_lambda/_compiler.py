@@ -725,9 +725,9 @@ def compiled_compiler() -> Node:
     """The self-hosted compiler as an interpreter ``Node``: CODEGEN handed back to the interpreter.
 
     CODEGEN is untypable, so the interpret target is the CODEGEN node itself; ``compile_with_interpreted``
-    runs it as a compiler. (The committed standalone source artifact, ``_generated_compiler.py``, is the
-    business of the bootstrap stage; the generic-encoding CODEGEN's full reconstruction exceeds Python's
-    parser limit, so that artifact is reworked there. In process, the node IS the self-compiled compiler.)
+    runs it as a compiler. In process, the node IS the self-compiled compiler. (The committed self-hosted
+    compilers are the staged compilers under ``first-order/generated/stages/``, the COMPILE term compiled
+    at each island depth and serialized to A-normal form by the multi-stage bootstrap.)
     """
     return build(CODEGEN)
 
