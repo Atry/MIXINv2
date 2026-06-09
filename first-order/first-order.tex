@@ -1314,17 +1314,19 @@ the same $Z$ fixpoint that makes the compiler untypable. As a value that recursi
 it can be neither a call-by-value island (which requires strong normalization) nor a lazy island (which
 requires a finite normal form); it stays interpreted in every engine. Its per-step body is a different
 matter: that body is a closed term that uses the recursive call only as a parameter (no self-application),
-so several of the analysis step bodies are simply typable and are compiled as islands. They do not change
-the cost, though, because of the island-application boundary: a function island is read back to a
-$\lambda$ node (the reify is nullary), and the interpreter then applies that node on every step, so the
-native code runs once to produce the node and the per-application work stays interpreted. That, not the
-size of the islands, is why the matrix is flat and the two regimes coincide. The cost grows only with the
-target depth, because a deeper target types deeper sub-terms. Compiling part of the hot path is therefore
-possible but not yet paying: it needs a positive-arity island that runs the step body natively on each
-application (reflecting the node arguments to host values and reifying the result, falling back to
-interpretation on a non-productive cycle), and whether that boundary nets a speedup against the small
-step bodies is an empirical question. Compiling the recursion scheme itself, by contrast, no sound island
-can do.
+so several of the analysis step bodies are simply typable and are compiled as islands. They still do not
+change the cost, and measuring a reflect boundary shows why. A typable step body compiled to native code
+runs with no interpreter involvement when its arguments are host values. In the hot path, though, its
+arguments arrive from the untypable driver as interpreter nodes, and the node-to-host bridge a positive
+arity island would need so the step body can branch on them is itself interpreter-driven: it forces each
+sub-result back through the interpreter (one application per step, so interpreter speed), and a variant
+that does not force diverges under read-back. So the per-step work is performed by the interpreter either
+way; the native code helps only where the driver and the data are already native, which the untypable
+recursion driver is not. That, not the size of the islands, is why the matrix is flat and the two regimes
+coincide. The cost grows only with the target depth, because a deeper target types deeper sub-terms.
+A real speedup would need the recursion itself to run natively, that is an analysis whose recursion is
+structurally total and so an island in its own right, a redesign of the analysis rather than a
+compilation option.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so
