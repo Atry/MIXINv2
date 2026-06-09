@@ -57,9 +57,12 @@ def stage_filename(size: int) -> str:
     return f"_generated_compiler_island_{size}_{_python_tag()}.py"
 
 
-def _load(module_text: str) -> object:
-    """Execute a generated compiler module and return its ``compiled_compiler`` node (the engine)."""
-    namespace = dict(interpret_globals())
+def _load(module_text: str, *, call_by_need: bool = True) -> object:
+    """Execute a generated compiler module and return its ``compiled_compiler`` node (the engine).
+
+    ``call_by_need`` selects the lazy-island regime via the module's ``Thunk`` (memoise vs recompute);
+    the engine's output is identical either way, so this only changes how fast the engine runs."""
+    namespace = dict(interpret_globals(call_by_need=call_by_need))
     exec(module_text, namespace)  # noqa: S102 - running our own generated compiler
     return namespace["compiled_compiler"]
 

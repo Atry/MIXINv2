@@ -47,10 +47,15 @@ def _build_source():
     return run_in_large_stack(lambda: build(COMPILE))
 
 
-def _cell(engine_spec: str, target: int, write_path: "str | None") -> None:
+def _cell(engine_spec: str, target: int, regime: str, write_path: "str | None") -> None:
     """Run one cell: ``engine_spec`` (``INTERP`` or an engine module path) compiles the compiler at
-    island depth ``target``. Optionally write the output to ``write_path`` (it is the next engine). Print
-    ``<islands> <seconds> <peak_gb> <chars>``."""
+    island depth ``target`` under the lazy ``regime`` (``need`` or ``name``). Optionally write the output
+    to ``write_path`` (it is the next engine). Print ``<cbv> <lazy> <seconds> <peak_gb> <chars>``.
+
+    The regime is the loaded engine's lazy-island ``Thunk`` (call-by-need memoise vs call-by-name
+    recompute); it changes only how fast an engine WITH lazy islands runs, never its output. The
+    ``INTERP`` row compiles in-process (the lambda ``COMPILE`` interpreted), which does not execute lazy
+    islands, so it is regime-independent."""
     from first_order_lambda._multistage import _load, _run_compiler
     from first_order_lambda._specialize import SpecializedOption, compile
 
@@ -60,24 +65,29 @@ def _cell(engine_spec: str, target: int, write_path: "str | None") -> None:
     if engine_spec == "INTERP":
         output = compile(source, option)
     else:
-        output = _run_compiler(_load(Path(engine_spec).read_text()), source, option)
+        engine = _load(Path(engine_spec).read_text(), call_by_need=(regime == "need"))
+        output = _run_compiler(engine, source, option)
     elapsed = time.perf_counter() - start
     peak_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
     if write_path is not None:
         Path(write_path).write_text(output)
-    print(f"{output.count('value_island(')} {elapsed:.6f} {peak_gb:.6f} {len(output)}")
+    cbv = output.count("value_island(")
+    lazy = output.count("value_island_by_name(")
+    print(f"{cbv} {lazy} {elapsed:.6f} {peak_gb:.6f} {len(output)}")
 
 
-def _run_cell(engine_spec: str, target: int, write_path: "str | None" = None) -> "tuple[float, float] | None":
+def _run_cell(
+    engine_spec: str, target: int, regime: str = "need", write_path: "str | None" = None,
+) -> "tuple[float, float] | None":
     """Spawn a worker for one cell; return (seconds, peak_gb) or None if it timed out / failed."""
-    command = [sys.executable, str(Path(__file__).resolve()), "--cell", engine_spec, str(target)]
+    command = [sys.executable, str(Path(__file__).resolve()), "--cell", engine_spec, str(target), regime]
     if write_path is not None:
         command.append(write_path)
     try:
         done = subprocess.run(command, check=True, capture_output=True, text=True, timeout=_CELL_TIMEOUT)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
-    _islands, seconds, peak_gb, _chars = done.stdout.split()
+    _cbv, _lazy, seconds, peak_gb, _chars = done.stdout.split()
     return float(seconds), float(peak_gb)
 
 
@@ -100,6 +110,17 @@ def _tabular(rows: "list[tuple[str, list[tuple[float, float] | None]]]", metric:
     ])
 
 
+# The two lazy-island regimes the matrix is doubled across: call-by-need (memoise) and call-by-name
+# (recompute). They differ only for an engine that contains lazy islands (depth >= 64 here); for an
+# engine with none (the interpreter and the small-island engines) both regimes coincide, so that engine
+# is measured once and the value is shared between the two regime blocks.
+_REGIMES = tuple(os.environ.get("FOL_BENCH_REGIMES", "need,name").split(","))
+
+
+def _has_lazy_islands(engine_spec: str) -> bool:
+    return engine_spec != "INTERP" and "value_island_by_name(" in Path(engine_spec).read_text()
+
+
 def main() -> None:
     from first_order_lambda._multistage import stage_filename
 
@@ -108,34 +129,50 @@ def main() -> None:
 
     # Phase 1: the bootstrap climb -- each engine file produced by the previous engine. Reuse an engine
     # file that already exists (the committed stages), so the matrix run need not re-bootstrap them. The
-    # filename is Python-version tagged, so a 3.13 run regenerates rather than reusing a 3.11 file.
+    # filename is Python-version tagged, so a 3.13 run regenerates rather than reusing a 3.11 file. The
+    # output is regime-independent, so the engines are bootstrapped under call-by-need.
     engines: "list[tuple[str, str]]" = [("interpreter", "INTERP")]
     previous = "INTERP"
     for size in _SIZES:
         engine_path = out_dir / stage_filename(size)
         if not engine_path.exists():
-            _run_cell(previous, size, str(engine_path))
+            _run_cell(previous, size, "need", str(engine_path))
         engines.append((f"island {size}", str(engine_path)))
         previous = str(engine_path)
 
-    # Phase 2: the matrix -- every engine compiles the compiler at every target depth.
-    rows = [(name, [_run_cell(spec, target) for target in _SIZES]) for name, spec in engines]
+    # Phase 2: the matrix, doubled across the lazy regimes. A regime-insensitive engine (no lazy islands)
+    # is measured once and shared; only the lazy-bearing engines are re-measured per regime.
+    measured: "dict[tuple[str, int, str], tuple[float, float] | None]" = {}
+    for _name, spec in engines:
+        sensitive = _has_lazy_islands(spec)
+        for target in _SIZES:
+            if sensitive:
+                for regime in _REGIMES:
+                    measured[(spec, target, regime)] = _run_cell(spec, target, regime)
+            else:
+                once = _run_cell(spec, target, _REGIMES[0])
+                for regime in _REGIMES:
+                    measured[(spec, target, regime)] = once
 
-    table = "\n".join([
-        "% Generated by first-order/benchmark_self_compilation.py. Do not edit.",
-        "% Time (s), rows = engine version, columns = target island size:",
-        _tabular(rows, metric=0),
-        "",
-        "% Peak memory (GB), rows = engine version, columns = target island size:",
-        _tabular(rows, metric=1),
-        "",
-    ])
-    _OUTPUT.write_text(table)
+    parts = ["% Generated by first-order/benchmark_self_compilation.py. Do not edit.",
+             "% Matrix doubled across lazy regimes; rows = engine version, columns = target island size."]
+    for regime in _REGIMES:
+        rows = [(name, [measured[(spec, target, regime)] for target in _SIZES]) for name, spec in engines]
+        label = "call-by-need (memoise)" if regime == "need" else "call-by-name (recompute)"
+        parts += [
+            "",
+            f"% Time (s), lazy-island regime = {label}:",
+            _tabular(rows, metric=0),
+            "",
+            f"% Peak memory (GB), lazy-island regime = {label}:",
+            _tabular(rows, metric=1),
+        ]
+    _OUTPUT.write_text("\n".join(parts) + "\n")
     print(f"wrote {_OUTPUT}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 4 and sys.argv[1] == "--cell":
-        _cell(sys.argv[2], int(sys.argv[3]), sys.argv[4] if len(sys.argv) > 4 else None)
+    if len(sys.argv) >= 5 and sys.argv[1] == "--cell":
+        _cell(sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else None)
     else:
         main()
