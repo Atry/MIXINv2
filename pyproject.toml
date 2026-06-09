@@ -4,7 +4,7 @@ version = "0.0.0.dev0"
 description = "A dependency injection framework with pytest-fixture syntax, plus a configuration language for declarative programming"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [{ name = "Yang, Bo", email = "yang-bo@yang-bo.com" }]
 keywords = ["mixinv2", "mixin", "composition", "dependency-injection"]
 dependencies = ["mixinv2", "mixinv2-library", "mixinv2-examples", "first-order-lambda"]
@@ -13,6 +13,13 @@ dependencies = ["mixinv2", "mixinv2-library", "mixinv2-examples", "first-order-l
 Repository = "https://github.com/Atry/MIXINv2"
 
 [tool.uv]
+# Supported target environments: CPython 3.11 and PyPy 3.11 (PyPy 7.3.20 implements the
+# 3.11 language level). uv produces a universal lock satisfying both interpreter
+# implementations at the requires-python 3.11 floor.
+environments = [
+    "implementation_name == 'cpython'",
+    "implementation_name == 'pypy'",
+]
 sources = { mixinv2 = { workspace = true }, mixinv2-library = { workspace = true }, mixinv2-examples = { workspace = true }, overlay-language = { workspace = true }, overlay-library = { workspace = true }, fixpoints = { workspace = true }, first-order-lambda = { workspace = true } }
 cache-keys = [
     { file = "pyproject.toml" },

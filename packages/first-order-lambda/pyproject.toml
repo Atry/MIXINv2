@@ -18,7 +18,7 @@ dynamic = ["version"]
 description = "A least-fixpoint first-order-shape-relation interpreter for the lambda-calculus"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [{ name = "Yang, Bo", email = "yang-bo@yang-bo.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",

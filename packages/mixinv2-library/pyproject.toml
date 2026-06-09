@@ -17,7 +17,7 @@ name = "mixinv2-library"
 dynamic = ["version", "dependencies"]
 description = "The MIXINv2 standard library — built-in definitions for MIXINv2"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [
     {name = "Yang, Bo", email = "yang-bo@yang-bo.com"},
 ]

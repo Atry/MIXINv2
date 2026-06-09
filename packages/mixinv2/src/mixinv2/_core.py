@@ -566,9 +566,8 @@ from typing import (
     TypeVar,
     cast,
     final,
-    override,
-    assert_never,
 )
+from typing_extensions import assert_never, override
 
 
 if TYPE_CHECKING:
