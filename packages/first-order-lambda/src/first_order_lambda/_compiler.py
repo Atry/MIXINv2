@@ -726,8 +726,8 @@ def compiled_compiler() -> Node:
 
     CODEGEN is untypable, so the interpret target is the CODEGEN node itself; ``compile_with_interpreted``
     runs it as a compiler. In process, the node IS the self-compiled compiler. (The committed self-hosted
-    compilers are the staged compilers under ``first-order/generated/stages/``, the COMPILE term compiled
-    at each island depth and serialized to A-normal form by the multi-stage bootstrap.)
+    compilers are the staged compilers in this package's ``_generated_stages`` directory, the COMPILE term
+    compiled at each island depth and serialized to A-normal form by the multi-stage bootstrap.)
     """
     return build(CODEGEN)
 

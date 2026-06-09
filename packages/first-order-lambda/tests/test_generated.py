@@ -2,8 +2,8 @@
 
 The compiler-example LaTeX fragment is committed so the paper build stays pure LaTeX. This test asserts
 the committed file is exactly the current builder output, so a compiler change that is not regenerated
-fails here. (The self-compiled compilers are the staged compilers under
-``first-order/generated/stages/``, regenerated and checked by the multi-stage bootstrap, not here.)
+fails here. (The self-compiled compilers are the staged compilers in the package's
+``_generated_stages`` directory, regenerated and checked by the multi-stage bootstrap, not here.)
 """
 
 from __future__ import annotations

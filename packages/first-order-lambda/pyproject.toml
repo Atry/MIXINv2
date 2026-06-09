@@ -28,6 +28,10 @@ classifiers = [
 ]
 dependencies = ["fixpoints", "mixinv2"]
 
+[project.scripts]
+first-order-lambda-generate-examples = "first_order_lambda._generate_examples:main"
+first-order-lambda-benchmark = "first_order_lambda._benchmark:main"
+
 [tool.uv]
 sources = { fixpoints = { workspace = true }, mixinv2 = { workspace = true } }
 
