@@ -627,7 +627,7 @@ Section~\ref{sec:bridge}.
 
 \begin{proof}[Proof of Theorem~\ref{thm:unique}]
   By Lemma~\ref{lem:guarded}, $\Psi$ is a contraction on the complete space of
-  Lemma~\ref{lem:metric}, so by Banach's fixed-point theorem \citeTODO{banach} it has exactly
+  Lemma~\ref{lem:metric}, so by Banach's fixed-point theorem \cite{banach1922-operations} it has exactly
   one fixpoint $\behav$, and every iteration sequence converges to it. The particular
   sequence $\Psi^k(\lambda x.\bot)$ is increasing, since $\lambda x.\bot$ is least and $\Psi$
   is monotone, and converges to $\behav$ in $\mathrm{d}$; by Lemma~\ref{lem:metric} its least
@@ -767,7 +767,7 @@ once. Interning is the transposition table of a game-playing program, with no ta
 Reachability and transitive closure over a directed graph, including one with cycles, are the least
 fixpoint of the immediate-consequence operator, terminating because the lattice is finite; the same
 shape decides reachability of a state in a finite transition system. Andersen-style points-to (alias)
-analysis \citeTODO{andersen, doop}, in which $\mathtt{pointsTo}(p,o)$ follows from
+analysis \cite{andersen1994-program-analysis-c, bravenboer2009-doop}, in which $\mathtt{pointsTo}(p,o)$ follows from
 $\mathtt{assign}(p,q)$ and $\mathtt{pointsTo}(q,o)$, is monotone Datalog, and a compiler reads it as
 the same boolean fixpoint. The cyclic graph $a\to b\to c\to a$ with $c\to d$, and the points-to
 program for $a=\mathtt{new}\,o_1;\,b=a;\,c=b$, are the clause sets
@@ -803,8 +803,8 @@ number of $a$s.
 \paragraph{Unification and recursive types.}
 Equality of two rational (cyclic) terms is decided by their behaviour through cycle-detecting
 bisimulation (Corollary~\ref{cor:decidable}). This is the decidable core shared by rational-tree
-unification \citeTODO{colmerauer} and equirecursive ($\mu$-) type equality
-\citeTODO{amadio-cardelli, brandt-henglein}: two constructions of one rational term read out
+unification \cite{colmerauer1984-trees} and equirecursive ($\mu$-) type equality
+\cite{amadio1993-subtyping-recursive-types, brandt1998-coinductive-type-equality}: two constructions of one rational term read out
 identically, and a different term reads out differently. For instance $Y\,(\mathtt{cons}\;0)$ and
 $Y\,(\lambda s.\,\mathtt{cons}\;0\;s)$ read out identically, while $Y\,(\mathtt{cons}\;1)$ differs.
 
@@ -818,7 +818,7 @@ behavioural identity the calculus folds on, but the moral is the same.
 
 \paragraph{Further instances.}
 The same rational core underlies others not reproduced here: equality saturation over e-graphs
-\citeTODO{egg, egglog} and binary decision diagrams \citeTODO{bryant}, both of which are interning
+\cite{willsey2021-egg, zhang2023-egglog} and binary decision diagrams \cite{bryant1986-bdd}, both of which are interning
 of a shared graph; garbage-collection reachability over a cyclic heap; abstract interpretation as a
 fixpoint over a finite abstract domain; and, with a non-trivial effect monad, the stationary
 distribution of a finite Markov chain. Each is a finite-state, regular, or finite-lattice-fixpoint
