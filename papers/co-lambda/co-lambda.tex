@@ -165,31 +165,19 @@ no way to notice that a pair has recurred, so it recomputes. Like the cyclic $\m
 unusable: one diverges, the other explodes.
 
 The resolution adds nothing to the calculus. We give an interpreter, and a compiler, for the
-pure $\lambda$-calculus under which these very programs, unchanged and with their standard
-meaning, run efficiently. Under them $Y\,(\mathtt{cons}\,0)$ evaluates to a finite cyclic graph,
-a single cell pointing to itself, and the unchanged $\mathtt{map}\,\mathtt{succ}$ over it
-terminates with the finite circle of ones, where ordinary evaluation runs forever; the term
-$\mathtt{ed}$ runs in $O(mn)$ time and space, with no memoization written. The reason is one
-idea. Read a program as an equation: it gives a value as one layer of data over sub-values that
-are themselves programs, and to solve it is to compute that value. Such a system, a state
-exposing one layer and naming its successor states, is a \emph{coalgebraic equation} (for the
-stream of zeros a state is a stream cell, its layer the head $0$, its successor the tail), and
-to evaluate a $\lambda$-term is to solve its equation. The evaluator we give, the
-\emph{solver}, \emph{tables} the states it has seen, and when a state recurs it reuses the
-table entry instead of expanding it again; states are interned, so a state assembled twice
-from the same parts is one object and its recurrence is visible. A recurring cyclic state
-closes a back edge into a finite graph, and a recurring subproblem is computed once, giving
-the dynamic-programming table. What makes this computable is how states are compared: a state
-stands for a program, but it is compared as a first-order graph node, the syntax it is built
-from, never as the function it computes. Node identity is a decidable pointer check, while the
-only identity available on functions, $\beta$-equality, is undecidable. The recognition is the solver's, never an operation a term performs, so the calculus
-stays pure.\footnote{The interpreter compares nodes by identity as a step of evaluation, not as
-an operation any $\lambda$-term can perform; no term gains reference equality, so referential
-transparency is preserved.} And the solution is not checked against the meaning; it \emph{is}
-the meaning: what a program denotes is, by definition, the tree its equation unfolds to, and
-for the $\lambda$-calculus that tree is the textbook lazy meaning of a term
-(Section~\ref{sec:bridge}), so computing the solution cannot change the semantics. We solve one equation by node identity, and
-never compare two programs for equal meaning: the point the title turns on.
+pure $\lambda$-calculus under which these very programs run efficiently, their meaning unchanged:
+$Y\,(\mathtt{cons}\,0)$ evaluates to a finite cyclic graph, $\mathtt{map}\,\mathtt{succ}$ over it
+to the finite circle of ones, and $\mathtt{ed}$ in $O(mn)$ time and space. An implementation
+accompanies the paper\anon[ as supplementary material]{, openly
+available at \url{https://github.com/Atry/MIXINv2}~\cite{colambda}}. The one idea is to read a
+program as a \emph{coalgebraic equation}, a state exposing one
+layer of data over its successor states, and let the $\lambda$-calculus be its \emph{solver}: it
+tables the states it has seen and folds a recurrence on the decidable identity of first-order
+graph nodes, the syntax a state is built from, where the only identity on the functions they
+compute, $\beta$-equality, is undecidable. The recognition is the solver's, not an operation a
+term performs, so the calculus stays pure. And the solution is not checked against the meaning,
+it \emph{is} the meaning: what a program denotes is by definition the tree its equation unfolds
+to, so computing the solution cannot change the semantics (Section~\ref{sec:bridge}).
 
 The construction is not special to streams, strings, or the $\lambda$-calculus. The tabling
 needs only states that expose layers and name successor states (Section~\ref{sec:coalgebras});
@@ -226,20 +214,15 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
     \emph{uniquely solved} (least equals greatest, so induction and coinduction coincide and
     the least fixpoint does real work only in deciding an unproductive loop as $\bot$,
     Theorem~\ref{thm:unique}, Remarks~\ref{rem:compact}, \ref{rem:leastessential}).
-  \item \emph{The instance.} Head normalisation of the pure $\lambda$-calculus is one such
-    equation (Sections~\ref{sec:bridge}, \ref{sec:application}): an ordinary $\mathtt{map}$ folds a
-    circular list into a circular list, and a naive walk terminates where evaluation diverges.
+  \item \emph{Instances.} Head normalisation of the pure $\lambda$-calculus is one such equation,
+    the interpreter (Sections~\ref{sec:bridge}, \ref{sec:application}), on which an ordinary
+    $\mathtt{map}$ folds a circular list into a circular list and a naive walk terminates where
+    evaluation diverges; because any coalgebra Scott-encodes, the one interpreter is also a small
+    domain-specific language solving Datalog, graph reachability and points-to analysis, minimax
+    search, and dynamic programming (Appendix~\ref{app:dsl}); and compilation is itself such an
+    equation, the same interpreter solving it into a self-hosting compiler to Python
+    (Appendix~\ref{app:compiler}).
 \end{itemize}
-
-\paragraph{Supplementary material}
-An executable interpreter accompanies the paper.\anon[ It is included as supplementary
-material.]{ It is openly available at \url{https://github.com/Atry/MIXINv2}~\cite{colambda}.} It
-realises the construction directly: states are interned so that identity is a pointer test, the
-collapse of silent steps is a least fixpoint, and tabling folds on node identity. The examples
-of this paper are reproduced as tests: $Y\,(\mathtt{cons}\,0)$ folds to a finite circular graph,
-$\Omega$ (the classic looping term) and $Y\,(\lambda x.x)$ are decided as $\bot$, the naive walk
-terminates over the circular stream where ordinary evaluation loops, and the $\mathtt{map}$ above
-folds a circle into a circle (Sections~\ref{sec:bridge}, \ref{sec:application}).
 
 % =====================================================================
 \section{The Method}\label{sec:method}
