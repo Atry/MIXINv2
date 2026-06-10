@@ -1,9 +1,0 @@
-# Everything in this directory is machine-generated from the first_order_lambda
-# compiler; do not edit by hand. Regenerate with (console scripts, or python -m):
-#   compiler-examples.tex:
-#     first-order-lambda-generate-examples   (python -m first_order_lambda._generate_examples)
-#   self-compilation-benchmark.tex:
-#     first-order-lambda-benchmark            (python -m first_order_lambda._benchmark)
-# The staged compilers themselves are generated Python committed under
-# packages/first-order-lambda/src/first_order_lambda/_generated_stages/.
-* linguist-generated=true

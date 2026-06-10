@@ -443,12 +443,12 @@ topLevel@{ ... }: {
           '';
         };
 
-        # --- Supplementary material for the first-order-semantics paper ---
+        # --- Supplementary material for the co-lambda paper ---
         # A standalone bundle of co_lambda and its only workspace dependency,
         # fixpoints, with a minimal virtual-workspace root so a reviewer can resolve and run
         # it without the rest of MIXINv2.
 
-        firstOrderSupplementarySourceFiles = lib.fileset.toSource {
+        coLambdaSupplementarySourceFiles = lib.fileset.toSource {
           root = ../.;
           fileset = lib.fileset.unions [
             ../packages/co-lambda/src
@@ -463,8 +463,8 @@ topLevel@{ ... }: {
           ];
         };
 
-        firstOrderReviewerReadme = pkgs.writeText "README.md" ''
-          # First-Order Semantics for the lambda-Calculus -- Supplementary Material
+        coLambdaReviewerReadme = pkgs.writeText "README.md" ''
+          # co-lambda -- Supplementary Material
 
           This archive contains `co_lambda`, an executable first-order-shape-relation
           interpreter for the pure lambda-calculus, together with its only dependency
@@ -490,26 +490,26 @@ topLevel@{ ... }: {
           ```
         '';
 
-        firstOrderWorkspacePyproject = pkgs.writeText "pyproject.toml" ''
+        coLambdaWorkspacePyproject = pkgs.writeText "pyproject.toml" ''
           [tool.uv.workspace]
           members = ["packages/co-lambda", "packages/fixpoints"]
         '';
 
-        firstOrderSupplementaryMaterial = pkgs.stdenv.mkDerivation {
-          name = "first-order-supplementary-material.zip";
-          src = firstOrderSupplementarySourceFiles;
+        coLambdaSupplementaryMaterial = pkgs.stdenv.mkDerivation {
+          name = "co-lambda-supplementary-material.zip";
+          src = coLambdaSupplementarySourceFiles;
           nativeBuildInputs = [ pkgs.zip pkgs.unzip ];
 
           buildPhase = ''
             cd ..
-            mv source first-order-supplementary-material
-            cd first-order-supplementary-material
+            mv source co-lambda-supplementary-material
+            cd co-lambda-supplementary-material
 
             # A minimal virtual-workspace root over just the two packages, and a
             # reviewer-oriented README. No uv.lock: the reviewer locks the two-package
             # workspace fresh, avoiding references to the absent MIXINv2 members.
-            cp ${firstOrderWorkspacePyproject} pyproject.toml
-            cp ${firstOrderReviewerReadme} README.md
+            cp ${coLambdaWorkspacePyproject} pyproject.toml
+            cp ${coLambdaReviewerReadme} README.md
 
             # Anonymize identity in the package metadata (authors, repository URL).
             shopt -s globstar nullglob
@@ -520,18 +520,18 @@ topLevel@{ ... }: {
 
             cd ..
             zip -r --latest-time \
-              $TMPDIR/first-order-supplementary-material.zip \
-              first-order-supplementary-material
+              $TMPDIR/co-lambda-supplementary-material.zip \
+              co-lambda-supplementary-material
           '';
 
           installPhase = ''
-            cp $TMPDIR/first-order-supplementary-material.zip $out
+            cp $TMPDIR/co-lambda-supplementary-material.zip $out
           '';
 
           doInstallCheck = true;
           installCheckPhase = ''
             unzip $out -d $TMPDIR/verify
-            base=$TMPDIR/verify/first-order-supplementary-material
+            base=$TMPDIR/verify/co-lambda-supplementary-material
 
             # No identity leaks.
             ${assertNoIdentityLeak "$base"}
@@ -553,7 +553,7 @@ topLevel@{ ... }: {
         packages.mixinv2-dev-env = mixinv2-dev-env;
         packages.co-lambda-benchmark-pypy = coLambdaBenchmarkPypy;
         packages.supplementary-material = supplementaryMaterial;
-        packages.first-order-supplementary-material = firstOrderSupplementaryMaterial;
+        packages.co-lambda-supplementary-material = coLambdaSupplementaryMaterial;
 
         ml-ops.devcontainer.devenvShellModule = {
           packages = [ mixinv2-dev-env pkgs.uv ];

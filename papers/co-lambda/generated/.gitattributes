@@ -1,0 +1,9 @@
+# Everything in this directory is machine-generated from the co_lambda
+# compiler; do not edit by hand. Regenerate with (console scripts, or python -m):
+#   compiler-examples.tex:
+#     co-lambda-generate-examples   (python -m co_lambda._generate_examples)
+#   self-compilation-benchmark.tex:
+#     co-lambda-benchmark            (python -m co_lambda._benchmark)
+# The staged compilers themselves are generated Python committed under
+# packages/co-lambda/src/co_lambda/_generated_stages/.
+* linguist-generated=true

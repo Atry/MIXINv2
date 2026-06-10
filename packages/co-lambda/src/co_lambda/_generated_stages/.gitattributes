@@ -1,6 +1,6 @@
 # The staged self-compiled compilers in this directory are machine-generated Python: the COMPILE lambda
 # term compiled at each island depth, per Python version (the _py<ver> tag), by the multi-stage
 # bootstrap. Each contains compiled value islands (call-by-value and lazy). Do not edit by hand.
-# Regenerate with the console script first-order-lambda-benchmark
-# (python -m first_order_lambda._benchmark).
+# Regenerate with the console script co-lambda-benchmark
+# (python -m co_lambda._benchmark).
 * linguist-generated=true

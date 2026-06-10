@@ -1,7 +1,7 @@
 # co_lambda
 
 A first-order-shape-relation interpreter for the lambda-calculus, realizing the
-semantics of the paper `first-order/first-order.tex`, depending on `fixpoints`.
+semantics of the paper `papers/co-lambda/first-order.tex`, depending on `fixpoints`.
 
 A lambda-term's tree is the readout of a single first-order weak-head **shape relation** `Sh`
 over term positions. The shape at a position is single-valued, so there is no set to aggregate.

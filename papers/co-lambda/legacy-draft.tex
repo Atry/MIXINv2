@@ -202,7 +202,7 @@ which a term's behaviour is read by tabling the weak-head structure map (Definit
 whose least-fixpoint silent collapse decides an unproductive cycle as $\bot$ and whose reachable
 sub-coalgebra is the finite cyclic graph, printed with explicit back-references.\anon[ It is included
 as supplementary material.]{ It is openly available
-at \url{https://github.com/Atry/MIXINv2}~\cite{firstorderlambda}.} It realises the construction
+at \url{https://github.com/Atry/MIXINv2}~\cite{colambda}.} It realises the construction
 directly: the silent collapse $\outm$ as a least fixpoint (with a finite-budget first iterate as a
 policy flag), and the tabling that folds on structural identity, realised by interning so identity is
 a pointer test. It also provides the head structure map of Remark~\ref{rem:boehm} as a second
@@ -739,7 +739,7 @@ opening claim, so we give it in full; everything specialises the general develop
   keeps it (reading $\lambda x.\,\Omega$ as $\lambda x.\,\bot$), B\"ohm bottoms the whole term (reading
   it as $\bot$). The choice of normalisation is therefore denotational, not a difference in
   convergence. The accompanying implementation\anon[~(supplementary
-  material)]{~\cite{firstorderlambda}} realises both as least-fixpoint structure maps over the one
+  material)]{~\cite{colambda}} realises both as least-fixpoint structure maps over the one
   carrier and the one behaviour map, and checks both facts: $\lambda x.\,\Omega$ reads out as
   $\lambda x.\,\bot$ under weak head and as $\bot$ under head, while both readings terminate on the same
   terms and diverge on the same non-rational stream.
@@ -845,7 +845,7 @@ $\mathtt{map}\,f\;r$, and tabling folds it. The result is a finite circular list
 $\rho = \mathtt{cons}\;(f\,0)\;\rho$, every element transformed, where head reduction would map the
 infinite stream forever. The fold is lazy knot-tying: each cell is registered before its tail is
 recursed into, so the table supplies the back edge. On a finite list the same $\mathtt{map}$ is the
-ordinary one. The implementation\anon[~(supplementary material)]{~\cite{firstorderlambda}} reproduces
+ordinary one. The implementation\anon[~(supplementary material)]{~\cite{colambda}} reproduces
 both arms.
 
 \subsection{Memoising arbitrary programs}\label{sec:memo}
@@ -1040,7 +1040,7 @@ The terminating fragment of the construction, the rational behaviours, is exactl
 finite-state, regular, and least-fixpoint-over-a-finite-lattice computation, and a range of
 practical domains live there. Each domain below is a pure $\lambda$-term whose behaviour is
 rational, so the interpreter halts, and each is reproduced as a test\anon[~(supplementary
-material)]{~\cite{firstorderlambda}}. Two reusable shapes recur: a least fixpoint over a Church
+material)]{~\cite{colambda}}. Two reusable shapes recur: a least fixpoint over a Church
 tuple of booleans (the Datalog engine of Section~\ref{sec:application}), and a recursion whose
 subproblems are the nodes of a first-order datum, memoised for free because identical subproblems
 are one interned state. Each claim is confined to a domain's rational core: regular lexing but not
@@ -1155,7 +1155,7 @@ weak head normal form is a \texttt{fixpoint\_cached\_property} thunk, interned a
 so the term graph is the thunk graph the interpreter folds, and handing that graph back is the
 identity. A compiler can do something different only by choosing a different evaluation strategy, and
 it preserves the interpreter's result only when an analysis certifies the choice is sound. The
-accompanying implementation\anon[~(supplementary material)]{~\cite{firstorderlambda}} carries this
+accompanying implementation\anon[~(supplementary material)]{~\cite{colambda}} carries this
 out as a self-hosting compiler from the pure $\lambda$-calculus to a Python AST that specializes a
 sub-term to a strict or a call-by-name Python target when an analysis certifies the result is
 unchanged, and leaves everything else to the interpreter. Specialization is local, the analysis is

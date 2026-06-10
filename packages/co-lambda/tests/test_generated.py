@@ -13,7 +13,7 @@ from pathlib import Path
 from co_lambda import _generate
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_LATEX_FRAGMENT = _REPO_ROOT / "first-order" / "generated" / "compiler-examples.tex"
+_LATEX_FRAGMENT = _REPO_ROOT / "papers" / "co-lambda" / "generated" / "compiler-examples.tex"
 
 
 def test_generated_latex_fragment_is_current() -> None:

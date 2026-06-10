@@ -12,7 +12,7 @@ call-by-name); see ``main``.
 Each cell runs in a fresh subprocess so its peak memory is its own. Phase 1 produces the engine files
 (the staged compilers under ``_generated_stages/`` in this package) via the bootstrap (each engine
 compiled by the previous); phase 2 measures the matrix. The result is committed as
-``first-order/generated/self-compilation-benchmark.tex`` (time and memory tabulars) and ``\\input`` by
+``papers/co-lambda/generated/self-compilation-benchmark.tex`` (time and memory tabulars) and ``\\input`` by
 the paper. Counts are deterministic in the target depth; time and memory are a measured snapshot.
 
 The console entry point ``co-lambda-benchmark`` (see ``pyproject.toml``) runs ``main``;
@@ -31,7 +31,7 @@ from pathlib import Path
 
 # src/co_lambda/_benchmark.py -> repo root is four parents up.
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-_OUTPUT = _REPO_ROOT / "first-order" / "generated" / "self-compilation-benchmark.tex"
+_OUTPUT = _REPO_ROOT / "papers" / "co-lambda" / "generated" / "self-compilation-benchmark.tex"
 # The staged compilers are generated Python, so they live under src in this package.
 _STAGES_DIR = Path(__file__).resolve().parent / "_generated_stages"
 

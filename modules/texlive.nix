@@ -4,7 +4,7 @@
     ml-ops.devcontainer.devenvShellModule = {
       packages = [ pkgs.tex-fmt pkgs.poppler-utils ];
       scripts.package-arxiv.exec = ''
-        cd inheritance-calculus
+        cd papers/inheritance-calculus
         latexmk -pdf preprint.tex
         ${lib.getExe pkgs.gnutar} -czvf arxiv-submission.tar.gz \
           -C . \
