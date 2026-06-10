@@ -99,12 +99,669 @@
 
 \section{Introduction}\label{sec:intro}
 
-TODO
+Ordinary reduction in the pure $\lambda$-calculus never builds a cyclic data structure. Consider
+the stream of zeros, the pure term $r = Y\,(\mathtt{cons}\,0)$, where $Y$ is the usual
+fixed-point combinator and $\mathtt{cons}\,h\,t$ is $h$ prepended to a stream $t$. The term $r$
+reduces to $\mathtt{cons}\,0\,r$, so its tail is $r$ again: the stream that loops on itself. Yet
+$r$ has no finite normal form: ordinary reduction unfolds it to $0,0,0,\dots$ forever and never
+folds it into a finite circular graph. To obtain a finite cycle one reaches outside the calculus
+for an added recursion construct, a \texttt{letrec}, say, that names the loop.
+
+Creating the cycle is only half of the difficulty. Take the textbook $\mathtt{map}$, which
+applies a function to every element of a list and is itself an ordinary pure $\lambda$-term
+(Appendix~\ref{app:dsl}). On the cyclic stream $r$, the term $\mathtt{map}\;\mathtt{succ}\;r$
+(with $\mathtt{succ}$ adding one) reduces to $\mathtt{cons}\,1\,(\mathtt{map}\;\mathtt{succ}\;r)$,
+whose inner $\mathtt{map}\;\mathtt{succ}\;r$ is the same term again, so an ordinary evaluator
+walks the cycle forever and never folds the result back into a cycle. Nothing in the term records
+that $r$ was already visited. To make the
+traversal terminate the function
+must itself become cycle-aware: it has to remember the nodes already visited, which needs a
+mutable set or
+dictionary, and it has to recognise a revisited node, which needs a reference-equality primitive
+that compares nodes by pointer identity. That primitive is what a pure language forbids:
+reference equality tells apart structures of equal value, so it breaks referential transparency,
+the rule that equal values may be substituted freely.
+
+The standard account therefore pays twice, an extension to create the cycle and an impurity to
+transform it.
+
+The obstruction is not special to infinite data. Edit distance, the fewest single-character
+insertions, deletions, and substitutions that turn one string into another, has the textbook
+recurrence on the strings' suffixes: reading head by head, equal heads recurse on both tails at
+no cost, unequal heads pay one and take the best of a substitution, a deletion, and an insertion,
+and once a string is empty the cost is the length of what remains of the other. Written as a pure
+$\lambda$-term, with each string a list that applies a head/tail handler $\lambda h.\lambda t$ or,
+when empty, a default,\footnote{Data here are encoded as their own case analysis (the Scott and
+Church encodings): a list applied to two arguments runs the first on its head and tail or returns
+the second when empty, and a boolean applied to two arguments returns the first if true and the
+second if false, so $\mathtt{eq}\,h_a\,h_b$ applied to the two terms that follow it selects one of
+them.} and with $\mathtt{eq}$ comparing two characters, $\mathtt{min}_3$ the three-way minimum,
+$\mathtt{succ}$ adding one, and $\mathtt{len}$ the length:
+\[
+  \begin{aligned}
+    &\mathtt{ed} = Y\,\big(\lambda\mathit{ed}.\,\lambda a.\,\lambda b.\\
+    &\quad a\,\big(\lambda h_a.\lambda t_a.\\
+    &\qquad b\,\big(\lambda h_b.\lambda t_b.\\
+    &\qquad\quad (\mathtt{eq}\,h_a\,h_b)
+        &&\text{compare the two heads}\\
+    &\qquad\qquad (\mathit{ed}\,t_a\,t_b)
+        &&\text{equal: recurse on both tails, no cost}\\
+    &\qquad\qquad \mathtt{succ}\,\big(\mathtt{min}_3\,
+        \underbrace{(\mathit{ed}\,t_a\,t_b)}_{\text{substitute}}\,
+        \underbrace{(\mathit{ed}\,t_a\,b)}_{\text{delete}}\,
+        \underbrace{(\mathit{ed}\,a\,t_b)}_{\text{insert}}\big)\big)\\
+    &\qquad (\mathtt{len}\,a)\big)
+        &&\text{$b$ empty: delete all of $a$}\\
+    &\quad (\mathtt{len}\,b)\big).
+        &&\text{$a$ empty: insert all of $b$}
+  \end{aligned}
+\]
+This term computes the right distance, but its naive evaluation is exponential, the three
+recursive calls re-expanding overlapping suffix pairs. The subproblems are pairs of suffixes
+$(t_a,t_b)$, and a suffix is a shared sub-node of the inputs, not a copy, so if each repeated
+pair were computed once the work would be the $(m{+}1)(n{+}1)$ distinct pairs for inputs of
+lengths $m$ and $n$, the classic $O(mn)$ dynamic-programming table. But ordinary reduction has
+no way to notice that a pair has recurred, so it recomputes. Like the cyclic $\mathtt{map}$, the obvious pure program is correct yet
+unusable: one diverges, the other explodes.
+
+The resolution adds nothing to the calculus. We give an interpreter, and a compiler, for the
+pure $\lambda$-calculus under which these very programs, unchanged and with their standard
+meaning, run efficiently. Under them $Y\,(\mathtt{cons}\,0)$ evaluates to a finite cyclic graph,
+a single cell pointing to itself, and the unchanged $\mathtt{map}\,\mathtt{succ}$ over it
+terminates with the finite circle of ones, where ordinary evaluation runs forever; the term
+$\mathtt{ed}$ runs in $O(mn)$ time and space, with no memoization written. The reason is one
+idea. Read a program as an equation: it gives a value as one layer of data over sub-values that
+are themselves programs, and to solve it is to compute that value. Such a system, a state
+exposing one layer and naming its successor states, is a \emph{coalgebraic equation} (for the
+stream of zeros a state is a stream cell, its layer the head $0$, its successor the tail), and
+to evaluate a $\lambda$-term is to solve its equation. The evaluator we give, the
+\emph{solver}, \emph{tables} the states it has seen, and when a state recurs it reuses the
+table entry instead of expanding it again; states are interned, so a state assembled twice
+from the same parts is one object and its recurrence is visible. A recurring cyclic state
+closes a back edge into a finite graph, and a recurring subproblem is computed once, giving
+the dynamic-programming table. What makes this computable is how states are compared: a state
+stands for a program, but it is compared as a first-order graph node, the syntax it is built
+from, never as the function it computes. Node identity is a decidable pointer check, while the
+only identity available on functions, $\beta$-equality, is undecidable. The recognition is the solver's, never an operation a term performs, so the calculus
+stays pure.\footnote{The interpreter compares nodes by identity as a step of evaluation, not as
+an operation any $\lambda$-term can perform; no term gains reference equality, so referential
+transparency is preserved.} And the solution is not checked against the meaning; it \emph{is}
+the meaning: what a program denotes is, by definition, the tree its equation unfolds to, and
+for the $\lambda$-calculus that tree is the textbook lazy meaning of a term
+(Section~\ref{sec:bridge}), so computing the solution cannot change the semantics. We solve one equation by node identity, and
+never compare two programs for equal meaning: the point the title turns on.
+
+The construction is not special to streams, strings, or the $\lambda$-calculus. The tabling
+needs only states that expose layers and name successor states (Section~\ref{sec:coalgebras});
+it never asks how a state produces its layer. Any reduction function supplies such states: a
+rule that at each state either exposes data or takes an internal step, the layer being whatever
+the internal steps eventually expose, with the $\lambda$-calculus's own reduction, stopped as
+soon as the outermost shape of the term is settled, as one instance
+(Section~\ref{sec:reductions}). So for any reduction
+function the solver computes exactly the semantics that function defines. It halts exactly when
+the solution has a finite cyclic representation, the most any meaning-preserving procedure can
+do, since data with infinitely many distinct sub-parts has no finite graph at all
+(Theorem~\ref{thm:optimal}). And since data such as lists and trees are themselves pure
+$\lambda$-terms (the Scott encoding), every such system is again a $\lambda$-term, and one
+interpreter solves them all, turning the pure $\lambda$-calculus into a small domain-specific
+language whose memoization falls out of node identity: Datalog queries, graph reachability and
+points-to analysis, game-tree (minimax) search, and dynamic programming
+(Section~\ref{sec:application}, Appendix~\ref{app:dsl}).
+
+\paragraph{Contributions}
+\begin{itemize}
+  \item \emph{The construction.} A solver for any coalgebra by \emph{tabling}: follow its
+    one-step map a layer at a time and reuse a tabled state whenever one recurs, so the back
+    edges that fold a cycle cost nothing extra (Sections~\ref{sec:coalgebras},
+    \ref{sec:tabling}). Any reduction function presents such a coalgebra through the least
+    fixpoint of its internal steps, under which an unproductive loop, one returning to its
+    start without exposing a layer, is decided as $\bot$ (undefined) in finite time
+    (Section~\ref{sec:reductions}; Definition~\ref{def:out}). The construction is parametric in
+    an effect (the internal process, for instance $\beta$-reduction) and a signature (the shape
+    of each layer).
+  \item \emph{The theory.} We prove the solver \emph{sound} (the finite graph it returns
+    unfolds to exactly the solution, Theorem~\ref{thm:correctness}), \emph{optimal} (it halts
+    precisely on the data with a finite cyclic representation, and nothing meaning-preserving
+    halts on more, Theorems~\ref{thm:termination}, \ref{thm:optimal}), and the equation
+    \emph{uniquely solved} (least equals greatest, so induction and coinduction coincide and
+    the least fixpoint does real work only in deciding an unproductive loop as $\bot$,
+    Theorem~\ref{thm:unique}, Remarks~\ref{rem:compact}, \ref{rem:leastessential}).
+  \item \emph{The instance.} Head normalisation of the pure $\lambda$-calculus is one such
+    equation (Sections~\ref{sec:bridge}, \ref{sec:application}): an ordinary $\mathtt{map}$ folds a
+    circular list into a circular list, and a naive walk terminates where evaluation diverges.
+\end{itemize}
+
+\paragraph{Supplementary material}
+An executable interpreter accompanies the paper.\anon[ It is included as supplementary
+material.]{ It is openly available at \url{https://github.com/Atry/MIXINv2}~\cite{colambda}.} It
+realises the construction directly: states are interned so that identity is a pointer test, the
+collapse of silent steps is a least fixpoint, and tabling folds on node identity. The examples
+of this paper are reproduced as tests: $Y\,(\mathtt{cons}\,0)$ folds to a finite circular graph,
+$\Omega$ (the classic looping term) and $Y\,(\lambda x.x)$ are decided as $\bot$, the naive walk
+terminates over the circular stream where ordinary evaluation loops, and the $\mathtt{map}$ above
+folds a circle into a circle (Sections~\ref{sec:bridge}, \ref{sec:application}).
+
+% =====================================================================
+\section{The Method}\label{sec:method}
+% =====================================================================
+The method has three independent parts, presented general to specific. A \emph{coalgebra} is
+the object we solve, and its solution is what it means (Section~\ref{sec:coalgebras}). The
+\emph{approximation order} makes the solution well defined, as the unique fixpoint of a guarded
+functional (Section~\ref{sec:order}). \emph{Tabling} computes it (Section~\ref{sec:tabling}).
+None of the three mentions how the coalgebra arose; a \emph{reduction function} is one way to
+present a coalgebra, through the single least fixpoint of the paper, and the
+$\lambda$-calculus enters only there, as an instance (Section~\ref{sec:reductions}).
+
+\subsection{Coalgebras and Their Solutions}\label{sec:coalgebras}
+
+\begin{definition}[Signature and effect]\label{def:signature}
+  A \emph{signature} $F$ is a set of operations, each with a finite arity, with decidable and
+  hashable equality of operations; $F X$ is the set of layers $\sigma(x_1,\dots,x_k)$ with
+  $\sigma$ an operation of arity $k$ and $x_i \in X$. An \emph{effect} $M$ assigns to each set
+  $A$ a set $M A$ of computations over $A$ together with a divergent computation
+  $\bot_{MA}$; the deterministic effect is $\Delaym$, a computation being either a value or
+  divergence, and it is the only effect the examples of this paper use, so a reader may take
+  $M(F X) = F X \cup \{\bot\}$ throughout. Richer effects (non-deterministic, probabilistic,
+  stateful) substitute without changing any statement below.
+\end{definition}
+
+\begin{definition}[Coalgebra]\label{def:coalgebra}
+  A \emph{coalgebra} is a set $X$ of \emph{states}, with decidable and hashable identity,
+  together with a map
+  \[
+    \outm \colon X \longrightarrow M(F X).
+  \]
+  At each state, $\outm$ either exposes one layer of data, an operation applied to successor
+  states, or is the divergent computation $\bot$.
+\end{definition}
+
+A coalgebra poses an equation. Each state names a value: one layer of data over the values of
+its successor states, which are again states. To \emph{solve} the equation is to compute, for
+each state, the tree this naming unfolds to: expose a layer, then recursively the trees of the
+successors, with a $\bot$ leaf where $\outm$ diverges. We write $\behav(x)$ for the tree at
+state $x$ and call $\behav$ the \emph{solution} of the coalgebra; Section~\ref{sec:order} makes
+the unfolding precise and proves it well defined (Theorem~\ref{thm:unique}).
+
+\begin{definition}[Semantics as solution]\label{def:semantics}
+  The denotational semantics defined by a coalgebra \emph{is} its solution: state $x$ denotes
+  $\behav(x)$.
+\end{definition}
+
+\noindent
+This is a definition, not a theorem, and it is why no preservation result appears in this
+paper: a solver that returns the solution returns the semantics, by definition. What remains
+to prove is that the solution is well defined (Theorem~\ref{thm:unique}), that the solver
+returns it (Theorem~\ref{thm:correctness}), and when the solver halts
+(Theorems~\ref{thm:termination}, \ref{thm:optimal}).
+
+\subsection{The Approximation Order}\label{sec:order}
+
+Solutions are possibly infinite trees, so we fix the space they live in and the order along
+which they are approximated.
+
+\begin{definition}[Trees]\label{def:trees}
+  $D$ is the set of finite and infinite trees in which every node is either an operation of
+  $F$ with one subtree per argument, or a $\bot$ leaf, read ``nothing exposed here, yet or
+  ever''. (Under a non-deterministic or probabilistic $M$, each node carries the
+  $M$-structure of its layer; the deterministic reading suffices for this paper.)
+\end{definition}
+
+\begin{definition}[Approximation order]\label{def:order}
+  For $t, u \in D$, $t \sqsubseteq u$ iff $u$ is obtained from $t$ by replacing $\bot$ leaves
+  with subtrees. The single $\bot$ leaf is the least tree.
+\end{definition}
+
+\begin{proposition}[The tree space is a domain]\label{prop:order}
+  $(D, \sqsubseteq)$ is a pointed $\omega$-complete partial order: every increasing chain has
+  a least upper bound, computed level by level. Proof in Appendix~\ref{app:order}.
+\end{proposition}
+
+The order exists for one reason. $\bot$ is the value of ``nothing exposed'', the starting
+point every iteration ascends from; reusing any exposed value as the starting point would
+make a state that has not yet been computed indistinguishable from one that computed that
+value.
+
+\begin{definition}[Unfolding functional]\label{def:unfolding}
+  The \emph{unfolding functional} $\Psi$ takes a candidate solution $g \colon X \to D$ to the
+  candidate that reads one more layer off the coalgebra:
+  \[
+    \Psi(g)(x) =
+    \begin{cases}
+      \bot & \outm(x) = \bot,\\
+      \sigma\big(g(x_1), \dots, g(x_k)\big) & \outm(x) \text{ exposes } \sigma(x_1, \dots, x_k).
+    \end{cases}
+  \]
+  A solution of the coalgebra is exactly a fixpoint of $\Psi$.
+\end{definition}
+
+\begin{theorem}[The solution is unique]\label{thm:unique}
+  $\Psi$ has exactly one fixpoint $\behav$, and it is simultaneously the order-theoretic least
+  fixpoint $\bigsqcup_k \Psi^k(\lambda x.\bot)$ and the greatest, coinductive one. Proof in
+  Appendix~\ref{app:unique}.
+\end{theorem}
+
+\noindent
+The reason is guardedness: $\Psi$ commits to the root of every tree before consulting its
+argument, so two candidate solutions can disagree only ever deeper, and under the metric in
+which the distance between two trees halves with the depth of their first disagreement, $\Psi$
+is a contraction, forcing its fixpoints equal. Consequently induction and coinduction coincide here, and \emph{any}
+procedure that reaches a fixpoint reaches the solution, which is what licenses an interpreter
+and a compiler with different evaluation orders.
+
+\begin{remark}[Algebraic compactness]\label{rem:compact}
+  Over discrete sets the least and greatest fixpoints of a signature differ (finite lists
+  versus finite-or-infinite lists). Completing with $\bot$ and ordering by approximation is
+  exactly what collapses them; Theorem~\ref{thm:unique} is the operational face of algebraic
+  compactness \citeTODO{smyth-plotkin, freyd}.
+\end{remark}
+
+\begin{remark}[Where a least fixpoint is essential]\label{rem:leastessential}
+  Uniqueness holds for the unfolding, after $\outm$ has committed a root. Producing $\outm$
+  itself from a reduction function is unguarded, and there least genuinely differs from
+  greatest; that single least fixpoint lives in Section~\ref{sec:reductions}.
+\end{remark}
+
+\subsection{Tabling}\label{sec:tabling}
+
+The solver computes $\behav$ at a root state by tabling $\outm$.
+
+\begin{definition}[The solver]\label{def:solver}
+  States are \emph{interned}: equal states are one object, so identity is one pointer test.
+  The solver keeps a table from states to graph nodes. At a state $x$ it computes $\outm(x)$;
+  if $\outm(x) = \bot$ the node is a $\bot$ leaf, and otherwise the node carries the exposed
+  operation with one edge per successor, where a successor already tabled \emph{reuses} its
+  node, and a reuse of a state still being processed is a \emph{back edge}, closing a cycle.
+  The output is the table: a graph with one node per distinct reachable state.
+\end{definition}
+
+The solver consults only $\outm$ and the identity of states. It does not ask where the
+coalgebra came from, and nothing in it is specific to any language.
+
+\begin{theorem}[Soundness]\label{thm:correctness}
+  The graph the solver builds at root $x_0$ unfolds to $\behav(x_0)$: the table is the
+  restriction of the coalgebra to the states reachable from $x_0$, and its unfolding and
+  $\behav$ are both fixpoints of the unfolding functional, hence equal by
+  Theorem~\ref{thm:unique}. Proof in Appendix~\ref{app:correctness}.
+\end{theorem}
+
+\noindent
+The two ingredients are worth naming. Reuse never changes the solution because the solver
+reuses a node only for the \emph{identical} state, and identical states have identical
+$\outm$, hence identical subtrees. And a back edge never changes the solution because the
+finite cyclic graph and the infinite unfolding are the same fixpoint read two ways.
+
+\begin{definition}[Rational]\label{def:rational}
+  A tree is \emph{rational} if it has finitely many distinct subtrees; equivalently, it is the
+  unfolding of a finite graph \citeTODO{courcelle}.
+\end{definition}
+
+\begin{theorem}[Termination]\label{thm:termination}
+  When $\outm$ is computable at each state, the solver halts at $x_0$ iff finitely many states
+  are reachable from $x_0$, and then its output is a finite cyclic graph unfolding to the
+  rational solution $\behav(x_0)$. Proof in Appendix~\ref{app:termination}.
+\end{theorem}
+
+\begin{theorem}[Optimality]\label{thm:optimal}
+  A solution has a finite graph representation iff it is rational, so no procedure that
+  preserves the solution halts with a finite representation on more inputs than the rational
+  ones. The solver therefore halts on the most any meaning-preserving procedure can. Proof in
+  Appendix~\ref{app:optimal}.
+\end{theorem}
+
+\noindent
+Rationality is undecidable, so the halting inputs cannot be pre-selected; the solver is an
+optimal semi-decision procedure, halting with the finite representation on the rational
+fragment and diverging elsewhere, where every meaning-preserving procedure must.
+
+\subsection{Reduction Functions Present Coalgebras}\label{sec:reductions}
+
+Everything so far assumed $\outm$ given. The coalgebras of interest are presented differently:
+by a \emph{rule} that at each state either exposes a layer or takes an internal step, and only
+finitely many internal steps separate a state from its next layer, if one comes at all.
+
+\begin{definition}[Reduction function]\label{def:reduction}
+  A \emph{reduction function} is a map
+  \[
+    \stepm \colon X \longrightarrow M\big(F X + X\big):
+  \]
+  at each state, one $M$-step that either exposes a layer of data (left summand) or continues
+  silently at a successor state (right summand). For this definition $M$ must support
+  iteration: each $M A$ is a pointed $\omega$-complete partial order with continuous
+  composition, as $\Delaym$ and the other effects of Definition~\ref{def:signature} are
+  \citeTODO{adamek-milius-velebil, goncharov-elgot}.
+\end{definition}
+
+\begin{definition}[The structure map]\label{def:out}
+  The reduction function $\stepm$ \emph{presents} the coalgebra $\outm = \iter{\stepm}$, the
+  least fixpoint of
+  \[
+    \Phi(g)(x) = \big[\,\text{expose},\; g\,\big]\big(\stepm(x)\big),
+  \]
+  where the case split passes an exposed layer through unchanged and applies $g$ to a silent
+  successor. The fixpoint runs silent steps until the first exposed layer: $\outm(x)$ is that
+  layer, and where the silent process from $x$ never exposes one, $\outm(x) = \bot$.
+\end{definition}
+
+\begin{proposition}[The presentation is well defined]\label{prop:out}
+  $\Phi$ is monotone and $\omega$-continuous, so its least fixpoint
+  $\outm = \bigsqcup_k \Phi^k(\lambda x.\bot)$ exists, and $\outm(x) = \bot$ exactly when the
+  silent process from $x$ exposes no layer. Proof in Appendix~\ref{app:out}.
+\end{proposition}
+
+\noindent
+This is the one least fixpoint of the paper, and the one place least differs from greatest: a
+silent loop exposes nothing, so its value is forced to $\bot$. The solver computes $\outm(x)$
+by running the silent steps, and the states a silent run passes through are interned like all
+others, so the run keeps the set of states it has visited and stops at a revisit; a revisit
+means the run will never expose a layer, so returning $\bot$ at that point is exactly the
+least fixpoint, decided in finite time. Everything above now applies to
+$(X, \outm)$ unchanged. Conversely no generality was lost by developing the theory for
+coalgebras: a coalgebra is the degenerate reduction function with no silent steps, so the two
+formats present the same objects.
+
+Two independent finiteness conditions now govern the solver: the silent run from each visited
+state must reach a layer or a revisit (this section), and the reachable states must be finite
+(Theorem~\ref{thm:termination}); either can fail without the other.
+
+For instance, one step of weak-head reduction in the pure $\lambda$-calculus is such a
+reduction function: a variable, an abstraction, or an application with a rigid head (one that
+can never become an abstraction, so no redex forms) exposes a layer, and a head redex
+contracts silently. Its solution is the L\'evy--Longo tree of the
+term, which is, by its very definition, the standard meaning; the instance is developed in
+Section~\ref{sec:bridge}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
 
 \appendix
-TODO
+
+% =====================================================================
+\section{The Tree Space Is a Domain}\label{app:order}
+% =====================================================================
+\begin{proof}[Proof of Proposition~\ref{prop:order}]
+  Present a tree $t \in D$ as a partial labelling: a prefix-closed set of positions, each
+  labelled by an operation of $F$ or by $\bot$, a node labelled by an operation of arity $k$
+  having exactly $k$ children and a $\bot$ node having none.
+
+  \emph{Least element.} The single $\bot$ leaf has the one position $\varepsilon$, labelled
+  $\bot$, and every tree refines it, so it is least under Definition~\ref{def:order}.
+
+  \emph{Least upper bounds.} Let $t_0 \sqsubseteq t_1 \sqsubseteq \cdots$ be a chain. Define
+  $t$ on the union of their positions, labelling a position with the operation any $t_i$
+  assigns it, and with $\bot$ if every $t_i$ that contains the position assigns $\bot$. The
+  operation label is well defined: refinement never relabels an operation, only replaces
+  $\bot$, so two members of the chain agree on every position they both label with
+  operations. The position set of $t$ is prefix-closed as a union of prefix-closed sets, and
+  arity-respecting because each label comes with its children from some $t_i$. Each
+  $t_i \sqsubseteq t$ by construction, and any upper bound $u$ refines every $t_i$, hence
+  carries every operation label of $t$, so $t \sqsubseteq u$. Thus $t$ is the least upper
+  bound, and it is computed level by level: the label of a position in $t$ is determined by
+  any member of the chain that already exposes it.
+\end{proof}
+
+% =====================================================================
+\section{The Presentation Is Well Defined}\label{app:out}
+% =====================================================================
+\begin{proof}[Proof of Proposition~\ref{prop:out}]
+  \emph{Monotone and continuous.} $\Phi(g)(x)$ post-composes the fixed computation
+  $\stepm(x)$ with the case split $[\text{expose}, g]$, which depends on $g$ only in the
+  silent branch. Composition in $M$ is continuous and the case split preserves it, so $\Phi$
+  is monotone and $\omega$-continuous in the pointwise order on $X \to M(F X)$, whose
+  structure is Proposition~\ref{prop:order}'s argument applied to $M(F X)$. By Kleene,
+  $\outm = \bigsqcup_k \Phi^k(\lambda x.\bot)$ exists and is the least fixpoint of $\Phi$.
+
+  \emph{Characterisation.} We show, for the deterministic effect $M = \Delaym$ and by
+  induction on $k$: $\Phi^k(\lambda x.\bot)(x) \neq \bot$ iff the silent process from $x$
+  exposes a layer within fewer than $k$ steps, and then $\Phi^k(\lambda x.\bot)(x)$ is that
+  layer.
+
+  For $k = 0$ both sides are false: $\Phi^0(\lambda x.\bot)(x) = \bot$, and no layer is
+  exposed within fewer than zero steps.
+
+  For $k + 1$, unfold one step: $\Phi^{k+1}(\lambda x.\bot)(x) =
+  [\text{expose}, \Phi^k(\lambda x.\bot)](\stepm(x))$. If $\stepm(x)$ exposes a layer, the
+  value is that layer, which is non-$\bot$, and the layer is exposed within zero steps. If
+  $\stepm(x)$ continues silently at $x'$, the value is $\Phi^k(\lambda x.\bot)(x')$, which by
+  the induction hypothesis is non-$\bot$ iff $x'$ exposes within fewer than $k$ steps, that
+  is, iff $x$ exposes within fewer than $k + 1$ steps, and is then that layer.
+
+  Taking the least upper bound over $k$: $\outm(x) \neq \bot$ iff the silent process from $x$
+  exposes a layer within some finite number of steps, and $\outm(x)$ is then that layer;
+  $\outm(x) = \bot$ exactly when no layer is ever exposed. For a richer effect the same
+  induction runs pointwise along the order of $M$, the iteration being the standard one of
+  complete Elgot monads \citeTODO{adamek-milius-velebil, goncharov-elgot}.
+\end{proof}
+
+% =====================================================================
+\section{Uniqueness of the Solution}\label{app:unique}
+% =====================================================================
+\begin{definition}[Tree metric]\label{def:metric}
+  For $t, u \in D$ let $\mathrm{d}(t, u) = 0$ if $t = u$ and otherwise
+  $\mathrm{d}(t, u) = 2^{-\ell}$, where $\ell$ is the least depth at which $t$ and $u$
+  differ. Lift it to candidate solutions by
+  $\mathrm{d}(g, h) = \sup_x \mathrm{d}(g(x), h(x))$.
+\end{definition}
+
+\begin{lemma}[Completeness]\label{lem:metric}
+  $(D, \mathrm{d})$ and the candidate space $(X \to D, \mathrm{d})$ are complete metric
+  spaces, and the limit of an increasing chain that converges in $\mathrm{d}$ is its least
+  upper bound.
+\end{lemma}
+\begin{proof}
+  A Cauchy sequence of trees is eventually constant at every fixed depth, so the levelwise
+  limit exists in $D$ and the sequence converges to it; the candidate space inherits
+  completeness pointwise, the supremum metric being attained levelwise as well. For an
+  increasing chain, the levelwise limit and the levelwise least upper bound of
+  Proposition~\ref{prop:order} are the same tree.
+\end{proof}
+
+\begin{lemma}[Guardedness]\label{lem:guarded}
+  $\mathrm{d}(\Psi(g), \Psi(h)) \le \tfrac{1}{2}\,\mathrm{d}(g, h)$.
+\end{lemma}
+\begin{proof}
+  Fix $x$. The root of $\Psi(g)(x)$ is determined by $\outm(x)$ alone: $\bot$, or the exposed
+  operation. So $\Psi(g)(x)$ and $\Psi(h)(x)$ share their root, and they can differ only
+  inside some child, where the difference is one of $g(x_i)$ against $h(x_i)$, one level
+  deeper. Hence the least depth of difference grows by one, halving the distance.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:unique}]
+  By Lemma~\ref{lem:guarded}, $\Psi$ is a contraction on the complete space of
+  Lemma~\ref{lem:metric}, so by Banach's fixed-point theorem \citeTODO{banach} it has exactly
+  one fixpoint $\behav$, and every iteration sequence converges to it. The particular
+  sequence $\Psi^k(\lambda x.\bot)$ is increasing, since $\lambda x.\bot$ is least and $\Psi$
+  is monotone, and converges to $\behav$ in $\mathrm{d}$; by Lemma~\ref{lem:metric} its least
+  upper bound is that limit, so the order-theoretic least fixpoint equals $\behav$. The
+  coinductive unfolding, by its defining property of reading layers off $\outm$, is a
+  fixpoint of $\Psi$, hence also $\behav$.
+\end{proof}
+
+% =====================================================================
+\section{Soundness of the Solver}\label{app:correctness}
+% =====================================================================
+\begin{lemma}[The table is the reachable restriction]\label{lem:table}
+  Let $R \subseteq X$ be the least set containing the root $x_0$ and closed under successors
+  of $\outm$. The solver's table assigns exactly one node to each state of $R$, the node
+  carrying $\outm(x)$: interning makes equal states one table key, the solver computes
+  $\outm(x)$ once per key, and each edge of the node goes to the node of a successor state.
+  In particular $(R, \outm)$ is itself a coalgebra: successors of reachable states are
+  reachable.
+\end{lemma}
+
+\begin{proof}[Proof of Theorem~\ref{thm:correctness}]
+  Let $u \colon R \to D$ assign to each tabled state the unfolding of its graph node. By
+  Lemma~\ref{lem:table}, $u(x)$ has the root $\outm(x)$ dictates and the subtrees
+  $u(x_1), \dots, u(x_k)$ of the successor nodes; this is exactly the statement that $u$ is a
+  fixpoint of the unfolding functional of the coalgebra $(R, \outm)$. A back edge changes
+  nothing in this reading: the reused node is the node of the identical state, whose
+  unfolding is the same subtree. The restriction $\behav|_R$ is also a fixpoint of that
+  functional, because $\behav$ reads layers off the same $\outm$ and $R$ is closed under
+  successors. By Theorem~\ref{thm:unique}, applied to the coalgebra $(R, \outm)$, the two
+  fixpoints are equal, so $u(x_0) = \behav(x_0)$: the graph unfolds to the solution.
+\end{proof}
+
+% =====================================================================
+\section{Termination of the Solver}\label{app:termination}
+% =====================================================================
+\begin{proof}[Proof of Theorem~\ref{thm:termination}]
+  Suppose $R$, the states reachable from $x_0$, is finite. Interning gives each state one
+  table key, so the solver computes $\outm$ at most once per state of $R$, each call halting
+  by assumption, and follows finitely many edges per state; it therefore halts. Its output
+  unfolds to $\behav(x_0)$ by Theorem~\ref{thm:correctness}, and the unfolding has at most
+  one distinct subtree per node of the finite graph, so it is rational
+  (Definition~\ref{def:rational}).
+
+  Conversely, the solver tables every reachable state before it can return, one node per
+  state by Lemma~\ref{lem:table}; if $R$ is infinite, the table never closes and the solver
+  diverges.
+\end{proof}
+
+% =====================================================================
+\section{Optimality of the Solver}\label{app:optimal}
+% =====================================================================
+\begin{proof}[Proof of Theorem~\ref{thm:optimal}]
+  \emph{A solution has a finite representation iff it is rational.} The unfolding of a finite
+  graph has at most one distinct subtree per node, hence finitely many, so it is rational.
+  Conversely a rational tree is the unfolding of the finite graph whose nodes are its
+  distinct subtrees, each node carrying its root operation with an edge to each immediate
+  subtree; this is the standard correspondence for regular trees \citeTODO{courcelle}.
+
+  \emph{Optimality.} A procedure that preserves the solution and halts must output some
+  finite object denoting that solution as a graph; if the solution is not rational, no such
+  finite graph exists, so the procedure cannot halt on that input. The solver halts exactly
+  on inputs with finitely many reachable states (Theorem~\ref{thm:termination}), all of whose
+  solutions are rational, and its output is the finite representation
+  (Theorem~\ref{thm:correctness}). Within the rational fragment a gap remains under
+  structural state identity, witnessed by terms whose states are pairwise distinct yet share
+  one rational solution; closing it requires folding behaviourally equal states, a coarser
+  and in general undecidable identity, so no effective procedure exceeds the solver by more
+  than that gap, and none exceeds the rational fragment at all.
+\end{proof}
+
+\section{The Rational Fragment as a Domain-Specific Language}\label{app:dsl}
+The terminating fragment of the construction, the rational behaviours, is exactly the world of
+finite-state, regular, and least-fixpoint-over-a-finite-lattice computation, and a range of
+practical domains live there. Each domain below is a pure $\lambda$-term whose behaviour is
+rational, so the interpreter halts, and each is reproduced as a test\anon[~(supplementary
+material)]{~\cite{colambda}}. Two reusable shapes recur: a least fixpoint over a Church
+tuple of booleans (the Datalog engine of Section~\ref{sec:application}), and a recursion whose
+subproblems are the nodes of a first-order datum, memoised for free because identical subproblems
+are one interned state. Each claim is confined to a domain's rational core: regular lexing but not
+general context-free parsing, rational-tree unification but not a general most-general unifier,
+finite-state model checking but not infinite-state. The terms below are the actual encodings; the
+Booleans are Church, $\mathtt{T} = \lambda a.\lambda b.\,a$ and $\mathtt{F} = \lambda a.\lambda b.\,b$,
+with $\mathtt{or} = \lambda p.\lambda q.\,p\,\mathtt{T}\,q$ and
+$\mathtt{and} = \lambda p.\lambda q.\,p\,q\,\mathtt{F}$, and $\mathtt{cons}$ and $Y$ are as in
+Section~\ref{sec:bridge}.
+
+\paragraph{Mapping a cyclic list.}
+The $\mathtt{map}$ of the introduction is the ordinary one, with nothing cycle-aware in it,
+\[
+  \mathtt{map}\,f = Y\,\big(\lambda\mathit{self}.\,\lambda\mathit{lst}.\;
+  \mathit{lst}\,(\lambda h.\lambda t.\,\mathtt{cons}\,(f\,h)\,(\mathit{self}\,t))\;\mathtt{nil}\big),
+\]
+where a Scott-encoded list applies one of two handlers, for a $\mathtt{cons}\,h\,t$ cell or for
+the empty list $\mathtt{nil}$. Applied to $r = Y\,(\mathtt{cons}\,0)$, the
+recursive call $\mathit{self}\,t$ re-enters the same interned state, so tabling folds it and the
+result is a finite circular list, a single cell holding $f\,0$ whose tail points back to itself,
+every element transformed, where ordinary reduction would map the infinite stream forever. On a finite list the
+same $\mathtt{map}$ is the textbook one.
+
+\paragraph{Dynamic programming, memoisation for free.}
+The decisive capability is memoisation (Section~\ref{sec:memo}): a recursion whose state space is a
+tree or graph computes each distinct subproblem once, because a structurally repeated subtree, or a
+graph node revisited along several paths, is one interned state. A perfect binary tree of depth $n$
+whose nodes share both children is a graph of $n+1$ states that unfolds to $2^{n}$ leaves; a tree
+DP over it is read in time linear in $n$, where a naive recursion would visit $2^{n}$ leaves. No
+memo table is written; tabling on first-order state identity is the memoisation, which the pure
+$\lambda$-calculus lacks without a decidable identity on subproblems, value equality of closures
+being undecidable.
+\[
+  \mathtt{node} = \lambda l.\lambda r.\lambda m.\lambda f.\,m\,l\,r, \qquad
+  \mathtt{leaf} = \lambda v.\lambda m.\lambda f.\,f\,v,
+\]
+\[
+  \mathtt{any} = Y\,\big(\lambda\mathit{self}.\lambda t.\;
+  t\,(\lambda l.\lambda r.\,\mathtt{or}\,(\mathit{self}\,l)\,(\mathit{self}\,r))\,(\lambda v.\,v)\big),
+  \qquad t_0 = \mathtt{leaf}\;\mathtt{F},\quad t_{k+1} = \mathtt{node}\;t_k\;t_k,
+\]
+so $\mathtt{any}\,t_n$ reads to $\mathtt{F}$ with each of the $n+1$ shared subtrees evaluated once.
+
+\paragraph{Game search with a transposition table.}
+Minimax is an and-or tree: a maximising position takes the disjunction over its moves, a minimising
+position the conjunction, and a terminal position a Boolean. A \emph{transposition}, the same
+position reached by a different move order, is the same interned node, so its value is computed
+once. Interning is the transposition table of a game-playing program, with no table written by hand.
+\[
+  \mathtt{max} = \lambda l.\lambda r.\lambda x.\lambda n.\lambda f.\,x\,l\,r, \quad
+  \mathtt{min} = \lambda l.\lambda r.\lambda x.\lambda n.\lambda f.\,n\,l\,r, \quad
+  \mathtt{leaf} = \lambda v.\lambda x.\lambda n.\lambda f.\,f\,v,
+\]
+\[
+  \mathtt{value} = Y\,\big(\lambda\mathit{self}.\lambda p.\;
+    p\,(\lambda l.\lambda r.\,\mathtt{or}\,(\mathit{self}\,l)(\mathit{self}\,r))\,
+  (\lambda l.\lambda r.\,\mathtt{and}\,(\mathit{self}\,l)(\mathit{self}\,r))\,(\lambda v.\,v)\big).
+\]
+
+\paragraph{Graph reachability and program analysis.}
+Reachability and transitive closure over a directed graph, including one with cycles, are the least
+fixpoint of the immediate-consequence operator, terminating because the lattice is finite; the same
+shape decides reachability of a state in a finite transition system. Andersen-style points-to (alias)
+analysis \citeTODO{andersen, doop}, in which $\mathtt{pointsTo}(p,o)$ follows from
+$\mathtt{assign}(p,q)$ and $\mathtt{pointsTo}(q,o)$, is monotone Datalog, and a compiler reads it as
+the same boolean fixpoint. The cyclic graph $a\to b\to c\to a$ with $c\to d$, and the points-to
+program for $a=\mathtt{new}\,o_1;\,b=a;\,c=b$, are the clause sets
+\[
+  \begin{aligned}
+    &\mathtt{reach}(a),\quad \mathtt{reach}(b)\leftarrow\mathtt{reach}(a),\quad
+    \mathtt{reach}(c)\leftarrow\mathtt{reach}(b),\\
+    &\mathtt{reach}(a)\leftarrow\mathtt{reach}(c),\quad \mathtt{reach}(d)\leftarrow\mathtt{reach}(c);\\
+    &\mathtt{pt}(a,o_1),\quad \mathtt{pt}(b,X)\leftarrow\mathtt{pt}(a,X),\quad
+    \mathtt{pt}(c,X)\leftarrow\mathtt{pt}(b,X),
+  \end{aligned}
+\]
+so $\mathtt{reach}(d)$ and $\mathtt{pt}(c,o_1)$ hold while $\mathtt{reach}(e)$ and $\mathtt{pt}(c,o_2)$
+do not.
+
+\paragraph{Lexical analysis.}
+A deterministic finite automaton is a finite cyclic transition graph, and running it is a fold over
+the input that threads the state. Regular languages are the archetypal rational behaviour, so a lexer
+is a $\lambda$-term whose behaviour is rational; the name \emph{rational} is itself the regular, or
+Kleene, sense (Definition~\ref{def:rational}). Encoding the even state and the symbol $a$ as
+$\mathtt{T}$, and the odd state and $b$ as $\mathtt{F}$, both two-way selectors,
+\[
+  \delta = \lambda s.\lambda x.\,s\,(x\,\mathtt{F}\,\mathtt{T})\,(x\,\mathtt{T}\,\mathtt{F}), \qquad
+  \mathtt{accepts} = \lambda s.\,s\,\mathtt{T}\,\mathtt{F},
+\]
+\[
+  \mathtt{run} = Y\,\big(\lambda\mathit{self}.\lambda s.\lambda w.\;
+  w\,(\lambda h.\lambda t.\,\mathit{self}\,(\delta\,s\,h)\,t)\,s\big),
+\]
+and $\mathtt{accepts}\,(\mathtt{run}\,\mathtt{T}\,w)$ is $\mathtt{T}$ exactly when $w$ has an even
+number of $a$s.
+
+\paragraph{Unification and recursive types.}
+Equality of two rational (cyclic) terms is decided by their behaviour through cycle-detecting
+bisimulation (Corollary~\ref{cor:decidable}). This is the decidable core shared by rational-tree
+unification \citeTODO{colmerauer} and equirecursive ($\mu$-) type equality
+\citeTODO{amadio-cardelli, brandt-henglein}: two constructions of one rational term read out
+identically, and a different term reads out differently. For instance $Y\,(\mathtt{cons}\;0)$ and
+$Y\,(\lambda s.\,\mathtt{cons}\;0\;s)$ read out identically, while $Y\,(\mathtt{cons}\;1)$ differs.
+
+\paragraph{The metalanguage needs tabling too.}
+The interpreter's own host-language term builder illustrates the point reflexively. Writing a shared
+subterm by reusing a builder gives a term whose construction unfolds the sharing exponentially, and
+a cyclic builder would not terminate, until the builder is memoised by binder depth, the
+host-language analogue of tabling. Intuitive code is slow or non-terminating exactly where the
+metalanguage does not table. The memo key here is the syntactic builder rather than the first-order
+behavioural identity the calculus folds on, but the moral is the same.
+
+\paragraph{Further instances.}
+The same rational core underlies others not reproduced here: equality saturation over e-graphs
+\citeTODO{egg, egglog} and binary decision diagrams \citeTODO{bryant}, both of which are interning
+of a shared graph; garbage-collection reachability over a cyclic heap; abstract interpretation as a
+fixpoint over a finite abstract domain; and, with a non-trivial effect monad, the stationary
+distribution of a finite Markov chain. Each is a finite-state, regular, or finite-lattice-fixpoint
+computation, hence a rational behaviour the construction reads.
 
 \end{document}
