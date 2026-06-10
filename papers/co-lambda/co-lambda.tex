@@ -105,7 +105,8 @@ $Y$ and $\mathtt{cons}\,h\,t$ the stream $t$ with $h$ prepended. The term $r$
 reduces to $\mathtt{cons}\,0\,r$, so its tail is $r$ again: the stream that loops on itself. Yet
 $r$ has no finite normal form: ordinary reduction unfolds it to $0,0,0,\dots$ forever and never
 folds it into a finite circular graph. To obtain a finite cycle one reaches outside the calculus
-for an added recursion construct, a \texttt{letrec}, say, that names the loop.
+for an added recursion construct, a \texttt{letrec}, say, that names the
+loop~\cite{ariola1997-explicit-recursion}.
 
 Creating the cycle is only half of the difficulty. Take the textbook $\mathtt{map}$, which
 applies a function to every element of a list and is itself an ordinary pure $\lambda$-term
@@ -127,12 +128,12 @@ transform it.
 
 The obstruction is not special to infinite data. Edit distance, the fewest single-character
 insertions, deletions, and substitutions that turn one string into another, has the textbook
-recurrence on the strings' suffixes: reading head by head, equal heads recurse on both tails at
+recurrence~\cite{wagner1974-string-correction} on the strings' suffixes: reading head by head, equal heads recurse on both tails at
 no cost, unequal heads pay one and take the best of a substitution, a deletion, and an insertion,
 and once a string is empty the cost is the length of what remains of the other. Written as a pure
 $\lambda$-term, with each string a list that applies a head/tail handler $\lambda h.\lambda t$ or,
 when empty, a default,\footnote{Data here are encoded as their own case analysis (the Scott and
-Church encodings): a list applied to two arguments runs the first on its head and tail or returns
+Church encodings~\cite{mogensen1992-self-interpretation}): a list applied to two arguments runs the first on its head and tail or returns
 the second when empty, and a boolean applied to two arguments returns the first if true and the
 second if false, so $\mathtt{eq}\,h_a\,h_b$ applied to the two terms that follow it selects one of
 them.} and with $\mathtt{eq}$ comparing two characters, $\mathtt{min}_3$ the three-way minimum,
@@ -227,7 +228,8 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
 % =====================================================================
 \section{The Method}\label{sec:method}
 % =====================================================================
-The method has three independent parts, presented general to specific. A \emph{coalgebra} is
+The method has three independent parts, presented general to specific. A
+\emph{coalgebra}~\cite{rutten2000-universal-coalgebra} is
 the object we solve, and its solution is what it means (Section~\ref{sec:coalgebras}). The
 \emph{approximation order} makes the solution well defined, as the unique fixpoint of a guarded
 functional (Section~\ref{sec:order}). \emph{Tabling} computes it (Section~\ref{sec:tabling}).
@@ -335,7 +337,7 @@ and a compiler with different evaluation orders.
   Over discrete sets the least and greatest fixpoints of a signature differ (finite lists
   versus finite-or-infinite lists). Completing with $\bot$ and ordering by approximation is
   exactly what collapses them; Theorem~\ref{thm:unique} is the operational face of algebraic
-  compactness \citeTODO{smyth-plotkin, freyd}.
+  compactness \cite{smyth1982-recursive-domain-equations, freyd1991-algebraically-complete-categories}.
 \end{remark}
 
 \begin{remark}[Where a least fixpoint is essential]\label{rem:leastessential}
@@ -375,7 +377,7 @@ finite cyclic graph and the infinite unfolding are the same fixpoint read two wa
 
 \begin{definition}[Rational]\label{def:rational}
   A tree is \emph{rational} if it has finitely many distinct subtrees; equivalently, it is the
-  unfolding of a finite graph \citeTODO{courcelle}.
+  unfolding of a finite graph \cite{courcelle1983-infinite-trees}.
 \end{definition}
 
 \begin{theorem}[Termination]\label{thm:termination}
@@ -411,7 +413,7 @@ finitely many internal steps separate a state from its next layer, if one comes 
   silently at a successor state (right summand). For this definition $M$ must support
   iteration: each $M A$ is a pointed $\omega$-complete partial order with continuous
   composition, as $\Delaym$ and the other effects of Definition~\ref{def:signature} are
-  \citeTODO{adamek-milius-velebil, goncharov-elgot}.
+  \cite{adamek2006-iterative-algebras, goncharov2016-complete-elgot-monads}.
 \end{definition}
 
 \begin{definition}[The structure map]\label{def:out}
@@ -449,7 +451,7 @@ state must reach a layer or a revisit (this section), and the reachable states m
 For instance, one step of weak-head reduction in the pure $\lambda$-calculus is such a
 reduction function: a variable, an abstraction, or an application with a rigid head (one that
 can never become an abstraction, so no redex forms) exposes a layer, and a head redex
-contracts silently. Its solution is the L\'evy--Longo tree of the
+contracts silently. Its solution is the L\'evy--Longo tree~\cite{longo1983-set-theoretical-models} of the
 term, which is, by its very definition, the standard meaning; the instance is developed in
 Section~\ref{sec:bridge}.
 
@@ -587,7 +589,7 @@ Section~\ref{sec:bridge}.
   exposes a layer within some finite number of steps, and $\outm(x)$ is then that layer;
   $\outm(x) = \bot$ exactly when no layer is ever exposed. For a richer effect the same
   induction runs pointwise along the order of $M$, the iteration being the standard one of
-  complete Elgot monads \citeTODO{adamek-milius-velebil, goncharov-elgot}.
+  complete Elgot monads \cite{adamek2006-iterative-algebras, goncharov2016-complete-elgot-monads}.
 \end{proof}
 
 % =====================================================================
@@ -682,7 +684,7 @@ Section~\ref{sec:bridge}.
   graph has at most one distinct subtree per node, hence finitely many, so it is rational.
   Conversely a rational tree is the unfolding of the finite graph whose nodes are its
   distinct subtrees, each node carrying its root operation with an edge to each immediate
-  subtree; this is the standard correspondence for regular trees \citeTODO{courcelle}.
+  subtree; this is the standard correspondence for regular trees \cite{courcelle1983-infinite-trees}.
 
   \emph{Optimality.} A procedure that preserves the solution and halts must output some
   finite object denoting that solution as a graph; if the solution is not rational, no such
