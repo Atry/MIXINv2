@@ -10,19 +10,43 @@ knowledge). Run that reader as a subagent and loop until the text stands on its 
 
 ## Two hard rules
 
-1. **Reviewer gets ONLY the target text.** No rest of the paper, no codebase, no prior chat,
-   and never tell it what you *meant*. If the meaning is not on the page, the test must show it.
+1. **Reviewer sees only what a real reader would have seen by this point, and never your intent.**
+   For a standalone piece that is the TARGET text alone. For a section read in sequence, it is the
+   TARGET plus the earlier sections as CONTEXT (see below) — but never the *later* sections, the
+   codebase, the prior chat, or any explanation of what you *meant*. If the meaning is not on the
+   page (TARGET, resolved against CONTEXT at most), the test must show it.
 2. **A brand-new subagent each round.** One that saw a prior round is spoiled.
+
+## CONTEXT vs TARGET: testing a section read in sequence
+
+A reader of Section 3 has already read Sections 1–2. Handing the reviewer Section 3 *alone* then
+manufactures **false confusions**: every term the earlier sections defined ("the solver", "rational",
+a symbol) gets flagged, drowning the genuine leaps. To test a later section faithfully, split the
+input into two layers:
+
+- **CONTEXT** — everything a linear reader has already read before the TARGET (the prior sections).
+  The reviewer may use it freely to resolve any reference. It is *not* under test.
+- **TARGET** — the section you are evaluating now. All confusions, obvious-cuts, and the verdict
+  are about the TARGET only.
+
+A confusion counts only if it survives the TARGET *and* the CONTEXT combined: a term the CONTEXT
+already defined is not a confusion. This keeps the signal on what the TARGET itself fails to carry.
+The first section of a document (abstract, intro) has no CONTEXT and is tested as a standalone
+TARGET. The ban in hard rule 1 still holds for everything else: never include later sections, the
+codebase, or your intent — those are exactly the curse-of-knowledge channels the test exists to close.
 
 ## Loop
 
 1. Extract the exact prose into a **unique** throwaway temp file, one per round, so rounds never
    collide and a fresh subagent can't read a stale or parallel version. Get the path with
    `mktemp /tmp/blind-read.XXXXXX.txt`, then fill it (e.g. `sed -n '100,160p' src.tex > "$f"`).
-   The file must hold ONLY the target prose, nothing from the rest of the document. State the
-   assumed audience (e.g. "general CS reader, no coalgebra"). Passing a path, not the pasted
-   text, keeps the full prose out of the parent context every round.
-2. Spawn one fresh `Agent` (Explore / general-purpose) with the prompt below.
+   The TARGET file must hold ONLY the prose under test, nothing from later in the document. When
+   the prose is a section read in sequence, also write a separate **CONTEXT** file with the earlier
+   sections (e.g. `sed -n '1,99p' src.tex > "$ctx"`) and pass both paths; for a standalone or first
+   section, pass the TARGET alone. State the assumed audience (e.g. "general CS reader, no coalgebra").
+   Passing paths, not pasted text, keeps the full prose out of the parent context every round.
+2. Spawn one fresh `Agent` (Explore / general-purpose) with the prompt below (the standalone prompt,
+   or the CONTEXT/TARGET prompt when you split the input).
 3. Compare its restatement to your intent; note every flagged confusion.
 4. **Fix the text in place**, in both directions: add what is missing (gloss jargon on first
    use, a plain-language bridge, replace notation with words) *and* cut what the audience already
@@ -56,6 +80,8 @@ if they knew X"), that excuse is the curse of knowledge: fix and rerun.
 
 ## Subagent prompt
 
+### Standalone (no CONTEXT)
+
 ```
 You are a first-time reader. Background: <AUDIENCE>. Read ONLY the file <PATH> and nothing else:
 do not open any other file, search the repo, or infer from outside knowledge or look anything up.
@@ -71,7 +97,33 @@ understands). Be literal, not charitable: anything only guessable is a confusion
 you already knew before reading is obvious.
 ```
 
+### CONTEXT/TARGET (section read in sequence)
+
+```
+You are a first-time reader of a document, reading it in order. Background: <AUDIENCE>. You will
+read TWO files and nothing else (do not open any other file, search the repo, or look anything up):
+- CONTEXT (already read; use it freely to resolve any reference, NOT under test): <CONTEXT_PATH>
+- TARGET (the part you are evaluating now): <TARGET_PATH>
+Report ONLY about the TARGET. Report a CONFUSION only if it survives the TARGET *and* the CONTEXT
+combined: if the CONTEXT already defines a term/symbol, it is NOT a confusion.
+1. RESTATEMENT (plain words: main claim of the TARGET, each example and why it supports the claim,
+the takeaway). 2. CONFUSIONS (numbered: every term/symbol/step in the TARGET you can't follow even
+after using the CONTEXT; quote it, say what's missing). Watch for: undefined terms/notation/acronyms,
+suppressed steps ("clearly"), missing motivation, unclear "this/it", overloaded names, untyped
+things, comparisons to things you don't know, pointers you can't follow, examples needing the
+concept itself, "the X" for an X introduced in neither file. Note a forward reference to a *later*
+part you were not given only if it blocks understanding the TARGET itself. 3. OBVIOUS (numbered:
+passages a reader of this background, having read the CONTEXT, already knows and that could be cut;
+quote them). 4. VERDICT (yes/no a reader of that background, having read the CONTEXT, understands
+the TARGET). Be literal, not charitable about the TARGET, but DO use the CONTEXT to resolve
+references: anything only guessable from the two files is a confusion, anything you already knew is obvious.
+```
+
 ## Notes
 
 - Run rounds serially (each fix changes what the next reader sees); keep the audience fixed.
 - Checks comprehensibility only, not correctness or style.
+- Testing a whole document section by section: walk it in reading order, each section the TARGET
+  with all earlier sections as CONTEXT. Without the CONTEXT split, every later section drowns in
+  false confusions for terms the earlier sections already defined; with it, a "No" verdict points
+  at a real leak in the TARGET, not at the reviewer's missing background.
