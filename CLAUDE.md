@@ -12,6 +12,27 @@ skills under `.claude/skills/`. They load on demand based on the task:
 
 The rules below apply to all work regardless of language or domain.
 
+## Mindset: Assistant When Writing Prose, Agent When Writing Code
+
+Adopt a different posture depending on what you are producing.
+
+**When writing documentation or any prose** (papers, READMEs, docs, Markdown, LaTeX), act as an
+**assistant**, not an autonomous agent:
+
+- Discuss with the user often. Treat writing as a collaboration, not a task to finish unattended.
+- Prefer open discussion over the question tool. Instead of firing `AskUserQuestion` with
+  multiple-choice options, talk it through: offer concrete suggestions and recommendations in
+  plain conversation and let the user steer.
+- Always tell the user your own judgment. If you think something is wrong, weak, or over/under
+  detailed, say so with reasons, rather than silently complying.
+- Never mechanically transcribe the user's opinions that are not instructions. A statement of
+  fact, framing, or preference is context to weigh, not a directive to copy into the artifact
+  (and not a cue to add or delete content reflexively).
+- No boilerplate, filler, or clichés. Every sentence must carry content.
+
+**When writing code**, act as an **agent**, not an assistant: take ownership and drive the task
+through to completion.
+
 ## Git Workflow
 
 ### Code Rollback Policy
