@@ -100,8 +100,8 @@
 \section{Introduction}\label{sec:intro}
 
 Ordinary reduction in the pure $\lambda$-calculus never builds a cyclic data structure. Consider
-the stream of zeros, the pure term $r = Y\,(\mathtt{cons}\,0)$, where $Y$ is the usual
-fixed-point combinator and $\mathtt{cons}\,h\,t$ is $h$ prepended to a stream $t$. The term $r$
+the stream of zeros, the pure term $r = Y\,(\mathtt{cons}\,0)$, with the fixed-point combinator
+$Y$ and $\mathtt{cons}\,h\,t$ the stream $t$ with $h$ prepended. The term $r$
 reduces to $\mathtt{cons}\,0\,r$, so its tail is $r$ again: the stream that loops on itself. Yet
 $r$ has no finite normal form: ordinary reduction unfolds it to $0,0,0,\dots$ forever and never
 folds it into a finite circular graph. To obtain a finite cycle one reaches outside the calculus
@@ -452,6 +452,81 @@ can never become an abstraction, so no redex forms) exposes a layer, and a head 
 contracts silently. Its solution is the L\'evy--Longo tree of the
 term, which is, by its very definition, the standard meaning; the instance is developed in
 Section~\ref{sec:bridge}.
+
+% =====================================================================
+%  TODO: REMAINING SECTIONS (paper outline, IMRaD-style; sections 1-2 done)
+% ---------------------------------------------------------------------
+%  Overall structure (agreed with author). This paper is not pure theory:
+%  it ships an interpreter, a self-hosting compiler, and reproducible
+%  experiments, so an IMRaD shape fits its actual content better than the
+%  legacy "theory-to-the-end, engineering-in-appendices" layout.
+%
+%    1. Introduction        -- DONE (difficulty stack -> resolution -> the
+%                              coalgebra/reduction/lambda syllogism).
+%    2. The Method          -- DONE (coalgebras; approximation order;
+%                              tabling; reduction functions present them).
+%                              Proofs in appendices app:order/out/unique/
+%                              correctness/termination/optimal.
+%    3. Implementation      -- TODO. OPENS with the lambda bridge (the
+%                              \ref{sec:bridge} instance), then the engine.
+%                              (a) The bridge: weak-head reduction is one e;
+%                              its solution is the Levy-Longo tree (= the
+%                              standard meaning); lambda signature
+%                              Var/Lam/App, interning on de Bruijn terms.
+%                              Theorem-grade content (cf. legacy
+%                              prop:shisout), and the rung from the abstract
+%                              method to the concrete engine. (b) The
+%                              interpreter (interning; the two
+%                              least-fixpoint mechanisms). (c) The compiler /
+%                              self-hosting bootstrap (eager / call-by-name /
+%                              fixpoint targets; closed-subterm island
+%                              specialization; the strict Z combinator
+%                              bootstrap). Source: legacy app:compiler,
+%                              moved up out of the appendix per the author's
+%                              "the compiler does not belong in an appendix".
+%    4. Evaluation          -- TODO. (NOT "Results": PL venues expect
+%                              "Evaluation" / "Case Studies".) Measured
+%                              behaviour: Y(cons 0) folds to a finite cyclic
+%                              graph; Omega and Y(\x.x) decided as bot; ed
+%                              runs in O(mn); the DSL case studies
+%                              (Datalog / reachability+points-to / minimax /
+%                              lexer, from app:dsl, results cited, lambda
+%                              encodings left in the appendix); the
+%                              self-compilation benchmark matrix. State the
+%                              flat-matrix fact here plainly.
+%    5. Discussion          -- TODO. Where legacy's scattered remarks find a
+%                              home as a coherent limitations/analysis
+%                              section: the two independent finiteness
+%                              conditions; optimal semi-decision and the
+%                              undecidability of rationality; optimality is
+%                              relative to a fixed denotation; the
+%                              structural-identity vs behavioural-equivalence
+%                              gap; WHY the benchmark matrix is flat (an
+%                              island gives up the shared interner cache:
+%                              local soundness vs global performance);
+%                              comparison with call-by-need.
+%    6. Related work        -- TODO. Rewrite of legacy sec:related. Deferred
+%                              to here (not before the method) so each
+%                              comparison (CoPaR / partition refinement,
+%                              tabling & least Herbrand models, graph
+%                              reduction & cyclic lambda, rational trees &
+%                              recursive types, higher-order model checking)
+%                              lands after the construction is in hand.
+%    7. Conclusion          -- TODO. Rewrite.
+%
+%  The lambda bridge opens section 3 (author's decision): the Levy-Longo
+%  theorem is stated there, before the engine that realises it, so the jump
+%  from the abstract method (section 2, lambda-free) to the concrete
+%  implementation passes through the instance. Section 2 therefore ends at
+%  full generality; \ref{sec:bridge} now resolves into section 3.
+%
+%  HARD CONSTRAINTS carried from sections 1-2: every legacy line is opt-in
+%  (rewrite, never copy); the general layers (method, evaluation of the
+%  generality claim) speak of any coalgebra / any reduction function, with
+%  the lambda-calculus appearing only as an explicit instance; no dashes in
+%  prose; no conversational meta-vocabulary (flagship/reveal/hook) in the
+%  prose; blind-read each new section to a fresh context-free reader.
+% =====================================================================
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
