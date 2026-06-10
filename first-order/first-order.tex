@@ -86,7 +86,7 @@
 \thanks{The author completed this work independently and outside the scope of employment at Figure AI. No Figure AI time, funding, or other resources were used in support of this work.}
 
 \begin{abstract}
-  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires adding a recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ combinator for graph reduction, because reduction of a term that refers to itself does not terminate, and an ordinary recursive function over such data unfolds its sharing forever instead of folding the cycle. We show no extension is needed. Cyclic data is the unique solution of a coalgebraic equation: over the $\bot$-completed approximation order on a finitary signature the behaviour functor is algebraically compact, so its initial algebra and final coalgebra coincide, the least and greatest fixpoints of a term's unfolding agree, and the equation has a unique solution, its denotation. We give two solvers that compute this solution. The first is an interpreter for the pure $\lambda$-calculus: its programs are pure $\lambda$-terms, and it tables the behaviour, the least fixpoint over the approximation order, identifying a state with its behaviour and tying a back edge when a state recurs; it halts precisely when the behaviour is rational, with finitely many distinct subtrees, and its operational semantics converges on strictly more terms than ordinary reduction without changing the denotation, returning a finite cyclic graph where the standard operational semantics unfolds a self-reference forever. The rational fragment is the home of finite-state, regular, and least-fixpoint-over-a-finite-lattice computation, so the pure $\lambda$-calculus serves as a domain-specific language for graph and coalgebra problems the interpreter solves: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming, with memoization and transposition tables falling out of state identity. Halting on the rational behaviours is optimal: a non-rational behaviour has no finite representation, so no procedure that preserves the denotation halts on a larger class of inputs. Applied to the coalgebra that head reduction defines, the interpreter decides $\Omega$ as $\bot$ in finite time and represents $Y\,(\mathtt{cons}\;0)$, the cyclic stream of zeros, as a finite cyclic graph that an ordinary recursive function transforms, $\mathtt{map}\,\mathtt{succ}$ returning the cyclic stream of ones, with no construct added to the calculus. Compilation and graph optimization are themselves coalgebraic-equation-solving problems, so we use the first solver to bootstrap the second: a compiler from the $\lambda$-calculus to Python, itself a $\lambda$-term the interpreter solves, which compiles its own source in a self-hosting bootstrap.
+  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires an added recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ for graph reduction: such data has no finite normal form, so ordinary reduction unfolds it forever instead of folding it into a finite cyclic graph, and an ordinary recursive function over it does the same. We show no extension is needed, and the denotational semantics is unchanged: a term keeps its standard meaning, which we represent as a finite cyclic graph when it is rational. The insight is that such data is the unique solution of a coalgebraic equation, and that any coalgebraic equation can be solved directly, by tabling: when a state recurs, the solver folds it into a back edge, so rational data, that with finitely many distinct subtrees, comes out as a finite cyclic graph. The solver halts when finitely many states are reachable, within that rational fragment, and the rational fragment is optimal, since data beyond it has no finite representation, so no denotation-preserving procedure halts on more. The algorithm's first application is the pure $\lambda$-calculus itself: head normalisation is such an equation, and because its states are first-order graph nodes rather than functions their equality is decidable where $\beta$-equality is not, so the solver is an interpreter. It decides $\Omega$ as $\bot$ in finite time and evaluates $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, an ordinary map over the cyclic stream of zeros, to the cyclic stream of ones as a finite cyclic graph, with no construct added. Because any coalgebra Scott-encodes as a $\lambda$-term, this one interpreter solves them all, making the pure $\lambda$-calculus a domain-specific language whose memoization and transposition tables fall out of node identity: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming. A second example coalgebra is compilation. Its equation sends each sub-term of a source program, by specialization rules, to a node of a Python AST over that sub-term's own sub-terms, and its solution is the program optimised to that AST. A compiler computes it by the same tabling, compiling each shared sub-term once into a finite graph, and is itself a $\lambda$-term the interpreter solves, so program analysis is expressed as evaluation, and it compiles its own source in a self-hosting bootstrap.
 \end{abstract}
 
 \keywords{coalgebra, coalgebraic equations, rational fixpoint, algebraic compactness,
@@ -106,7 +106,12 @@ layer of behaviour and names the successor states. Its \emph{behaviour}\footnote
   denotation, and not the operational behaviour in the sense of a reduction sequence or contextual
   equivalence. In the $\lambda$-instance (Section~\ref{sec:bridge}) it is the L\'evy--Longo or B\"ohm
   tree; the reduction is the internal process the structure map collapses, while the behaviour is the
-tree that process exposes. Two terms may thus share a behaviour yet reduce differently.} is the
+tree that process exposes. Two terms may thus share a behaviour yet reduce differently. This tree is the
+  first-order datum over the signature $F$, not the extensional behaviour of a higher-order value; and
+  behavioural \emph{equivalence}, sharing that tree, is a comparison among states, coarser than the
+  structural node identity the tabling uses to fold cycles, and in the $\lambda$-instance is B\"ohm-tree
+  equality, hence undecidable; we solve a single equation rather than compare states, so it is not a
+  relation the construction computes (Section~\ref{sec:intro}).} is the
 unfolding of that map: the possibly infinite tree obtained by exposing layer after layer. We make one
 observation about this unfolding and pursue its consequences. When the behaviour is
 \emph{rational},\footnote{Throughout, \emph{rational} qualifies a behaviour, that is, a tree: the
@@ -483,8 +488,10 @@ faithfully (Proposition~\ref{prop:outwd}).
       behaviours, the gap being the dead-subterm witnesses ($Y\,F\,\underline{0}$ with
       $F=\lambda s.\lambda n.\,\mathtt{cons}\,0\,(s\,(\mathtt{succ}\,n))$); folding additionally any
       positions of equal behaviour enlarges it, and in the limit, folding all behaviourally equal
-      positions, the tabling halts iff the behaviour is rational. By (1) no sound identity pushes the
-      halting set beyond the rational fragment.
+      positions (a coarser identification than structural identity, and in the $\lambda$-instance not
+      decidable, so an ideal limit rather than the relation the implementation folds on), the tabling
+      halts iff the behaviour is rational. By (1) no sound identity pushes the halting set beyond the
+      rational fragment.
   \end{enumerate}
 \end{theorem}
 \begin{proof}
@@ -760,6 +767,23 @@ opening claim, so we give it in full; everything specialises the general develop
   for $Y\,(\lambda x.x)$, the pure-$\lambda$ rendering of $\mathtt{letrec}\;x = x$.
 \end{example}
 
+\begin{remark}[Where this gains over call-by-need]\label{rem:callbyneed}
+Lazy (call-by-need) evaluation memoises only thunks that are aliased in the heap, so it folds a
+recurrence only when the recurring subterm is physically the same cell. On a term with a finite normal
+form it then agrees with the tabling on the value and differs only in cost: the tabling identifies
+subcomputations that are structurally equal yet separately built, collapsing for instance the
+exponential edit-distance recursion to its $O(mn)$ distinct suffix pairs, the dynamic-programming
+table, with no memoisation written. The gain in convergence is elsewhere. On a behaviour that is
+infinite yet reaches finitely many states, such as $Y\,(\mathtt{cons}\;0)$ (Example~\ref{ex:cons}) or
+$\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, whose rebuilt spine shares no cell with its
+source, call-by-need diverges while the tabling returns the finite cyclic graph; and on an
+unproductive term such as $\Omega$ (Example~\ref{ex:xx}) the tabling decides $\bot$ in finite time
+where call-by-need loops. This gain is exactly a decidable fragment of the rational ceiling of
+Theorem~\ref{thm:optimal}: the tabling on structural identity halts on the behaviours that reach
+finitely many states, and the residual gap to the full rational ceiling is undecidable
+(Remark~\ref{rem:semidec}).
+\end{remark}
+
 % =====================================================================
 \section{Applications}\label{sec:application}
 % =====================================================================
@@ -838,9 +862,20 @@ are the unfolding and its limit, separated by how much they remember.
 \paragraph{Coalgebra, final semantics, and rational fixpoints.}
 Reading behaviour as the unique map into a final coalgebra is the coalgebraic method
 \citeTODO{rutten, jacobs}; the finite cyclic graphs are the rational fixpoint between the initial
-algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition-refinement
-minimisation of automata \citeTODO{hopcroft, paige-tarjan} folds on structural identity, but only for
-automata, not for an arbitrary signature functor.
+algebra and the final coalgebra \citeTODO{adamek-milius-velebil-rational}. Partition refinement
+\citeTODO{hopcroft, paige-tarjan}, and its generic coalgebraic form CoPaR \citeTODO{copar,
+wissmann-modular-partition-refinement} for any zippable functor on $\mathbf{Set}$, solves a different
+problem: it is \emph{given} a finite coalgebra and \emph{minimises} it, quotienting its states by
+behavioural equivalence (the coarsest bisimulation, the kernel of the map into the final coalgebra),
+a comparison among the states of an already-given system. We do not minimise or compare two systems; we
+\emph{solve} one: a $\lambda$-term is read as a coalgebraic equation, and we compute its solution, and on
+the rational fragment a finite representation of that one solution. The only equality we use is
+\emph{structural identity} of nodes \emph{within that single solution}, and only to recognise a
+re-entrant cycle and tie a back edge (decidable because the nodes are first-order,
+Section~\ref{sec:intro}); we never quotient by behavioural equivalence, which on $\lambda$-terms would be
+B\"ohm-tree equality and is undecidable. The two tasks are orthogonal and could compose: CoPaR could
+minimise the finite graph we produce. Our behaviour, finally, is the first-order $\Sigma$-tree a state
+unfolds to, not the extensional behaviour of a higher-order value.
 
 \paragraph{Iteration, the delay monad, and Elgot monads.}
 Iteration in a (complete) Elgot monad
@@ -1314,17 +1349,29 @@ the same $Z$ fixpoint that makes the compiler untypable. As a value that recursi
 it can be neither a call-by-value island (which requires strong normalization) nor a lazy island (which
 requires a finite normal form); it stays interpreted in every engine. Its per-step body is a different
 matter: that body is a closed term that uses the recursive call only as a parameter (no self-application),
-so several of the analysis step bodies are simply typable and are compiled as islands. They do not change
-the cost, though, because of the island-application boundary: a function island is read back to a
-$\lambda$ node (the reify is nullary), and the interpreter then applies that node on every step, so the
-native code runs once to produce the node and the per-application work stays interpreted. That, not the
-size of the islands, is why the matrix is flat and the two regimes coincide. The cost grows only with the
-target depth, because a deeper target types deeper sub-terms. Compiling part of the hot path is therefore
-possible but not yet paying: it needs a positive-arity island that runs the step body natively on each
-application (reflecting the node arguments to host values and reifying the result, falling back to
-interpretation on a non-productive cycle), and whether that boundary nets a speedup against the small
-step bodies is an empirical question. Compiling the recursion scheme itself, by contrast, no sound island
-can do.
+so several of the analysis step bodies are simply typable and are compiled as islands. They still do not
+change the cost, and measuring a reflect boundary shows why. A typable step body compiled to native code
+runs with no interpreter involvement when its arguments are host values. In the hot path, though, its
+arguments arrive from the untypable driver as interpreter nodes, and the node-to-host bridge a positive
+arity island would need so the step body can branch on them is itself interpreter-driven: it forces each
+sub-result back through the interpreter (one application per step, so interpreter speed), and a variant
+that does not force diverges under read-back. So the per-step work is performed by the interpreter either
+way; the native code helps only where the driver and the data are already native, which the untypable
+recursion driver is not. That, not the size of the islands, is why the matrix is flat and the two regimes
+coincide. The cost grows only with the target depth, because a deeper target types deeper sub-terms.
+The deeper obstacle is that soundness and performance are not the same kind of property here. That a
+compiled island converges exactly where the interpreter does is a local fact, provable for one island in
+isolation. Performance is global: the interpreter's tabling is a single cache shared across the whole
+compilation, so carving a recursion into an island, which keeps its own memo, gives up the cross-term
+sharing the analysis was built on (the closedness measure, for instance, is deliberately depth-free so
+the interner shares it at every position and a whole-tree scan is linear). Removing one such computation
+from the shared cache is sound but can slow code arbitrarily far away that depended on the same entry,
+and no local analysis can rule that out. A sound speedup of the hot path therefore cannot be licensed by
+a static local certificate; it would need a feedback-directed heuristic, in the spirit of hardware branch
+prediction or a tracing just-in-time compiler, that uses an observed execution profile to predict which
+regions repay native compilation and leaves the rest to the shared interpreter, correcting itself when a
+prediction does not pay. Speeding up the shared interpreter itself is the complementary alternative whose
+benefit is global by construction and so cannot regress a distant cache.
 
 % =====================================================================
 %% The body cites via \citeTODO (red draft markers), never \cite, so

@@ -1,0 +1,17 @@
+# serializer version: 1
+# name: test_sum_cyclic_halts_but_counters_diverge[sum_over_three_zero_streams]
+  dict({
+    'closure_counter': dict({
+      'list_behaviour': '(λ (λ ((v1 (λ (λ v0))) (λ (λ ((v1 (λ (λ v0))) (λ …(truncated at budget; the spine never folds)',
+      'sum': 'DIVERGES: every tail is a distinct state, so the fold never re-enters and never terminates',
+    }),
+    'cyclic_Y_cons_0': dict({
+      'list_behaviour': '(λ (λ ((v1 (λ (λ v0))) #0=(λ (λ ((v1 (λ (λ v0))) #0))))))',
+      'sum': 'HALTS: sum folds over a finite state set and reduces to (λ (λ ⊥))',
+    }),
+    'trampoline_counter': dict({
+      'list_behaviour': '(λ (λ ((v1 (λ (λ v0))) (λ (λ ((v1 (λ (λ v0))) (λ …(truncated at budget; the spine never folds)',
+      'sum': 'DIVERGES: every tail is a distinct state, so the fold never re-enters and never terminates',
+    }),
+  })
+# ---
