@@ -51,7 +51,7 @@ topLevel@{ ... }: {
           "overlay-language"
           "overlay-library"
           "fixpoints"
-          "first-order-lambda"
+          "co-lambda"
         ];
 
         editableOverlay = workspace.mkEditablePyprojectOverlay {
@@ -113,7 +113,7 @@ topLevel@{ ... }: {
           workspace.deps.all).overrideAttrs
           (old: { venvIgnoreCollisions = [ "*" ]; });
 
-        # --- PyPy runtime for first-order-lambda-benchmark ---
+        # --- PyPy runtime for co-lambda-benchmark ---
         # The benchmark is CPU-bound interpreter/compiler work (deep tree walks, beta reduction),
         # the workload PyPy's JIT accelerates. The dev partition's pkgs follows the project nixpkgs,
         # so pkgs.pypy3 is PyPy 7.3.20 (Python 3.11), satisfying requires-python >= 3.11. The dev
@@ -137,13 +137,13 @@ topLevel@{ ... }: {
           })
         ]);
 
-        firstOrderLambdaBenchmarkPypy =
-          (pythonSetPypy.mkVirtualEnv "first-order-lambda-benchmark-pypy"
+        coLambdaBenchmarkPypy =
+          (pythonSetPypy.mkVirtualEnv "co-lambda-benchmark-pypy"
             (builtins.removeAttrs workspace.deps.default [ "mixinv2-workspace" ])).overrideAttrs
           (old: {
             venvIgnoreCollisions = [ "*" ];
             meta = (old.meta or { }) // {
-              mainProgram = "first-order-lambda-benchmark";
+              mainProgram = "co-lambda-benchmark";
             };
           });
 
@@ -444,17 +444,17 @@ topLevel@{ ... }: {
         };
 
         # --- Supplementary material for the first-order-semantics paper ---
-        # A standalone bundle of first-order-lambda and its only workspace dependency,
+        # A standalone bundle of co_lambda and its only workspace dependency,
         # fixpoints, with a minimal virtual-workspace root so a reviewer can resolve and run
         # it without the rest of MIXINv2.
 
         firstOrderSupplementarySourceFiles = lib.fileset.toSource {
           root = ../.;
           fileset = lib.fileset.unions [
-            ../packages/first-order-lambda/src
-            ../packages/first-order-lambda/tests
-            ../packages/first-order-lambda/pyproject.toml
-            ../packages/first-order-lambda/README.md
+            ../packages/co-lambda/src
+            ../packages/co-lambda/tests
+            ../packages/co-lambda/pyproject.toml
+            ../packages/co-lambda/README.md
             ../packages/fixpoints/src
             ../packages/fixpoints/pyproject.toml
             ../packages/fixpoints/README.md
@@ -466,16 +466,16 @@ topLevel@{ ... }: {
         firstOrderReviewerReadme = pkgs.writeText "README.md" ''
           # First-Order Semantics for the lambda-Calculus -- Supplementary Material
 
-          This archive contains `first-order-lambda`, an executable first-order-shape-relation
+          This archive contains `co_lambda`, an executable first-order-shape-relation
           interpreter for the pure lambda-calculus, together with its only dependency
           `fixpoints`.
 
           ## Directory structure
 
-          - `packages/first-order-lambda/src/first_order_lambda/` -- the interpreter: the
+          - `packages/co-lambda/src/co_lambda/` -- the interpreter: the
             weak-head shape relation `Sh`, the least-fixpoint readout, and four pluggable
             position congruences.
-          - `packages/first-order-lambda/tests/` -- the paper's examples as tests, including the
+          - `packages/co-lambda/tests/` -- the paper's examples as tests, including the
             cyclic stream `Y (cons 0)`, the unproductive cycles `Omega` and `Y (lambda x. x)`,
             the naive walk, and the ordinary `map` folding a cyclic list.
           - `packages/fixpoints/src/fixpoints/` -- least-fixpoint cached-property infrastructure.
@@ -486,13 +486,13 @@ topLevel@{ ... }: {
 
           ```
           uv sync
-          uv run pytest packages/first-order-lambda/tests packages/fixpoints/tests
+          uv run pytest packages/co-lambda/tests packages/fixpoints/tests
           ```
         '';
 
         firstOrderWorkspacePyproject = pkgs.writeText "pyproject.toml" ''
           [tool.uv.workspace]
-          members = ["packages/first-order-lambda", "packages/fixpoints"]
+          members = ["packages/co-lambda", "packages/fixpoints"]
         '';
 
         firstOrderSupplementaryMaterial = pkgs.stdenv.mkDerivation {
@@ -537,8 +537,8 @@ topLevel@{ ... }: {
             ${assertNoIdentityLeak "$base"}
 
             # Both packages present.
-            test -d $base/packages/first-order-lambda/src/first_order_lambda
-            test -d $base/packages/first-order-lambda/tests
+            test -d $base/packages/co-lambda/src/co_lambda
+            test -d $base/packages/co-lambda/tests
             test -d $base/packages/fixpoints/src/fixpoints
 
             # Anonymization applied.
@@ -551,7 +551,7 @@ topLevel@{ ... }: {
             [ "mixinv2-workspace" ])).overrideAttrs
           (old: { venvIgnoreCollisions = [ "*" ]; });
         packages.mixinv2-dev-env = mixinv2-dev-env;
-        packages.first-order-lambda-benchmark-pypy = firstOrderLambdaBenchmarkPypy;
+        packages.co-lambda-benchmark-pypy = coLambdaBenchmarkPypy;
         packages.supplementary-material = supplementaryMaterial;
         packages.first-order-supplementary-material = firstOrderSupplementaryMaterial;
 
