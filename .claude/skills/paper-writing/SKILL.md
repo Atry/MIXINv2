@@ -12,6 +12,21 @@ description: "LaTeX style and conventions for the inheritance-calculus / first-o
 - `\section` and `\subsection`: **Title Case** (capitalize all major words; lowercase articles, prepositions, and conjunctions unless they are the first word).
 - `\paragraph`: **Sentence case** (capitalize only the first word and proper nouns).
 
+### No overuse of parentheses
+
+Parentheses in prose interrupt the main line and signal that content was not woven in. Two rules:
+
+1. **Do not use parentheses for defensive or clarifying asides** that break the sentence's flow — move them to a footnote or rewrite them into the sentence instead.
+2. **Parentheses for citation keys and cross-references are fine** (`\cite{...}`, `\ref{...}`).
+
+```latex
+% ✗ BAD — defensive aside breaks flow
+The solver halts (when finitely many states are reachable) and returns a finite graph.
+
+% ✓ GOOD — woven in
+The solver halts when finitely many states are reachable and returns a finite graph.
+```
+
 ### No trailing periods in headings
 
 `\paragraph` headings must **not** end with a period:
