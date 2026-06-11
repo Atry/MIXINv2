@@ -465,9 +465,9 @@ state must reach a layer or a revisit (this section), and the reachable states m
 (Theorem~\ref{thm:termination}); either can fail without the other.
 
 For instance, one step of weak-head reduction in the pure $\lambda$-calculus is such a
-reduction function: a variable, an abstraction, or an application with a rigid head (one that
-can never become an abstraction, so no redex forms) exposes a layer, and a head redex
-contracts silently. Its solution is the L\'evy--Longo tree~\cite{longo1983-set-theoretical-models} of the
+reduction function: a variable or an abstraction exposes a layer, and an application either
+contracts its head redex, the abstraction at the head of its function spine applied to the next
+argument, as a silent step, or exposes a layer when that head is a variable. Its solution is the L\'evy--Longo tree~\cite{longo1983-set-theoretical-models} of the
 term, the standard tree semantics of weak-head reduction; a different reduction function fixes a
 different such tree (the B\"ohm tree under head reduction), and under
 Definition~\ref{def:semantics} each \emph{is} the meaning its reduction defines. Here a bare
@@ -476,6 +476,70 @@ standard denotation of its terms; when that denotation is the tree the chosen re
 to, as the L\'evy--Longo tree is for weak-head reduction, the solution-preserving guarantee of
 Theorem~\ref{thm:optimal} is exactly that this denotational semantics is unchanged. The instance
 is developed in Section~\ref{sec:bridge}.
+
+% =====================================================================
+\section{Implementation}\label{sec:bridge}
+% =====================================================================
+The method is independent of the $\lambda$-calculus, but its first instance is the
+$\lambda$-calculus itself, and we have built it: an interpreter for weak-head reduction and, over
+it, a self-hosting compiler. Both accompany the paper\anon[ as supplementary
+material]{~\cite{colambda}}, and every behaviour stated below is reproduced as a passing test.
+
+\paragraph{The bridge.}
+The signature is $F X = \{\Varsh_i\}_i + \{\Lamsh(x)\}_x + \{\Appsh(x, x')\}_{x, x'}$, a nullary
+operation per de Bruijn index, a unary $\Lamsh$, a binary $\Appsh$; the states are pure
+$\lambda$-terms in de Bruijn form, with no recursion binder. They are \emph{interned}, so two
+structurally equal terms are one object and identity is a pointer test, the decidable, hashable
+state identity Definition~\ref{def:coalgebra} asks for and the reason the interpreter decides on
+the syntax of a term what $\beta$-equality, the identity of the function it computes, cannot. The
+reduction function is one step of weak-head reduction: a variable or an abstraction exposes its
+layer, and an application either contracts its head redex, the abstraction at the head of its
+function spine applied to the next argument, as a silent step, or exposes an $\Appsh$ layer when
+that head is a variable; the silent iteration $\outm = \iter{\stepm}$ then runs these contractions
+to the first layer, or to $\bot$ when the head never settles.
+
+\begin{proposition}[The weak-head instance]\label{prop:bridge}
+  For this $\stepm$, the structure map $\outm = \iter{\stepm}$ is the weak-head shape, with
+  $\outm(x) = \bot$ exactly when $x$ has no weak head normal form, so its solution $\behav$ is by
+  definition the term's L\'evy--Longo tree~\cite{longo1983-set-theoretical-models}, the standard
+  lazy tree semantics. A second structure map that reduces under $\lambda$, reading a $\lambda$
+  over a body whose own solution is $\bot$ as $\bot$, gives the B\"ohm tree instead. Both
+  specialise Propositions~\ref{prop:order}, \ref{prop:out} and Theorem~\ref{thm:correctness} to
+  $M = \Delaym$, so the general solver computes each.
+\end{proposition}
+
+\paragraph{The engine.}
+The interpreter realises the two least fixpoints of Section~\ref{sec:method} as two mechanisms on
+the interned term. The silent collapse $\outm$ is a memoised recursion that runs head reduction
+and, on finding a state already on its own stack by pointer identity, returns $\bot$; so $\Omega$
+is decided as $\bot$ in finite time where reduction loops. The readout is the interning itself:
+successor states are the de Bruijn reducts the reduction produces, so when a reduct is structurally
+identical to a live state the back edge is there already and the cycle folds at no cost. Thus
+$Y\,(\mathtt{cons}\,0)$, whose self-application reduces to a structurally identical term, comes out
+as a finite cyclic graph, a cell whose tail points back to itself, and the ordinary
+$\mathtt{map}\,\mathtt{succ}$ over it as the finite circle of ones, with nothing cycle-aware in
+either term; a term whose reducts never coincide, such as the $Y\,F\,\underline{0}$ of
+Appendix~\ref{app:optimal}, does not fold, exactly the structural-identity gap proved there. The
+weak-head and B\"ohm readings are two structure maps over the one carrier, the head reading walking
+the same states the weak-head readout does, so the solver halts on the same terms under both,
+differing only at a $\lambda$ over a body with no head normal form.
+
+\paragraph{Compilation as a second coalgebra.}
+Compilation is itself such an equation: it sends each sub-term of a quoted source program, by
+specialisation rules, to a node of a Python abstract syntax tree over that sub-term's own
+sub-terms, and its solution is the program compiled to that tree. The compiler is a pure
+$\lambda$-term the interpreter solves on the quoted source, and so are its enabling analyses, a
+simple-typability check by Hindley--Milner inference with an occurs check, a closedness check, and
+a fuel-bounded normalisation check, so program analysis is expressed as evaluation. The analyses
+select, per sub-term, one of three targets: a closed simply-typable sub-term, hence strongly
+normalising, compiles to a strict call-by-value target; one whose interpreted behaviour is a
+finite normal form, but untypable, to a call-by-name target; everything else stays interpreted,
+the interpreter being the sound default. A compiled sub-term is a single node holding native code,
+spliced into the otherwise interpreted graph, so specialisation is local. The fixpoint combinator
+the compiler emits is a strict, call-by-value variant $Z$ rather than $Y$, so the compiled Python
+runs the recursion under call-by-value, where a compiled $Y$ would diverge at once, and the
+compiler compiles its own source and self-hosts; the cost of the multi-stage self-compilation is the subject of
+Section~\ref{sec:application}.
 
 % =====================================================================
 %  TODO: REMAINING SECTIONS (paper outline, IMRaD-style; sections 1-2 done)
