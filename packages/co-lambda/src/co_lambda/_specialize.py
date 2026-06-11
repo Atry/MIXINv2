@@ -279,7 +279,7 @@ def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
 
 def _compile_call_by_value(quoted: "object") -> "object":
     """The quoted sub-term compiled to a strict call-by-value expression by ``CODEGEN``."""
-    return app(app(app(app(CODEGEN, _option(Runtime.CALL_BY_VALUE)), SCOTT_NIL), SCOTT_NIL), quoted)
+    return app(app(app(CODEGEN, _option(Runtime.CALL_BY_VALUE)), church(0)), quoted)
 
 
 def _compile_call_by_name(quoted: "object") -> "object":
@@ -287,7 +287,7 @@ def _compile_call_by_name(quoted: "object") -> "object":
     names ``force``/``Thunk``). A lazy island splices this; the load-time ``Thunk`` choice (``_NeedThunk``
     by default = call-by-need, ``_LazyThunk`` = call-by-name) decides the regime, the same source either
     way."""
-    return app(app(app(app(CODEGEN, _option(Runtime.CALL_BY_NAME)), SCOTT_NIL), SCOTT_NIL), quoted)
+    return app(app(app(CODEGEN, _option(Runtime.CALL_BY_NAME)), church(0)), quoted)
 
 
 # island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).
@@ -385,7 +385,7 @@ def _specialized_output(depth: "object", quoted: "object") -> "object":
 def _whole_output(thunked: "object", quoted: "object") -> "object":
     """The test-only whole-program call-by-value/name output of ``quoted`` (``thunked`` the Church
     boolean), delegating to the internal code generator ``CODEGEN``."""
-    return app(app(app(app(CODEGEN, thunked), SCOTT_NIL), SCOTT_NIL), quoted)
+    return app(app(app(CODEGEN, thunked), church(0)), quoted)
 
 
 # COMPILE: the one compiler, a single lambda term taking an all-in-one option and a quoted program. The

@@ -13,9 +13,9 @@ from co_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS, church
 
 
 def test_compiles_identity_and_kestrel() -> None:
-    # A binder at de Bruijn level k is named "v" followed by k copies of "x" (built by the lambda
-    # term over the level), so identity is "lambda v: v" and K names its two binders "v" and "vx".
-    assert codegen(build(IDENTITY)) == "lambda v: v"
+    # A binder at depth d is named "v_<d>" (a one-element Nat list rendered by the generic decoder),
+    # so identity is "lambda v_0: v_0" and K names its two binders "v_0" and "v_1".
+    assert codegen(build(IDENTITY)) == "lambda v_0: v_0"
     assert eval(codegen(build(IDENTITY)))(7) == 7
     kestrel = eval(codegen(build(KESTREL)))
     assert kestrel("a")("b") == "a"

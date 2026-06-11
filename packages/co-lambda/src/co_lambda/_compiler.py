@@ -27,7 +27,7 @@ from typing import Iterator
 from co_lambda import _pybuild
 from co_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import FALSE, SCOTT_NIL, TRUE, Y, church, cons, map_list
+from co_lambda._prelude import FALSE, PRED, SCOTT_NIL, SUCC, TRUE, Y, church, cons, map_list
 from co_lambda._pyast import decode
 
 # The compiler's own recursion is the ordinary fixpoint Y (from the prelude). The compiler's source
@@ -65,8 +65,9 @@ def q_app(function: Builder, argument: Builder) -> Builder:
 
 # The compiler emits the GENERIC _pyast Scott encoding of a real Python ast (built with the lambda-term
 # smart constructors in _pybuild), decoded by the generic _pyast.decode. Every variable identifier is
-# emitted as a LIST OF NATS (its AST path) via _pybuild.field_ident; the single _pyast decoder renders it
-# ``v_<int>_<int>...`` for every runtime, so no identifier string is built inside the lambda term. The
+# emitted as a LIST OF NATS via _pybuild.field_ident (the binder depth for the expression targets, the
+# AST path for call-by-need); the single _pyast decoder renders it ``v_<int>_<int>...`` for every
+# runtime, so no identifier string is built inside the lambda term. The
 # call-by-name target wraps a variable/function in ``force(...)`` and an argument in ``Thunk(lambda: .)``.
 
 
@@ -91,8 +92,8 @@ def _select_wrap(thunked: Builder, lazy_wrap: Builder) -> Builder:
     return app(app(thunked, lazy_wrap), _IDENTITY_WRAP)
 
 
-# CODEGEN (the call-by-value / call-by-name expression target) is defined after the shared AST-path
-# helpers below, since it now names variables by their binder's path (a list of Nats) like CODEGEN_NEED.
+# CODEGEN (the call-by-value / call-by-name expression target) is defined near the end of the module;
+# it names variables by binder depth (a one-element Nat list), keeping its recursion path-free.
 
 
 def quote(node: Node) -> Builder:
@@ -128,7 +129,7 @@ def _option(runtime: Runtime) -> Builder:
 
 def compile_quoted(option: Builder, quoted: Builder) -> Node:
     """Run ``CODEGEN`` (at the given option) on a quoted source term, returning the Scott Python expr."""
-    return build(app(app(app(app(CODEGEN, option), SCOTT_NIL), SCOTT_NIL), quoted))
+    return build(app(app(app(CODEGEN, option), church(0)), quoted))
 
 
 # --- runtime support for the compiled call-by-name target ---------------------------------------
@@ -461,7 +462,7 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
     """Compile ``node`` with an interpret-headed compiler, a ``CODEGEN`` ``Node`` run by the interpreter.
 
     ``compiler_node`` is what ``compile_interpreted(build(CODEGEN))`` evaluates to: the compiler itself,
-    handed back to the interpreter. The interpreter applies it to the option, the empty path and env,
+    handed back to the interpreter. The interpreter applies it to the option, the zero binder depth,
     and the quoted program, and the resulting generic Scott Python AST is decoded by the same generic
     ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
     interpret-headed Python, compiles any program to the same source as ``codegen``: the
@@ -469,7 +470,7 @@ def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime =
     """
     with _recursion_headroom():
         applied = compiler_node(
-            build(_option(runtime)), build(SCOTT_NIL), build(SCOTT_NIL), build(quote(node)),
+            build(_option(runtime)), build(church(0)), build(quote(node)),
         )
         return ast.unparse(ast.fix_missing_locations(decode(applied)))
 
@@ -760,41 +761,56 @@ def compiled_compiler() -> Node:
     return build(CODEGEN)
 
 
-# CODEGEN (call-by-value / call-by-name): self path env quoted -> Scott Python EXPRESSION. Like
-# CODEGEN_NEED it names variables by their binder's AST path (a list of Nats, emitted via field_ident
-# and rendered by the one _pyast decoder), threading ``path`` (the current address) and ``env`` (the
-# list of in-scope binder name fields, innermost first). The option (a Church boolean ``thunked``)
-# selects the wraps: call-by-name forces a variable/function (``force``) and thunks an argument
-# (``Thunk(lambda: .)``); call-by-value wraps with identity.
-#   QVar i      -> wrapVar (Name (env !! i))
-#   QLam b      -> Lambda (v_<path>) (self (path.2) ((v_<path>) : env) b)
-#   QApp f a    -> Call (wrapFun (self (path.0) env f)) [wrapArg (self (path.1) env a)]
+# CODEGEN (call-by-value / call-by-name): self depth quoted -> Scott Python EXPRESSION. Variables are
+# named by binder DEPTH (a one-element Nat list, emitted via field_ident and rendered by the one
+# _pyast decoder): the binder at depth d is ``v_d`` and ``QVar i`` under d enclosing binders is
+# ``v_{d-1-i}`` (Church truncated subtraction). Depth naming keeps the recursion PATH-FREE: the call
+# spine ``self depth quoted`` is interned per (depth, sub-term), so the interpreter tables compilation
+# once per distinct sub-term and depth, where per-position AST-path naming made every call site a
+# distinct spine that was never tabled. (CODEGEN_NEED still threads a path: its per-node memo cells
+# and thunk defs are statements that need per-occurrence unique names.) The option (a Church boolean
+# ``thunked``) selects the wraps: call-by-name forces a variable/function (``force``) and thunks an
+# argument (``Thunk(lambda: .)``); call-by-value wraps with identity.
+#   QVar i      -> wrapVar (Name v_{depth-1-i})
+#   QLam b      -> Lambda (v_<depth>) (self (succ depth) b)
+#   QApp f a    -> Call (wrapFun (self depth f)) [wrapArg (self depth a)]
+
+
+def _depth_ident(depth: Builder) -> Builder:
+    """The identifier field of the binder at ``depth``: the one-element Nat list ``[depth]``."""
+    return _pybuild.field_ident(cons(depth, SCOTT_NIL))
+
+
+def _level_ident(depth: Builder, index: Builder) -> Builder:
+    """The identifier field of ``QVar index`` under ``depth`` binders: ``[depth - 1 - index]``, by
+    Church truncated subtraction (``index + 1`` applications of ``PRED``). A free index (>= depth)
+    floors to level 0; compiled terms are certified closed, so it is never reached."""
+    return _pybuild.field_ident(cons(app(app(app(SUCC, index), PRED), depth), SCOTT_NIL))
+
+
 CODEGEN: Builder = lam(lambda thunked: app(
     Y,
-    lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(lambda quoted: app(app(app(
+    lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
         quoted,
         lam(lambda index: app(
             _select_wrap(thunked, _FORCE_WRAP),
-            _pybuild.py_name(app(app(_NTH, index), env), _pybuild.py_load()),
+            _pybuild.py_name(_level_ident(depth, index), _pybuild.py_load()),
         )),
         ),
-        lam(lambda body: _let(
-            _pybuild.field_ident(path),
-            lambda parameter: _pybuild.py_lambda(
-                parameter,
-                app(app(app(self_recursion, cons(_BRANCH_BODY, path)), cons(parameter, env)), body),
-            ),
+        lam(lambda body: _pybuild.py_lambda(
+            _depth_ident(depth),
+            app(app(self_recursion, app(SUCC, depth)), body),
         )),
         ),
         lam(lambda function: lam(lambda argument: _pybuild.py_call(
             app(
                 _select_wrap(thunked, _FORCE_WRAP),
-                app(app(app(self_recursion, cons(_BRANCH_FUNCTION, path)), env), function),
+                app(app(self_recursion, depth), function),
             ),
             _single_arg(app(
                 _select_wrap(thunked, _THUNK_WRAP),
-                app(app(app(self_recursion, cons(_BRANCH_ARGUMENT, path)), env), argument),
+                app(app(self_recursion, depth), argument),
             )),
         ))),
-    )))))
+    ))))
 ))
