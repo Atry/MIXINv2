@@ -68,6 +68,7 @@ if they knew X"), that excuse is the curse of knowledge: fix and rerun.
 - **Missing why**: states what happens but not the motivation or why it matters.
 - **Dangling referent**: "this / that / it" with no clear antecedent.
 - **Overloaded name**: one symbol or word for two things in the same passage.
+- **Inconsistent terminology**: one concept, multiple names, never equated.
 - **Untyped thing**: unclear what something *is* (a function? a set? a value? a step?).
 - **Insider comparison** to an alternative the reader does not know ("unlike call-by-need ...").
 - **Unreachable pointer**: "see the code / the figure" the reader cannot consult.
@@ -89,8 +90,9 @@ Report: 1. RESTATEMENT (plain words: main claim, each example and why it support
 the takeaway). 2. CONFUSIONS (numbered: every term/symbol/step you can't follow from the text
 alone; quote it, say what's missing). Watch for: forward references, undefined terms/notation/
 acronyms, assumed prior knowledge, suppressed steps ("clearly"), missing motivation, unclear
-"this/it", overloaded names, untyped things, comparisons to things you don't know, pointers you
-can't follow, examples needing the concept itself, "the X" for an X not yet introduced.
+"this/it", overloaded names, inconsistent terminology (one concept under multiple names, never
+equated), untyped things, comparisons to things you don't know, pointers you can't follow,
+examples needing the concept itself, "the X" for an X not yet introduced.
 3. OBVIOUS (numbered: passages a reader of this background already knows, that spell out the
 inferable and could be cut; quote them). 4. VERDICT (yes/no a reader of that background
 understands). Be literal, not charitable: anything only guessable is a confusion, and anything
@@ -110,8 +112,9 @@ combined: if the CONTEXT already defines a term/symbol, it is NOT a confusion.
 the takeaway). 2. CONFUSIONS (numbered: every term/symbol/step in the TARGET you can't follow even
 after using the CONTEXT; quote it, say what's missing). Watch for: undefined terms/notation/acronyms,
 suppressed steps ("clearly"), missing motivation, unclear "this/it", overloaded names, untyped
-things, comparisons to things you don't know, pointers you can't follow, examples needing the
-concept itself, "the X" for an X introduced in neither file. Note a forward reference to a *later*
+things, inconsistent terminology (one concept under multiple names across CONTEXT and TARGET,
+never equated), comparisons to things you don't know, pointers you can't follow, examples needing
+the concept itself, "the X" for an X introduced in neither file. Note a forward reference to a *later*
 part you were not given only if it blocks understanding the TARGET itself. 3. OBVIOUS (numbered:
 passages a reader of this background, having read the CONTEXT, already knows and that could be cut;
 quote them). 4. VERDICT (yes/no a reader of that background, having read the CONTEXT, understands
@@ -122,6 +125,10 @@ references: anything only guessable from the two files is a confusion, anything 
 ## Notes
 
 - Run rounds serially (each fix changes what the next reader sees); keep the audience fixed.
+- **One subagent per round; skip the round if the change is trivial.** A second subagent on the same
+  unchanged text returns the same report — it adds no signal, only cost. Re-run only after a real
+  edit to the prose. A trivial change (fixing a typo, adjusting punctuation) does not justify a new
+  round; re-run when a confusion was addressed or a passage was rewritten.
 - Checks comprehensibility only, not correctness or style.
 - Testing a whole document section by section: walk it in reading order, each section the TARGET
   with all earlier sections as CONTEXT. Without the CONTEXT split, every later section drowns in

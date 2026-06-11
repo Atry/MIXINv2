@@ -174,6 +174,10 @@ misses. The Workflow tool's pipeline / adversarial-verify patterns are built for
 ## Notes
 
 - Run rounds serially once you start fixing (each fix changes the argument); fan out only within a round.
+- **Do not re-run a subagent on the same unchanged text.** Two subagents on identical input return
+  identical reports — no new signal, only cost. Re-run only after the text was actually revised.
+  A trivial edit (wording, punctuation) does not justify a new round; re-run when a claim was
+  strengthened, weakened, or a proof step was added or removed.
 - Keep the audience fixed across rounds, and pitch it at the real venue's expertise — too naive an
   expert manufactures false gaps (it lacks the knowledge to see the step), too generous a one waves
   real gaps through. When unsure, err toward the more demanding referee.
