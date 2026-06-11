@@ -78,6 +78,9 @@ if they knew X"), that excuse is the curse of knowledge: fix and rerun.
 - **Over-narration of the obvious** (the inverse curse): spelling out in ten sentences what the
   audience can infer from one. The reader fills gaps as well as you do; obvious steps read as
   filler. Separate obvious from non-obvious, keep the non-obvious, cut the obvious.
+- **Parenthesis overuse**: a parenthetical aside that interrupts the main line, or defensive
+  clarifying content crammed into parentheses. Flag it; the fix is either to weave it into the
+  sentence or to move it to a footnote.
 
 ## Subagent prompt
 
@@ -92,7 +95,8 @@ alone; quote it, say what's missing). Watch for: forward references, undefined t
 acronyms, assumed prior knowledge, suppressed steps ("clearly"), missing motivation, unclear
 "this/it", overloaded names, inconsistent terminology (one concept under multiple names, never
 equated), untyped things, comparisons to things you don't know, pointers you can't follow,
-examples needing the concept itself, "the X" for an X not yet introduced.
+examples needing the concept itself, "the X" for an X not yet introduced, parenthesis overuse
+(defensive or clarifying content crammed into parentheses that breaks the sentence's flow).
 3. OBVIOUS (numbered: passages a reader of this background already knows, that spell out the
 inferable and could be cut; quote them). 4. VERDICT (yes/no a reader of that background
 understands). Be literal, not charitable: anything only guessable is a confusion, and anything
@@ -114,7 +118,8 @@ after using the CONTEXT; quote it, say what's missing). Watch for: undefined ter
 suppressed steps ("clearly"), missing motivation, unclear "this/it", overloaded names, untyped
 things, inconsistent terminology (one concept under multiple names across CONTEXT and TARGET,
 never equated), comparisons to things you don't know, pointers you can't follow, examples needing
-the concept itself, "the X" for an X introduced in neither file. Note a forward reference to a *later*
+the concept itself, "the X" for an X introduced in neither file, parenthesis overuse (defensive or
+clarifying content crammed into parentheses that breaks the sentence's flow). Note a forward reference to a *later*
 part you were not given only if it blocks understanding the TARGET itself. 3. OBVIOUS (numbered:
 passages a reader of this background, having read the CONTEXT, already knows and that could be cut;
 quote them). 4. VERDICT (yes/no a reader of that background, having read the CONTEXT, understands
