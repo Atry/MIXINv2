@@ -122,7 +122,7 @@ def _compiler_islands_block() -> str:
     ]
     heading = (
         "\\medskip\\noindent\\textbf{The compiler, specialized: finding call-by-value islands.}\\quad "
-        "The compiler is untypable as a whole, since its fixpoint combinator $Z$ self-applies, so it "
+        "The compiler is untypable as a whole, since its fixpoint combinator $Y$ self-applies, so it "
         f"stays interpreted; the specializer finds its {len(islands)} maximal closed simply-typable "
         "sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, "
         "while the recursive skeleton is left to the interpreter. The "

@@ -36,7 +36,6 @@ from co_lambda._binnat import int_to_binnat
 from co_lambda._compiler import (
     CODEGEN,
     Runtime,
-    Z,
     _LazyThunk,
     _NeedThunk,
     _option,
@@ -50,7 +49,7 @@ from co_lambda._compiler import (
     value_island_by_name as _compiler_value_island_by_name,
 )
 from co_lambda._dsl import app, build, curry, lam
-from co_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, church, cons
+from co_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, Y, church, cons
 from co_lambda._pyast import _church_to_int, decode, to_anf_source
 from co_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
 from co_lambda._render import render
@@ -80,7 +79,7 @@ class _Inference:
 
     No generalization (STLC, not Hindley-Milner): each binder gets one fresh monotype. Unification
     uses an occurs check, so the self-application ``x x`` (whose constraint is ``α = α -> β``) fails,
-    which is exactly why ``Y``/``Z``/``Ω`` and the recursive terms built on them are untypable.
+    which is exactly why ``Y``/``Ω`` and the recursive terms built on them are untypable.
     Failure is recorded in ``failed`` rather than raised, so the caller reads a plain boolean.
     """
 
@@ -167,7 +166,7 @@ def is_typable(node: Node) -> bool:
 
 # The fold oracle reads the behaviour out under two bounds. A finite normal form fits well within them
 # (a Church numeral is a short spine); a non-rational behaviour (the open inner structure of a fixpoint
-# combinator, e.g. the compiler's Z, which never folds) is infinite, so a branch past the bounds
+# combinator, e.g. the compiler's Y, which never folds) is infinite, so a branch past the bounds
 # truncates to a ``…`` leaf, read as fold-requiring. ``_FOLD_ORACLE_DEPTH`` caps the rendering recursion
 # depth well under the interpreter's stack limit (a leaf also walks the node for ``loose_bound`` and its
 # weak head normal form, which recurse to a comparable depth); ``_FOLD_ORACLE_NODES`` caps total work,
@@ -323,7 +322,7 @@ def _island_term(depth_bound: "object | None") -> "object":
 
 # The lazy-island fuel: NORMALIZES certifies a FINITE FULL normal form within this many steps, the same
 # notion the eager read-back (value_island_by_name -> _quote_lazy) needs to terminate. A sub-term that
-# does not normalize within the fuel (a fixpoint combinator such as Z, which has no normal form) is
+# does not normalize within the fuel (a fixpoint combinator such as Y, which has no normal form) is
 # conservatively left interpreted, NEVER made a lazy island. This is what keeps the lazy tier sound: it
 # never turns a converging term into a divergent (or fuel-exhausting) read-back.
 _LAZY_ISLAND_FUEL: "object" = int_to_binnat(DEFAULT_FUEL)
@@ -354,7 +353,7 @@ def _reconstruct_term(depth_bound: "object | None") -> "object":
     sub-term and the result is a shared graph."""
     cbv_island = _island_term(depth_bound)
     lazy_island = _lazy_island_term(depth_bound)
-    return app(Z, lam(lambda self_recursion: lam(lambda quoted: _ap(
+    return app(Y, lam(lambda self_recursion: lam(lambda quoted: _ap(
         app(cbv_island, quoted),
         _runtime_call("value_island", (_compile_call_by_value(quoted),)),
         _ap(
@@ -446,7 +445,7 @@ def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedO
 
 
 # --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
-# The flagship of local specialization. A whole untypable program (a Y/Z recursion, the compiler
+# The flagship of local specialization. A whole untypable program (a Y recursion, the compiler
 # itself) is not call-by-value as a whole, but it contains closed simply-typable sub-terms, each
 # strongly normalizing, so each compiles soundly to a strict call-by-value island. The specializer
 # carves out the MAXIMAL such regions and leaves the untypable skeleton interpreted; the islands are
@@ -460,7 +459,7 @@ def call_by_value_islands(node: Node) -> tuple[Node, ...]:
     evaluation reaches the interpreter's normal form: it is a sound call-by-value island. ``Maximal``
     means not contained in a larger such sub-term, so the result is the largest strict regions, not
     every typable leaf. Scanning is top-down: a found island is not descended into. The complement,
-    the untypable skeleton (e.g. the ``Z`` fixpoint of the compiler), stays interpreted. Islands are
+    the untypable skeleton (e.g. the ``Y`` fixpoint of the compiler), stays interpreted. Islands are
     distinct by node identity, so a combinator the interning shares across positions is reported once.
     """
     found: list[Node] = []
@@ -581,7 +580,7 @@ def value_island(node: Node) -> Native:
 
 
 def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Native:
-    """Wrap a CLOSED term with a FINITE NORMAL FORM (a terminating Y/Z recursion) as a compiled lazy island.
+    """Wrap a CLOSED term with a FINITE NORMAL FORM (a terminating Y recursion) as a compiled lazy island.
 
     Compiled by the call-by-name codegen (an expression, so it splices like a by-value island) and read
     back by the fuel-bounded ``value_island_by_name``. The ``lazy_runtime`` option chooses the thunk

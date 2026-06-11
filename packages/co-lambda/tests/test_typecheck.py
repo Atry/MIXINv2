@@ -74,7 +74,7 @@ def test_lambda_certificate_rejects_untypable_terms(name: str) -> None:
 
 
 def test_lambda_certificate_rejects_the_compiler() -> None:
-    # CODEGEN is untypable (its Z fixpoint self-applies); the failure short-circuit keeps the lambda
+    # CODEGEN is untypable (its Y fixpoint self-applies); the failure short-circuit keeps the lambda
     # certificate fast on this large term, agreeing with the oracle.
     node = build(CODEGEN)
     assert is_typable_lambda(node) is False

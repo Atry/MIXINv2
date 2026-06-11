@@ -21,7 +21,7 @@ of a program, not a trace of an interpreter.
 from __future__ import annotations
 
 from co_lambda._ast import Node
-from co_lambda._compiler import Z
+from co_lambda._prelude import Y
 from co_lambda._dsl import Builder, app, build, lam
 from co_lambda._pyast import _church_to_int, _extract
 
@@ -46,9 +46,9 @@ def _s_yield(value: Builder, rest: Builder) -> Builder:
 
 _S_STOP: Builder = _scott2(1, [])
 
-# GEN = Z (lambda self. lambda s. s (lambda h. lambda t. Yield h (self t)) Stop)
+# GEN = Y (lambda self. lambda s. s (lambda h. lambda t. Yield h (self t)) Stop)
 GEN: Builder = app(
-    Z,
+    Y,
     lam(lambda self_recursion: lam(lambda source: app(
         app(
             source,

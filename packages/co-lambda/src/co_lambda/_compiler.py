@@ -27,17 +27,14 @@ from typing import Iterator
 from co_lambda import _pybuild
 from co_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import FALSE, SCOTT_NIL, TRUE, church, cons, map_list
+from co_lambda._prelude import FALSE, SCOTT_NIL, TRUE, Y, church, cons, map_list
 from co_lambda._pyast import decode
 
-# The strict (call-by-value) fixpoint combinator Z = lambda f. (lambda x. f (lambda v. x x v)) (...).
-# Unlike Y it is eta-expanded under the recursive call, so the compiled Python (a strict language)
-# terminates where the compiled Y would diverge; in our weak-head interpreter it is an ordinary
-# fixpoint just like Y.
-Z: Builder = lam(lambda f: app(
-    lam(lambda x: app(f, lam(lambda v: app(app(x, x), v)))),
-    lam(lambda x: app(f, lam(lambda v: app(app(x, x), v)))),
-))
+# The compiler's own recursion is the ordinary fixpoint Y (from the prelude). The compiler's source
+# never assumes a strict target: a Y-containing sub-term is untypable (its self-application fails the
+# occurs check), so the specializer never sends it to the call-by-value target, and a lazy island's
+# call-by-name/need Python thunks the recursion, where Y converges. The eta-expanded strict variant Z
+# (lambda f. (lambda x. f (lambda v. x x v)) (...)) is therefore not used anywhere in this codebase.
 
 
 def _scott(arity: int, tag: int, fields: "list[Builder]") -> Builder:
@@ -524,7 +521,7 @@ def _two(first: Builder, second: Builder) -> Builder:
 
 
 # append xs ys = xs (lambda h. lambda t. cons h (self t ys)) ys, by Scott-list elimination.
-_APPEND: Builder = app(Z, lam(lambda self_recursion: lam(lambda xs: lam(lambda ys: app(
+_APPEND: Builder = app(Y, lam(lambda self_recursion: lam(lambda xs: lam(lambda ys: app(
     app(xs, lam(lambda head: lam(lambda tail: cons(head, app(app(self_recursion, tail), ys))))),
     ys,
 )))))
@@ -637,7 +634,7 @@ def _thunk_scaffold(cell_field: Builder, thunk_field: Builder, compute_fields: B
 
 # The recursion: self path env quoted -> (setup statements, value expression). ``path`` is the AST
 # address (Church segments, innermost first); ``env`` is the list of in-scope binder symbols.
-_CODEGEN_NEED_REC: Builder = app(Z, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
+_CODEGEN_NEED_REC: Builder = app(Y, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
     lambda quoted: app(app(app(
         quoted,
         # QVar index: the variable is its binder's thunk, looked up by de Bruijn index; no setup.
@@ -744,7 +741,7 @@ def _compile_need_source(node: Node) -> str:
 
 
 # --- bootstrap: the self-compiled compiler, run through the interpret target --------------------
-# CODEGEN compiled in specialized mode is interpret-headed (CODEGEN is untypable: its Z fixpoint
+# CODEGEN compiled in specialized mode is interpret-headed (CODEGEN is untypable: its Y fixpoint
 # self-applies), so the self-hosted compiler is the CODEGEN node handed back to the interpreter.
 # ``compiled_compiler`` evaluates that interpret-headed source to the node; ``compile_with_interpreted``
 # runs it as a compiler, reifying the Scott Python-AST result through the generic ``_pyast.decode``, the
@@ -773,7 +770,7 @@ def compiled_compiler() -> Node:
 #   QLam b      -> Lambda (v_<path>) (self (path.2) ((v_<path>) : env) b)
 #   QApp f a    -> Call (wrapFun (self (path.0) env f)) [wrapArg (self (path.1) env a)]
 CODEGEN: Builder = lam(lambda thunked: app(
-    Z,
+    Y,
     lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(lambda quoted: app(app(app(
         quoted,
         lam(lambda index: app(

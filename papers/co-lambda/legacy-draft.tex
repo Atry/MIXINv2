@@ -1175,7 +1175,7 @@ program runs.
 A quoted source term is a Scott value over $\mathtt{QVar}\,i$, $\mathtt{QLam}\,b$,
 $\mathtt{QApp}\,f\,a$ (de Bruijn). The compiler is the pure term
 \[
-  \mathtt{compile} = Z\,\big(\lambda\mathit{self}.\lambda d.\lambda q.\;
+  \mathtt{compile} = Y\,\big(\lambda\mathit{self}.\lambda d.\lambda q.\;
     q\,(\lambda i.\,\mathtt{PyVar}\,(d - 1 - i))\,
     (\lambda b.\,\mathtt{PyLam}\,d\,(\mathit{self}\,(d{+}1)\,b))\,
   (\lambda f.\lambda a.\,\mathtt{PyApp}\,(\mathit{self}\,d\,f)\,(\mathit{self}\,d\,a))\big),
@@ -1210,7 +1210,7 @@ committed alongside as a generated module.
 
 \paragraph{The soundness analysis.}
 A static analysis chooses the target. A term that is simply typable, decided by algorithm-W
-inference with an occurs check so the self-application $x\,x$ of $Y$, $Z$, and $\Omega$ fails, is
+inference with an occurs check so the self-application $x\,x$ of $Y$ and $\Omega$ fails, is
 strongly normalizing, so the strict eager target terminates with the interpreter's normal form.
 Otherwise the interpreter serves as a sound oracle: it reads the behaviour out, and if the behaviour
 is a finite normal form (no folded back edge and no $\bot$), the term is normalizing and the
@@ -1226,12 +1226,12 @@ The certificate that selects what to specialize is itself a pure $\lambda$-term,
 interpreter on the quoted program, so the calculus analyzes its own programs. The first and simplest
 is a closedness check
 \[
-  \mathtt{closed} = Z\,\big(\lambda\mathit{self}.\lambda d.\lambda q.\;
+  \mathtt{closed} = Y\,\big(\lambda\mathit{self}.\lambda d.\lambda q.\;
     q\,(\lambda i.\, i < d)\,
     (\lambda b.\,\mathit{self}\,(d{+}1)\,b)\,
   (\lambda f.\lambda a.\,\mathit{and}\,(\mathit{self}\,d\,f)\,(\mathit{self}\,d\,a))\big),
 \]
-recursing structurally with $Z$ and threading a Church-numeral binder depth: a variable is in scope
+recursing structurally with $Y$ and threading a Church-numeral binder depth: a variable is in scope
 when its index is below the depth, an abstraction recurses at $d+1$, an application is closed when
 both sides are, with $<$ and $\mathit{and}$ the usual Church encodings. Closedness is exactly the
 precondition a compiled island needs, and richer certificates (rationality by folding, typability)
@@ -1249,10 +1249,9 @@ written once is thus compiled once and run on many $\lambda$-term inputs from th
 results staying $\lambda$ values.
 
 \paragraph{Bootstrap.}
-The fixpoint is the strict combinator
-$Z = \lambda f.\,(\lambda x.\,f\,(\lambda v.\,x\,x\,v))\,(\lambda x.\,f\,(\lambda v.\,x\,x\,v))$
-rather than $Y$, so the compiled Python terminates in a strict host where compiled $Y$ would
-diverge, while in the weak-head interpreter $Z$ is an ordinary fixpoint. The compiler then compiles
+The fixpoint is the ordinary combinator $Y$: its self-application is untypable and has no finite
+normal form, so the analyses never send the recursion to a compiled target and it stays
+interpreted. The compiler then compiles
 its own source to a Python program, and that self-compiled compiler, evaluated as a Python function
 and run on host-encoded source terms, produces the same output as the original and itself runs.
 
@@ -1292,7 +1291,7 @@ bound without returning to the interpreter is where compiled code can diverge.
 
 \paragraph{Loops from folding.}
 A code generator
-$\mathtt{gen} = Z\,\big(\lambda\mathit{self}.\lambda s.\;
+$\mathtt{gen} = Y\,\big(\lambda\mathit{self}.\lambda s.\;
 s\,(\lambda h.\lambda t.\,\mathtt{Yield}\,h\,(\mathit{self}\,t))\,\mathtt{Stop}\big)$
 maps a stream to a quoted output stream, with nothing loop-aware in it. Run on a cyclic source such
 as $Y\,(\mathtt{cons}\;0)$, the recursive $\mathit{self}\,t$ re-enters the same interned state, so
@@ -1345,7 +1344,7 @@ call-by-need and call-by-name agree. So the cost is set by the target depth alon
 of the compiler does the compiling nor by the lazy regime. The reason is the soundness discipline the
 islands obey: a compiled island must converge exactly where the interpreter does. The compiler's hot path
 is its analysis, the typability and normalization checks that decide each sub-term's island, driven by
-the same $Z$ fixpoint that makes the compiler untypable. As a value that recursion has no normal form, so
+the same $Y$ fixpoint that makes the compiler untypable. As a value that recursion has no normal form, so
 it can be neither a call-by-value island (which requires strong normalization) nor a lazy island (which
 requires a finite normal form); it stays interpreted in every engine. Its per-step body is a different
 matter: that body is a closed term that uses the recursive call only as a parameter (no self-application),

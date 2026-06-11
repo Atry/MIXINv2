@@ -67,7 +67,7 @@ The cyclic stream is fold-requiring, so the whole term stays interpreted; its cl
 \end{lstlisting}
 The island runs and the interpreter folds around it, so the result is the same finite cyclic behaviour as pure interpretation, the stream $\mathtt{cons}\,9\,(\mathtt{cons}\,9\,\cdots)$ folded to a single cyclic node.
 
-\medskip\noindent\textbf{The compiler, specialized: finding call-by-value islands.}\quad The compiler is untypable as a whole, since its fixpoint combinator $Z$ self-applies, so it stays interpreted; the specializer finds its 14 maximal closed simply-typable sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, while the recursive skeleton is left to the interpreter. The 10 with compact compiled forms are shown (the larger combinators are elided):
+\medskip\noindent\textbf{The compiler, specialized: finding call-by-value islands.}\quad The compiler is untypable as a whole, since its fixpoint combinator $Y$ self-applies, so it stays interpreted; the specializer finds its 14 maximal closed simply-typable sub-terms, each a strongly-normalizing combinator compiled to a strict call-by-value island, while the recursive skeleton is left to the interpreter. The 10 with compact compiled forms are shown (the larger combinators are elided):
 \smallskip\noindent $\lambda x.\, x$
 \begin{lstlisting}
 lambda v: v

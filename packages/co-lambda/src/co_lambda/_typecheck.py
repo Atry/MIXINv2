@@ -30,9 +30,9 @@ from __future__ import annotations
 
 from co_lambda._ast import Node, make_app, make_var
 from co_lambda._binnat import BIN_ADD, BIN_EQUAL, BIN_SUCC, BIN_ZERO
-from co_lambda._compiler import Z, _recursion_headroom, quote
+from co_lambda._compiler import _recursion_headroom, quote
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import FALSE, IS_ZERO, OR, PRED, TRUE
+from co_lambda._prelude import FALSE, IS_ZERO, OR, PRED, TRUE, Y
 from co_lambda._shape import VarShape
 
 
@@ -132,7 +132,7 @@ def _extend(subst: Builder, identifier: Builder, bound: Builder) -> Builder:
 
 
 # resolve subst type: follow the substitution chain to the representative type.
-_RESOLVE: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda type_: _match_type(
+_RESOLVE: Builder = app(Y, lam(lambda self_recursion: lam(lambda subst: lam(lambda type_: _match_type(
     type_,
     lam(lambda identifier: _option(
         app(subst, identifier),
@@ -148,7 +148,7 @@ def _resolve(subst: Builder, type_: Builder) -> Builder:
 
 
 # occurs subst id type: whether ``id`` occurs in the resolved ``type`` (the occurs check).
-_OCCURS: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda identifier: lam(lambda type_: _let(
+_OCCURS: Builder = app(Y, lam(lambda self_recursion: lam(lambda subst: lam(lambda identifier: lam(lambda type_: _let(
     _resolve(subst, type_),
     lambda resolved: _match_type(
         resolved,
@@ -182,7 +182,7 @@ def _bind(subst: Builder, identifier: Builder, bound: Builder) -> Builder:
 # Short-circuits when already failed; otherwise resolves both sides and matches the four shape cases:
 # var/var (equal: nothing; else bind), var/arrow and arrow/var (bind after occurs check), arrow/arrow
 # (unify the components left to right).
-_UNIFY: Builder = app(Z, lam(lambda self_recursion: lam(lambda state: lam(lambda left_type: lam(lambda right_type: _split(
+_UNIFY: Builder = app(Y, lam(lambda self_recursion: lam(lambda state: lam(lambda left_type: lam(lambda right_type: _split(
     state,
     lambda subst, failed: _choose(
         failed,
@@ -255,7 +255,7 @@ def _unify_state(state: Builder, left_type: Builder, right_type: Builder) -> Bui
 
 
 # lookup context index: the type at de Bruijn ``index`` in the context, as an Option.
-_LOOKUP: Builder = app(Z, lam(lambda self_recursion: lam(lambda context: lam(lambda index: _ap(
+_LOOKUP: Builder = app(Y, lam(lambda self_recursion: lam(lambda context: lam(lambda index: _ap(
     context,
     _NONE,
     lam(lambda head: lam(lambda tail: _choose(
@@ -272,10 +272,10 @@ def _lookup(context: Builder, index: Builder) -> Builder:
 
 # infer state context node: infer the node's type, threading the state; returns (state, type).
 # Once the state has failed (an occurs check fired), inference short-circuits: it returns a dummy type
-# without recursing, so an untypable term (the compiler's Z, factorial, ...) is rejected as soon as the
+# without recursing, so an untypable term (the compiler's Y, factorial, ...) is rejected as soon as the
 # first self-application fails rather than building the whole constraint tree. This mirrors the Python
 # ``_Inference.infer`` early return and is what keeps the certificate fast on the large untypable terms.
-_INFER: Builder = app(Z, lam(lambda self_recursion: lam(lambda state: lam(lambda context: lam(lambda node: _split_state(
+_INFER: Builder = app(Y, lam(lambda self_recursion: lam(lambda state: lam(lambda context: lam(lambda node: _split_state(
     state,
     lambda next_id, subst, failed: _choose(
         failed,
@@ -362,7 +362,7 @@ def _split_result(result: Builder, body) -> Builder:
 
 # build_vars count = [TVAR 0, TVAR 1, ..., TVAR (count-1)]: the fresh context for a variable at de
 # Bruijn index count-1, one distinct fresh type per enclosing binder (BinNat ids).
-_BUILD_VARS_GO: Builder = app(Z, lam(lambda self_recursion: lam(lambda current: lam(lambda count: _choose(
+_BUILD_VARS_GO: Builder = app(Y, lam(lambda self_recursion: lam(lambda current: lam(lambda count: _choose(
     _equal(current, count),
     _NIL,
     _cons(_tvar(current), _ap(self_recursion, app(BIN_SUCC, current), count)),
@@ -374,7 +374,7 @@ def _build_vars(count: Builder) -> Builder:
 
 
 # shift_type offset type: add ``offset`` to every type-variable id (rename a whole type apart).
-_SHIFT_TYPE: Builder = app(Z, lam(lambda self_recursion: lam(lambda offset: lam(lambda type_: _match_type(
+_SHIFT_TYPE: Builder = app(Y, lam(lambda self_recursion: lam(lambda offset: lam(lambda type_: _match_type(
     type_,
     lam(lambda identifier: _tvar(_plus(offset, identifier))),
     lam(lambda left: lam(lambda right: _tarrow(
@@ -388,7 +388,7 @@ def _shift_type(offset: Builder, type_: Builder) -> Builder:
 
 
 # shift_context offset context: rename every type in a context apart by ``offset``.
-_SHIFT_CONTEXT: Builder = app(Z, lam(lambda self_recursion: lam(lambda offset: lam(lambda context: _ap(
+_SHIFT_CONTEXT: Builder = app(Y, lam(lambda self_recursion: lam(lambda offset: lam(lambda context: _ap(
     context,
     _NIL,
     lam(lambda head: lam(lambda tail: _cons(_shift_type(offset, head), _ap(self_recursion, offset, tail)))),
@@ -400,7 +400,7 @@ def _shift_context(offset: Builder, context: Builder) -> Builder:
 
 
 # apply_subst subst type: resolve ``type`` deeply, so the result carries no residual substitution.
-_APPLY_SUBST: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda type_: _match_type(
+_APPLY_SUBST: Builder = app(Y, lam(lambda self_recursion: lam(lambda subst: lam(lambda type_: _match_type(
     _resolve(subst, type_),
     lam(lambda identifier: _tvar(identifier)),
     lam(lambda left: lam(lambda right: _tarrow(
@@ -413,7 +413,7 @@ def _apply_subst(subst: Builder, type_: Builder) -> Builder:
     return _ap(_APPLY_SUBST, subst, type_)
 
 
-_APPLY_SUBST_CONTEXT: Builder = app(Z, lam(lambda self_recursion: lam(lambda subst: lam(lambda context: _ap(
+_APPLY_SUBST_CONTEXT: Builder = app(Y, lam(lambda self_recursion: lam(lambda subst: lam(lambda context: _ap(
     context,
     _NIL,
     lam(lambda head: lam(lambda tail: _cons(_apply_subst(subst, head), _ap(self_recursion, subst, tail)))),
@@ -426,7 +426,7 @@ def _apply_subst_context(subst: Builder, context: Builder) -> Builder:
 
 # merge state a b, state = (subst, failed): unify the shared prefix of two contexts (same de Bruijn
 # indices) and keep the tail of the longer; returns (state, merged-context).
-_MERGE: Builder = app(Z, lam(lambda self_recursion: lam(lambda state: lam(lambda a: lam(lambda b: _ap(
+_MERGE: Builder = app(Y, lam(lambda self_recursion: lam(lambda state: lam(lambda a: lam(lambda b: _ap(
     a,
     _pair(state, b),  # a is nil: the merge is b
     lam(lambda head_a: lam(lambda tail_a: _ap(
@@ -448,7 +448,7 @@ _INITIAL_PAIR: Builder = _pair(_EMPTY_SUBST, FALSE)
 
 
 # principal node: the bottom-up principal typing of a quoted term, the path-free fold described above.
-PRINCIPAL: Builder = app(Z, lam(lambda self_recursion: lam(lambda node: _ap(
+PRINCIPAL: Builder = app(Y, lam(lambda self_recursion: lam(lambda node: _ap(
     node,
     # QVar index: context [TVAR 0 .. TVAR index], type TVAR index (ids as BinNat).
     lam(lambda index: _let(_church_to_binnat(index), lambda binnat_index: _result(

@@ -8,7 +8,7 @@ island needs (a closed sub-term can be compiled and embedded; an open one depend
 Richer certificates (folding-based rationality, typability) layer on later in the same style.
 
 ``CLOSED`` consumes a quoted term (the Scott value ``QVar i`` / ``QLam b`` / ``QApp f a`` produced by
-``quote``) and returns a Church boolean. It recurses structurally with the strict fixpoint ``Z``,
+``quote``) and returns a Church boolean. It recurses structurally with the fixpoint ``Y``,
 threading a Church-numeral binder depth: a variable is in scope when its index is below the depth,
 an abstraction recurses at ``depth + 1``, and an application is closed when both sides are. The
 arithmetic (``<``, ``and``) is the usual Church encoding, so the whole analysis stays inside the pure
@@ -18,9 +18,9 @@ calculus.
 from __future__ import annotations
 
 from co_lambda._ast import Node, make_app, make_var
-from co_lambda._compiler import Z, quote
+from co_lambda._compiler import quote
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import FALSE, IS_ZERO, PRED, SUCC, church
+from co_lambda._prelude import FALSE, IS_ZERO, PRED, SUCC, Y, church
 from co_lambda._shape import VarShape
 
 # Church arithmetic for the closedness check (truncated subtraction gives the comparisons).
@@ -29,12 +29,12 @@ _AT_MOST: Builder = lam(lambda a: lam(lambda b: app(IS_ZERO, app(app(_SUBTRACT, 
 _LESS_THAN: Builder = lam(lambda a: lam(lambda b: app(app(_AT_MOST, app(SUCC, a)), b)))  # a < b
 _AND: Builder = lam(lambda p: lam(lambda q: app(app(p, q), FALSE)))
 
-# CLOSED = Z (lambda self. lambda depth. lambda quoted.
+# CLOSED = Y (lambda self. lambda depth. lambda quoted.
 #   quoted (lambda index. index < depth)                       -- QVar index
 #          (lambda body. self (succ depth) body)               -- QLam body
 #          (lambda f. lambda a. and (self depth f) (self depth a)))  -- QApp f a
 CLOSED: Builder = app(
-    Z,
+    Y,
     lam(lambda self_recursion: lam(lambda depth: lam(lambda quoted: app(app(app(
         quoted,
         lam(lambda index: app(app(_LESS_THAN, index), depth)),
@@ -58,7 +58,7 @@ CLOSED: Builder = app(
 # A sub-term is closed exactly when it needs none.
 _MAX: Builder = lam(lambda a: lam(lambda b: app(app(app(app(_AT_MOST, a), b), b), a)))  # a <= b ? b : a
 
-LOOSE_BOUND: Builder = app(Z, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
+LOOSE_BOUND: Builder = app(Y, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
     quoted,
     lam(lambda index: app(SUCC, index)),  # QVar index: needs index+1 enclosing binders
     ),
@@ -78,7 +78,7 @@ IS_CLOSED: Builder = lam(lambda quoted: app(IS_ZERO, app(LOOSE_BOUND, quoted))) 
 # only certifies an island when the sub-term is shallow enough (``DEPTH_AT_MOST``), leaving a deep closed
 # region reconstructed as an interpreted graph rather than flattened to a strict island. The bound only
 # ever makes the certificate MORE conservative (fewer islands), never unsound.
-DEPTH: Builder = app(Z, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
+DEPTH: Builder = app(Y, lam(lambda self_recursion: lam(lambda quoted: app(app(app(
     quoted,
     lam(lambda index: church(0)),  # QVar: a leaf
     ),

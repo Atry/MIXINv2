@@ -535,9 +535,9 @@ select, per sub-term, one of three targets: a closed simply-typable sub-term, he
 normalising, compiles to a strict call-by-value target; one whose interpreted behaviour is a
 finite normal form, but untypable, to a call-by-name target; everything else stays interpreted,
 the interpreter being the sound default. A compiled sub-term is a single node holding native code,
-spliced into the otherwise interpreted graph, so specialisation is local. The fixpoint combinator
-the compiler emits is a strict, call-by-value variant $Z$ rather than $Y$, so the compiled Python
-runs the recursion under call-by-value, where a compiled $Y$ would diverge at once, and the
+spliced into the otherwise interpreted graph, so specialisation is local. The compiler's own
+recursion is the ordinary fixpoint $Y$: its self-application is untypable and has no finite normal
+form, so the analyses never send it to a compiled target and it stays interpreted, and the
 compiler compiles its own source and self-hosts; the cost of the multi-stage self-compilation is the subject of
 Section~\ref{sec:application}.
 

@@ -68,7 +68,7 @@ def test_church_data_islands_are_spliced_into_the_interpret_head() -> None:
 
 
 def test_the_compiler_itself_is_interpret_headed() -> None:
-    # CODEGEN is untypable (its Z fixpoint self-applies), so the compiler compiles itself to an
+    # CODEGEN is untypable (its Y fixpoint self-applies), so the compiler compiles itself to an
     # interpret-headed module with by-value islands spliced; the recursive skeleton is left to interpret.
     # The default specializer uses a small island depth bound, so this stays cheap.
     source = compile(build(CODEGEN))

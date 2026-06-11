@@ -71,7 +71,7 @@ def test_every_island_is_closed_and_typable() -> None:
 
 
 def test_compiler_call_by_value_islands(snapshot: SnapshotAssertion) -> None:
-    # The flagship: the compiler is untypable as a whole (its Z fixpoint self-applies), so it stays
+    # The flagship: the compiler is untypable as a whole (its Y fixpoint self-applies), so it stays
     # interpreted, but the specializer finds its maximal closed simply-typable sub-terms, the
     # strongly-normalizing combinators, each compiled to a strict call-by-value island.
     islands = call_by_value_islands(build(CODEGEN))
