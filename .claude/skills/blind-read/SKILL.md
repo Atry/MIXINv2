@@ -125,12 +125,8 @@ references: anything only guessable from the two files is a confusion, anything 
 ## Notes
 
 - Run rounds serially (each fix changes what the next reader sees); keep the audience fixed.
-- **One subagent per round; skip the round if the change is trivial.** A second subagent on the same
-  unchanged text returns the same report — it adds no signal, only cost. Re-run only after a real
-  edit to the prose. A trivial change (fixing a typo, adjusting punctuation) does not justify a new
-  round; re-run when a confusion was addressed or a passage was rewritten.
+- **One subagent per round; skip the round if the change is trivial.** Re-run only after a real
+  edit to the prose — a trivial change (fixing a typo, adjusting punctuation) does not justify a
+  new round; re-run when a confusion was addressed or a passage was rewritten. Multiple subagents
+  on the same unchanged text add no new signal.
 - Checks comprehensibility only, not correctness or style.
-- Testing a whole document section by section: walk it in reading order, each section the TARGET
-  with all earlier sections as CONTEXT. Without the CONTEXT split, every later section drowns in
-  false confusions for terms the earlier sections already defined; with it, a "No" verdict points
-  at a real leak in the TARGET, not at the reviewer's missing background.

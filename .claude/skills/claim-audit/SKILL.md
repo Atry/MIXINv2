@@ -35,8 +35,8 @@ wrong, or rigorous and unreadable. Run both; they catch disjoint defects.
    SHOULD use domain knowledge and targeted lookups to find counterexamples or verify a cited result.
 2. **Every defect must be concrete.** A defect is a counterexample, an exact step that does not follow
    ("line L infers B from A, but A allows ¬B because ..."), an undischarged assumption named, or a
-   citation shown not to support the claim attributed to it. A vague unease that cannot be made
-   concrete is a **QUESTION** (something the reviewer cannot verify), not a defect. Do not pad the
+   citation shown not to support the claim attributed to it. A doubt the reviewer cannot verify
+   from the text and domain knowledge is a **QUESTION**, not a defect. Do not pad the
    ledger with questions dressed as defects.
 3. **Judge the claim at its stated strength.** The defect is the gap between what is *written* and
    what is *earned*. Read the quantifiers and modifiers literally: *any / every / unique / optimal /
@@ -46,7 +46,15 @@ wrong, or rigorous and unreadable. Run both; they catch disjoint defects.
 4. **No charity, but no nitpitting either.** Do not silently repair a gap the way the author would;
    report it. But a defect must change whether a claim *holds* or *is earned* — typos, looseness that
    any expert auto-corrects, and matters of taste are out of scope (note at most once, as MINOR).
-5. **A brand-new subagent each round.** One that saw a prior round, or the author's rebuttal, is spoiled.
+5. **A brand-new subagent each round, blind to every earlier round.** One that saw a prior round,
+   the prior ledger, the author's rebuttal, or the diff is spoiled. This binds the RE-AUDIT after a
+   fix hardest, because that is when the temptation to prime is strongest: do **not** tell the new
+   skeptic what the last round found, what you changed, or which claims to "verify are now fixed."
+   Naming the prior defect turns an independent attack into a confirmation pass — the skeptic
+   rationalises the repair (hunting for the disclaimer you mention, agreeing it is "now resolved")
+   instead of trying to break the claim from scratch. Hand the new skeptic ONLY the revised text and
+   the audience, framed as a first audit, exactly as round one. If a specific claim worries you, let
+   the skeptic re-derive it from the text; never flag it as previously-defective or already-patched.
 
 ## The unit of review: a claim
 
@@ -107,20 +115,26 @@ Enumerate the claims before auditing, so none is skipped and each gets a verdict
    via `mktemp /tmp/claim-audit.XXXXXX.txt`. Unlike blind-read, **more context is better**: give the
    reviewer the full paper if the claims span it, so it can catch inconsistency and trace each premise
    to where it is discharged. State the assumed expert audience (e.g. "a PL theorist who knows
-   coalgebra, domain theory, and the λ-calculus").
+   coalgebra, domain theory, and the λ-calculus"). The temp file holds the paper and its background
+   ONLY — never the prior round's ledger, your fix notes, or a diff (hard rule 5).
 2. Spawn one fresh `Agent` (general-purpose) with the prompt below. For a thorough audit of a paper
    with many claims, fan out: one skeptic per claim (or per lens — proof-validity, claim-vs-evidence,
-   assumptions/edge-cases, consistency, citation-accuracy), then a verification pass that tries to
-   *refute each reported defect* (a defect that survives a second hostile reader is real; one that does
-   not was the first reviewer's error). Driving this with the Workflow tool's adversarial-verify pattern
-   is the natural fit when the claim set is large.
+   assumptions/edge-cases, consistency, citation-accuracy), then an intra-round verification pass that
+   tries to *refute each reported defect* — keep only defects that survive a majority of independent
+   skeptics, because a hostile reader can hallucinate a gap as easily as an author can hide one. These
+   intra-round refutation subagents may be told the specific defect they are tasked to refute; this
+   exemption is intra-round only. The blind rule (hard rule 5) binds the RE-AUDIT across rounds: never
+   prime a re-audit subagent with prior findings.
 3. Read the ledger. For each defect decide, **as a judgment to surface to the author, not to make
    silently** (changing a paper's claims is the author's call): prove the gap, *weaken the claim to
    exactly what is earned*, state and discharge the missing assumption, add the missing case, supply
    evidence or a fair baseline, fix the citation, or — if the defect is the reviewer's error — record
    why it is not real. Weakening to match the proof is usually the honest fix and the project's house
    style; resist patching by adding hand-waving.
-4. Re-audit with a new skeptic after fixes, since each fix changes the argument the next reviewer sees.
+4. Re-audit with a new skeptic after fixes, since each fix changes the argument the next reviewer
+   sees. Give it the revised paper and the audience and NOTHING about the prior round — no findings,
+   no diff, no "a prior audit found X, confirm it is now resolved." It must attack the new text from
+   scratch, framed as a first audit; a primed re-audit returns a confirmation, not a test (hard rule 5).
 
 **Pass only when** a fresh independent skeptic, given the full text, returns no BLOCKER and no MAJOR,
 every theorem's obligations discharged, every abstract/intro superlative matched by a result, and every
@@ -164,20 +178,25 @@ your job is to break the claims, not to appreciate them.
 
 ## Scaling to a panel
 
-For a high-stakes or claim-dense paper, one reviewer under-covers. Run the canonical adversarial
-shape: fan out a finder per claim (or per lens above), then for every reported BLOCKER/MAJOR run 2–3
-independent skeptics prompted to *refute the defect itself* — keep only defects that survive the
-majority, because a hostile reader can hallucinate a gap as easily as an author can hide one. Diverse
+For a high-stakes or claim-dense paper, one reviewer under-covers. Fan out a finder per claim (or
+per lens above), then run the intra-round defect-refutation pass described in Loop Step 2. Diverse
 lenses (proof-validity vs claim-vs-evidence vs citation-accuracy) catch failure modes a single pass
-misses. The Workflow tool's pipeline / adversarial-verify patterns are built for exactly this.
+misses. The Workflow tool's pipeline / adversarial-verify patterns are built for exactly this scale.
 
 ## Notes
 
 - Run rounds serially once you start fixing (each fix changes the argument); fan out only within a round.
-- **Do not re-run a subagent on the same unchanged text.** Two subagents on identical input return
-  identical reports — no new signal, only cost. Re-run only after the text was actually revised.
+- **Do not re-run a subagent on the same unchanged text.** Multiple subagents on unchanged text add
+  no new signal — only cost. Re-run only after the text was actually revised.
   A trivial edit (wording, punctuation) does not justify a new round; re-run when a claim was
   strengthened, weakened, or a proof step was added or removed.
+- **The re-audit must be blind, or it proves nothing.** A fix is validated only by a skeptic that
+  rediscovers, from the text alone, that the claim is now sound — without being told it was ever in
+  doubt. The moment you write "a prior audit flagged X; check it is fixed," "the disclaimer is now
+  present," or paste the old ledger, the skeptic confirms your repair instead of re-breaking the
+  claim, and a real residual defect (or a new one the fix introduced) slips through. Frame every
+  re-audit as a first audit on the current text; if it returns "sound," that means an unprimed expert
+  could not break it, which is the only verdict worth having.
 - Keep the audience fixed across rounds, and pitch it at the real venue's expertise — too naive an
   expert manufactures false gaps (it lacks the knowledge to see the step), too generous a one waves
   real gaps through. When unsure, err toward the more demanding referee.
