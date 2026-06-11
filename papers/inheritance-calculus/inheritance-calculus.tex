@@ -151,9 +151,9 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling, even for cyclic inheritance hierarchies. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy $\text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}$ among $\lambda$-calculi sharing the same $\lambda$-syntax.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. A record is a set of definitions; by unifying modules, classes, objects, methods, fields, and locals under this single record abstraction, the calculus models inheritance simply as set union of definitions, two definitions of the same name merging recursively rather than one overriding the other. A merge is always meaningful because every value is a record and observation is purely structural: the merged record simply answers queries with the union of what its parts provide, so there is no scalar leaf at which two values could conflict. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling (memoized fixpoint iteration as in tabled logic programming), even for cyclic inheritance hierarchies. This first-order, denotational, tabled semantics extends to the $\lambda$-calculus: $\lambda$-terms translate into a sublanguage of a lazy approximation of inheritance-calculus, the approximation that treats cyclic self-reference as divergent instead of iterating it to a fixpoint, and the translation is fully abstract, equating exactly the $\lambda$-terms with equal B\"ohm trees. As a corollary, this establishes a convergence hierarchy $\text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}$ among $\lambda$-calculi sharing the same $\lambda$-syntax, where each calculus converges on strictly more terms than its predecessor and the fixpoint $\lambda$-calculus is defined in this paper.
 
-  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors; ordinary arithmetic yields the relational semantics of logic programming; $\mathtt{this}$ resolves to multiple targets; and programs are immune to nonextensibility in the sense of the Expression Problem. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense.
+  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code can be invoked under different calling conventions (function colors such as synchronous and asynchronous); ordinary arithmetic, encoded within the calculus itself, behaves as multi-directional relations in the sense of logic programming; $\mathtt{this}$ resolves to multiple enclosing targets at once rather than a single receiver; and programs are extensible in both dimensions of the Expression Problem, gaining new variants and new operations by adding code. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in Felleisen's sense of macro-expressibility.
 \end{abstract}
 
 \begin{CCSXML}
@@ -215,9 +215,7 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Declarative and configuration languages are ubiquitous in modern
-software engineering.
-Systems such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
+Configuration languages such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
 CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
 Kustomize~\cite{kustomize}, and JSON
 Patch~\cite{rfc6902-json-patch} all provide mechanisms for
@@ -229,8 +227,8 @@ Its package collection, \texttt{nixpkgs}, contains over
 113{,}000 packages,%
 \footnote{
   According to Repology~\cite{repology2025},
-  nearly three times the count of Debian or Ubuntu,
-  with a comparable number of contributors.
+  nearly three times the package count of Debian or Ubuntu,
+  achieved with a similar number of contributors.
   Not every package exercises the extensibility mechanisms
   described here, but the same caveat applies to other distributions.
 }
@@ -269,8 +267,7 @@ such as \texttt{mkIf} and \texttt{mkMerge}.
 No computational theory captures the extensibility that this
 mechanism exhibits.
 
-The $\lambda$-calculus serves as the foundational computational model for
-functional programming. No analogous calculus exists for declarative
+The $\lambda$-calculus has no analogue for declarative
 programming. This gap matters because the two paradigms differ in
 fundamental ways, which raises a question:
 
@@ -280,7 +277,8 @@ fundamental ways, which raises a question:
 
 \noindent
 To make the question precise, we operationalize it with four
-\emph{opinionated} proxies, grouped under its two notions.
+\emph{opinionated} proxies, grouped under the question's two halves:
+\emph{configuration} and \emph{practical general-purpose} programming.
 
 \begin{itemize}
   \item Immutable and first-order%
@@ -329,11 +327,14 @@ one:
 \noindent
 The Turing Machine and RAM Machine require mutable state and have no native
 extension mechanism;
-the $\lambda$-calculus is first-order-free and its extensibility is opt-in,
-since a closed function body cannot be extended without rewriting it;
+the $\lambda$-calculus is higher-order rather than first-order, and its
+extensibility is opt-in: a function is extensible only where its author
+anticipated extension, for example by threading open-recursion
+parameters, while a closed function body cannot be extended without
+rewriting it;
 Prolog meets the other three proxies but is extensible only by adding
-disjuncts to existing predicates, not by composing new observations onto
-existing values.
+disjuncts (alternative clauses) to existing predicates, not by attaching
+new fields or methods to existing values.
 No known computational model satisfies all four proxies simultaneously.
 
 The Nix ecosystem already suggests that such a model may exist:
@@ -352,8 +353,24 @@ NixOS module system to a minimal set of primitives.
 The reduction produced MIXIN, an early implementation in Nix,
 and subsequently
 MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now implemented in Python: a declarative programming
-language with only three constructs (record literals, definitions,
+language with only three constructs (record, definition,
 and inheritance) and no functions or let-bindings.
+MIXINv2 obtains scalars such as floating-point numbers through a
+foreign-function interface; inheritance-calculus is what remains after
+removing that interface, so names like $\mathrm{PI}$ and
+$\mathrm{Float}$ in Figure~\ref{fig:cheatsheet} denote imported
+records whose internals the examples never inspect: scalar
+computation such as the figure's additions happens behind the
+interface, while the calculus itself only ever observes structure;
+the case study of Section~\ref{sec:case-study} instead encodes
+naturals and their arithmetic purely in the calculus, with no FFI.
+When two merged records define the same name with different contents,
+the result is simply a record carrying both structures; the calculus
+never compares or rejects them
+(Section~\ref{sec:mixin-trees} makes the merge precise).
+No such collision occurs in Figure~\ref{fig:cheatsheet}: each
+instance defines each scalar field exactly once, and the type record
+it merges with contributes structure, not a competing value.
 
 \begin{figure*}
   \centering
@@ -465,22 +482,69 @@ total = a.plus(
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
     (left): the same complex-number class with an addition method.
-    Qualified $\this$ reaches into the enclosing module to access its
-    imported members.
+    An entry $name \mapsto \{\dots\}$ is a definition; a bare name
+    inside braces (such as $\mathrm{BuiltIns}$ or $\mathrm{Complex}$) is
+    an inheritance clause that copies that record's definitions into the
+    enclosing record.
+    $\mathrm{BuiltIns}$, $\mathrm{Math}$, and $\mathrm{Operator}$ are
+    defined in an enclosing scope, elided here.
+    A bare name resolves lexically to the innermost enclosing record
+    that defines it directly; qualified $\this$ reaches members that
+    arrive by inheritance, such as the imported $\mathrm{Float}$ and
+    $\mathrm{Add}$.
+    Types and values share the same record syntax: a field such as
+    $\mathrm{re}$ records its type by inheriting the type's record,
+    with no checking force in the untyped calculus.
     Both sides, typing their components with \texttt{builtins.float},
     drawing their constants from the \texttt{math} module, and adding with
     \texttt{operator.add}, compute the complex
     number $(\pi+\tau) + (e+\pi)i$.
     $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ are function
     applications, and $\mathrm{\_totalCall}$ a method application, each
-    encoded as a command pattern, their result read back from a
-    $\mathrm{result}$ field.}
+    encoded as a command pattern: a record that inherits the callee and
+    defines its arguments, the call's result read back from a
+    $\mathrm{result}$ field that the callee defines.
+    Idempotence only means that listing the same inheritance source
+    twice in one record is a no-op; distinct records inheriting the
+    same source, like the two call sites here or the two instances
+    $\mathrm{a}$ and $\mathrm{b}$, remain distinct.}
   \label{fig:cheatsheet}
 \end{figure*}
 
 
 
 In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}, shown beside Python in Figure~\ref{fig:cheatsheet}.
+The key to reading the figure is that a reference
+$\qualifiedthis{X}.w$ behaves like a late-bound Java-style
+\texttt{Outer.this}: it denotes the enclosing record labeled $X$ as
+seen from wherever the reference itself ends up in the fully merged
+tree.
+Inheriting a record does not duplicate it; it makes the record's
+definitions, references included, visible at the inheriting position
+as well, and a reference resolves relative to the position from which
+it is viewed.
+The set-union picture and this late-binding picture are the same
+mechanism seen globally and locally: the union says which definitions
+a position carries, and late binding says how a definition behaves at
+each position that carries it.
+Qualified references therefore see members that arrive by merging,
+such as the imported $\mathrm{Float}$, while bare names such as
+$\mathrm{Complex}$ resolve lexically against directly written
+definitions only.
+This late binding is what makes inheritance act as function
+application: the call record $\mathrm{\_totalCall}$ inherits
+$\mathrm{Plus}$, so the merged tree presents
+$\mathrm{Plus}$'s body inside $\mathrm{\_totalCall}$ as well, and
+viewed from there the reference
+$\qualifiedthis{\mathrm{Plus}}.\mathrm{other}$
+denotes that copy's enclosing record, $\mathrm{\_totalCall}$ itself,
+where the argument $\mathrm{other}$ is defined.
+Receivers bind the same way: the dotted bare name
+$\mathrm{a}.\mathrm{Plus}$ resolves its first label lexically and
+projects the rest, denoting the copy of $\mathrm{Plus}$ inside the
+instance $\mathrm{a}$, in which
+$\qualifiedthis{\mathrm{Complex}}.\mathrm{re}$ denotes
+$\mathrm{a}$'s own field.
 Section~\ref{sec:syntax} gives its formal syntax, and
 Section~\ref{sec:mixin-trees} expands this first look into the full
 semantics.
@@ -488,11 +552,28 @@ The linearization problem of mixin-based
 systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
 did not arise: inheritance is inherently commutative, idempotent,
 and associative, and $\this$ naturally resolves to
-\emph{multiple targets} rather than one, where prior systems
+\emph{multiple targets} rather than one: when inheritance places the
+same definition inside several enclosing records, a reference through
+$\this$ inherits from all of them at once, their contents merged,%
+\footnote{
+  Resolution is anchored at the position from which the reference is
+  observed. When both $\mathrm{A}$ and $\mathrm{B}$ inherit
+  $\mathrm{Base}$, a reference in $\mathrm{Base}$ observed inside
+  $\mathrm{A}$ sees only $\mathrm{A}$; the two call sites of
+  Figure~\ref{fig:cheatsheet} therefore stay independent. Multiple
+  targets arise when a single observation position inherits the same
+  definition through two routes, say $\mathrm{C}$ inheriting
+  $\mathrm{Base}$ via both $\mathrm{A}$ and $\mathrm{B}$: observed at
+  $\mathrm{C}$, a $\this$ reference in $\mathrm{Base}$ resolves to
+  $\mathrm{A}$ and $\mathrm{B}$ at once, and projection through it
+  yields the union of what they provide.
+}
+where
+prior systems
 such as Scala and the NixOS module system reject the multi-target
 situation.
 Section~\ref{sec:case-study} traces how boolean logic and
-arithmetic, implemented as separate files, extend in both
+arithmetic, encoded purely in the calculus as separate files, extend in both
 dimensions of the Expression
 Problem~\cite{wadler1998-expression-problem} without any dedicated
 mechanism, and how ordinary arithmetic yields the relational
@@ -501,6 +582,12 @@ programming~\cite{vanemden1976-predicate-logic-semantics}.
 Section~\ref{sec:emergent-phenomena} discusses these and further
 emergent phenomena, including function color
 blindness~\cite{nystrom2015-function-color}.
+Together these sections answer the four proxies: inheritance-calculus
+is immutable and first-order by construction
+(Section~\ref{sec:definitions}), Turing-complete because the
+$\lambda$-calculus embeds into it
+(Section~\ref{sec:forward-translation}), and extensible in both
+dimensions of the Expression Problem (Section~\ref{sec:case-study}).
 
 \begin{figure*}
   \centering
@@ -540,14 +627,25 @@ blindness~\cite{nystrom2015-function-color}.
     (ours) are contributions of this paper.
     Abbreviations:
     $\lambda$ is the $\lambda$-calculus;
-    the lazy prefix denotes the first-iteration approximation
-    $T_P\!\uparrow\!1$;
-    fixpoint $\lambda$ the fixpoint $\lambda$-calculus;
+    the lazy prefix denotes the approximation that stops after the first
+    iteration of the fixpoint of this paper's semantic equations
+    (written $T_P\!\uparrow\!1$ in
+    logic-programming notation): lookups that re-enter themselves
+    through cyclic self-reference return divergence instead of being
+    iterated further. Translated $\lambda$-terms never re-enter a
+    lookup, so on them this approximation agrees with ordinary lazy
+    evaluation; only cyclic records beyond the $\lambda$ fragment gain
+    from further iteration.
+    Continuing:
+    fixpoint $\lambda$ the fixpoint $\lambda$-calculus, which is
+    $\lambda$-IC's terms read back as a $\lambda$-calculus under the
+    full fixpoint semantics;
     IC the inheritance-calculus;
     and $\lambda$-IC and $\lambda$-lazy-IC the $\lambda$ sublanguages of
     IC and of lazy IC, respectively.
     Edge labels:
-    \emph{more defined} refers to convergence;
+    \emph{more defined} means every term that converges in the source
+    calculus also converges in the target calculus, but not conversely;
     \emph{strictly more expressive} is meant in Felleisen's sense of
     macro-expressibility;
     and \emph{fully abstract} marks full abstraction.}
