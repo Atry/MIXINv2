@@ -86,7 +86,7 @@
 \thanks{The author completed this work independently and outside the scope of employment at Figure AI. No Figure AI time, funding, or other resources were used in support of this work.}
 
 \begin{abstract}
-  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires an added recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ for graph reduction: such data has no finite normal form, so ordinary reduction unfolds it forever instead of folding it into a finite cyclic graph, and an ordinary recursive function over it does the same. We show no extension is needed, and the denotational semantics is unchanged: a term keeps its standard meaning, which we represent as a finite cyclic graph when it is rational. The insight is that such data is the unique solution of a coalgebraic equation, and that any coalgebraic equation can be solved directly, by tabling: when a state recurs, the solver folds it into a back edge, so rational data, that with finitely many distinct subtrees, comes out as a finite cyclic graph. The solver halts when finitely many states are reachable, within that rational fragment, and the rational fragment is optimal, since data beyond it has no finite representation, so no denotation-preserving procedure halts on more. The algorithm's first application is the pure $\lambda$-calculus itself: head normalisation is such an equation, and because its states are first-order graph nodes rather than functions their equality is decidable where $\beta$-equality is not, so the solver is an interpreter. It decides $\Omega$ as $\bot$ in finite time and evaluates $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, an ordinary map over the cyclic stream of zeros, to the cyclic stream of ones as a finite cyclic graph, with no construct added. Because any coalgebra Scott-encodes as a $\lambda$-term, this one interpreter solves them all, making the pure $\lambda$-calculus a domain-specific language whose memoization and transposition tables fall out of node identity: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming. A second example coalgebra is compilation. Its equation sends each sub-term of a source program, by specialization rules, to a node of a Python AST over that sub-term's own sub-terms, and its solution is the program optimised to that AST. A compiler computes it by the same tabling, compiling each shared sub-term once into a finite graph, and is itself a $\lambda$-term the interpreter solves, so program analysis is expressed as evaluation, and it compiles its own source in a self-hosting bootstrap.
+  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires an added recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ for graph reduction: such data has no finite normal form, so ordinary reduction unfolds it forever instead of folding it into a finite cyclic graph, and an ordinary recursive function over it does the same. We show no extension is needed: a term keeps the meaning its reduction defines, which for weak-head reduction is its standard lazy (L\'evy--Longo) semantics, and which we represent as a finite cyclic graph when it is rational. The insight is that such data is the unique solution of a coalgebraic equation, and that any coalgebraic equation can be solved directly, by tabling: when a state recurs, the solver folds it into a back edge, so rational data, that with finitely many distinct subtrees, comes out as a finite cyclic graph. The solver halts exactly on the inputs with finitely many reachable states, a sub-fragment of the rational data, since not every rational datum reaches finitely many states; the rational fragment itself is the ceiling for finite cyclic graphs, as data beyond it has no such graph, so no solution-preserving procedure returns one on more. The algorithm's first application is the pure $\lambda$-calculus itself: head normalisation is such an equation, and because its states are first-order graph nodes rather than functions their equality is decidable where $\beta$-equality is not, so the solver is an interpreter. It decides $\Omega$ as $\bot$ in finite time and evaluates $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, an ordinary map over the cyclic stream of zeros, to the cyclic stream of ones as a finite cyclic graph, with no construct added. Because any coalgebra Scott-encodes as a $\lambda$-term, this one interpreter solves them all, making the pure $\lambda$-calculus a domain-specific language whose memoization and transposition tables fall out of node identity: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming. A second example coalgebra is compilation. Its equation sends each sub-term of a source program, by specialization rules, to a node of a Python AST over that sub-term's own sub-terms, and its solution is the program optimised to that AST. A compiler computes it by the same tabling, compiling each shared sub-term once into a finite graph, and is itself a $\lambda$-term the interpreter solves, so program analysis is expressed as evaluation, and it compiles its own source in a self-hosting bootstrap.
 \end{abstract}
 
 \keywords{coalgebra, coalgebraic equations, rational fixpoint, algebraic compactness,
@@ -187,9 +187,10 @@ rule that at each state either exposes data or takes an internal step, the layer
 the internal steps eventually expose, with the $\lambda$-calculus's own reduction, stopped as
 soon as the outermost shape of the term is settled, as one instance
 (Section~\ref{sec:reductions}). So for any reduction
-function the solver computes exactly the semantics that function defines. It halts exactly when
-the solution has a finite cyclic representation, the most any meaning-preserving procedure can
-do, since data with infinitely many distinct sub-parts has no finite graph at all
+function, wherever the solver halts it returns exactly the semantics that function defines. It
+halts on the data that reaches finitely many states, a strict sub-fragment of the rational data,
+those with finitely many distinct sub-parts; and beyond the rational data no solution-preserving
+procedure halts with a finite cyclic graph at all, since there is none to return
 (Theorem~\ref{thm:optimal}). And since data such as lists and trees are themselves pure
 $\lambda$-terms (the Scott encoding), every such system is again a $\lambda$-term, and one
 interpreter solves them all, turning the pure $\lambda$-calculus into a small domain-specific
@@ -210,8 +211,9 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
     of each layer).
   \item \emph{The theory.} We prove the solver \emph{sound} (the finite graph it returns
     unfolds to exactly the solution, Theorem~\ref{thm:correctness}), \emph{optimal} (it halts
-    precisely on the data with a finite cyclic representation, and nothing meaning-preserving
-    halts on more, Theorems~\ref{thm:termination}, \ref{thm:optimal}), and the equation
+    on the data that reaches finitely many states, and no solution-preserving procedure halts
+    with a finite cyclic graph beyond the rational fragment, Theorems~\ref{thm:termination},
+    \ref{thm:optimal}), and the equation
     \emph{uniquely solved} (least equals greatest, so induction and coinduction coincide and
     the least fixpoint does real work only in deciding an unproductive loop as $\bot$,
     Theorem~\ref{thm:unique}, Remarks~\ref{rem:compact}, \ref{rem:leastessential}).
@@ -222,7 +224,7 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
     domain-specific language solving Datalog, graph reachability and points-to analysis, minimax
     search, and dynamic programming (Appendix~\ref{app:dsl}); and compilation is itself such an
     equation, the same interpreter solving it into a self-hosting compiler to Python
-    (Appendix~\ref{app:compiler}).
+    (Section~\ref{sec:application}).
 \end{itemize}
 
 % =====================================================================
@@ -247,7 +249,10 @@ $\lambda$-calculus enters only there, as an instance (Section~\ref{sec:reduction
   $\bot_{MA}$; the deterministic effect is $\Delaym$, a computation being either a value or
   divergence, and it is the only effect the examples of this paper use, so a reader may take
   $M(F X) = F X \cup \{\bot\}$ throughout. Richer effects (non-deterministic, probabilistic,
-  stateful) substitute without changing any statement below.
+  stateful) fit the same architecture, the silent iteration becoming that of a complete Elgot
+  monad \cite{adamek2006-iterative-algebras, goncharov2016-complete-elgot-monads}; this paper
+  develops and proves only the deterministic case, on which the metric argument of
+  Theorem~\ref{thm:unique} relies (a layer exposes a single operation at the root).
 \end{definition}
 
 \begin{definition}[Coalgebra]\label{def:coalgebra}
@@ -387,16 +392,25 @@ finite cyclic graph and the infinite unfolding are the same fixpoint read two wa
 \end{theorem}
 
 \begin{theorem}[Optimality]\label{thm:optimal}
-  A solution has a finite graph representation iff it is rational, so no procedure that
-  preserves the solution halts with a finite representation on more inputs than the rational
-  ones. The solver therefore halts on the most any meaning-preserving procedure can. Proof in
+  Fix the reduction function, and with it the solution it defines; a procedure is
+  \emph{solution-preserving} when it returns that same solution as a finite graph. Such a graph
+  exists iff the solution is rational, so no solution-preserving procedure halts on an input whose
+  solution is not rational: the rational fragment is the ceiling. The bound is at this fixed
+  solution: a procedure halting on a non-rational input while returning a finite graph returns a
+  rational tree, hence not the solution fixed here, but a coarser semantics. The solver halts on
+  the inputs with finitely many reachable states
+  (Theorem~\ref{thm:termination}), a sub-fragment of the rational ones under structural state
+  identity; the residual gap, rational solutions whose states are nonetheless pairwise distinct,
+  is closed by folding behaviourally equal states, the coarsest solution-preserving identity,
+  which attains the whole rational fragment but is in general undecidable. Proof in
   Appendix~\ref{app:optimal}.
 \end{theorem}
 
 \noindent
-Rationality is undecidable, so the halting inputs cannot be pre-selected; the solver is an
-optimal semi-decision procedure, halting with the finite representation on the rational
-fragment and diverging elsewhere, where every meaning-preserving procedure must.
+Rationality is undecidable, so the halting inputs cannot be pre-selected. The solver is a sound
+semi-decision procedure: it returns the finite graph on the inputs with finitely many reachable
+states and diverges on the rest, and outside the rational fragment no solution-preserving
+procedure halts at all, since the solution it would return as a finite graph does not exist.
 
 \subsection{Reduction Functions Present Coalgebras}\label{sec:reductions}
 
@@ -437,9 +451,10 @@ finitely many internal steps separate a state from its next layer, if one comes 
 This is the one least fixpoint of the paper, and the one place least differs from greatest: a
 silent loop exposes nothing, so its value is forced to $\bot$. The solver computes $\outm(x)$
 by running the silent steps, and the states a silent run passes through are interned like all
-others, so the run keeps the set of states it has visited and stops at a revisit; a revisit
-means the run will never expose a layer, so returning $\bot$ at that point is exactly the
-least fixpoint, decided in finite time. Everything above now applies to
+others, so the run keeps the set of states it has visited and stops at a revisit. Because the
+deterministic silent step is a function, a revisited state replays the same run forever and
+exposes no layer, so returning $\bot$ at the revisit is exactly the least fixpoint, decided in
+finite time. Everything above now applies to
 $(X, \outm)$ unchanged. Conversely no generality was lost by developing the theory for
 coalgebras: a coalgebra is the degenerate reduction function with no silent steps, so the two
 formats present the same objects.
@@ -452,8 +467,14 @@ For instance, one step of weak-head reduction in the pure $\lambda$-calculus is 
 reduction function: a variable, an abstraction, or an application with a rigid head (one that
 can never become an abstraction, so no redex forms) exposes a layer, and a head redex
 contracts silently. Its solution is the L\'evy--Longo tree~\cite{longo1983-set-theoretical-models} of the
-term, which is, by its very definition, the standard meaning; the instance is developed in
-Section~\ref{sec:bridge}.
+term, the standard tree semantics of weak-head reduction; a different reduction function fixes a
+different such tree (the B\"ohm tree under head reduction), and under
+Definition~\ref{def:semantics} each \emph{is} the meaning its reduction defines. Here a bare
+coalgebra has only a solution, no prior meaning to preserve, but a programming language carries a
+standard denotation of its terms; when that denotation is the tree the chosen reduction unfolds
+to, as the L\'evy--Longo tree is for weak-head reduction, the solution-preserving guarantee of
+Theorem~\ref{thm:optimal} is exactly that this denotational semantics is unchanged. The instance
+is developed in Section~\ref{sec:bridge}.
 
 % =====================================================================
 %  TODO: REMAINING SECTIONS (paper outline, IMRaD-style; sections 1-2 done)
@@ -587,9 +608,10 @@ Section~\ref{sec:bridge}.
 
   Taking the least upper bound over $k$: $\outm(x) \neq \bot$ iff the silent process from $x$
   exposes a layer within some finite number of steps, and $\outm(x)$ is then that layer;
-  $\outm(x) = \bot$ exactly when no layer is ever exposed. For a richer effect the same
-  induction runs pointwise along the order of $M$, the iteration being the standard one of
-  complete Elgot monads \cite{adamek2006-iterative-algebras, goncharov2016-complete-elgot-monads}.
+  $\outm(x) = \bot$ exactly when no layer is ever exposed. This characterisation is the
+  deterministic case the paper uses; for a richer effect the iteration is the standard one of
+  complete Elgot monads \cite{adamek2006-iterative-algebras, goncharov2016-complete-elgot-monads},
+  which we do not develop here.
 \end{proof}
 
 % =====================================================================
@@ -686,23 +708,37 @@ Section~\ref{sec:bridge}.
   distinct subtrees, each node carrying its root operation with an edge to each immediate
   subtree; this is the standard correspondence for regular trees \cite{courcelle1983-infinite-trees}.
 
-  \emph{Optimality.} A procedure that preserves the solution and halts must output some
-  finite object denoting that solution as a graph; if the solution is not rational, no such
-  finite graph exists, so the procedure cannot halt on that input. The solver halts exactly
-  on inputs with finitely many reachable states (Theorem~\ref{thm:termination}), all of whose
-  solutions are rational, and its output is the finite representation
-  (Theorem~\ref{thm:correctness}). Within the rational fragment a gap remains under
-  structural state identity, witnessed by terms whose states are pairwise distinct yet share
-  one rational solution; closing it requires folding behaviourally equal states, a coarser
-  and in general undecidable identity, so no effective procedure exceeds the solver by more
-  than that gap, and none exceeds the rational fragment at all.
+  \emph{Optimality.} Fix the reduction function and the solution it defines. A
+  \emph{solution-preserving} procedure returns this solution as a finite graph; a finite
+  generator such as the input term names the solution but does not return it as a graph, and is
+  not of this kind. By the first part such a graph exists only when the solution is rational, so a
+  solution-preserving procedure cannot halt on an input whose solution is not rational: the
+  rational fragment bounds them all. The bound is at the fixed solution: to halt on a non-rational
+  input while returning a finite graph one must return a rational tree, hence not the non-rational
+  solution fixed here; such a procedure computes a coarser semantics, a different reduction's
+  solution, not this one. The solver halts exactly on inputs with finitely many reachable states
+  (Theorem~\ref{thm:termination}), all of whose solutions are rational, and its output is that
+  finite graph (Theorem~\ref{thm:correctness}). Within the rational fragment a gap remains under
+  structural state identity, witnessed in the $\lambda$-instance by $Y\,F\,\underline{0}$ with
+  $F = \lambda s.\lambda n.\,\mathtt{cons}\,0\,(s\,(\mathtt{succ}\,n))$, whose states
+  $Y\,F\,\underline{k}$ for $k = 0, 1, 2, \dots$ are pairwise distinct yet all unfold to the one
+  rational stream of zeros, so structural folding never closes though the solution is rational and
+  the solver diverges; the solver, folding on structural identity, halts on the rational inputs
+  outside that gap. The coarsest solution-preserving identity folds states with equal subtrees,
+  whose classes are the distinct subtrees of the solution, finite exactly when the solution is
+  rational; that identity therefore attains the whole rational fragment, but it is in general
+  undecidable (on $\lambda$-terms it is behavioural equality of states), so the solver's decidable
+  structural identity attains only a sub-fragment. We do not claim the rational fragment is
+  unattainable by every decidable identity, only that the structural one the solver uses falls
+  short of it.
 \end{proof}
 
 \section{The Rational Fragment as a Domain-Specific Language}\label{app:dsl}
 The terminating fragment of the construction, the rational behaviours, is exactly the world of
 finite-state, regular, and least-fixpoint-over-a-finite-lattice computation, and a range of
-practical domains live there. Each domain below is a pure $\lambda$-term whose behaviour is
-rational, so the interpreter halts, and each is reproduced as a test\anon[~(supplementary
+practical domains live there. Each domain below is a pure $\lambda$-term that reaches finitely
+many states, so its behaviour is rational and the interpreter halts, and each is reproduced as a
+test\anon[~(supplementary
 material)]{~\cite{colambda}}. Two reusable shapes recur: a least fixpoint over a Church
 tuple of booleans (the Datalog engine of Section~\ref{sec:application}), and a recursion whose
 subproblems are the nodes of a first-order datum, memoised for free because identical subproblems
@@ -728,7 +764,7 @@ every element transformed, where ordinary reduction would map the infinite strea
 same $\mathtt{map}$ is the textbook one.
 
 \paragraph{Dynamic programming, memoisation for free.}
-The decisive capability is memoisation (Section~\ref{sec:memo}): a recursion whose state space is a
+The decisive capability is memoisation: a recursion whose state space is a
 tree or graph computes each distinct subproblem once, because a structurally repeated subtree, or a
 graph node revisited along several paths, is one interned state. A perfect binary tree of depth $n$
 whose nodes share both children is a graph of $n+1$ states that unfolds to $2^{n}$ leaves; a tree
@@ -801,8 +837,9 @@ and $\mathtt{accepts}\,(\mathtt{run}\,\mathtt{T}\,w)$ is $\mathtt{T}$ exactly wh
 number of $a$s.
 
 \paragraph{Unification and recursive types.}
-Equality of two rational (cyclic) terms is decided by their behaviour through cycle-detecting
-bisimulation (Corollary~\ref{cor:decidable}). This is the decidable core shared by rational-tree
+When the solver halts on two terms, returning their finite graphs, equality of the behaviours
+those graphs unfold to is decided by cycle-detecting bisimulation on the
+graphs~\cite{courcelle1983-infinite-trees}. This is the decidable core shared by rational-tree
 unification \cite{colmerauer1984-trees} and equirecursive ($\mu$-) type equality
 \cite{amadio1993-subtyping-recursive-types, brandt1998-coinductive-type-equality}: two constructions of one rational term read out
 identically, and a different term reads out differently. For instance $Y\,(\mathtt{cons}\;0)$ and
