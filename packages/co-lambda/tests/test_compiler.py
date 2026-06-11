@@ -7,9 +7,10 @@ and checked to compute what the source lambda term computes, so the compiler is 
 
 from __future__ import annotations
 
-from co_lambda._compiler import codegen
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS, church
+from co_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS
+from co_lambda._specialize import codegen
 
 
 def test_compiles_identity_and_kestrel() -> None:

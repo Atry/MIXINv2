@@ -19,9 +19,10 @@ import pytest
 from fixpoints._core import FixpointRecursionError, fixpoint_cached_property
 
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import IDENTITY, SUCC, Y, ZERO, cons
+from co_lambda._prelude import IDENTITY, SUCC, Y, ZERO
 from co_lambda._render import render
 from co_lambda._shape import ReductionBudgetExceeded, reduction_budget, weak_head_normalize
+from co_lambda._sugar import cons
 
 # An infinite RATIONAL singly-linked list: cons 0 (cons 0 (...)), finitely many nodes.
 CYCLIC_LIST = build(app(Y, lam(lambda self_: cons(ZERO, self_))))

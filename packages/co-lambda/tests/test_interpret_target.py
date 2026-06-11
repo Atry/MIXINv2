@@ -12,17 +12,13 @@ interpreter.
 
 from __future__ import annotations
 
-from co_lambda._compiler import (
-    CODEGEN,
-    Runtime,
-    codegen,
-    compile_with_interpreted,
-    interpret_globals,
-)
+from co_lambda._codec import church
+from co_lambda._compiler import CODEGEN
 from co_lambda._dsl import app, build
-from co_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
+from co_lambda._prelude import FACTORIAL, IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC
 from co_lambda._pyast import _church_to_int
-from co_lambda._specialize import compile
+from co_lambda._runtime import interpret_globals
+from co_lambda._specialize import Runtime, codegen, compile, compile_with_interpreted
 
 
 def _run(source: str):

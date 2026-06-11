@@ -15,20 +15,12 @@ from __future__ import annotations
 
 from syrupy.assertion import SnapshotAssertion
 
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import (
-    CYCLIC_ZEROS,
-    IDENTITY,
-    SCOTT_CONS,
-    SCOTT_NIL,
-    SUCC,
-    Y,
-    ZERO,
-    church,
-    cons,
-    map_list,
-)
+from co_lambda._examples import CYCLIC_ZEROS
+from co_lambda._prelude import IDENTITY, SCOTT_CONS, SCOTT_NIL, SUCC, Y, ZERO
 from co_lambda._render import render
+from co_lambda._sugar import cons, map_list
 
 # The cyclic singly-linked list r = cons 0 r, written with Y (no recursion binder).
 _CYCLIC = app(Y, app(SCOTT_CONS, ZERO))

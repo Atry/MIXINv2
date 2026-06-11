@@ -10,8 +10,8 @@ from __future__ import annotations
 import ast
 
 from co_lambda import _pybuild as B
+from co_lambda._codec import church
 from co_lambda._dsl import build
-from co_lambda._prelude import church
 from co_lambda._pyast import _scott_list, decode
 
 

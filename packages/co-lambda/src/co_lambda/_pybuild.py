@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import ast
 
-from co_lambda._dsl import Builder
-from co_lambda._prelude import SCOTT_NIL, church
+from co_lambda._codec import char_codes, church
+from co_lambda._dsl import Builder, app, lam
+from co_lambda._prelude import PRED, SCOTT_NIL, SUCC
+from co_lambda._runtime import RUNTIME_API
+from co_lambda._sugar import ap, cons, map_list, one, two
 from co_lambda._pyast import (
     _K_BOOL,
     _K_IDENT,
@@ -72,11 +75,6 @@ def field_bool(nat: Builder) -> Builder:
 
 def field_none() -> Builder:
     return _kind(_K_NONE, church(0))
-
-
-def char_codes(text: str) -> Builder:
-    """The Scott list of character codes for a fixed Python string (a baked-in literal)."""
-    return _scott_list([church(ord(character)) for character in text])
 
 
 def field_node_list(node_fields: Builder) -> Builder:
@@ -204,3 +202,126 @@ def py_module(stmt_fields: Builder) -> Builder:
 def py_constant_int(nat: Builder) -> Builder:
     """``ast.Constant(value=<int>, kind=None)`` with an integer (Nat) value."""
     return _node(ast.Constant, [field_int(nat), field_none()])
+
+
+# --- emission notation: fixed-shape statement/expression/identifier helpers ----------------------
+# Builder-only transcription sugar used by the CODEGEN / CODEGEN_NEED lambda terms; shapes are
+# literal at the call site, parameters are Builders.
+
+
+def single_arg(expr: Builder) -> Builder:
+    """The argument list of a Call with one positional argument (a Scott list of one node field)."""
+    return one(field_node(expr))
+
+
+def name_symbol_field(kind: Builder, path: Builder) -> Builder:
+    """The identifier field naming the ``kind`` role of the node at ``path`` (a list of Nats)."""
+    return field_ident(cons(kind, path))
+
+
+def depth_ident(depth: Builder) -> Builder:
+    """The identifier field of the binder at ``depth``: the one-element Nat list ``[depth]``."""
+    return field_ident(one(depth))
+
+
+def level_ident(depth: Builder, index: Builder) -> Builder:
+    """The identifier field of ``QVar index`` under ``depth`` binders: ``[depth - 1 - index]``, by
+    Church truncated subtraction (``index + 1`` applications of ``PRED``). A free index (>= depth)
+    floors to level 0; compiled terms are certified closed, so it is never reached."""
+    return field_ident(one(ap(app(SUCC, index), PRED, depth)))
+
+
+def ex_name(name_field: Builder) -> Builder:
+    return py_name(name_field, py_load())
+
+
+def ex_force(expr: Builder) -> Builder:
+    return py_call(expr, SCOTT_NIL)  # expr()
+
+
+def ex_app(function: Builder, argument: Builder) -> Builder:
+    return py_call(function, single_arg(argument))  # function(argument)
+
+
+def ex_is(left: Builder, right: Builder) -> Builder:
+    return py_compare_is(left, right)  # left is right
+
+
+def stmt(node: Builder) -> Builder:
+    """Wrap a statement node as a field so it can sit in a Scott list of statements."""
+    return field_node(node)
+
+
+def st_func_def(name_field: Builder, parameter_fields: Builder, body_fields: Builder) -> Builder:
+    arguments = py_arguments(
+        map_list(lam(lambda field: field_node(py_arg(field))), parameter_fields),
+    )
+    return py_function_def(name_field, arguments, body_fields)
+
+
+def st_nonlocal(name_fields: Builder) -> Builder:
+    return py_nonlocal(name_fields)
+
+
+def st_if(test: Builder, body_fields: Builder) -> Builder:
+    return py_if(test, body_fields)
+
+
+def st_assign(target_field: Builder, value: Builder) -> Builder:
+    return py_assign(py_name(target_field, py_store()), value)
+
+
+def st_return(value: Builder) -> Builder:
+    return py_return(value)
+
+
+# --- runtime-call emission -------------------------------------------------------------------------
+# The runtime-global names the emission refers to, as literal char-code renderings. Each name is
+# checked against the declared RUNTIME_API, so emission and the delivered runtime cannot drift.
+
+
+def _runtime_name_codes(name: str) -> Builder:
+    assert name in RUNTIME_API, f"emitted runtime name {name!r} is not in RUNTIME_API"
+    return char_codes(name)
+
+
+MAKE_VAR_CODES: Builder = _runtime_name_codes("make_var")
+MAKE_LAM_CODES: Builder = _runtime_name_codes("make_lam")
+MAKE_APP_CODES: Builder = _runtime_name_codes("make_app")
+INTERPRET_CODES: Builder = _runtime_name_codes("interpret")
+VALUE_ISLAND_CODES: Builder = _runtime_name_codes("value_island")
+VALUE_ISLAND_BY_NAME_CODES: Builder = _runtime_name_codes("value_island_by_name")
+SENTINEL_CODES: Builder = _runtime_name_codes("CALL_BY_NEED_SENTINEL")
+
+_EX_SENTINEL: Builder = ex_name(field_str(SENTINEL_CODES))
+
+
+def thunk_scaffold(cell_field: Builder, thunk_field: Builder, compute_fields: Builder) -> Builder:
+    """The two setup statement fields introducing a memoising thunk: the cell init and the thunk def."""
+    body = cons(
+        stmt(st_nonlocal(one(cell_field))),
+        cons(
+            stmt(st_if(ex_is(ex_name(cell_field), _EX_SENTINEL), compute_fields)),
+            one(stmt(st_return(ex_name(cell_field)))),
+        ),
+    )
+    return two(
+        stmt(st_assign(cell_field, _EX_SENTINEL)),
+        stmt(st_func_def(thunk_field, SCOTT_NIL, body)),
+    )
+
+
+def one_node(expression: Builder) -> Builder:
+    """A one-element Scott argument list of a node field."""
+    return one(field_node(expression))
+
+
+def two_nodes(first: Builder, second: Builder) -> Builder:
+    """A two-element Scott argument list of node fields."""
+    return two(field_node(first), field_node(second))
+
+
+def emit_runtime_call(name_codes: Builder, argument_fields: Builder) -> Builder:
+    """An ``ast.Call`` of the runtime global named by ``name_codes`` (a Scott char-code list) to
+    ``argument_fields`` (a Scott list of node fields), built as the generic Scott AST."""
+    return py_call(py_name(field_str(name_codes), py_load()), argument_fields)

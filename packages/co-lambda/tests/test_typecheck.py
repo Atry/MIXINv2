@@ -12,8 +12,10 @@ from __future__ import annotations
 import pytest
 
 from co_lambda._ast import make_lam, make_var
+from co_lambda._codec import church
 from co_lambda._compiler import CODEGEN
 from co_lambda._dsl import app, build
+from co_lambda._examples import OMEGA
 from co_lambda._prelude import (
     EXP,
     FACTORIAL,
@@ -22,16 +24,13 @@ from co_lambda._prelude import (
     IS_ZERO,
     KESTREL,
     MULT,
-    OMEGA,
     PLUS,
     PRED,
     SELF_APPLY,
     SUCC,
     Y,
-    church,
 )
-from co_lambda._specialize import is_typable
-from co_lambda._typecheck import is_typable_lambda
+from co_lambda._specialize import is_typable, is_typable_lambda
 
 _TYPABLE = {
     "identity": build(IDENTITY),

@@ -14,7 +14,8 @@ memoisation, which the pure lambda-calculus cannot do without a decidable identi
 from __future__ import annotations
 
 from co_lambda._dsl import build
-from co_lambda._prelude import FALSE, TRUE, any_false_dp, tree_any, tree_leaf, tree_node
+from co_lambda._examples import any_false_dp, tree_any, tree_leaf, tree_node
+from co_lambda._prelude import FALSE, TRUE
 from co_lambda._render import render
 
 _TRUE = render(build(TRUE))

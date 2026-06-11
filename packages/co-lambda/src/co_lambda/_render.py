@@ -21,14 +21,7 @@ from __future__ import annotations
 from typing import Callable
 
 from co_lambda._ast import Node, ShapeBottom
-from co_lambda._shape import (
-    AppShape,
-    LamShape,
-    NativeShape,
-    Shape,
-    VarShape,
-    weak_head_normalize,
-)
+from co_lambda._shape import AppShape, LamShape, NativeShape, Shape, VarShape, weak_head_normalize
 
 
 def render(

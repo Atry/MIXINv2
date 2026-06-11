@@ -16,18 +16,10 @@ from __future__ import annotations
 import pytest
 
 from co_lambda._ast import BOTTOM
+from co_lambda._codec import church
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import (
-    CYCLIC_ZEROS,
-    IDENTITY_TERM,
-    OMEGA,
-    SELF_APPLY,
-    SUCC,
-    Y,
-    ZERO,
-    church,
-    cons,
-)
+from co_lambda._examples import CYCLIC_ZEROS, IDENTITY_TERM, OMEGA
+from co_lambda._prelude import SELF_APPLY, SUCC, Y, ZERO
 from co_lambda._render import render
 from co_lambda._shape import (
     LamShape,
@@ -36,6 +28,7 @@ from co_lambda._shape import (
     reduction_budget,
     weak_head_normalize,
 )
+from co_lambda._sugar import cons
 
 # lambda x. Omega : the term on which the two readings disagree (Omega is unused under the lambda).
 LAM_OMEGA = build(lam(lambda _x: app(SELF_APPLY, SELF_APPLY)))

@@ -9,9 +9,11 @@ regardless of how each term was written.
 
 from __future__ import annotations
 
+from co_lambda._codec import church
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import SCOTT_CONS, ZERO, Y, church, cons
+from co_lambda._prelude import SCOTT_CONS, Y, ZERO
 from co_lambda._render import render
+from co_lambda._sugar import cons
 
 
 def test_equal_rational_terms_are_decided_equal() -> None:

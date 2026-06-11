@@ -1,59 +1,368 @@
-"""Analysis-driven specialization: interpret by default, compile to Python only when sound.
+"""The boundary: options, serialization, verdict readers, FFI utilities, and Python oracles.
 
-The interpreter is the default. A ``Node``'s ``weak_head_normal_form`` is a
-``fixpoint_cached_property`` thunk, interned and possibly cyclic, so the term graph already *is*
-a fixpoint-thunk graph the interpreter folds; handing that graph back is the identity. The only
-compilations that change anything are the two that pick a different evaluation strategy, call-by-value
-(strict) and call-by-name, and they preserve the interpreter's result only under conditions a static
-analysis can certify:
+The compiler itself is the pure lambda term ``_compile_term.COMPILE``; this module is everything
+Python does AROUND it. Encoding an option dataclass to its Scott union, quoting the input, running
+the interpreter, and serializing the resulting Scott Python AST are boundary codecs; reading a
+lambda-level verdict (typability, closedness, normalization) back as a Python bool is a readout;
+``compile_callable``/``value_island``/``lazy_island`` are FFI utilities over the runtime; and the
+Python implementations at the bottom (``_Inference``, ``call_by_value_islands``,
+``needs_folding``, the interpret-target reconstruction) are SPECIFICATIONS and test oracles, off
+the lambda production path.
 
-- ``is_typable`` decides simple typability (STLC, algorithm-W style). A simply-typed term is
-  strongly normalizing, so strict evaluation terminates with the same normal form: call-by-value is
-  safe.
-- ``needs_folding`` consults the interpreter as a sound oracle: it reads the behaviour out and
-  checks whether the fixpoint fold was used (a back-reference ``#`` or the ``⊥`` leaf). If the
-  behaviour is a finite normal form, the term is normalizing and call-by-name (which recomputes,
-  never folds) reaches the same value.
+The analyses certify, per sub-term, the runtime that preserves the interpreted behaviour:
 
-``choose_runtime`` layers these: call-by-value if typable; else call-by-name if the behaviour is a
-finite normal form; else interpret, meaning leave the sub-term to the interpreter, which always folds
-correctly. This is a partial evaluator with a soundness analysis and the interpreter as the fixpoint
-fallback; no totality is claimed, and anything not certified stays interpreted.
+- ``is_typable`` (algorithm-W): a simply-typed term is strongly normalizing, so strict call-by-value
+  terminates with the same normal form.
+- ``needs_folding`` consults the interpreter as a sound oracle: a finite normal form means
+  call-by-name/need (which never folds) reaches the same value.
+
+``choose_runtime`` layers these: call-by-value if typable; else call-by-need if the behaviour is a
+finite normal form; else interpret, meaning leave the term to the interpreter, which always folds
+correctly. Anything not certified stays interpreted.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from typing import Callable
-
 import ast
 
-from co_lambda import _pybuild
-from co_lambda._analysis import CLOSED, IS_CLOSED, depth_at_most
+from dataclasses import dataclass
+from enum import Enum, auto
+from typing import Callable
+
+from co_lambda._analysis import IS_CLOSED
 from co_lambda._ast import App, Lam, Native, Node, Var
-from co_lambda._binnat import int_to_binnat
-from co_lambda._compiler import (
-    CODEGEN,
-    Runtime,
+from co_lambda._codec import church, int_to_binnat, interpret_boolean, quote
+from co_lambda._compile_term import CHOOSE_RUNTIME, COMPILE
+from co_lambda._compiler import CODEGEN, CODEGEN_NEED
+from co_lambda._dsl import app, build, curry
+from co_lambda._prelude import FALSE, TRUE
+from co_lambda._pyast import _church_to_int, decode, to_anf_source
+from co_lambda._reduce import NORMALIZES
+from co_lambda._render import render
+from co_lambda._runtime import (
     _LazyThunk,
     _NeedThunk,
-    _option,
-    _recursion_headroom,
-    compile_interpreted,
-    codegen,
+    call_by_need_globals,
     force,
-    quote,
-    runtime_globals,
-    value_island as _compiler_value_island,
-    value_island_by_name as _compiler_value_island_by_name,
+    recursion_headroom,
+    run_in_large_stack,
+    value_island as _runtime_value_island,
+    value_island_by_name as _runtime_value_island_by_name,
 )
-from co_lambda._dsl import app, build, curry, lam
-from co_lambda._prelude import AND, FALSE, OR, SCOTT_NIL, SUCC, TRUE, Y, church, cons
-from co_lambda._pyast import _church_to_int, decode, to_anf_source
-from co_lambda._reduce import DEFAULT_FUEL, NORMALIZES, run_in_large_stack
-from co_lambda._render import render
 from co_lambda._typecheck import TYPABLE, TYPABLE_BU
+
+
+class Runtime(Enum):
+    CALL_BY_VALUE = auto()  # strict: an argument is evaluated to a value before the call
+    CALL_BY_NAME = auto()  # an argument is a thunk recomputed on each force (no sharing)
+    CALL_BY_NEED = auto()  # call-by-name plus memoisation: the thunk computes once and shares
+    INTERPRET = auto()  # not a compiled target: re-submit the term to the interpreter
+
+
+def _option(runtime: Runtime):
+    """The Scott compilation option for a compiled expression target: a Church boolean ``thunked``."""
+    if runtime is Runtime.CALL_BY_VALUE:
+        return FALSE
+    if runtime is Runtime.CALL_BY_NAME:
+        return TRUE
+    if runtime is Runtime.CALL_BY_NEED:
+        raise NotImplementedError("the call-by-need target is a module, not an expression option")
+    raise ValueError("the interpret target is not compiled; compile call-by-value or call-by-name")
+
+
+def runtime_globals(runtime: Runtime) -> dict:
+    """The evaluation globals for a compiled program under the given runtime.
+
+    Call-by-value source is self-contained; call-by-name source needs ``force`` and the
+    recompute-on-force ``Thunk``; call-by-need needs the memo-cell sentinel.
+    """
+    if runtime is Runtime.CALL_BY_VALUE:
+        return {}
+    if runtime is Runtime.CALL_BY_NAME:
+        return {"force": force, "Thunk": _LazyThunk}
+    if runtime is Runtime.CALL_BY_NEED:
+        return call_by_need_globals()
+    raise ValueError("the interpret target is interpreted; it has no compiled runtime globals")
+
+
+def compile_quoted(option, quoted) -> Node:
+    """Run ``CODEGEN`` (at the given option) on a quoted source term, returning the Scott Python expr."""
+    return build(app(app(app(CODEGEN, option), church(0)), quoted))
+
+
+def _compile_need_source(node: Node) -> str:
+    """Compile a term to the call-by-need module source (explicit memoising thunks).
+
+    CODEGEN_NEED emits the generic Scott ``ast.Module`` directly, decoded by the generic
+    ``_pyast.decode``.
+    """
+    module = build(app(CODEGEN_NEED, quote(node)))
+    return ast.unparse(ast.fix_missing_locations(decode(module)))
+
+
+def codegen(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
+    """Run the ``CODEGEN``/``CODEGEN_NEED`` lambda terms to emit Python source for ``node`` under a
+    compiled ``runtime``: the per-target in-process utility (the production entry is ``compile``).
+
+    Call-by-value yields a strict expression; call-by-name yields the expression with the lambda
+    term's ``force``/``Thunk`` wrapping; call-by-need yields a memoising-thunk module. Every target
+    is built as the generic Scott ast and decoded by ``_pyast.decode``.
+    """
+    with recursion_headroom():
+        if runtime is Runtime.CALL_BY_NEED:
+            return _compile_need_source(node)
+        compiled = compile_quoted(_option(runtime), quote(node))
+        return ast.unparse(ast.fix_missing_locations(decode(compiled)))
+
+
+# --- the one compiler: options encoded to the Scott union, COMPILE run, the result serialized -----
+
+_ISLAND_DEPTH_SMALL = 8
+
+
+@dataclass(frozen=True)
+class SpecializedOption:
+    """The default compiler option: emit locally-specialized Python with islands up to
+    ``island_depth`` (a depth past the deepest sub-term admits every island)."""
+
+    island_depth: int = _ISLAND_DEPTH_SMALL
+
+    def scott(self):
+        return curry(lambda specialized, whole, need: app(specialized, church(self.island_depth)))
+
+
+@dataclass(frozen=True)
+class WholeOption:
+    """A compiler option for the whole-program targets (call-by-value / call-by-name expressions;
+    the call-by-need memoising-thunk module)."""
+
+    runtime: Runtime
+
+    def scott(self):
+        if self.runtime is Runtime.CALL_BY_NEED:
+            return curry(lambda specialized, whole, need: need)
+        return curry(lambda specialized, whole, need: app(whole, _option(self.runtime)))
+
+
+CompileOption = "SpecializedOption | WholeOption"
+
+
+def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedOption()) -> str:
+    """The one compiler. By default (``SpecializedOption``) it emits locally-specialized Python: a closed
+    simply-typable whole term is a strict call-by-value expression, otherwise ``interpret(<reconstruction>)``
+    with the maximal closed simply-typable sub-terms up to the island depth spliced as compiled by-value
+    islands. ``WholeOption(runtime)`` selects a whole-program target (call-by-value or call-by-name
+    expression; call-by-need memoising-thunk module). EVERY target is selected and generated by the one
+    lambda term ``COMPILE``; Python only encodes the option, quotes, runs the interpreter, and serializes
+    (the specialized output is a shared interpret-headed graph, serialized to A-normal form; a whole
+    expression target unparses an expression; the need target unparses a module). The interpret "target"
+    is not compiled: ``WholeOption(Runtime.INTERPRET)`` raises at option encoding.
+    """
+    def _run() -> str:
+        result = build(app(app(COMPILE, option.scott()), quote(node)))
+        if isinstance(option, SpecializedOption):
+            return to_anf_source(result, "compiled_compiler")
+        return ast.unparse(ast.fix_missing_locations(decode(result)))
+
+    return run_in_large_stack(_run)
+
+
+# --- lambda-level verdict readers ------------------------------------------------------------------
+# Each runs a pure-lambda certificate on the quoted term and reads the Church-boolean verdict back.
+
+# The default step budget for the lambda-level normalization oracle. A normalizing term reaches its
+# normal form well within a few hundred steps (the test corpus does); a non-normalizing term runs the
+# whole budget before the conservative "needs fold" verdict. Raising it only ever turns more terms
+# call-by-need (never unsound: exhaustion always falls back to interpret). Mirrored by the lambda-side
+# ``_compile_term._LAZY_ISLAND_FUEL``.
+DEFAULT_FUEL = 256
+
+
+def is_closed(node: Node) -> bool:
+    """Whether ``node`` is closed, decided by running the lambda-level ``IS_CLOSED`` analysis on it."""
+    return interpret_boolean(build(app(IS_CLOSED, quote(node))))
+
+
+def is_typable_lambda(node: Node) -> bool:
+    """Whether ``node`` is simply typable, decided by running the lambda-level ``TYPABLE`` analysis.
+
+    The verdict is computed by the interpreter from the quoted term, so the typability certificate that
+    drives specialization is itself a lambda term, not Python code. This is the lambda port of
+    ``is_typable`` (algorithm-W), which remains as the specification and the test oracle.
+    """
+    with recursion_headroom():
+        return interpret_boolean(build(app(TYPABLE, quote(node))))
+
+
+def typable_bu_lambda(node: Node) -> bool:
+    """Whether ``node`` is simply typable, decided by the path-free bottom-up fold ``TYPABLE_BU``.
+
+    ``PRINCIPAL`` types every distinct sub-term once (the interpreter tables it, since it is path-free)
+    and reconciles locally per application, so it shares work across the term DAG that the state-
+    threading ``TYPABLE`` cannot. This is the certificate the island specializer consults;
+    ``is_typable`` remains the oracle it is checked against.
+    """
+    with recursion_headroom():
+        return interpret_boolean(build(app(TYPABLE_BU, quote(node))))
+
+
+def normalizes_lambda(node: Node, fuel: int = DEFAULT_FUEL) -> bool:
+    """Whether ``node`` has a finite normal form, decided by the lambda-level bounded normalizer.
+
+    Runs ``NORMALIZES`` at ``fuel`` (a BinNat step budget) on the quoted term: ``True`` means a finite
+    normal form was positively observed within the fuel (call-by-need safe); ``False`` means the fuel
+    ran out, read conservatively as needs-fold (interpret). This is the pure-lambda port of
+    ``needs_folding`` (whose verdict is its complement). The normalization runs in a large-stack
+    thread because a non-normalizing term drives the interpreter as deep as the fuel.
+    """
+    return run_in_large_stack(
+        lambda: interpret_boolean(build(app(app(NORMALIZES, int_to_binnat(fuel)), quote(node)))),
+    )
+
+
+_RUNTIME_TAGS: "tuple[Runtime, ...]" = (Runtime.CALL_BY_VALUE, Runtime.CALL_BY_NEED, Runtime.INTERPRET)
+
+
+def choose_runtime(node: Node, fuel: int = DEFAULT_FUEL) -> Runtime:
+    """The fastest runtime certified to preserve ``node``'s interpreted behaviour, decided by lambda.
+
+    Runs ``CHOOSE_RUNTIME`` on the quoted term and reads its Church-numeral tag: call-by-value if closed
+    and simply typable (strongly normalizing); else call-by-need if a finite normal form is observed
+    within ``fuel`` (normalizing, so the lazy regime is viable and call-by-need shares); else interpret.
+    The decision is the lambda term; Python only reads the tag back as a ``Runtime`` label. Call-by-name
+    is never selected even where viable: call-by-need is preferred for its sharing.
+    """
+    tag = run_in_large_stack(
+        lambda: _church_to_int(build(app(app(CHOOSE_RUNTIME, int_to_binnat(fuel)), quote(node)))),
+    )
+    return _RUNTIME_TAGS[tag]
+
+
+def specialize(node: Node) -> tuple[Runtime, str | None]:
+    """Specialize ``node`` to its certified runtime.
+
+    Returns the chosen runtime and, for the compiled targets, the compiled Python source. The
+    interpret target returns ``None`` source: the fixpoint-thunk graph is the AST, so the interpreter
+    is the compilation.
+    """
+    runtime = choose_runtime(node)
+    if runtime is Runtime.INTERPRET:
+        return runtime, None
+    return runtime, codegen(node, runtime)
+
+
+# --- compile once, run many: a reusable compiled function fed lambda-term inputs (FFI utilities) ---
+# A solution written in the lambda-calculus is compiled ONCE to a Python callable; the Python side
+# then feeds it many lambda-term inputs. Inputs and outputs stay lambda values (no Python-domain
+# marshalling).
+
+
+def compile_callable(node: Node, runtime: Runtime) -> Callable:
+    """Compile ``node`` ONCE to a Python callable under ``runtime``.
+
+    Call-by-value source is strict and self-contained; call-by-name source refers to the free names
+    ``force`` and ``Thunk`` supplied by ``runtime_globals``.
+    """
+    source = codegen(node, runtime)
+    if runtime is Runtime.CALL_BY_VALUE:
+        return eval(source)
+    return eval(source, runtime_globals(runtime))
+
+
+def host_value(node: Node, runtime: Runtime) -> object:
+    """Compile a lambda-term input to its host (compiled) value under ``runtime``.
+
+    The same operation as ``compile_callable``: a closed term's compiled value, ready to be applied
+    to or by another compiled value of the same runtime.
+    """
+    return compile_callable(node, runtime)
+
+
+def apply_compiled(function: object, argument: object, runtime: Runtime) -> object:
+    """Apply a compiled ``function`` to a compiled ``argument`` under ``runtime``'s calling convention.
+
+    Call-by-value passes the argument directly; call-by-name passes it as a thunk, since the compiled
+    body forces its variables.
+    """
+    if runtime is Runtime.CALL_BY_VALUE:
+        return function(argument)  # type: ignore[operator]
+    thunk = runtime_globals(runtime)["Thunk"]
+    return function(thunk(lambda: argument))  # type: ignore[operator]
+
+
+def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[..., object]:
+    """Compile a reusable lambda function ONCE; return ``solve(*input_nodes)`` applying it to its
+    inputs.
+
+    ``runtime`` defaults to call-by-value if the solution is simply typable (strongly normalizing),
+    else call-by-name. ``solve`` compiles each input term to a host value (cheap; the solution is the
+    expensive part, compiled once) and applies the function under the runtime's calling convention,
+    returning the host lambda value.
+    """
+    if runtime is None:
+        runtime = Runtime.CALL_BY_VALUE if is_typable(node) else Runtime.CALL_BY_NAME
+    chosen = runtime
+    function = compile_callable(node, chosen)
+
+    def solve(*argument_nodes: Node) -> object:
+        result = function
+        for argument_node in argument_nodes:
+            result = apply_compiled(result, host_value(argument_node, chosen), chosen)
+        return result
+
+    return solve
+
+
+# --- local specialization FFI: a compiled island embedded in an interpreted graph -----------------
+
+
+def value_island(node: Node) -> Native:
+    """Wrap a CLOSED, simply-typable (strongly normalizing) term as a compiled by-value ``Native``
+    island.
+
+    The term is compiled once to strict Python and run; its normal form is reified to a PURE Scott
+    node by NbE read-back (``_runtime.value_island``), so the island composes with the interpreter
+    through the node graph and the generic decoder reads it. Faithfulness is convergence to the same
+    value, not structural identity.
+    """
+    if node.loose_bound != 0:
+        raise ValueError("value_island requires a closed term")
+    return _runtime_value_island(compile_callable(node, Runtime.CALL_BY_VALUE))
+
+
+def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Native:
+    """Wrap a CLOSED term with a FINITE NORMAL FORM (a terminating Y recursion) as a compiled lazy
+    island.
+
+    Compiled by the call-by-name codegen (an expression, so it splices like a by-value island) and
+    read back by the fuel-bounded ``_runtime.value_island_by_name``. The ``lazy_runtime`` option
+    chooses the thunk semantics, the same codegen either way: ``CALL_BY_NEED`` (default) memoises,
+    the efficient choice for a recursion that reuses sub-terms; ``CALL_BY_NAME`` recomputes on every
+    force, which a reuse-heavy term makes exponential, so it is only for comparison.
+
+    Soundness restriction: the lazy read-back reifies a value by forcing it and probing a function
+    under a fresh binder, which terminates exactly when the term reaches a finite normal form. A
+    closed term WITHOUT a finite normal form (a bare recursive function such as ``FACTORIAL``, whose
+    behaviour folds rather than terminating) would drive that probe into the live recursion and
+    diverge, so it is rejected here and left for the interpreter, which folds the cycle via lfp
+    tabling. ``needs_folding`` is the existing sound oracle for "no finite normal form".
+    """
+    if node.loose_bound != 0:
+        raise ValueError("lazy_island requires a closed term")
+    if needs_folding(node):
+        raise ValueError(
+            "lazy_island requires a term with a finite normal form; this term's behaviour folds "
+            "(no finite normal form), so it must stay interpreted rather than become a lazy island"
+        )
+    if lazy_runtime not in (Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED):
+        raise ValueError("a lazy island is call-by-name or call-by-need")
+    source = codegen(node, Runtime.CALL_BY_NAME)
+    thunk = _NeedThunk if lazy_runtime is Runtime.CALL_BY_NEED else _LazyThunk
+    value = eval(source, {"force": force, "Thunk": thunk})  # noqa: S307 - our own generated source
+    return _runtime_value_island_by_name(value)
+
+
+# === Python specifications and test oracles (off the lambda production path) ======================
 
 
 @dataclass(frozen=True)
@@ -159,7 +468,7 @@ def is_typable(node: Node) -> bool:
     normalize (factorial does), so untypability only means call-by-value is not certified, not unsafe.
     """
     inference = _Inference()
-    with _recursion_headroom():
+    with recursion_headroom():
         inference.infer(node, ())
     return not inference.failed
 
@@ -168,10 +477,9 @@ def is_typable(node: Node) -> bool:
 # (a Church numeral is a short spine); a non-rational behaviour (the open inner structure of a fixpoint
 # combinator, e.g. the compiler's Y, which never folds) is infinite, so a branch past the bounds
 # truncates to a ``…`` leaf, read as fold-requiring. ``_FOLD_ORACLE_DEPTH`` caps the rendering recursion
-# depth well under the interpreter's stack limit (a leaf also walks the node for ``loose_bound`` and its
-# weak head normal form, which recurse to a comparable depth); ``_FOLD_ORACLE_NODES`` caps total work,
-# since the behaviour tree branches. Conservative past either (a bigger normal form is left interpreted,
-# never miscompiled).
+# depth well under the interpreter's stack limit; ``_FOLD_ORACLE_NODES`` caps total work, since the
+# behaviour tree branches. Conservative past either (a bigger normal form is left interpreted, never
+# miscompiled).
 _FOLD_ORACLE_DEPTH = 400
 _FOLD_ORACLE_NODES = 50_000
 
@@ -190,268 +498,6 @@ def needs_folding(node: Node) -> bool:
     return "#" in behaviour or "⊥" in behaviour or "…" in behaviour
 
 
-# CHOOSE_RUNTIME fuel quoted: the runtime tag (a Church numeral) certified to preserve the term's
-# interpreted behaviour, by the fixed priority of H'. Closed and simply typable -> call-by-value (tag 0,
-# strongly normalizing so strict is safe); else a finite normal form within the fuel -> call-by-need
-# (tag 1, the lazy regime is viable and call-by-need shares); else interpret (tag 2). The Church if is
-# lazy, so the expensive NORMALIZES branch is only reached for an untypable term. The whole decision is
-# the lambda term; Python only reads the tag back as a Runtime label.
-_RUNTIME_TAGS: "tuple[Runtime, ...]" = (Runtime.CALL_BY_VALUE, Runtime.CALL_BY_NEED, Runtime.INTERPRET)
-
-CHOOSE_RUNTIME: "object" = lam(lambda fuel: lam(lambda quoted: app(app(
-    app(app(AND, app(app(CLOSED, church(0)), quoted)), app(TYPABLE, quoted)),
-    church(0),
-    ),
-    app(app(
-        app(app(NORMALIZES, fuel), quoted),
-        church(1),
-        ),
-        church(2),
-    ),
-)))
-
-
-def choose_runtime(node: Node, fuel: int = DEFAULT_FUEL) -> Runtime:
-    """The fastest runtime certified to preserve ``node``'s interpreted behaviour, decided by lambda.
-
-    Runs ``CHOOSE_RUNTIME`` on the quoted term and reads its Church-numeral tag: call-by-value if closed
-    and simply typable (strongly normalizing); else call-by-need if a finite normal form is observed
-    within ``fuel`` (normalizing, so the lazy regime is viable and call-by-need shares); else interpret.
-    The decision is the lambda term; Python only reads the tag back as a ``Runtime`` label. Call-by-name
-    is never selected even where viable: call-by-need is preferred for its sharing.
-    """
-    tag = run_in_large_stack(
-        lambda: _church_to_int(build(app(app(CHOOSE_RUNTIME, int_to_binnat(fuel)), quote(node)))),
-    )
-    return _RUNTIME_TAGS[tag]
-
-
-def specialize(node: Node) -> tuple[Runtime, str | None]:
-    """Specialize ``node`` to its certified runtime.
-
-    Returns the chosen runtime and, for the compiled targets, the compiled Python source. The
-    interpret target returns ``None`` source: the fixpoint-thunk graph is the AST, so the interpreter
-    is the compilation.
-    """
-    runtime = choose_runtime(node)
-    if runtime is Runtime.INTERPRET:
-        return runtime, None
-    return runtime, codegen(node, runtime)
-
-
-# --- COMPILE: the specializing compiler, entirely a lambda term ----------------------
-# One lambda term quoted -> generic Python AST, the all-lambda counterpart of compile_specialized above.
-# A closed simply-typable WHOLE term carries the by-value certificate, so it compiles to a strict
-# call-by-value expression (CODEGEN at the eager option). Otherwise it reconstructs the term with
-# make_var/make_lam/make_app, splicing each maximal closed simply-typable sub-term as
-# value_island(<that sub-term compiled call-by-value>), and hands the reconstruction to interpret(...).
-#
-# The recursion is PATH-FREE: reconstruct(quoted) depends only on the (interned) sub-term, never on its
-# position, so the interpreter tables it once per DISTINCT sub-term and the result is a shared graph
-# (a DAG), not the unfolded tree -- "keep them graphs". The island certificate is likewise path-free:
-# IS_CLOSED (depth-free LOOSE_BOUND) and TYPABLE (algorithm-W from the empty context, valid because an
-# island is closed) are both pure functions of the sub-term, so they too are tabled per distinct
-# sub-term. value_island's call-by-value compile of the island is path-free as well. The output is a
-# nested make_*/value_island graph; Python serializes it preserving the sharing (see
-# compile_specialized_lambda), which keeps the deep self-host artifact within the parser's nesting cap.
-
-_NOT: "object" = lam(lambda boolean: app(app(boolean, FALSE), TRUE))
-
-
-def _ap(function: "object", *arguments: "object") -> "object":
-    """Left-folded application: ``_ap(f, x, y, z)`` is ``((f x) y) z``."""
-    result = function
-    for argument in arguments:
-        result = app(result, argument)
-    return result
-
-
-def _runtime_call(name_text: str, argument_expressions: "tuple") -> "object":
-    """An ``ast.Call`` of a runtime global (``make_var``/``make_lam``/``make_app``/``value_island``/
-    ``interpret``) to the given argument expressions, built as the generic Scott AST."""
-    arguments = SCOTT_NIL
-    for argument in reversed(argument_expressions):
-        arguments = cons(_pybuild.field_node(argument), arguments)
-    return _pybuild.py_call(
-        _pybuild.py_name(_pybuild.field_str(_pybuild.char_codes(name_text)), _pybuild.py_load()), arguments,
-    )
-
-
-def _compile_call_by_value(quoted: "object") -> "object":
-    """The quoted sub-term compiled to a strict call-by-value expression by ``CODEGEN``."""
-    return app(app(app(CODEGEN, _option(Runtime.CALL_BY_VALUE)), church(0)), quoted)
-
-
-def _compile_call_by_name(quoted: "object") -> "object":
-    """The quoted sub-term compiled to a call-by-name expression by ``CODEGEN`` (it refers to the free
-    names ``force``/``Thunk``). A lazy island splices this; the load-time ``Thunk`` choice (``_NeedThunk``
-    by default = call-by-need, ``_LazyThunk`` = call-by-name) decides the regime, the same source either
-    way."""
-    return app(app(app(CODEGEN, _option(Runtime.CALL_BY_NAME)), church(0)), quoted)
-
-
-# island quoted: closed (depth-free LOOSE_BOUND) AND simply typable (algorithm-W from empty context).
-# An island is closed, shallow enough to type cheaply, and simply typable. The depth bound gates the
-# expensive algorithm-W: a deep closed sub-term (a large combinator) is left reconstructed as an
-# interpreted graph rather than driving the inference, which keeps the self-host compilation within the
-# interner's memory; the AND short-circuits, so TYPABLE only runs on a closed, shallow sub-term.
-# The WHOLE-term by-value certificate: closed and simply typable, with NO depth bound. A whole typable
-# program (however deep) compiles to a strict call-by-value value; the depth bound below is only for
-# deciding which SUB-terms to splice as islands inside an interpret-headed reconstruction.
-_CLOSED_TYPABLE: "object" = lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE, quoted)))
-
-# The island depth is the compiler's analysis-depth OPTION: a larger depth admits bigger islands (more
-# compiled, less interpreted). It is a runtime Church-numeral argument of the one compiler (``COMPILE``
-# below), so a self-hosted compiler accepts any depth without rebuilding. A depth that exceeds the
-# compiler's deepest sub-term (its deepest maximal island is depth 191) admits every island, i.e. the
-# largest possible local specialization.
-_ISLAND_DEPTH_SMALL = 8
-_ISLAND_DEPTH_LARGEST = 256
-
-
-def _island_term(depth_bound: "object | None") -> "object":
-    """The per-sub-term island certificate at ``depth_bound`` (``None`` = unbounded): closed AND (shallow
-    enough) AND simply typable. The AND short-circuits, so TYPABLE_BU only runs on a closed sub-term."""
-    if depth_bound is None:
-        return lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(TYPABLE_BU, quoted)))
-    depth_ok = depth_at_most(depth_bound)
-    return lam(lambda quoted: _ap(
-        AND, app(IS_CLOSED, quoted), _ap(AND, app(depth_ok, quoted), app(TYPABLE_BU, quoted)),
-    ))
-
-
-# The lazy-island fuel: NORMALIZES certifies a FINITE FULL normal form within this many steps, the same
-# notion the eager read-back (value_island_by_name -> _quote_lazy) needs to terminate. A sub-term that
-# does not normalize within the fuel (a fixpoint combinator such as Y, which has no normal form) is
-# conservatively left interpreted, NEVER made a lazy island. This is what keeps the lazy tier sound: it
-# never turns a converging term into a divergent (or fuel-exhausting) read-back.
-_LAZY_ISLAND_FUEL: "object" = int_to_binnat(DEFAULT_FUEL)
-
-
-def _lazy_island_term(depth_bound: "object | None") -> "object":
-    """The per-sub-term LAZY island certificate at ``depth_bound`` (``None`` = unbounded): closed AND
-    (shallow enough) AND NORMALIZES (a finite full normal form within ``_LAZY_ISLAND_FUEL``). Tested only
-    after the call-by-value certificate fails, so it fires on a closed, shallow, untypable-but-normalizing
-    sub-term. The AND short-circuits, so the expensive NORMALIZES runs only on a closed (and shallow)
-    sub-term."""
-    normalizes = lam(lambda quoted: _ap(NORMALIZES, _LAZY_ISLAND_FUEL, quoted))
-    if depth_bound is None:
-        return lam(lambda quoted: _ap(AND, app(IS_CLOSED, quoted), app(normalizes, quoted)))
-    depth_ok = depth_at_most(depth_bound)
-    return lam(lambda quoted: _ap(
-        AND, app(IS_CLOSED, quoted), _ap(AND, app(depth_ok, quoted), app(normalizes, quoted)),
-    ))
-
-
-def _reconstruct_term(depth_bound: "object | None") -> "object":
-    """reconstruct quoted -> generic Python AST at ``depth_bound``. A maximal closed simply-typable island
-    becomes value_island(<call-by-value>); failing that, a maximal closed normalizing-but-untypable island
-    becomes value_island_by_name(<call-by-name>) (the lazy tier); otherwise the node is rebuilt with
-    make_var/make_lam/make_app, recursing. The call-by-value certificate is tested first (a typable term
-    is strongly normalizing, so strict is safe and optimal); the lazy certificate is the sound fallback
-    for an untypable term WITH a finite normal form. Path-free, so the interpreter tables it per distinct
-    sub-term and the result is a shared graph."""
-    cbv_island = _island_term(depth_bound)
-    lazy_island = _lazy_island_term(depth_bound)
-    return app(Y, lam(lambda self_recursion: lam(lambda quoted: _ap(
-        app(cbv_island, quoted),
-        _runtime_call("value_island", (_compile_call_by_value(quoted),)),
-        _ap(
-            app(lazy_island, quoted),
-            _runtime_call("value_island_by_name", (_compile_call_by_name(quoted),)),
-            _ap(
-                quoted,
-                lam(lambda index: _runtime_call("make_var", (_pybuild.py_constant_int(index),))),
-                lam(lambda body: _runtime_call("make_lam", (app(self_recursion, body),))),
-                lam(lambda function: lam(lambda argument: _runtime_call(
-                    "make_app", (app(self_recursion, function), app(self_recursion, argument)),
-                ))),
-            ),
-        ),
-    ))))
-
-
-def _specialized_output(depth: "object", quoted: "object") -> "object":
-    """The locally-specialized output of ``quoted`` at island depth ``depth`` (a runtime Church numeral):
-    a closed simply-typable whole term is a strict call-by-value expression; otherwise
-    interpret(<reconstruction>) with the maximal islands up to ``depth`` spliced."""
-    return _ap(
-        app(_CLOSED_TYPABLE, quoted),
-        _compile_call_by_value(quoted),
-        _runtime_call("interpret", (app(_reconstruct_term(depth), quoted),)),
-    )
-
-
-def _whole_output(thunked: "object", quoted: "object") -> "object":
-    """The test-only whole-program call-by-value/name output of ``quoted`` (``thunked`` the Church
-    boolean), delegating to the internal code generator ``CODEGEN``."""
-    return app(app(app(CODEGEN, thunked), church(0)), quoted)
-
-
-# COMPILE: the one compiler, a single lambda term taking an all-in-one option and a quoted program. The
-# option is a Scott tagged union the compiler destructures by applying it to two handlers:
-#   Specialized(island_depth) = lam s. lam w. s island_depth   -> the default, locally-specialized output
-#   Whole(thunked)            = lam s. lam w. w thunked         -> the test-only whole-program target
-COMPILE: "object" = curry(lambda option, quoted: app(
-    app(option, lam(lambda depth: _specialized_output(depth, quoted))),
-    lam(lambda thunked: _whole_output(thunked, quoted)),
-))
-
-
-@dataclass(frozen=True)
-class SpecializedOption:
-    """The default compiler option: emit locally-specialized Python with islands up to ``island_depth``
-    (a depth past the deepest sub-term admits every island)."""
-
-    island_depth: int = _ISLAND_DEPTH_SMALL
-
-    def scott(self) -> "object":
-        return curry(lambda specialized, whole: app(specialized, church(self.island_depth)))
-
-
-@dataclass(frozen=True)
-class WholeOption:
-    """A test-only compiler option: the whole-program ``runtime`` target (call-by-value / call-by-name;
-    call-by-need is the separate ``CODEGEN_NEED`` path, dispatched by ``compile``)."""
-
-    runtime: Runtime
-
-    def scott(self) -> "object":
-        return curry(lambda specialized, whole: app(whole, _option(self.runtime)))
-
-
-CompileOption = "SpecializedOption | WholeOption"
-
-
-def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedOption()) -> str:
-    """The one compiler. By default (``SpecializedOption``) it emits locally-specialized Python: a closed
-    simply-typable whole term is a strict call-by-value expression, otherwise ``interpret(<reconstruction>)``
-    with the maximal closed simply-typable sub-terms up to the island depth spliced as compiled by-value
-    islands. ``WholeOption(runtime)`` selects a test-only whole-program target. The decision and codegen
-    are the lambda term ``COMPILE``; Python only quotes, runs the interpreter, and serializes (the
-    specialized output is a shared interpret-headed graph, serialized to A-normal form; a whole-program
-    target is a single expression).
-    """
-    if isinstance(option, WholeOption) and option.runtime in (Runtime.CALL_BY_NEED, Runtime.INTERPRET):
-        return codegen(node, option.runtime)
-
-    def _run() -> str:
-        result = build(app(app(COMPILE, option.scott()), quote(node)))
-        if isinstance(option, SpecializedOption):
-            return to_anf_source(result, "compiled_compiler")
-        return ast.unparse(ast.fix_missing_locations(decode(result)))
-
-    return run_in_large_stack(_run)
-
-
-# --- finding call-by-value islands: the maximal certified-strict regions of a program -----------
-# The flagship of local specialization. A whole untypable program (a Y recursion, the compiler
-# itself) is not call-by-value as a whole, but it contains closed simply-typable sub-terms, each
-# strongly normalizing, so each compiles soundly to a strict call-by-value island. The specializer
-# carves out the MAXIMAL such regions and leaves the untypable skeleton interpreted; the islands are
-# where the strict compiled code runs, the skeleton is where the interpreter folds.
-
-
 def call_by_value_islands(node: Node) -> tuple[Node, ...]:
     """The maximal closed, simply-typable sub-terms of ``node``: its call-by-value islands.
 
@@ -461,6 +507,8 @@ def call_by_value_islands(node: Node) -> tuple[Node, ...]:
     every typable leaf. Scanning is top-down: a found island is not descended into. The complement,
     the untypable skeleton (e.g. the ``Y`` fixpoint of the compiler), stays interpreted. Islands are
     distinct by node identity, so a combinator the interning shares across positions is reported once.
+    This Python scan is the specification mirror of the lambda-level island certificate in
+    ``_compile_term``.
     """
     found: list[Node] = []
     seen: set[int] = set()
@@ -484,128 +532,148 @@ def call_by_value_islands(node: Node) -> tuple[Node, ...]:
             case _:
                 raise TypeError(f"cannot scan {current!r}")
 
-    with _recursion_headroom():
+    with recursion_headroom():
         visit(node)
     return tuple(found)
 
 
-# --- compile once, run many: a reusable compiled function fed lambda-term inputs ----------------
-# A solution written in the lambda-calculus is compiled ONCE to a Python callable; the Python side
-# then feeds it many lambda-term inputs. Inputs and outputs stay lambda values (no Python-domain
-# marshalling): an input term is compiled to its host value under the same runtime and applied, and
-# the result is the host lambda value, which the caller observes however it likes. Call-by-value is
-# chosen for a simply-typed (strongly normalizing) solution, otherwise call-by-name: it is faithful on
-# every terminating application (it reaches the unique fixpoint, the denotation, rather than
-# diverging), which is exactly the regime of concrete test inputs.
+# --- the interpret-target reconstruction, in Python (specification/test oracle) -------------------
+# A term the analysis does not certify for a compiled target keeps the interpreter. Its compiled
+# Python is an ``interpret(...)`` call whose argument reconstructs the term as an interpreter ``Node``
+# with ``make_var`` / ``make_lam`` / ``make_app`` (the interning constructors). This Python
+# reconstruction mirrors the lambda-level ``_compile_term._reconstruct``; the production path is the
+# lambda term, this is the oracle the tests compare against.
 
 
-def compile_callable(node: Node, runtime: Runtime) -> Callable:
-    """Compile ``node`` ONCE to a Python callable under ``runtime``.
+def _node_to_ast(node: Node, islands: "frozenset[int]") -> ast.expr:
+    """Reconstruct ``node`` as Python that rebuilds the interpreter ``Node`` with ``make_*``.
 
-    Call-by-value source is strict and self-contained; call-by-name source refers to the free names
-    ``force`` and ``Thunk`` supplied by ``runtime_globals``.
+    A node whose identity is in ``islands`` is a certified by-value island: rather than reconstructing
+    its subtree, splice ``value_island(<the island compiled to call-by-value>)``, an FFI ``Native`` the
+    interpreter drives in place of interpreting the subtree.
     """
-    source = codegen(node, runtime)
-    if runtime is Runtime.CALL_BY_VALUE:
-        return eval(source)
-    return eval(source, runtime_globals(runtime))
+    if id(node) in islands:
+        compiled = ast.parse(codegen(node, Runtime.CALL_BY_VALUE), mode="eval").body
+        return ast.Call(func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[])
+    match node:
+        case Var(index=index):
+            return ast.Call(
+                func=ast.Name(id="make_var", ctx=ast.Load()),
+                args=[ast.Constant(value=index)], keywords=[],
+            )
+        case Lam(body=body):
+            return ast.Call(
+                func=ast.Name(id="make_lam", ctx=ast.Load()), args=[_node_to_ast(body, islands)],
+                keywords=[],
+            )
+        case App(function=function, argument=argument):
+            return ast.Call(
+                func=ast.Name(id="make_app", ctx=ast.Load()),
+                args=[_node_to_ast(function, islands), _node_to_ast(argument, islands)], keywords=[],
+            )
+        case _:
+            raise ValueError(f"cannot reconstruct {node!r}")
 
 
-def host_value(node: Node, runtime: Runtime) -> object:
-    """Compile a lambda-term input to its host (compiled) value under ``runtime``.
+def compile_interpreted(node: Node, islands: "frozenset[int] | None" = None) -> str:
+    """Compile ``node`` to interpret-headed Python: ``interpret(<node reconstructed with make_*>)``.
 
-    The same operation as ``compile_callable``: a closed term's compiled value, ready to be applied
-    to or by another compiled value of the same runtime.
+    Sub-nodes whose identity is in ``islands`` are spliced as ``value_island(...)`` compiled islands
+    rather than reconstructed, so they run compiled inside the interpreted skeleton. This nests
+    deeply for a large term; for a standalone module use ``compile_interpreted_module``.
     """
-    return compile_callable(node, runtime)
+    call = ast.Call(
+        func=ast.Name(id="interpret", ctx=ast.Load()),
+        args=[_node_to_ast(node, islands if islands is not None else frozenset())], keywords=[],
+    )
+    return ast.unparse(ast.fix_missing_locations(call))
 
 
-def apply_compiled(function: object, argument: object, runtime: Runtime) -> object:
-    """Apply a compiled ``function`` to a compiled ``argument`` under ``runtime``'s calling convention.
+def compile_interpreted_module(node: Node, islands: "frozenset[int] | None" = None) -> str:
+    """Compile ``node`` to an interpret-headed Python MODULE in A-normal form.
 
-    Call-by-value passes the argument directly; call-by-name passes it as a thunk, since the compiled
-    body forces its variables.
+    The nested ``interpret(make_...(...))`` reconstruction grows as deep as the term, which overflows
+    CPython's fixed parser nesting cap for a large term like the compiler itself. This emits the same
+    reconstruction flattened to a statement sequence binding one temporary per node (shared by node
+    identity, so interned sub-terms are built once), ending in
+    ``compiled_compiler = interpret(<root temp>)``.
     """
-    if runtime is Runtime.CALL_BY_VALUE:
-        return function(argument)  # type: ignore[operator]
-    thunk = runtime_globals(runtime)["Thunk"]
-    return function(thunk(lambda: argument))  # type: ignore[operator]
+    island_set = islands if islands is not None else frozenset()
+    statements: "list[ast.stmt]" = []
+    names: "dict[int, str]" = {}
+
+    def emit(current: Node) -> str:
+        if id(current) in names:
+            return names[id(current)]
+        if id(current) in island_set:
+            compiled = ast.parse(codegen(current, Runtime.CALL_BY_VALUE), mode="eval").body
+            value: ast.expr = ast.Call(
+                func=ast.Name(id="value_island", ctx=ast.Load()), args=[compiled], keywords=[],
+            )
+        else:
+            match current:
+                case Var(index=index):
+                    value = ast.Call(
+                        func=ast.Name(id="make_var", ctx=ast.Load()),
+                        args=[ast.Constant(value=index)], keywords=[],
+                    )
+                case Lam(body=body):
+                    value = ast.Call(
+                        func=ast.Name(id="make_lam", ctx=ast.Load()),
+                        args=[ast.Name(id=emit(body), ctx=ast.Load())], keywords=[],
+                    )
+                case App(function=function, argument=argument):
+                    value = ast.Call(
+                        func=ast.Name(id="make_app", ctx=ast.Load()),
+                        args=[
+                            ast.Name(id=emit(function), ctx=ast.Load()),
+                            ast.Name(id=emit(argument), ctx=ast.Load()),
+                        ], keywords=[],
+                    )
+                case _:
+                    raise ValueError(f"cannot reconstruct {current!r}")
+        name = f"_{len(names)}"
+        statements.append(ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=value))
+        names[id(current)] = name
+        return name
+
+    with recursion_headroom():
+        root = emit(node)
+        statements.append(ast.Assign(
+            targets=[ast.Name(id="compiled_compiler", ctx=ast.Store())],
+            value=ast.Call(
+                func=ast.Name(id="interpret", ctx=ast.Load()),
+                args=[ast.Name(id=root, ctx=ast.Load())], keywords=[],
+            ),
+        ))
+        return ast.unparse(ast.fix_missing_locations(ast.Module(body=statements, type_ignores=[])))
 
 
-def compile_solution(node: Node, runtime: Runtime | None = None) -> Callable[..., object]:
-    """Compile a reusable lambda function ONCE; return ``solve(*input_nodes)`` applying it to its
-    inputs.
+def compiled_compiler() -> Node:
+    """The self-hosted code generator as an interpreter ``Node``: CODEGEN handed back to the
+    interpreter.
 
-    ``runtime`` defaults to call-by-value if the solution is simply typable (strongly normalizing),
-    else call-by-name. ``solve`` compiles each input term to a host value (cheap; the solution is the
-    expensive part, compiled once) and applies the function under the runtime's calling convention,
-    returning the host lambda value. The function is never classed interpret here: the caller is
-    asserting it is a function to be applied, and call-by-name converges on every terminating
-    application.
+    CODEGEN is untypable (its Y fixpoint self-applies), so the interpret target is the CODEGEN node
+    itself; ``compile_with_interpreted`` runs it as a compiler. In process, the node IS the
+    self-compiled compiler. (The committed self-hosted compilers are the staged compilers in this
+    package's ``_generated_stages`` directory, the COMPILE term compiled at each island depth and
+    serialized to A-normal form by the multi-stage bootstrap.)
     """
-    if runtime is None:
-        runtime = Runtime.CALL_BY_VALUE if is_typable(node) else Runtime.CALL_BY_NAME
-    chosen = runtime
-    function = compile_callable(node, chosen)
-
-    def solve(*argument_nodes: Node) -> object:
-        result = function
-        for argument_node in argument_nodes:
-            result = apply_compiled(result, host_value(argument_node, chosen), chosen)
-        return result
-
-    return solve
+    return build(CODEGEN)
 
 
-# --- local specialization: a compiled island embedded in an interpreted graph -------------------
-# A closed compilable sub-term is wrapped as a Native (FFI) node, compiled once. Embedded in an
-# otherwise interpreted graph (e.g. inside a fold-requiring cyclic shell), the interpreter drives
-# the island and folds around it, so the program is neither all-interpreted nor all-compiled. The
-# boundary reifies the island's result back to a node; faithfulness is convergence to the unique
-# fixpoint, not structural identity, so the canonical reified shape is sound.
+def compile_with_interpreted(compiler_node: Node, node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
+    """Compile ``node`` with an interpret-headed compiler, a ``CODEGEN`` ``Node`` run by the interpreter.
 
-
-def value_island(node: Node) -> Native:
-    """Wrap a CLOSED, simply-typable (strongly normalizing) term as a compiled by-value ``Native`` island.
-
-    The term is compiled once to strict Python and run; its normal form is reified to a PURE Scott node
-    by NbE read-back (``_compiler.value_island``), so the island composes with the interpreter through
-    the node graph and the generic decoder reads it. The reify is church-agnostic (it reifies a Church
-    numeral, a Scott value, or a function alike); faithfulness is convergence to the same value, not
-    structural identity.
+    ``compiler_node`` is what ``compile_interpreted(build(CODEGEN))`` evaluates to: the compiler itself,
+    handed back to the interpreter. The interpreter applies it to the option, the zero binder depth,
+    and the quoted program, and the resulting generic Scott Python AST is decoded by the same generic
+    ``_pyast.decode`` the in-process compiler uses. So the self-hosted compiler, compiled to
+    interpret-headed Python, compiles any program to the same source as ``codegen``: the
+    bootstrap through the interpret target.
     """
-    if node.loose_bound != 0:
-        raise ValueError("value_island requires a closed term")
-    return _compiler_value_island(compile_callable(node, Runtime.CALL_BY_VALUE))
-
-
-def lazy_island(node: Node, lazy_runtime: Runtime = Runtime.CALL_BY_NEED) -> Native:
-    """Wrap a CLOSED term with a FINITE NORMAL FORM (a terminating Y recursion) as a compiled lazy island.
-
-    Compiled by the call-by-name codegen (an expression, so it splices like a by-value island) and read
-    back by the fuel-bounded ``value_island_by_name``. The ``lazy_runtime`` option chooses the thunk
-    semantics, the same codegen either way: ``CALL_BY_NEED`` (default) memoises, computing each shared
-    sub-result once, the efficient choice for a recursion that reuses sub-terms; ``CALL_BY_NAME``
-    recomputes on every force, which a reuse-heavy term makes exponential, so it is only for comparison.
-
-    Soundness restriction: the read-back ``_quote_lazy`` reifies a value by forcing it and probing a
-    function under a fresh binder, which terminates exactly when the term reaches a finite normal form.
-    A closed term WITHOUT a finite normal form (a bare recursive function such as ``FACTORIAL``, whose
-    behaviour folds rather than terminating) would drive that probe into the live recursion and diverge,
-    so it is rejected here and left for the interpreter, which folds the cycle via lfp tabling. We do not
-    detect-and-fall-back at read-back time: that would only re-derive the interpreter's tabling and add
-    nothing. ``needs_folding`` is the existing sound oracle for "no finite normal form".
-    """
-    if node.loose_bound != 0:
-        raise ValueError("lazy_island requires a closed term")
-    if needs_folding(node):
-        raise ValueError(
-            "lazy_island requires a term with a finite normal form; this term's behaviour folds "
-            "(no finite normal form), so it must stay interpreted rather than become a lazy island"
+    with recursion_headroom():
+        applied = compiler_node(
+            build(_option(runtime)), build(church(0)), build(quote(node)),
         )
-    if lazy_runtime not in (Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED):
-        raise ValueError("a lazy island is call-by-name or call-by-need")
-    source = codegen(node, Runtime.CALL_BY_NAME)
-    thunk = _NeedThunk if lazy_runtime is Runtime.CALL_BY_NEED else _LazyThunk
-    value = eval(source, {"force": force, "Thunk": thunk})  # noqa: S307 - our own generated source
-    return _compiler_value_island_by_name(value)
+        return ast.unparse(ast.fix_missing_locations(decode(applied)))

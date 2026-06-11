@@ -13,13 +13,14 @@ from __future__ import annotations
 from syrupy.assertion import SnapshotAssertion
 
 from co_lambda._ast import Native, make_app, make_native
-from co_lambda._compiler import CODEGEN, Runtime, codegen
+from co_lambda._codec import church
+from co_lambda._compiler import CODEGEN
 from co_lambda._dsl import app, build
 from co_lambda._latex import term_to_latex
-from co_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, SCOTT_NIL, Y, church
+from co_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, SCOTT_NIL, Y
 from co_lambda._pyast import _church_to_int
 from co_lambda._render import render
-from co_lambda._specialize import call_by_value_islands, value_island, is_typable
+from co_lambda._specialize import Runtime, call_by_value_islands, codegen, is_typable, value_island
 
 
 def test_compiled_island_inside_cyclic_shell_matches_interpretation(snapshot: SnapshotAssertion) -> None:

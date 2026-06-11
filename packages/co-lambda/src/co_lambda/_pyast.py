@@ -22,7 +22,9 @@ import ast
 
 from co_lambda._ast import Node, make_app, make_lam, make_var
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import SCOTT_NIL, church, cons
+from co_lambda._codec import church
+from co_lambda._prelude import SCOTT_NIL
+from co_lambda._sugar import cons
 from co_lambda._shape import AppShape, VarShape
 
 # The Python AST node classes the encoding supports, in tag order. Extend as needed; encoding an
@@ -257,3 +259,30 @@ def to_anf_source(node: Node, binding_name: str) -> str:
 def roundtrip(source: str, *, mode: str = "eval") -> str:
     """Parse ``source``, encode it to a Scott value, decode it, and unparse: a faithfulness check."""
     return to_python_source(build(encode(ast.parse(source, mode=mode))))
+
+
+# --- BinNat readouts (the decode side of the _binnat encoding) -------------------------------------
+
+# A free-variable band used as a meta marker when probing a Scott boolean (a bit). Disjoint from the
+# bands above, so a probed bit's only free variables are these markers.
+_BIT_BASE = 8_500_000
+
+
+def _bit_value(node: "Node") -> int:
+    # A Scott boolean applied to two nullary handlers exposes handler 0 for TRUE, handler 1 for FALSE.
+    tag, _ = _extract(node, (0, 0), _BIT_BASE)
+    return 1 if tag == 0 else 0
+
+
+def binnat_to_int(node: "Node") -> int:
+    """Decode a BinNat (an LSB-first Scott list of bits) to a non-negative int."""
+    value = 0
+    for position, bit in enumerate(_decode_scott_list(node)):
+        value += _bit_value(bit) << position
+    return value
+
+
+def binnat_list_to_identifier(node: "Node", prefix: str = "v") -> str:
+    """Decode a Scott list of BinNats to an underscore-joined identifier, e.g. ``v_12_3_567``."""
+    segments = [binnat_to_int(segment) for segment in _decode_scott_list(node)]
+    return "_".join([prefix, *(str(segment) for segment in segments)])

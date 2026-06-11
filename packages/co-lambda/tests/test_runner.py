@@ -13,10 +13,10 @@ import math
 
 import pytest
 
-from co_lambda._compiler import Runtime, runtime_globals
+from co_lambda._codec import church
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import FACTORIAL, MULT, PLUS, church
-from co_lambda._specialize import compile_solution, is_typable
+from co_lambda._prelude import FACTORIAL, MULT, PLUS
+from co_lambda._specialize import Runtime, compile_solution, is_typable, runtime_globals
 
 
 def _decode_church(value: object, runtime: Runtime) -> int:

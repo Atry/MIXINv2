@@ -13,10 +13,11 @@ import re
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from co_lambda._compiler import Runtime, codegen
+from co_lambda._codec import church
 from co_lambda._dsl import build
 from co_lambda._latex import term_to_latex
-from co_lambda._prelude import IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC, church
+from co_lambda._prelude import IDENTITY, IS_ZERO, KESTREL, MULT, PLUS, SUCC
+from co_lambda._specialize import Runtime, codegen
 
 
 @pytest.mark.parametrize(

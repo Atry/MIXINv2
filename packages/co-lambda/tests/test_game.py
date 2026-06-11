@@ -9,14 +9,8 @@ with no table written by hand.
 from __future__ import annotations
 
 from co_lambda._dsl import build
-from co_lambda._prelude import (
-    FALSE,
-    TRUE,
-    game_leaf,
-    game_max,
-    game_min,
-    minimax,
-)
+from co_lambda._examples import game_leaf, game_max, game_min, minimax
+from co_lambda._prelude import FALSE, TRUE
 from co_lambda._render import render
 
 _TRUE = render(build(TRUE))

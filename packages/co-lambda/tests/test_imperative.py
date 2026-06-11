@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import itertools
 
+from co_lambda._codec import church
 from co_lambda._dsl import app
-from co_lambda._imperative import compile_stream
-from co_lambda._prelude import SCOTT_CONS, SCOTT_NIL, ZERO, Y, church, cons
+from co_lambda._examples import compile_stream
+from co_lambda._prelude import SCOTT_CONS, SCOTT_NIL, Y, ZERO
+from co_lambda._sugar import cons
 
 
 def _first(source: str, count: int) -> list:

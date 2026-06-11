@@ -30,8 +30,9 @@ from __future__ import annotations
 from syrupy.assertion import SnapshotAssertion
 
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import PLUS, SCOTT_CONS, SUCC, Y, ZERO, cons
+from co_lambda._prelude import PLUS, SCOTT_CONS, SUCC, Y, ZERO
 from co_lambda._render import render
+from co_lambda._sugar import cons
 
 # sum l = l (λ h. λ t. add h (sum t)) 0   -- a Scott-list fold, tied with Y.
 SUM: Builder = app(Y, lam(lambda self_sum: lam(lambda source: app(

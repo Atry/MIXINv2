@@ -11,24 +11,12 @@ from __future__ import annotations
 
 import pytest
 
-from co_lambda._compiler import Runtime, runtime_globals
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import (
-    CYCLIC_ZEROS,
-    EXP,
-    FACTORIAL,
-    FIBONACCI,
-    IS_ZERO,
-    MULT,
-    OMEGA,
-    PLUS,
-    PRED,
-    SUCC,
-    Y,
-    church,
-)
+from co_lambda._examples import CYCLIC_ZEROS, OMEGA
+from co_lambda._prelude import EXP, FACTORIAL, FIBONACCI, IS_ZERO, MULT, PLUS, PRED, SUCC, Y
 from co_lambda._pyast import _church_to_int
-from co_lambda._specialize import choose_runtime, is_typable, specialize
+from co_lambda._specialize import Runtime, choose_runtime, is_typable, runtime_globals, specialize
 
 _TYPABLE = {
     "church(3)": build(church(3)),

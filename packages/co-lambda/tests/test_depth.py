@@ -14,7 +14,8 @@ from __future__ import annotations
 from syrupy.assertion import SnapshotAssertion
 
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import CYCLIC_ZEROS, IDENTITY, OMEGA
+from co_lambda._examples import CYCLIC_ZEROS, OMEGA
+from co_lambda._prelude import IDENTITY
 from co_lambda._render import render
 from co_lambda._shape import head_normalize, normalize_to_depth, one_layer_normalize
 

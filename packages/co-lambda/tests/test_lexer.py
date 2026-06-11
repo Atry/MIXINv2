@@ -10,8 +10,9 @@ is encoded with no construct added to the calculus.
 from __future__ import annotations
 
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import FALSE, SCOTT_NIL, TRUE, Y, cons
+from co_lambda._prelude import FALSE, SCOTT_NIL, TRUE, Y
 from co_lambda._render import render
+from co_lambda._sugar import cons
 
 _TRUE = render(build(TRUE))
 _FALSE = render(build(FALSE))

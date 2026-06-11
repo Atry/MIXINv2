@@ -14,10 +14,10 @@ from __future__ import annotations
 import pytest
 
 from co_lambda._ast import make_app, make_var
-from co_lambda._compiler import Runtime, codegen, runtime_globals
 from co_lambda._dsl import Builder, build
 from co_lambda._pyast import _church_to_int
 from co_lambda._shape import VarShape
+from co_lambda._specialize import Runtime, codegen, runtime_globals
 
 _TRUE_MARKER = 7_000_001
 _FALSE_MARKER = 7_000_002

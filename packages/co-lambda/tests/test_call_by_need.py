@@ -11,17 +11,11 @@ from __future__ import annotations
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from co_lambda._compiler import Runtime, call_by_need_globals, codegen
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import (
-    FACTORIAL,
-    FIBONACCI,
-    IDENTITY,
-    KESTREL,
-    MULT,
-    PLUS,
-    church,
-)
+from co_lambda._prelude import FACTORIAL, FIBONACCI, IDENTITY, KESTREL, MULT, PLUS
+from co_lambda._runtime import call_by_need_globals
+from co_lambda._specialize import Runtime, codegen
 
 
 def _run_church(term) -> int:

@@ -43,8 +43,8 @@ _CELL_TIMEOUT = int(os.environ.get("FOL_BENCH_TIMEOUT", "600"))
 
 def _build_source():
     from co_lambda._dsl import build
-    from co_lambda._reduce import run_in_large_stack
-    from co_lambda._specialize import COMPILE
+    from co_lambda._compile_term import COMPILE
+    from co_lambda._runtime import run_in_large_stack
 
     return run_in_large_stack(lambda: build(COMPILE))
 
@@ -58,7 +58,7 @@ def _cell(engine_spec: str, target: int, regime: str, write_path: "str | None") 
     recompute); it changes only how fast an engine WITH lazy islands runs, never its output. The
     ``INTERP`` row compiles in-process (the lambda ``COMPILE`` interpreted), which does not execute lazy
     islands, so it is regime-independent."""
-    from co_lambda._compiler import runnable_module
+    from co_lambda._runtime import runnable_module
     from co_lambda._multistage import _load, _run_compiler
     from co_lambda._specialize import SpecializedOption, compile
 

@@ -12,9 +12,10 @@ import os
 
 import pytest
 
+from co_lambda._codec import church
 from co_lambda._dsl import build
 from co_lambda._multistage import _load, _run_compiler, multi_stage_compile
-from co_lambda._prelude import IDENTITY, KESTREL, church
+from co_lambda._prelude import IDENTITY, KESTREL
 from co_lambda._specialize import SpecializedOption, compile
 
 

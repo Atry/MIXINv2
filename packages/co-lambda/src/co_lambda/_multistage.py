@@ -26,11 +26,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from co_lambda._compiler import _LazyThunk, quote, runnable_module
+from co_lambda._codec import quote
+from co_lambda._compile_term import COMPILE
 from co_lambda._dsl import build
 from co_lambda._pyast import to_anf_source
-from co_lambda._reduce import run_in_large_stack
-from co_lambda._specialize import COMPILE, SpecializedOption, compile
+from co_lambda._runtime import _LazyThunk, run_in_large_stack, runnable_module
+from co_lambda._specialize import SpecializedOption, compile
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

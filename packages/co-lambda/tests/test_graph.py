@@ -9,7 +9,8 @@ shape of model-checking reachability of a bad state in a finite transition syste
 from __future__ import annotations
 
 from co_lambda._dsl import build
-from co_lambda._prelude import FALSE, GRAPH_REACH_D, GRAPH_REACH_E, TRUE
+from co_lambda._examples import GRAPH_REACH_D, GRAPH_REACH_E
+from co_lambda._prelude import FALSE, TRUE
 from co_lambda._render import render
 
 _TRUE = render(build(TRUE))

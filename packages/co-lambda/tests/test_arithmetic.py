@@ -13,18 +13,9 @@ import math
 
 import pytest
 
+from co_lambda._codec import church
 from co_lambda._dsl import app
-from co_lambda._prelude import (
-    EXP,
-    FACTORIAL,
-    FIBONACCI,
-    IS_ZERO,
-    MULT,
-    PLUS,
-    PRED,
-    SUCC,
-    church,
-)
+from co_lambda._prelude import EXP, FACTORIAL, FIBONACCI, IS_ZERO, MULT, PLUS, PRED, SUCC
 
 
 @pytest.mark.parametrize("n", [0, 1, 3])

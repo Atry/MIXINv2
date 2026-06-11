@@ -12,21 +12,11 @@ from __future__ import annotations
 
 import pytest
 
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import (
-    CYCLIC_ZEROS,
-    FACTORIAL,
-    FIBONACCI,
-    IDENTITY,
-    KESTREL,
-    MULT,
-    OMEGA,
-    PLUS,
-    SUCC,
-    church,
-)
-from co_lambda._reduce import normalizes_lambda
-from co_lambda._specialize import needs_folding
+from co_lambda._examples import CYCLIC_ZEROS, OMEGA
+from co_lambda._prelude import FACTORIAL, FIBONACCI, IDENTITY, KESTREL, MULT, PLUS, SUCC
+from co_lambda._specialize import needs_folding, normalizes_lambda
 
 _NORMALIZING = {
     "identity": build(IDENTITY),

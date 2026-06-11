@@ -21,13 +21,11 @@ from co_lambda._binnat import (
     BIN_PRED,
     BIN_SUB,
     BIN_SUCC,
-    _bit_value,
-    binnat_list,
-    binnat_list_to_identifier,
-    binnat_to_int,
-    int_to_binnat,
 )
+from co_lambda._pyast import _bit_value
+from co_lambda._codec import binnat_list, int_to_binnat
 from co_lambda._dsl import Builder, app, build
+from co_lambda._pyast import binnat_list_to_identifier, binnat_to_int
 
 
 def _unary_int(operation: Builder, value: int) -> int:

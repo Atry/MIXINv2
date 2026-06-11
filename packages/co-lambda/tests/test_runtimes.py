@@ -11,15 +11,11 @@ from __future__ import annotations
 
 import pytest
 
-from co_lambda._compiler import (
-    Runtime,
-    _LazyThunk,
-    codegen,
-    force,
-    runtime_globals,
-)
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import FACTORIAL, PLUS, church
+from co_lambda._prelude import FACTORIAL, PLUS
+from co_lambda._runtime import _LazyThunk, force
+from co_lambda._specialize import Runtime, codegen, runtime_globals
 
 
 def _eager_church(term) -> int:

@@ -8,7 +8,8 @@ in compilers, computed by the same bounded boolean fixpoint as Datalog.
 from __future__ import annotations
 
 from co_lambda._dsl import build
-from co_lambda._prelude import FALSE, POINTSTO_C_O1, POINTSTO_C_O2, TRUE
+from co_lambda._examples import POINTSTO_C_O1, POINTSTO_C_O2
+from co_lambda._prelude import FALSE, TRUE
 from co_lambda._render import render
 
 _TRUE = render(build(TRUE))

@@ -1200,12 +1200,12 @@ fold-requiring cyclic term left to the interpreter with its closed element compi
 island. The flagship is the compiler itself. Untypable as a whole, since its fixpoint combinator
 self-applies, it stays interpreted, but the specializer finds its maximal closed simply-typable
 sub-terms, the strongly-normalizing combinators, and compiles each to a strict island, carving
-call-by-value regions out of an otherwise interpreted program. A bound variable is named by its
-binder's syntax-tree path: the compiler emits the path as a list of naturals and a single decoder,
-shared by every target, renders it as the Python identifier \texttt{v} with an underscore-separated
-integer per path segment, so distinct binders get distinct names by construction. The listings are
-generated from the compiler, not written by hand, and the compiler compiled whole to Python is
-committed alongside as a generated module.
+call-by-value regions out of an otherwise interpreted program. A bound variable is named by a list
+of naturals the compiler emits (the binder depth for the expression targets, the binder's
+syntax-tree path for call-by-need) and a single decoder, shared by every target, renders it as the
+Python identifier \texttt{v} with an underscore-separated integer per segment, so distinct binders
+get distinct names by construction. The listings are generated from the compiler, not written by
+hand, and the compiler's staged self-compilations are committed alongside as generated modules.
 \input{generated/compiler-examples}
 
 \paragraph{The soundness analysis.}

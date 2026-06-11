@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import pytest
 
-from co_lambda._compiler import Runtime, interpret_globals
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import FACTORIAL, FIBONACCI, IDENTITY, SELF_APPLY, Y, church
+from co_lambda._prelude import FACTORIAL, FIBONACCI, IDENTITY, SELF_APPLY, Y
 from co_lambda._pyast import _church_to_int
 from co_lambda._render import render
-from co_lambda._specialize import SpecializedOption, compile, is_typable, lazy_island
+from co_lambda._runtime import interpret_globals
+from co_lambda._specialize import Runtime, SpecializedOption, compile, is_typable, lazy_island
 
 
 @pytest.mark.parametrize("lazy_runtime", [Runtime.CALL_BY_NAME, Runtime.CALL_BY_NEED])

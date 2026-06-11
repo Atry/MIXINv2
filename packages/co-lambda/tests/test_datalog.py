@@ -10,14 +10,8 @@ the goal equals ``render`` of TRUE/FALSE exactly when the atom is/ is not in the
 from __future__ import annotations
 
 from co_lambda._dsl import build
-from co_lambda._prelude import (
-    DATALOG_CONJ_R,
-    DATALOG_CONJ_T,
-    DATALOG_REACH_C,
-    DATALOG_REACH_D,
-    FALSE,
-    TRUE,
-)
+from co_lambda._examples import DATALOG_CONJ_R, DATALOG_CONJ_T, DATALOG_REACH_C, DATALOG_REACH_D
+from co_lambda._prelude import FALSE, TRUE
 from co_lambda._render import render
 
 _TRUE = render(build(TRUE))

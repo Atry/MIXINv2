@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import pytest
 
-from co_lambda._analysis import is_closed
 from co_lambda._ast import make_app, make_lam, make_var
+from co_lambda._codec import church
 from co_lambda._dsl import app, build, lam
-from co_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, Y, church
+from co_lambda._prelude import IDENTITY, MULT, SCOTT_CONS, Y
 from co_lambda._render import render
-from co_lambda._specialize import value_island
+from co_lambda._specialize import is_closed, value_island
 
 
 @pytest.mark.parametrize(

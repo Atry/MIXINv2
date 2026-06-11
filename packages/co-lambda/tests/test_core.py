@@ -12,20 +12,10 @@ from syrupy.assertion import SnapshotAssertion
 
 from co_lambda._ast import BOTTOM
 from co_lambda._dsl import app, build
-from co_lambda._prelude import (
-    CYCLIC_ZEROS,
-    FINITE_LIST,
-    IDENTITY,
-    IDENTITY_TERM,
-    KESTREL,
-    KESTREL_TERM,
-    LOOP,
-    OMEGA,
-    SELF_APPLY,
-    ZERO,
-    cons,
-)
+from co_lambda._examples import CYCLIC_ZEROS, FINITE_LIST, IDENTITY_TERM, KESTREL_TERM, LOOP, OMEGA
+from co_lambda._prelude import IDENTITY, KESTREL, SELF_APPLY, ZERO
 from co_lambda._render import render
+from co_lambda._sugar import cons
 
 
 def test_identity_readout(snapshot: SnapshotAssertion) -> None:

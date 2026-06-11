@@ -10,13 +10,10 @@ and that its output runs.
 
 from __future__ import annotations
 
-from co_lambda._compiler import (
-    codegen,
-    compile_with_interpreted,
-    compiled_compiler,
-)
+from co_lambda._codec import church
 from co_lambda._dsl import app, build
-from co_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS, church
+from co_lambda._prelude import IDENTITY, KESTREL, MULT, PLUS
+from co_lambda._specialize import codegen, compile_with_interpreted, compiled_compiler
 
 
 def test_self_compiled_compiler_matches_the_original() -> None:

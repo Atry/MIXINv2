@@ -19,16 +19,12 @@ from __future__ import annotations
 import sys
 
 from co_lambda._ast import Node
-from co_lambda._binnat import (
-    BIN_EQUAL,
-    BIN_MIN,
-    BIN_SUCC,
-    BIN_ZERO,
-    binnat_to_int,
-    int_to_binnat,
-)
+from co_lambda._binnat import BIN_EQUAL, BIN_MIN, BIN_SUCC, BIN_ZERO
+from co_lambda._codec import int_to_binnat
 from co_lambda._dsl import Builder, app, build, lam
-from co_lambda._prelude import SCOTT_NIL, Y, cons
+from co_lambda._prelude import SCOTT_NIL, Y
+from co_lambda._pyast import binnat_to_int
+from co_lambda._sugar import cons
 
 # length l: the length of a Scott list, as a BinNat.
 LENGTH: Builder = app(Y, lam(lambda length: lam(lambda items: app(
