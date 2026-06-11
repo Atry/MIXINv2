@@ -86,7 +86,7 @@
 \thanks{The author completed this work independently and outside the scope of employment at Figure AI. No Figure AI time, funding, or other resources were used in support of this work.}
 
 \begin{abstract}
-  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires an added recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ for graph reduction: such data has no finite normal form, so ordinary reduction unfolds it forever instead of folding it into a finite cyclic graph, and an ordinary recursive function over it does the same. We show no extension is needed: a term keeps the meaning its reduction defines, which for weak-head reduction is its standard lazy (L\'evy--Longo) semantics, and which we represent as a finite cyclic graph when it is rational. The insight is that such data is the unique solution of a coalgebraic equation, and that any coalgebraic equation can be solved directly, by tabling: when a state recurs, the solver folds it into a back edge, so rational data, that with finitely many distinct subtrees, comes out as a finite cyclic graph. The solver halts exactly on the inputs with finitely many reachable states, a sub-fragment of the rational data, since not every rational datum reaches finitely many states; the rational fragment itself is the ceiling for finite cyclic graphs, as data beyond it has no such graph, so no solution-preserving procedure returns one on more. The algorithm's first application is the pure $\lambda$-calculus itself: head normalisation is such an equation, and because its states are first-order graph nodes rather than functions their equality is decidable where $\beta$-equality is not, so the solver is an interpreter. It decides $\Omega$ as $\bot$ in finite time and evaluates $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, an ordinary map over the cyclic stream of zeros, to the cyclic stream of ones as a finite cyclic graph, with no construct added. Because any coalgebra Scott-encodes as a $\lambda$-term, this one interpreter solves them all, making the pure $\lambda$-calculus a domain-specific language whose memoization and transposition tables fall out of node identity: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming. A second example coalgebra is compilation. Its equation sends each sub-term of a source program, by specialization rules, to a node of a Python AST over that sub-term's own sub-terms, and its solution is the program optimised to that AST. A compiler computes it by the same tabling, compiling each shared sub-term once into a finite graph, and is itself a $\lambda$-term the interpreter solves, so program analysis is expressed as evaluation, and it compiles its own source in a self-hosting bootstrap.
+  Representing and transforming cyclic and infinite data in the pure $\lambda$-calculus normally requires an added recursion construct, a \texttt{letrec}, a $\mu$-binder, or a built-in $Y$ for graph reduction: such data has no finite normal form, so ordinary reduction unfolds it forever instead of folding it into a finite cyclic graph, and an ordinary recursive function over it does the same. We show no extension is needed: a term keeps the meaning its reduction defines, which for weak-head reduction is its standard lazy (L\'evy--Longo) semantics, and which we represent as a finite cyclic graph when it is rational. The insight is that such data is the unique solution of a coalgebraic equation, and that any coalgebraic equation can be solved directly, by tabling: when a state recurs, the solver folds it into a back edge, so rational data, that with finitely many distinct subtrees, comes out as a finite cyclic graph. The solver halts exactly on the inputs with finitely many reachable states, each reached by a terminating reduction, a sub-fragment of the rational data, since not every rational datum reaches finitely many states; the rational fragment itself is the ceiling for finite cyclic graphs, as data beyond it has no such graph, so no solution-preserving procedure returns one on more. The algorithm's first application is the pure $\lambda$-calculus itself: head normalisation is such an equation, and because its states are first-order graph nodes rather than functions their equality is decidable where $\beta$-equality is not, so the solver is an interpreter. It decides $\Omega$ as $\bot$ in finite time and evaluates $\mathtt{map}\,\mathtt{succ}\,(Y\,(\mathtt{cons}\;0))$, an ordinary map over the cyclic stream of zeros, to the cyclic stream of ones as a finite cyclic graph, with no construct added. Because any computable coalgebra Scott-encodes as a $\lambda$-term, this one interpreter solves them all on their rational fragments, making the pure $\lambda$-calculus a domain-specific language whose memoization and transposition tables fall out of node identity: Datalog least Herbrand models, graph reachability and Andersen points-to analysis, minimax search, and dynamic programming. A second example coalgebra is compilation. Its equation sends each sub-term of a source program, by specialization rules, to a node of a Python AST over that sub-term's own sub-terms, and its solution is the program optimised to that AST. A compiler computes it by the same tabling, compiling each shared sub-term once into a finite graph, and is itself a $\lambda$-term the interpreter solves, so program analysis is expressed as evaluation, and it compiles its own source in a self-hosting bootstrap.
 \end{abstract}
 
 \keywords{coalgebra, coalgebraic equations, rational fixpoint, algebraic compactness,
@@ -192,8 +192,8 @@ halts on the data that reaches finitely many states, a strict sub-fragment of th
 those with finitely many distinct sub-parts; and beyond the rational data no solution-preserving
 procedure halts with a finite cyclic graph at all, since there is none to return
 (Theorem~\ref{thm:optimal}). And since data such as lists and trees are themselves pure
-$\lambda$-terms (the Scott encoding), every such system is again a $\lambda$-term, and one
-interpreter solves them all, turning the pure $\lambda$-calculus into a small domain-specific
+$\lambda$-terms (the Scott encoding), every such computable system is again a $\lambda$-term, and
+one interpreter solves them all on their rational fragments, turning the pure $\lambda$-calculus into a small domain-specific
 language whose memoization falls out of node identity: Datalog queries, graph reachability and
 points-to analysis, game-tree (minimax) search, and dynamic programming
 (Section~\ref{sec:application}, Appendix~\ref{app:dsl}).
@@ -210,9 +210,9 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
     an effect (the internal process, for instance $\beta$-reduction) and a signature (the shape
     of each layer).
   \item \emph{The theory.} We prove the solver \emph{sound} (the finite graph it returns
-    unfolds to exactly the solution, Theorem~\ref{thm:correctness}), \emph{optimal} (it halts
-    on the data that reaches finitely many states, and no solution-preserving procedure halts
-    with a finite cyclic graph beyond the rational fragment, Theorems~\ref{thm:termination},
+    unfolds to exactly the solution, Theorem~\ref{thm:correctness}), \emph{bounded at the rationality ceiling} (no
+    solution-preserving procedure clears the rational fragment, and the solver halts on a decidable
+    sub-fragment of it, the data reaching finitely many states, Theorems~\ref{thm:termination},
     \ref{thm:optimal}), and the equation
     \emph{uniquely solved} (least equals greatest, so induction and coinduction coincide and
     the least fixpoint does real work only in deciding an unproductive loop as $\bot$,
@@ -220,7 +220,7 @@ points-to analysis, game-tree (minimax) search, and dynamic programming
   \item \emph{Instances.} Head normalisation of the pure $\lambda$-calculus is one such equation,
     the interpreter (Sections~\ref{sec:bridge}, \ref{sec:application}), on which an ordinary
     $\mathtt{map}$ folds a circular list into a circular list and a naive walk terminates where
-    evaluation diverges; because any coalgebra Scott-encodes, the one interpreter is also a small
+    evaluation diverges; because any computable coalgebra Scott-encodes, the one interpreter is also a small
     domain-specific language solving Datalog, graph reachability and points-to analysis, minimax
     search, and dynamic programming (Appendix~\ref{app:dsl}); and compilation is itself such an
     equation, the same interpreter solving it into a self-hosting compiler to Python
@@ -386,8 +386,9 @@ finite cyclic graph and the infinite unfolding are the same fixpoint read two wa
 \end{definition}
 
 \begin{theorem}[Termination]\label{thm:termination}
-  When $\outm$ is computable at each state, the solver halts at $x_0$ iff finitely many states
-  are reachable from $x_0$, and then its output is a finite cyclic graph unfolding to the
+  When the silent run from each reachable state terminates, exposing a layer or returning to a
+  visited state, so the solver computes $\outm$ there, the solver halts at $x_0$ iff finitely many
+  states are reachable from $x_0$, and then its output is a finite cyclic graph unfolding to the
   rational solution $\behav(x_0)$. Proof in Appendix~\ref{app:termination}.
 \end{theorem}
 
@@ -631,8 +632,11 @@ is developed in Section~\ref{sec:bridge}.
 \end{lemma}
 \begin{proof}
   A Cauchy sequence of trees is eventually constant at every fixed depth, so the levelwise
-  limit exists in $D$ and the sequence converges to it; the candidate space inherits
-  completeness pointwise, the supremum metric being attained levelwise as well. For an
+  limit exists in $D$ and the sequence converges to it. The candidate space inherits this:
+  a sequence Cauchy in the supremum metric is uniformly Cauchy in $x$, so it is pointwise
+  Cauchy with a modulus independent of $x$; its pointwise limit $g$ therefore satisfies
+  $\sup_x \mathrm{d}(g_n(x), g(x)) \to 0$ (let $m \to \infty$ in the uniform Cauchy bound),
+  so $g_n \to g$ in $\mathrm{d}$ and the space is complete. For an
   increasing chain, the levelwise limit and the levelwise least upper bound of
   Proposition~\ref{prop:order} are the same tree.
 \end{proof}
@@ -688,7 +692,8 @@ is developed in Section~\ref{sec:bridge}.
 \begin{proof}[Proof of Theorem~\ref{thm:termination}]
   Suppose $R$, the states reachable from $x_0$, is finite. Interning gives each state one
   table key, so the solver computes $\outm$ at most once per state of $R$, each call halting
-  by assumption, and follows finitely many edges per state; it therefore halts. Its output
+  because the silent run from its state terminates by hypothesis, and follows finitely many
+  edges per state; it therefore halts. Its output
   unfolds to $\behav(x_0)$ by Theorem~\ref{thm:correctness}, and the unfolding has at most
   one distinct subtree per node of the finite graph, so it is rational
   (Definition~\ref{def:rational}).
