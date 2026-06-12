@@ -585,17 +585,19 @@ dimensions of the Expression Problem (Section~\ref{sec:case-study}).
     % columns: eager (x=0), lazy (x=42), fixpoint (x=84)
     \node[calc] (lam)  at (0,0)   {$\lambda$};
     \node[calc] (llam) at (42,0)  {lazy $\lambda$};
+    \node[calc] (flam) at (84,0)  {fixpoint $\lambda$~\cite{yang2026-co-lambda}};
 
     \node[calc] (lsub) at (42,19)  {$\lambda$-lazy-IC (ours)};
-    \node[calc] (sub)  at (84,19)  {$\lambda$-IC (ours)};
+    \node[calc] (sub)  at (84,19)  {$\lambda$-IC};
 
     \node[calc] (lic)  at (42,38)  {lazy IC (ours)};
     \node[calc] (ic)   at (84,38)  {IC (ours)};
 
     % horizontal edges (convergence): "more defined"
-    \draw[more] (lam)  -- node[elbl,below]{more defined} (llam);
-    \draw[more] (lsub) -- node[elbl,above]{more defined} (sub);
-    \draw[more] (lic)  -- node[elbl,above]{more defined} (ic);
+    \draw[more] (lam)  -- node[elbl,below]{more defined (non-strict)} (llam);
+    \draw[more] (llam) -- node[elbl,below]{more defined (unproductive $\bot$)} (flam);
+    \draw[more] (lsub) -- node[elbl,above]{more defined (powerset)} (sub);
+    \draw[more] (lic)  -- node[elbl,above]{more defined (powerset)} (ic);
 
     % vertical edges (expressiveness): "strictly more expressive"
     \draw[more] (lsub) -- node[elbl,left]{strictly more expressive} (lic);
@@ -615,12 +617,24 @@ dimensions of the Expression Problem (Section~\ref{sec:case-study}).
     through cyclic self-reference return divergence instead of being
     iterated further.
     Continuing:
+    fixpoint $\lambda$ is the tabled evaluation of the
+    $\lambda$-calculus of Yang~\cite{yang2026-co-lambda};
     IC the inheritance-calculus;
     and $\lambda$-IC and $\lambda$-lazy-IC the $\lambda$ sublanguages of
     IC and of lazy IC, respectively.
     Edge labels:
     \emph{more defined} means every term that converges in the source
-    calculus also converges in the target calculus, but not conversely;
+    calculus also converges in the target calculus, but not conversely.
+    The parenthesized qualifiers distinguish the mechanism:
+    \emph{non-strict} more-definedness gains convergence by deeming
+    abstractions values without evaluating their bodies;
+    \emph{unproductive $\bot$} more-definedness gains convergence by
+    deciding unproductive loops such as $\Omega$ as the definite answer
+    $\bot$ in finite time, preserving the lazy tree semantics;
+    and \emph{powerset} more-definedness gains convergence by
+    resolving cyclic self-references to definite sets, as least fixed
+    points over the powerset lattice.
+    Continuing the edge labels:
     \emph{strictly more expressive} is meant in Felleisen's sense of
     macro-expressibility;
     and \emph{fully abstract} marks full abstraction.}
@@ -1410,36 +1424,30 @@ at the full least fixed point.
 At $T_P\!\uparrow\!1$, each equation is evaluated once and
 re-entrant calls return~$\bot$; this corresponds to
 $\beta$-reduction.
-The full $\mathrm{lfp}(T_P)$ is strictly more defined:
-re-entrant calls that returned~$\varnothing$ at
-$T_P\!\uparrow\!1$ may converge to non-empty sets after
-further iteration.
-For example,
-$\mathbf{let}\; x = x \;\mathbf{in}\; x$
-diverges under $\beta$-reduction, but its translation
+At the full $\mathrm{lfp}(T_P)$, re-entrant references instead
+resolve to least fixed points over the powerset lattice: the
+iteration computes fixed points at the \emph{container} level,
+finding a set~$S$ such that $S = F(S)$.
+This is the mechanism by which recursive Datalog converges on
+cyclic graphs (Appendix~\ref{app:datalog-encoding},
+Section~\ref{sec:recursive-rules}), and neither a fixed-point
+combinator such as~$Y$ nor Haskell's \texttt{mfix}
+(\texttt{RecursiveDo}) expresses it: both tie the knot at the
+term level, not over the sets the semantics accumulates.
+The smallest witness that this \emph{powerset} more-definedness
+(Figure~\ref{fig:calculi-matrix}) breaks the B\"ohm-tree
+correspondence is
+$\mathbf{let}\; x = x \;\mathbf{in}\; x$:
+it diverges under $\beta$-reduction, but its translation
 $\{x \mapsto \{\mathrm{result} \mapsto \{x.\mathrm{result}\}\},\;
 \mathrm{result} \mapsto \{x.\mathrm{result}\}\}$
-stabilizes under $\mathrm{lfp}(T_P)$:%
-\footnote{
-  This simple cycle could also be resolved by a
-  fixed-point combinator such as~$Y$.
-  The $\mathrm{lfp}(T_P)$ semantics is more general:
-  it computes fixed points at the \emph{container} level,
-  e.g.\ finding a set~$S$ such that $S = F(S)$.
-  Recursive Datalog on cyclic graphs
-  (Appendix~\ref{app:datalog-encoding},
-  Section~\ref{sec:recursive-rules}) requires exactly this,
-  and neither $Y$ nor Haskell's \texttt{mfix}
-  (\texttt{RecursiveDo}) can express it.
-}
-tabled evaluation detects the cycle and returns
-$\properties(\mathrm{root}) = \{x, \mathrm{result}\}$
----a definite result,
-whereas $\beta$-reduction would diverge.
-Inheritance-calculus is thus strictly more defined than the
-$\lambda$-calculus: more terms converge.
-The next subsection examines whether it is also strictly
-more expressive.
+stabilizes under $\mathrm{lfp}(T_P)$, where tabled evaluation
+detects the cycle and returns the definite result
+$\properties(\mathrm{root}) = \{x, \mathrm{result}\}$.
+The correspondence of this subsection is therefore a property
+of $T_P\!\uparrow\!1$ alone.
+The next subsection examines whether inheritance-calculus is
+also strictly more expressive.
 
 \subsection{Expressive Asymmetry}
 \label{sec:asymmetry}
@@ -2673,7 +2681,9 @@ $\lambda$-terms, first-order objects with decidable identity,
 and tabling solves it, deciding unproductive loops such
 as~$\Omega$ as~$\bot$ in finite time.
 That treatment preserves the standard lazy
-(L\'evy--Longo) semantics and changes only the evaluator.
+(L\'evy--Longo) tree semantics and changes only the evaluator;
+it occupies the fixpoint~$\lambda$ node of
+Figure~\ref{fig:calculi-matrix}.
 It also differs in mechanism.
 The table is keyed by whole interned terms, not by paths
 into a scope tree, so partial results are not shared between
@@ -2683,9 +2693,13 @@ the tree approximation order, in which $\bot$ leaves are
 refined into subtrees, and the fixpoint is unique (least and
 greatest coincide by guardedness): a re-entrant call is
 answered with a single final~$\bot$ that no later iteration
-refines, so the iteration cannot grow an accumulator; it can
-decide divergence as~$\bot$ but cannot make additional terms
-converge.
+refines, so the iteration cannot grow an accumulator.
+Its more-definedness over the lazy $\lambda$-calculus is
+therefore exactly the unproductive~$\bot$ of
+Figure~\ref{fig:calculi-matrix}, terms whose divergence is
+decided as a definite~$\bot$ answer, and nothing more;
+the powerset order is what lets iteration accumulate and
+produce new non-$\bot$ values.
 
 \subsection{Inheritance, Objects, and Records}
 
@@ -3245,9 +3259,10 @@ B\"ohm tree equivalence
 establishing that the first iteration coincides with
 the lazy $\lambda$-calculus.
 Second, the full $\mathrm{lfp}(T_P)$ semantics is strictly
-more defined: $\lambda$-terms that diverge under
-$\beta$-reduction may converge, as shown in
-Section~\ref{sec:bohm-tree}.
+more defined in the powerset sense of
+Figure~\ref{fig:calculi-matrix}: translated $\lambda$-terms
+that diverge under $\beta$-reduction may converge to definite
+sets, as shown in Section~\ref{sec:bohm-tree}.
 
 \subsection{B\"ohm Trees}
 
@@ -3722,7 +3737,8 @@ We make this precise.
   Section~\ref{sec:bohm-tree} showed that the B\"ohm tree
   correspondence holds at the first iteration
   $T_P\!\uparrow\!1$ and that $\mathrm{lfp}(T_P)$ is
-  strictly more defined.
+  strictly more defined in the powerset sense of
+  Figure~\ref{fig:calculi-matrix}.
   Here we make the connection precise.
   Tabled evaluation~\cite{tamaki1986-tabled-resolution}
   computes $\mathrm{lfp}(T_P)$ by iterating:
