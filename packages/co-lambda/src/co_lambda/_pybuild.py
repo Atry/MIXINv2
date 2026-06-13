@@ -24,6 +24,7 @@ from co_lambda._runtime import RUNTIME_API
 from co_lambda._sugar import ap, cons, map_list, one, two
 from co_lambda._pyast import (
     _K_BOOL,
+    _K_GENSYM,
     _K_IDENT,
     _K_INT,
     _K_LIST,
@@ -217,6 +218,17 @@ def single_arg(expr: Builder) -> Builder:
 def name_symbol_field(kind: Builder, path: Builder) -> Builder:
     """The identifier field naming the ``kind`` role of the node at ``path`` (a list of Nats)."""
     return field_ident(cons(kind, path))
+
+
+def name_gensym_field(role: Builder, depth: Builder, quoted: Builder) -> Builder:
+    """A PATH-FREE name field for a call-by-need memo cell/thunk, identified by its ``role`` (cell /
+    thunk / function), its binder ``depth``, and the ``quoted`` sub-term it belongs to. The payload is
+    interned, so the path-free (and therefore TABLED) recursion yields the SAME node for the same
+    (role, depth, quoted) -- the decoder's ``_K_GENSYM`` case then assigns one fresh ``vg_<n>`` per
+    distinct node, consistent across the cell's definition and uses, distinct across different cells.
+    This is what lets CODEGEN_NEED share compiled code for shared sub-terms instead of unfolding per
+    occurrence (the old ``path`` scheme defeated tabling)."""
+    return _kind(_K_GENSYM, cons(role, cons(depth, quoted)))
 
 
 def depth_ident(depth: Builder) -> Builder:

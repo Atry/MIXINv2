@@ -31,7 +31,7 @@ from co_lambda._pybuild import (
     ex_name,
     field_str,
     level_ident,
-    name_symbol_field,
+    name_gensym_field,
     py_call,
     py_lambda,
     py_lambda0,
@@ -108,21 +108,18 @@ CODEGEN: Builder = lam(lambda thunked: app(
 #         return v_<cell>
 #
 # Forcing a thunk is calling it; a bound variable arrives as a thunk and is forced on use; a lambda's
-# value is an inner ``def v_<func>(v_<param>)``. Every identifier is a SYMBOL: the path of the AST
-# node it belongs to, a list of Church-numeral segments (a branch index per descent, plus a kind tag),
-# decoded to an underscore-joined name that is unique by construction. A binder's symbol is threaded
-# down in an environment so a variable looks up its binder's name by de Bruijn index. The program is
-# wrapped in ``def _program(): ...; return <root thunk>`` so the ``nonlocal`` cells have an enclosing
-# function scope, and ``program = _program()`` binds it.
+# value is an inner ``def vg_<func>(v_<depth>)``. A bound variable is named by de Bruijn LEVEL
+# (``v_<depth>``), like CODEGEN, so no environment is threaded. The cell / thunk / function of a node
+# are named PATH-FREE by ``name_gensym_field(role, depth, quoted)``: because the recursion is keyed
+# only on ``(depth, quoted)`` the interpreter TABLES it, so the same (role, depth, sub-term) is one
+# interned node and the decoder assigns it one consistent ``vg_<n>``. The program is wrapped in
+# ``def _program(): ...; return <root thunk>`` so the ``nonlocal`` cells have an enclosing function
+# scope, and ``program = _program()`` binds it.
 
-# Path segments: a branch index per descent (function/argument/lambda-body) and a kind tag per role.
-_BRANCH_FUNCTION: Builder = church(0)
-_BRANCH_ARGUMENT: Builder = church(1)
-_BRANCH_BODY: Builder = church(2)
+# Kind tag per memo-thunk role: the cell, the thunk, and (for a lambda) the inner function.
 _KIND_THUNK: Builder = church(0)
 _KIND_CELL: Builder = church(1)
 _KIND_FUNCTION: Builder = church(2)
-_KIND_VARIABLE: Builder = church(3)
 
 # append xs ys = xs (lambda h. lambda t. cons h (self t ys)) ys, by Scott-list elimination.
 _APPEND: Builder = app(Y, lam(lambda self_recursion: lam(lambda xs: lam(lambda ys: app(
@@ -130,59 +127,56 @@ _APPEND: Builder = app(Y, lam(lambda self_recursion: lam(lambda xs: lam(lambda y
     ys,
 )))))
 
-# tail/head by Scott-list elimination; nth drops ``index`` heads (Church iteration) then takes head.
-_TAIL: Builder = lam(lambda lst: app(app(lst, lam(lambda head: lam(lambda tail: tail))), SCOTT_NIL))
-_HEAD: Builder = lam(lambda lst: app(app(lst, lam(lambda head: lam(lambda tail: head))), SCOTT_NIL))
-_NTH: Builder = lam(lambda index: lam(lambda env: app(_HEAD, app(app(index, _TAIL), env))))
-
 _PROGRAM_DEF_CODES: Builder = char_codes("_program")
 _PROGRAM_BIND_CODES: Builder = char_codes("program")
 
-# The recursion: self path env quoted -> (setup statements, value expression). ``path`` is the AST
-# address (Church segments, innermost first); ``env`` is the list of in-scope binder symbols.
-_CODEGEN_NEED_REC: Builder = app(Y, lam(lambda self_recursion: lam(lambda path: lam(lambda env: lam(
+# The recursion: self depth quoted -> (setup statements, value expression). It is PATH-FREE (like
+# CODEGEN): variables are named by de Bruijn LEVEL (``v_<depth>``), and the recursion is keyed only by
+# ``(depth, quoted)`` so the interpreter TABLES it -- each DISTINCT sub-term is compiled once, not once
+# per occurrence (the old ``path`` scheme made every occurrence a distinct key, defeating tabling and
+# unfolding a shared term graph). The memo cell / thunk / function of a node are named PATH-FREE by
+# ``name_gensym_field(role, depth, quoted)``: because the recursion is tabled, the same (role, depth,
+# sub-term) is the same interned node, so the decoder assigns one consistent ``vg_<n>`` to it.
+_CODEGEN_NEED_REC: Builder = app(Y, lam(lambda self_recursion: lam(lambda depth: lam(
     lambda quoted: ap(
         quoted,
-        # QVar index: the variable is its binder's thunk, looked up by de Bruijn index; no setup.
-        lam(lambda index: pair(SCOTT_NIL, ex_name(ap(_NTH, index, env)))),
+        # QVar index: the variable is its binder's thunk, named by de Bruijn level; no setup.
+        lam(lambda index: pair(SCOTT_NIL, ex_name(level_ident(depth, index)))),
         # QLam body: the value is an inner function; wrap it in a memoising thunk.
         lam(lambda body: let(
-            name_symbol_field(_KIND_VARIABLE, path),
-            lambda parameter: let(
-                ap(self_recursion, cons(_BRANCH_BODY, path), cons(parameter, env), body),
-                lambda compiled_body: pair(
-                    thunk_scaffold(
-                        name_symbol_field(_KIND_CELL, path),
-                        name_symbol_field(_KIND_THUNK, path),
-                        two(
-                            stmt(st_func_def(
-                                name_symbol_field(_KIND_FUNCTION, path),
-                                one(parameter),
-                                ap(
-                                    _APPEND,
-                                    pair_first(compiled_body),
-                                    one(stmt(st_return(pair_second(compiled_body)))),
-                                ),
-                            )),
-                            stmt(st_assign(
-                                name_symbol_field(_KIND_CELL, path),
-                                ex_name(name_symbol_field(_KIND_FUNCTION, path)),
-                            )),
-                        ),
+            ap(self_recursion, app(SUCC, depth), body),
+            lambda compiled_body: pair(
+                thunk_scaffold(
+                    name_gensym_field(_KIND_CELL, depth, quoted),
+                    name_gensym_field(_KIND_THUNK, depth, quoted),
+                    two(
+                        stmt(st_func_def(
+                            name_gensym_field(_KIND_FUNCTION, depth, quoted),
+                            one(depth_ident(depth)),
+                            ap(
+                                _APPEND,
+                                pair_first(compiled_body),
+                                one(stmt(st_return(pair_second(compiled_body)))),
+                            ),
+                        )),
+                        stmt(st_assign(
+                            name_gensym_field(_KIND_CELL, depth, quoted),
+                            ex_name(name_gensym_field(_KIND_FUNCTION, depth, quoted)),
+                        )),
                     ),
-                    ex_name(name_symbol_field(_KIND_THUNK, path)),
                 ),
+                ex_name(name_gensym_field(_KIND_THUNK, depth, quoted)),
             ),
         )),
         # QApp f a: force the function and apply the argument thunk; the result is a memoising thunk.
         lam(lambda function: lam(lambda argument: let(
-            ap(self_recursion, cons(_BRANCH_FUNCTION, path), env, function),
+            ap(self_recursion, depth, function),
             lambda compiled_function: let(
-                ap(self_recursion, cons(_BRANCH_ARGUMENT, path), env, argument),
+                ap(self_recursion, depth, argument),
                 lambda compiled_argument: pair(
                     thunk_scaffold(
-                        name_symbol_field(_KIND_CELL, path),
-                        name_symbol_field(_KIND_THUNK, path),
+                        name_gensym_field(_KIND_CELL, depth, quoted),
+                        name_gensym_field(_KIND_THUNK, depth, quoted),
                         ap(
                             _APPEND,
                             pair_first(compiled_function),
@@ -190,7 +184,7 @@ _CODEGEN_NEED_REC: Builder = app(Y, lam(lambda self_recursion: lam(lambda path: 
                                 _APPEND,
                                 pair_first(compiled_argument),
                                 one(stmt(st_assign(
-                                    name_symbol_field(_KIND_CELL, path),
+                                    name_gensym_field(_KIND_CELL, depth, quoted),
                                     # Force to WHNF: applying the function returns the body thunk, which
                                     # must itself be forced so this cell holds a value, not a thunk.
                                     ex_force(ex_app(
@@ -201,18 +195,18 @@ _CODEGEN_NEED_REC: Builder = app(Y, lam(lambda self_recursion: lam(lambda path: 
                             ),
                         ),
                     ),
-                    ex_name(name_symbol_field(_KIND_THUNK, path)),
+                    ex_name(name_gensym_field(_KIND_THUNK, depth, quoted)),
                 ),
             ),
         ))),
     ),
-)))))
+))))
 
 
 # CODEGEN_NEED wraps the root's (statements, value) in def _program(): ...; return value, then
 # program = _program(), all as a generic Scott ``ast.Module``.
 CODEGEN_NEED: Builder = lam(lambda quoted: let(
-    ap(_CODEGEN_NEED_REC, SCOTT_NIL, SCOTT_NIL, quoted),
+    ap(_CODEGEN_NEED_REC, church(0), quoted),
     lambda root: py_module(two(
         stmt(st_func_def(
             field_str(_PROGRAM_DEF_CODES),

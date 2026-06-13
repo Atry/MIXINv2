@@ -42,7 +42,27 @@ _TAG = {cls: tag for tag, cls in enumerate(SUPPORTED)}
 _ARITY = tuple(len(cls._fields) for cls in SUPPORTED)
 
 # Field kind tags.
-_K_NODE, _K_LIST, _K_INT, _K_STR, _K_BOOL, _K_NONE, _K_IDENT = range(7)
+_K_NODE, _K_LIST, _K_INT, _K_STR, _K_BOOL, _K_NONE, _K_IDENT, _K_GENSYM = range(8)
+
+# A gensym table mapping a payload node's identity to a fresh small identifier. The call-by-need
+# codegen names each memoising thunk/cell by the (role, depth, quoted-sub-term) it belongs to, carried
+# as a _K_GENSYM payload; because the path-free recursion is TABLED, the same (role, depth, sub-term)
+# is the SAME interned payload node, so it decodes to the SAME name (consistent across def and use),
+# while distinct ones get distinct names. Reset per top-level decode of a call-by-need module.
+_gensym_ids: "dict[int, str]" = {}
+
+
+def _reset_gensym() -> None:
+    _gensym_ids.clear()
+
+
+def _gensym_name(payload: "Node") -> str:
+    existing = _gensym_ids.get(id(payload))
+    if existing is not None:
+        return existing
+    name = f"vg_{len(_gensym_ids)}"
+    _gensym_ids[id(payload)] = name
+    return name
 
 # Disjoint free-variable bands used as meta markers (far above any real index; Scott values here
 # are closed, so the only free variables in a probed term are these markers).
@@ -186,6 +206,8 @@ def _decode_field(node: Node) -> object:
             return None
         case 6:  # IDENT: a list of Nats (an AST path) rendered to one underscore-joined identifier
             return _path_to_identifier(payload)
+        case 7:  # GENSYM: a fresh identifier per distinct (interned) payload node, by node identity
+            return _gensym_name(payload)
         case _:
             raise ValueError(f"unknown field kind {kind}")
 

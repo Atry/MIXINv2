@@ -36,7 +36,7 @@ from co_lambda._compile_term import CHOOSE_RUNTIME, COMPILE
 from co_lambda._compiler import CODEGEN, CODEGEN_NEED
 from co_lambda._dsl import app, build, curry
 from co_lambda._prelude import FALSE, TRUE
-from co_lambda._pyast import _church_to_int, decode, to_anf_source
+from co_lambda._pyast import _church_to_int, _reset_gensym, decode, to_anf_source
 from co_lambda._reduce import NORMALIZES
 from co_lambda._render import render
 from co_lambda._runtime import (
@@ -97,6 +97,7 @@ def _compile_need_source(node: Node) -> str:
     ``_pyast.decode``.
     """
     module = build(app(CODEGEN_NEED, quote(node)))
+    _reset_gensym()  # fresh vg_<n> names per compile, so call-by-need output is reproducible
     return ast.unparse(ast.fix_missing_locations(decode(module)))
 
 
@@ -162,6 +163,7 @@ def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedO
         result = build(app(app(COMPILE, option.scott()), quote(node)))
         if isinstance(option, SpecializedOption):
             return to_anf_source(result, "compiled_compiler")
+        _reset_gensym()  # fresh vg_<n> names per compile (only the call-by-need module uses them)
         return ast.unparse(ast.fix_missing_locations(decode(result)))
 
     return run_in_large_stack(_run)
