@@ -19,6 +19,7 @@ head variable names the constructor and whose arguments are the child nodes.
 from __future__ import annotations
 
 import ast
+import contextlib
 
 from co_lambda._ast import Node, make_app, make_lam, make_var
 from co_lambda._dsl import Builder, app, build, lam
@@ -37,6 +38,7 @@ SUPPORTED: "tuple[type[ast.AST], ...]" = (
     ast.BinOp, ast.Add, ast.Sub, ast.Mult,
     ast.Compare, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Eq,
     ast.Nonlocal, ast.Is,
+    ast.Subscript, ast.Tuple,
 )
 _TAG = {cls: tag for tag, cls in enumerate(SUPPORTED)}
 _ARITY = tuple(len(cls._fields) for cls in SUPPORTED)
@@ -63,6 +65,27 @@ def _gensym_name(payload: "Node") -> str:
     name = f"vg_{len(_gensym_ids)}"
     _gensym_ids[id(payload)] = name
     return name
+
+
+# An optional per-decode memo keyed by interned-node identity. ``decode`` is a tree recursion, so a
+# shared interned sub-graph (the interpreter hash-conses) is otherwise re-decoded once per occurrence.
+# Lambda-lifted call-by-need emits the SAME interned factory node once per occurrence of a shared
+# sub-term (COMPILE shares ~19x); decoding under ``memoized_decode`` forces and decodes each DISTINCT
+# node once (O(distinct) instead of O(occurrences)), the same node-identity memoization ``to_anf_source``
+# relies on via ``_extract``. Off by default so unrelated decodes stay simple.
+_decode_memo: "dict[int, ast.AST] | None" = None
+
+
+@contextlib.contextmanager
+def memoized_decode():
+    """Decode each distinct interned Scott node once, keyed by node identity (does not nest)."""
+    global _decode_memo
+    assert _decode_memo is None, "memoized_decode does not nest"
+    _decode_memo = {}
+    try:
+        yield
+    finally:
+        _decode_memo = None
 
 # Disjoint free-variable bands used as meta markers (far above any real index; Scott values here
 # are closed, so the only free variables in a probed term are these markers).
@@ -222,10 +245,21 @@ def _path_to_identifier(payload: Node) -> str:
 
 
 def decode(node: Node) -> ast.AST:
-    """Decode a Scott-encoded ast value (run in the interpreter) back to a real ``ast`` node."""
+    """Decode a Scott-encoded ast value (run in the interpreter) back to a real ``ast`` node.
+
+    Under ``memoized_decode`` each distinct interned node is decoded once (the result is shared across
+    its occurrences), collapsing a shared sub-graph instead of re-walking every occurrence.
+    """
+    if _decode_memo is not None:
+        cached = _decode_memo.get(id(node))
+        if cached is not None:
+            return cached
     tag, fields = _extract(node, _ARITY, _CTOR_BASE)
     cls = SUPPORTED[tag]
-    return cls(*[_decode_field(field) for field in fields])
+    decoded = cls(*[_decode_field(field) for field in fields])
+    if _decode_memo is not None:
+        _decode_memo[id(node)] = decoded
+    return decoded
 
 
 def to_python_source(node: Node) -> str:

@@ -39,24 +39,30 @@ lambda v_0: v_0(lambda v_1: lambda v_2: lambda v_3: v_3)(lambda v_1: lambda v_2:
 \medskip\noindent\textbf{Self-application.}~\textnormal{(specialized to call-by-need)}\quad $\lambda x.\, x\, x$
 \begin{lstlisting}
 def _program():
-    vg_0 = CALL_BY_NEED_SENTINEL
 
-    def vg_1():
-        nonlocal vg_0
-        if vg_0 is CALL_BY_NEED_SENTINEL:
+    def vg_0(env):
+        vg_1 = CALL_BY_NEED_SENTINEL
 
-            def vg_2(v_0):
-                vg_3 = CALL_BY_NEED_SENTINEL
+        def vg_2():
+            nonlocal vg_1
+            if vg_1 is CALL_BY_NEED_SENTINEL:
 
-                def vg_4():
-                    nonlocal vg_3
-                    if vg_3 is CALL_BY_NEED_SENTINEL:
-                        vg_3 = v_0()(v_0)()
-                    return vg_3
-                return vg_4
-            vg_0 = vg_2
-        return vg_0
-    return vg_1
+                def vg_3(a):
+                    return vg_4((a,) + env)
+                vg_1 = vg_3
+            return vg_1
+        return vg_2
+
+    def vg_4(env):
+        vg_5 = CALL_BY_NEED_SENTINEL
+
+        def vg_6():
+            nonlocal vg_5
+            if vg_5 is CALL_BY_NEED_SENTINEL:
+                vg_5 = env[0]()(env[0])()
+            return vg_5
+        return vg_6
+    return vg_0(())
 program = _program()
 \end{lstlisting}
 

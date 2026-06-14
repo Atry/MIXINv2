@@ -3,42 +3,51 @@
   dict({
     'constant_k': '''
       def _program():
-          vg_0 = CALL_BY_NEED_SENTINEL
       
-          def vg_1():
-              nonlocal vg_0
-              if vg_0 is CALL_BY_NEED_SENTINEL:
+          def vg_0(env):
+              vg_1 = CALL_BY_NEED_SENTINEL
       
-                  def vg_2(v_0):
-                      vg_3 = CALL_BY_NEED_SENTINEL
+              def vg_2():
+                  nonlocal vg_1
+                  if vg_1 is CALL_BY_NEED_SENTINEL:
       
-                      def vg_4():
-                          nonlocal vg_3
-                          if vg_3 is CALL_BY_NEED_SENTINEL:
+                      def vg_3(a):
+                          return vg_4((a,) + env)
+                      vg_1 = vg_3
+                  return vg_1
+              return vg_2
       
-                              def vg_5(v_1):
-                                  return v_0
-                              vg_3 = vg_5
-                          return vg_3
-                      return vg_4
-                  vg_0 = vg_2
-              return vg_0
-          return vg_1
+          def vg_4(env):
+              vg_5 = CALL_BY_NEED_SENTINEL
+      
+              def vg_6():
+                  nonlocal vg_5
+                  if vg_5 is CALL_BY_NEED_SENTINEL:
+      
+                      def vg_7(a):
+                          return ((a,) + env)[1]
+                      vg_5 = vg_7
+                  return vg_5
+              return vg_6
+          return vg_0(())
       program = _program()
     ''',
     'identity': '''
       def _program():
-          vg_0 = CALL_BY_NEED_SENTINEL
       
-          def vg_1():
-              nonlocal vg_0
-              if vg_0 is CALL_BY_NEED_SENTINEL:
+          def vg_0(env):
+              vg_1 = CALL_BY_NEED_SENTINEL
       
-                  def vg_2(v_0):
-                      return v_0
-                  vg_0 = vg_2
-              return vg_0
-          return vg_1
+              def vg_2():
+                  nonlocal vg_1
+                  if vg_1 is CALL_BY_NEED_SENTINEL:
+      
+                      def vg_3(a):
+                          return ((a,) + env)[0]
+                      vg_1 = vg_3
+                  return vg_1
+              return vg_2
+          return vg_0(())
       program = _program()
     ''',
   })

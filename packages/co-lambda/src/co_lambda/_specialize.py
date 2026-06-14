@@ -36,7 +36,7 @@ from co_lambda._compile_term import CHOOSE_RUNTIME, COMPILE
 from co_lambda._compiler import CODEGEN, CODEGEN_NEED
 from co_lambda._dsl import app, build, curry
 from co_lambda._prelude import FALSE, TRUE
-from co_lambda._pyast import _church_to_int, _reset_gensym, decode, to_anf_source
+from co_lambda._pyast import _church_to_int, _reset_gensym, decode, memoized_decode, to_anf_source
 from co_lambda._reduce import NORMALIZES
 from co_lambda._render import render
 from co_lambda._runtime import (
@@ -90,15 +90,48 @@ def compile_quoted(option, quoted) -> Node:
     return build(app(app(app(CODEGEN, option), church(0)), quoted))
 
 
+def _dedupe_lifted_factories(module: ast.AST) -> ast.Module:
+    """Drop the byte-identical duplicate factory defs that lambda-lifted CODEGEN_NEED emits once per
+    occurrence of a shared sub-term.
+
+    Each distinct (depth, sub-term) is one top-level factory inside ``_program``; because the factories
+    are lambda-lifted (every free variable arrives as a parameter, nothing is captured lexically), all
+    copies of a name are structurally identical and one suffices. This collapses the per-occurrence
+    unfolding (COMPILE shares ~19x) back to one def per distinct sub-term. Run before
+    ``fix_missing_locations`` so the structural equality check ignores positions.
+    """
+    assert isinstance(module, ast.Module), f"expected an ast.Module, got {type(module).__name__}"
+    program_def, = [
+        statement for statement in module.body
+        if isinstance(statement, ast.FunctionDef) and statement.name == "_program"
+    ]
+    seen: "dict[str, ast.FunctionDef]" = {}
+    deduped: "list[ast.stmt]" = []
+    for statement in program_def.body:
+        if isinstance(statement, ast.FunctionDef):
+            kept = seen.get(statement.name)
+            if kept is not None:
+                assert kept is statement or ast.dump(kept) == ast.dump(statement), (
+                    f"lambda-lifted factory {statement.name!r} has two non-identical definitions"
+                )
+                continue
+            seen[statement.name] = statement
+        deduped.append(statement)
+    program_def.body = deduped
+    return module
+
+
 def _compile_need_source(node: Node) -> str:
-    """Compile a term to the call-by-need module source (explicit memoising thunks).
+    """Compile a term to the call-by-need module source (lambda-lifted memoising-thunk factories).
 
     CODEGEN_NEED emits the generic Scott ``ast.Module`` directly, decoded by the generic
-    ``_pyast.decode``.
+    ``_pyast.decode``; the per-occurrence duplicate factories are dropped after decoding.
     """
     module = build(app(CODEGEN_NEED, quote(node)))
     _reset_gensym()  # fresh vg_<n> names per compile, so call-by-need output is reproducible
-    return ast.unparse(ast.fix_missing_locations(decode(module)))
+    with memoized_decode():  # decode each distinct factory once, not once per occurrence
+        decoded = _dedupe_lifted_factories(decode(module))
+    return ast.unparse(ast.fix_missing_locations(decoded))
 
 
 def codegen(node: Node, runtime: Runtime = Runtime.CALL_BY_VALUE) -> str:
@@ -164,6 +197,10 @@ def compile(node: Node, option: "SpecializedOption | WholeOption" = SpecializedO
         if isinstance(option, SpecializedOption):
             return to_anf_source(result, "compiled_compiler")
         _reset_gensym()  # fresh vg_<n> names per compile (only the call-by-need module uses them)
+        if isinstance(option, WholeOption) and option.runtime is Runtime.CALL_BY_NEED:
+            with memoized_decode():  # decode each distinct factory once, then drop the duplicate copies
+                decoded = _dedupe_lifted_factories(decode(result))
+            return ast.unparse(ast.fix_missing_locations(decoded))
         return ast.unparse(ast.fix_missing_locations(decode(result)))
 
     return run_in_large_stack(_run)

@@ -205,6 +205,16 @@ def py_constant_int(nat: Builder) -> Builder:
     return _node(ast.Constant, [field_int(nat), field_none()])
 
 
+def py_subscript(value: Builder, index: Builder) -> Builder:
+    """``<value>[<index>]`` (Load). Order: value, slice, ctx."""
+    return _node(ast.Subscript, [field_node(value), field_node(index), field_node(py_load())])
+
+
+def py_tuple(element_fields: Builder) -> Builder:
+    """``(<elements...>,)`` (Load); ``element_fields`` a Scott list of ``field_node(elt)``. Order: elts, ctx."""
+    return _node(ast.Tuple, [field_list(element_fields), field_node(py_load())])
+
+
 # --- emission notation: fixed-shape statement/expression/identifier helpers ----------------------
 # Builder-only transcription sugar used by the CODEGEN / CODEGEN_NEED lambda terms; shapes are
 # literal at the call site, parameters are Builders.
@@ -220,15 +230,16 @@ def name_symbol_field(kind: Builder, path: Builder) -> Builder:
     return field_ident(cons(kind, path))
 
 
-def name_gensym_field(role: Builder, depth: Builder, quoted: Builder) -> Builder:
-    """A PATH-FREE name field for a call-by-need memo cell/thunk, identified by its ``role`` (cell /
-    thunk / function), its binder ``depth``, and the ``quoted`` sub-term it belongs to. The payload is
-    interned, so the path-free (and therefore TABLED) recursion yields the SAME node for the same
-    (role, depth, quoted) -- the decoder's ``_K_GENSYM`` case then assigns one fresh ``vg_<n>`` per
-    distinct node, consistent across the cell's definition and uses, distinct across different cells.
-    This is what lets CODEGEN_NEED share compiled code for shared sub-terms instead of unfolding per
-    occurrence (the old ``path`` scheme defeated tabling)."""
-    return _kind(_K_GENSYM, cons(role, cons(depth, quoted)))
+def name_gensym_field(role: Builder, quoted: Builder) -> Builder:
+    """A PATH-FREE, DEPTH-FREE name field for a call-by-need memo cell/thunk, identified by its ``role``
+    (cell / thunk / function) and the ``quoted`` sub-term it belongs to. The payload is interned, so the
+    TABLED recursion yields the SAME node for the same (role, quoted) -- the decoder's ``_K_GENSYM`` case
+    then assigns one fresh ``vg_<n>`` per distinct node, consistent across the cell's definition and uses,
+    distinct across different cells. Lambda-lifted call-by-need accesses binders positionally through the
+    environment, so a sub-term's compiled code does not depend on its binder depth; keying on ``quoted``
+    alone (not ``(depth, quoted)``) means a sub-term shared across DIFFERENT depths compiles once, not
+    once per depth (the depth-keyed scheme recompiled COMPILE's combinators once per nesting depth)."""
+    return _kind(_K_GENSYM, cons(role, quoted))
 
 
 def depth_ident(depth: Builder) -> Builder:
@@ -321,6 +332,56 @@ def thunk_scaffold(cell_field: Builder, thunk_field: Builder, compute_fields: Bu
         stmt(st_assign(cell_field, _EX_SENTINEL)),
         stmt(st_func_def(thunk_field, SCOTT_NIL, body)),
     )
+
+
+def py_add(left: Builder, right: Builder) -> Builder:
+    """``<left> + <right>`` (``ast.BinOp`` with ``ast.Add``). Order: left, op, right."""
+    return _node(ast.BinOp, [field_node(left), field_node(_node(ast.Add, [])), field_node(right)])
+
+
+def lifted_call(factory_name: Builder, environment: Builder) -> Builder:
+    """The occurrence value of a lambda-lifted call-by-need node: the call ``<factory>(<environment>)``
+    passing the single environment of enclosing binder thunks."""
+    return py_call(ex_name(factory_name), one_node(environment))
+
+
+def lifted_factory(
+    factory_name: Builder,
+    parameter_fields: Builder,
+    cell_field: Builder,
+    thunk_field: Builder,
+    compute_fields: Builder,
+) -> Builder:
+    """A top-level lambda-lifted factory statement::
+
+        def <factory>(<parameters...>):
+            <cell> = CALL_BY_NEED_SENTINEL
+            def <thunk>():
+                nonlocal <cell>
+                if <cell> is CALL_BY_NEED_SENTINEL:
+                    <compute_fields>
+                return <cell>
+            return <thunk>
+
+    ``parameter_fields`` is a Scott list of the factory's parameter name fields (the call-by-need codegen
+    passes a single environment parameter). Calling the factory makes a fresh memoising thunk, so each
+    occurrence of the sub-term gets its own cell (call-by-need shares within one evaluation through the
+    binder thunks in the environment, not across separate occurrences)."""
+    thunk_body = cons(
+        stmt(st_nonlocal(one(cell_field))),
+        cons(
+            stmt(st_if(ex_is(ex_name(cell_field), _EX_SENTINEL), compute_fields)),
+            one(stmt(st_return(ex_name(cell_field)))),
+        ),
+    )
+    factory_body = cons(
+        stmt(st_assign(cell_field, _EX_SENTINEL)),
+        cons(
+            stmt(st_func_def(thunk_field, SCOTT_NIL, thunk_body)),
+            one(stmt(st_return(ex_name(thunk_field)))),
+        ),
+    )
+    return stmt(st_func_def(factory_name, parameter_fields, factory_body))
 
 
 def one_node(expression: Builder) -> Builder:
