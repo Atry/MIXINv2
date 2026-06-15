@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable, Iterator, final
 
-from co_lambda._ast import Node, make_app, make_lam, make_native, make_var
+from co_lambda._ast import App, Lam, Node, Var, make_app, make_lam, make_native, make_var
 
 # --- the lazy-thunk runtime of the compiled call-by-name / call-by-need targets ------------------
 # The call-by-name target's emitted Python refers to the free names ``force`` and ``Thunk``. An
@@ -172,6 +172,78 @@ def value_island_by_name(compiled_value) -> Node:
     return make_native(lambda: _quote(compiled_value, 0, _LAZY_READ_BACK, _LAZY_ISLAND_READBACK_FUEL), 0)
 
 
+# --- node_case: the one runtime node-observation primitive ----------------------------------------
+# A local host-compiled analysis (a closed analysis lambda compiled to a call-by-need island, e.g.
+# IS_CLOSED / TYPABLE_BU / NORMALIZES) consumes a SOURCE term. To run in host it must observe the
+# runtime node it is applied to; ``node_case`` is the ONLY primitive that lets the lambda do so -- a
+# PURE structural dispatch on the node's LITERAL Var / Lam / App constructor (NO reduction: it matches
+# the interner node as built, since quoted source is a normal-form tree). It is provided as a value the
+# compiled island takes as a free variable and applies, so it follows the call-by-need value protocol of
+# CODEGEN_NEED: a value is a 0-arg thunk forced by ``()``; a forced function takes one thunk argument and
+# returns a value. ``node_case node on_var on_lam on_app`` forces ``node``, then applies ``on_var`` to
+# the de Bruijn index (as a Church numeral), ``on_lam`` to the body node, or ``on_app`` to the function
+# then argument nodes -- each child handed back as a thunk yielding the child node, so the analysis
+# recurses through ``node_case`` again. Host execution interns nothing; only the analysis's small result,
+# read back at the island boundary, is interned.
+
+
+def _cbn_apply(function_value, argument_thunk):
+    """Call-by-need application: force the function value to a callable, apply it to the argument thunk,
+    returning the result value (itself a thunk)."""
+    return function_value()(argument_thunk)
+
+
+def _church_call_by_need(count: int):
+    """The Church numeral ``count`` as a forced call-by-need function value: ``\\f x. f^count x``."""
+    def take_f(f_thunk):
+        def value_in_f():
+            def take_x(x_thunk):
+                accumulator = x_thunk
+                for _ in range(count):
+                    accumulator = _cbn_apply(f_thunk, accumulator)
+                return accumulator
+            return take_x
+        return value_in_f
+    return take_f
+
+
+def _node_case_dispatch(node_thunk, on_var, on_lam, on_app):
+    """Force the node and apply the matching handler value (literal constructor dispatch, no reduction)."""
+    node = node_thunk()
+    match node:
+        case Var(index=index):
+            return _cbn_apply(on_var, lambda: _church_call_by_need(index))
+        case Lam(body=body):
+            return _cbn_apply(on_lam, lambda: body)
+        case App(function=function, argument=argument):
+            return _cbn_apply(_cbn_apply(on_app, lambda: function), lambda: argument)
+        case _:
+            raise ValueError(f"node_case: expected a Var/Lam/App node, got {node!r}")
+
+
+def _node_case_value():
+    """``node_case`` as a forced call-by-need function value: curried over node, on_var, on_lam, on_app."""
+    def take_node(node_thunk):
+        def value_after_node():
+            def take_var(on_var):
+                def value_after_var():
+                    def take_lam(on_lam):
+                        def value_after_lam():
+                            def take_app(on_app):
+                                return _node_case_dispatch(node_thunk, on_var, on_lam, on_app)
+                            return take_app
+                        return value_after_lam
+                    return take_lam
+                return value_after_var
+            return take_var
+        return value_after_node
+    return take_node
+
+
+# The call-by-need VALUE (a 0-arg thunk) the compiled island binds and forces.
+node_case = _node_case_value
+
+
 # === The minimal runtime API ======================================================================
 # The COMPLETE vocabulary a generated program may reference as free names, the single authoritative
 # declaration. Every delivery channel below (``interpret_globals``, ``call_by_need_globals``, the
@@ -187,6 +259,7 @@ RUNTIME_API: "dict[str, object]" = {
     "value_island_by_name": value_island_by_name,
     "force": force,
     "Thunk": _NeedThunk,  # the default lazy regime; a loader may pre-bind the call-by-name _LazyThunk
+    "node_case": node_case,  # the one node-observation primitive, for host-compiled local analyses
     _SENTINEL_NAME: _CALL_BY_NEED_SENTINEL,
 }
 
@@ -213,8 +286,9 @@ def interpret_globals(call_by_need: bool = True) -> dict:
 
 def call_by_need_globals() -> dict:
     """The evaluation globals for a whole-program call-by-need module, derived from ``RUNTIME_API``:
-    just the unforced-cell sentinel its memo cells compare against."""
-    return {_SENTINEL_NAME: RUNTIME_API[_SENTINEL_NAME]}
+    the unforced-cell sentinel its memo cells compare against, and ``node_case`` for a local analysis
+    island that observes the source term it is applied to."""
+    return {_SENTINEL_NAME: RUNTIME_API[_SENTINEL_NAME], "node_case": RUNTIME_API["node_case"]}
 
 
 # A real import header so a generated interpret-headed module is self-contained and directly callable
