@@ -27,7 +27,22 @@ import subprocess
 import sys
 import time
 
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass(kw_only=True, slots=True, frozen=True)
+class CellMeasurement:
+    """One benchmark cell's measurement: island counts of the output, wall time, peak resident memory,
+    output size, and the total interned nodes created during the compile step (the engine-vs-interpreter
+    metric: ``len(_ast._canonical)`` delta under ``FOL_INTERNER_RETAIN=inf``)."""
+
+    cbv: int
+    lazy: int
+    seconds: float
+    peak_gb: float
+    chars: int
+    interns: int
 
 # src/co_lambda/_benchmark.py -> repo root is four parents up.
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -57,51 +72,102 @@ def _cell(engine_spec: str, target: int, regime: str, write_path: "str | None") 
     The regime is the loaded engine's lazy-island ``Thunk`` (call-by-need memoise vs call-by-name
     recompute); it changes only how fast an engine WITH lazy islands runs, never its output. The
     ``INTERP`` row compiles in-process (the lambda ``COMPILE`` interpreted), which does not execute lazy
-    islands, so it is regime-independent."""
+    islands, so it is regime-independent.
+
+    Prints ``<cbv> <lazy> <seconds> <peak_gb> <chars> <interns>``. ``interns`` is the ``_ast._canonical``
+    delta around the compile STEP: the baseline is taken after the shared source is built (and, for an
+    engine, after it is loaded), so it counts only the compilation's interning, not the shared source or
+    the one-time engine load. This is the engine-vs-interpreter memory metric (run under
+    ``FOL_INTERNER_RETAIN=inf`` so nothing is freed and the count is cumulative)."""
+    from co_lambda import _ast
     from co_lambda._runtime import runnable_module
     from co_lambda._multistage import _load, _run_compiler
     from co_lambda._specialize import SpecializedOption, compile
 
     source = _build_source()
     option = SpecializedOption(target)
-    start = time.perf_counter()
     if engine_spec == "INTERP":
+        baseline = len(_ast._canonical)
+        start = time.perf_counter()
         output = compile(source, option)
+        elapsed = time.perf_counter() - start
     else:
         engine = _load(Path(engine_spec).read_text(), call_by_need=(regime == "need"))
+        baseline = len(_ast._canonical)  # after load: count only the compile step, not the engine graph
+        start = time.perf_counter()
         output = _run_compiler(engine, source, option)
-    elapsed = time.perf_counter() - start
+        elapsed = time.perf_counter() - start
+    interns = len(_ast._canonical) - baseline
     peak_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
     if write_path is not None:
         Path(write_path).write_text(runnable_module(output))  # self-contained, callable engine module
     cbv = output.count("value_island(")
     lazy = output.count("value_island_by_name(")
-    print(f"{cbv} {lazy} {elapsed:.6f} {peak_gb:.6f} {len(output)}")
+    print(f"{cbv} {lazy} {elapsed:.6f} {peak_gb:.6f} {len(output)} {interns}")
 
 
 def _run_cell(
     engine_spec: str, target: int, regime: str = "need", write_path: "str | None" = None,
-) -> "tuple[float, float] | None":
-    """Spawn a worker for one cell; return (seconds, peak_gb) or None if it timed out / failed."""
+) -> "CellMeasurement | None":
+    """Spawn a worker for one cell in a FRESH process (the interner is process-global, so each cell must
+    measure its own ``_canonical`` from empty). Pin ``FOL_INTERNER_RETAIN=inf`` so the intern count is
+    cumulative. Return the ``CellMeasurement`` or None if it timed out / failed."""
     command = [sys.executable, "-m", "co_lambda._benchmark", "--cell", engine_spec, str(target), regime]
     if write_path is not None:
         command.append(write_path)
+    environment = {**os.environ, "FOL_INTERNER_RETAIN": "inf"}
     try:
-        done = subprocess.run(command, check=True, capture_output=True, text=True, timeout=_CELL_TIMEOUT)
+        done = subprocess.run(
+            command, check=True, capture_output=True, text=True, timeout=_CELL_TIMEOUT, env=environment,
+        )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
-    _cbv, _lazy, seconds, peak_gb, _chars = done.stdout.split()
-    return float(seconds), float(peak_gb)
+    cbv, lazy, seconds, peak_gb, chars, interns = done.stdout.split()
+    return CellMeasurement(
+        cbv=int(cbv), lazy=int(lazy), seconds=float(seconds), peak_gb=float(peak_gb),
+        chars=int(chars), interns=int(interns),
+    )
 
 
-def _cell_text(measured: "tuple[float, float] | None", metric: int) -> str:
+def _two_cell(target: int) -> None:
+    """The 2-cell total-intern protocol, self-contained (no committed stages needed):
+
+    - cell A: the INTERPRETER compiles the COMPILE source at ``target``; its output (a runnable engine
+      module) is written to a temp file -- that file IS the engine specialized at ``target``.
+    - cell B: that freshly-built engine compiles the SAME source at the SAME ``target``.
+
+    Print both intern counts and the ratio, and ASSERT the two outputs are byte-identical (faithful
+    rehosting: an intern change must never hide a semantic change). Each cell runs in its own process so
+    its interner starts empty."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as work:
+        engine_file = Path(work) / "engine.py"             # cell A writes the engine here
+        engine_output = Path(work) / "engine_output.py"    # cell B writes its compilation here
+        cell_a = _run_cell("INTERP", target, "need", str(engine_file))
+        assert cell_a is not None, "interpreter cell failed or timed out"
+        cell_b = _run_cell(str(engine_file), target, "need", str(engine_output))
+        assert cell_b is not None, "engine cell failed or timed out"
+        assert engine_file.read_text() == engine_output.read_text(), (
+            "engine and interpreter produced different output -- an intern change hid a semantic change"
+        )
+        ratio = cell_b.interns / cell_a.interns if cell_a.interns else float("inf")
+        verdict = "engine WINS" if cell_b.interns < cell_a.interns else "engine does NOT win"
+        print(f"target={target}  interpreter_interns={cell_a.interns}  engine_interns={cell_b.interns}  "
+              f"ratio={ratio:.4f}  ({verdict}); output byte-identical")
+
+
+def _cell_text(measured: "CellMeasurement | None", metric: int) -> str:
     if measured is None:
         return "\\textemdash"
-    seconds, peak_gb = measured
-    return f"{seconds:.1f}" if metric == 0 else f"{peak_gb:.2f}"
+    if metric == 0:
+        return f"{measured.seconds:.1f}"
+    if metric == 1:
+        return f"{measured.peak_gb:.2f}"
+    return str(measured.interns)
 
 
-def _tabular(rows: "list[tuple[str, list[tuple[float, float] | None]]]", metric: int) -> str:
+def _tabular(rows: "list[tuple[str, list[CellMeasurement | None]]]", metric: int) -> str:
     columns = "l" + "r" * len(_SIZES)
     header = "Engine & " + " & ".join(f"island {size}" for size in _SIZES) + " \\\\"
     body = [
@@ -145,7 +211,7 @@ def _run_matrix() -> None:
 
     # Phase 2: the matrix, doubled across the lazy regimes. A regime-insensitive engine (no lazy islands)
     # is measured once and shared; only the lazy-bearing engines are re-measured per regime.
-    measured: "dict[tuple[str, int, str], tuple[float, float] | None]" = {}
+    measured: "dict[tuple[str, int, str], CellMeasurement | None]" = {}
     for _name, spec in engines:
         sensitive = _has_lazy_islands(spec)
         for target in _SIZES:
@@ -159,7 +225,7 @@ def _run_matrix() -> None:
 
     parts = ["% Generated by co_lambda._benchmark (co-lambda-benchmark). Do not edit.",
              "% Matrix doubled across lazy regimes; rows = engine version, columns = target island size.",
-             "% Each regime block: wall-clock time (s) above, peak resident memory (GB) below."]
+             "% Each regime block: wall-clock time (s), peak resident memory (GB), and interned nodes."]
     for regime in _REGIMES:
         rows = [(name, [measured[(spec, target, regime)] for target in _SIZES]) for name, spec in engines]
         label = "Call-by-need lazy islands (memoise)" if regime == "need" else \
@@ -169,6 +235,8 @@ def _run_matrix() -> None:
             _tabular(rows, metric=0),
             "\\par\\smallskip",
             _tabular(rows, metric=1),
+            "\\par\\smallskip",
+            _tabular(rows, metric=2),
             "\\par",
         ]
     _OUTPUT.write_text("\n".join(parts) + "\n")
@@ -176,10 +244,13 @@ def _run_matrix() -> None:
 
 
 def main() -> None:
-    """Console entry point. With ``--cell <engine> <target> <regime> [write_path]`` run a single matrix
-    cell in this worker process (used by the self-spawned subprocesses); otherwise run the full matrix."""
+    """Console entry point. ``--cell <engine> <target> <regime> [write_path]`` runs a single matrix cell
+    in this worker process (used by the self-spawned subprocesses); ``--two-cell <target>`` runs the
+    total-intern protocol (interpreter vs engine on the same source); otherwise run the full matrix."""
     if len(sys.argv) >= 5 and sys.argv[1] == "--cell":
         _cell(sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else None)
+    elif len(sys.argv) >= 3 and sys.argv[1] == "--two-cell":
+        _two_cell(int(sys.argv[2]))
     else:
         _run_matrix()
 
