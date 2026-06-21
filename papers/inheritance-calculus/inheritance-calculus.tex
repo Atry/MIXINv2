@@ -130,11 +130,22 @@
 \makeatletter
 \@ifundefined{ifInheritanceBody}{\newif\ifInheritanceBody\InheritanceBodytrue}{}
 \@ifundefined{ifInheritanceAppendix}{\newif\ifInheritanceAppendix\InheritanceAppendixtrue}{}
+% acmart writes \newlabel{tocindent<n>}{<dimen>} into the .aux to align the
+% table of contents. Those bare-dimen labels break hyperref's \newlabel when
+% another build imports this .aux via xr-hyper; the importing entries
+% (submission.tex, supplement.tex) drop them at import time through
+% xr-tocindent-filter.tex, so nothing is suppressed here at the source.
 \makeatother
 
 \begin{document}
 
 \title{A Calculus of Inheritance}
+% The appendix-only build (supplement.tex) is distributed as a standalone
+% artifact; mark it so it is not mistaken for the main paper, which carries
+% no subtitle.
+\ifInheritanceBody\else
+  \subtitle{Supplementary Material}
+\fi
 
 \author{Bo Yang}
 \affiliation{%
@@ -146,6 +157,11 @@
 \email{yang-bo@yang-bo.com}
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
+% The abstract, CCS concepts, and keywords are main-matter front matter: they
+% belong to the paper, not to the standalone appendix PDF (supplement.tex),
+% which sets \ifInheritanceBody false. Without this guard \maketitle typesets
+% them in the appendix-only build.
+\ifInheritanceBody
 \begin{abstract}
   Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. A record is a set of definitions; by unifying modules, classes, objects, methods, fields, and locals under this single record abstraction, the calculus models inheritance simply as set union of definitions, two definitions of the same name merging recursively rather than one overriding the other. A merge is always meaningful because every value is a record and observation is purely structural: the merged record simply answers queries with the union of what its parts provide, so there is no scalar leaf at which two values could conflict. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling (memoized fixpoint iteration as in tabled logic programming), even for cyclic inheritance hierarchies. This first-order, denotational, tabled semantics extends to the $\lambda$-calculus: $\lambda$-terms translate into a sublanguage of a lazy approximation of inheritance-calculus, the approximation that treats cyclic self-reference as divergent instead of iterating it to a fixpoint, and the translation is fully abstract, equating exactly the $\lambda$-terms with equal B\"ohm trees.
 
@@ -205,6 +221,7 @@
   first-order semantics,
   \texorpdfstring{$\lambda$-calculus}{lambda-calculus},
 \texorpdfstring{B\"ohm trees}{Bohm trees}, configuration languages}
+\fi % end \ifInheritanceBody (abstract, CCS concepts, keywords are main-matter only)
 
 \maketitle
 

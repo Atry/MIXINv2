@@ -1,0 +1,39 @@
+%%
+%% Importer-side filter for xr-hyper label import.
+%%
+%% acmart writes \newlabel{tocindent<n>}{<dimen>} into the .aux to record the
+%% table-of-contents indentation. The payload is a bare dimen, not the
+%% five-field structure hyperref's \newlabel expects, so when this document
+%% imports another build's .aux via xr-hyper (\externaldocument) the import
+%% reader feeds that dimen into hyperref's label machinery and the run dies
+%% with "Missing number, treated as zero" / "Illegal unit of measure".
+%%
+%% None of these documents reference a tocindent label, so we drop them at
+%% import time rather than asking every imported build to stop emitting them.
+%% \XR@test is xr-hyper's per-line .aux reader; the body below is copied
+%% verbatim from xr-hyper.sty (pinned via Nix) with a single guard added: a
+%% \newlabel whose name contains "tocindent" is ignored instead of stored.
+%% Load this between \usepackage{xr-hyper} and \externaldocument.
+%%
+\makeatletter
+\long\def\XR@test#1#2#3#4\XR@{%
+  \let\XR@tempa\@gobblefour
+  \ifx#1\newlabel
+    \in@{tocindent}{#2}%
+    \ifin@\else\let\XR@tempa\@firstoffour\fi
+  \else\ifx#1\XR@bibcite
+    \let\XR@tempa\@secondoffour
+  \else\ifx#1\@input
+     \let\XR@tempa\@thirdoffour
+  \else\ifx#1\new@label@record
+     \let\XR@tempa\@fourthoffour
+  \fi\fi\fi\fi
+   \XR@tempa
+    {\expandafter\protected@xdef\csname r@\XR@prefix#2\endcsname{\XR@addURL{#3}}}%
+    {\expandafter\bibcite\expandafter{\XR@prefix#2}{#3}}%
+    {\edef\XR@list{\XR@list\filename@area#2\relax}}%
+    {\edef\next{\noexpand\new@label@record{\XR@prefix#2}{\unexpanded{#3}{xr-url}{\XR@URL}}}%
+     \next}%
+  \ifeof\@inputcheck\expandafter\XR@aux
+  \else\expandafter\XR@read\fi}
+\makeatother
