@@ -131,6 +131,11 @@
 \makeatletter
 \@ifundefined{ifInheritanceBody}{\newif\ifInheritanceBody\InheritanceBodytrue}{}
 \@ifundefined{ifInheritanceAppendix}{\newif\ifInheritanceAppendix\InheritanceAppendixtrue}{}
+% Language switch for the reader-facing prose. Defaults to false (English), so the
+% existing pdfLaTeX entries are unaffected; preprint-zh.tex sets it true and adds
+% CJK support, still under pdfLaTeX. See the paper-writing skill (Bilingual
+% Translation) for the convention.
+\@ifundefined{ifInheritanceChinese}{\newif\ifInheritanceChinese\InheritanceChinesefalse}{}
 % acmart writes \newlabel{tocindent<n>}{<dimen>} into the .aux to align the
 % table of contents. Those bare-dimen labels break hyperref's \newlabel when
 % another build imports this .aux via xr-hyper; the importing entries
@@ -138,9 +143,53 @@
 % xr-tocindent-filter.tex, so nothing is suppressed here at the source.
 \makeatother
 
-\begin{document}
+% --- bilingual reader-facing prose ----------------------------------
+% The reader-facing body exists in two languages in this one file, selected by
+% \ifInheritanceChinese: English (default) and a Chinese translation. Both build
+% with pdfLaTeX, so the math renders identically. Block prose is guarded by
+% \ifInheritanceChinese <chinese> \else <english> \fi; inline switches (title,
+% captions, theorem notes interleaved with math) use \bilingual{<en>}{<zh>}.
+% Author-side notes stay Chinese % comments in both builds.
+\newcommand{\bilingual}[2]{#1}
+\ifInheritanceChinese
+  % CJKutf8 + the Arphic gbsn font render Chinese under pdfLaTeX (see
+  % modules/texlive.nix). The document is wrapped in a CJK* environment opened
+  % after \begin{document}; ASCII passes through, so English and math render as in
+  % the English build.
+  \usepackage{CJKutf8}
+  \setlength{\emergencystretch}{2em}
+  % Display the Chinese, but feed the English to hyperref's PDF strings, which
+  % cannot encode the CJK active characters.
+  \renewcommand{\bilingual}[2]{\texorpdfstring{#2}{#1}}
+\fi
 
-\title{A Calculus of Inheritance}
+\begin{document}
+% Open CJK* before \title so the Chinese in the title, abstract, and body is read
+% inside it; \proofname and the theorem-environment names are localized here
+% (their bytes must sit inside a CJK environment, and translating \thmname's
+% argument leaves the shared counter and numbering identical to English). Closed
+% before \end{document}.
+\ifInheritanceChinese
+  \begin{CJK*}{UTF8}{gbsn}
+  \renewcommand{\proofname}{证明}
+  \makeatletter
+  \newcommand{\inheritanceThmName}[1]{\@ifundefined{inheritance@thm@#1}{#1}{\csname inheritance@thm@#1\endcsname}}
+  \renewcommand{\thmname}[1]{\inheritanceThmName{#1}}
+  \@namedef{inheritance@thm@Theorem}{定理}
+  \@namedef{inheritance@thm@Lemma}{引理}
+  \@namedef{inheritance@thm@Corollary}{推论}
+  \@namedef{inheritance@thm@Proposition}{命题}
+  \@namedef{inheritance@thm@Conjecture}{猜想}
+  \@namedef{inheritance@thm@Definition}{定义}
+  \@namedef{inheritance@thm@Example}{例}
+  \@namedef{inheritance@thm@Remark}{注}
+  \@namedef{inheritance@thm@Notation}{记法}
+  \makeatother
+\fi
+
+% The optional short title feeds the running head and the PDF metadata; keep it
+% ASCII English in both builds, since those are typeset outside CJK*.
+\title[A Calculus of Inheritance]{\bilingual{A Calculus of Inheritance}{一种继承的演算}}
 % The appendix-only build (supplement.tex) is distributed as a standalone
 % artifact; mark it so it is not mistaken for the main paper, which carries
 % no subtitle.
@@ -227,9 +276,22 @@
 \maketitle
 
 \ifInheritanceBody
-\section{Introduction}
+\section{\bilingual{Introduction}{引言}}
 \label{sec:introduction}
 
+\ifInheritanceChinese
+诸如 Jsonnet~\cite{jsonnet}、Hydra~\cite{hydra2023}、CUE~\cite{cue2019}、Dhall~\cite{dhall2017}、Kustomize~\cite{kustomize} 与 JSON Patch~\cite{rfc6902-json-patch} 这样的配置语言,都提供了通过继承或合并来组合结构化数据的机制。
+
+在这些之中,Nix 生态系统~\cite{dolstra2010-nixos} 格外突出,无论是就其规模还是其设计的走向而言。它的软件包集合 \texttt{nixpkgs} 收录了超过 113{,}000 个软件包,%
+\footnote{
+  据 Repology~\cite{repology2025},这接近 Debian 或 Ubuntu 软件包数量的三倍,而贡献者数量相近。并非每个软件包都用到这里所描述的可扩展性机制,但同样的告诫也适用于其他发行版。
+}
+是现存最大的软件包集合之一。软件包的组合最初依赖一条线性化的 mixin 链,其中每一层都能看见它的前一层,%
+\footnote{
+  Nix overlay 通过一条线性化的 \texttt{self}/\texttt{super} 链来组合软件包集合,遵循 Bracha--Cook 的 mixin 模式~\cite{bracha1990-mixin-inheritance}:\texttt{self} 晚绑定到不动点结果,而 \texttt{super} 指向前一层。该机制是不对称且依赖顺序的。
+}
+但该生态系统已日益汇聚到一种对称的替代方案上:NixOS 模块系统~\cite{dolstra2010-nixos,nixosmodules},它通过对嵌套的属性集进行递归合并、配以自引用求值与延迟模块~\cite{nixosmodules} 来组合,而这种组合是可交换、幂等且可结合的。模块系统最初为系统配置而设计,如今已被用于用户环境~\cite{homemanager}、macOS 配置~\cite{nixdarwin}、磁盘分区~\cite{disko}、flake 结构~\cite{flakeparts}、开发者环境~\cite{devenv}、Kubernetes 集群~\cite{kubenix,nixidy},以及多语言软件包构建~\cite{dream2nix},而最后这一项正是 \texttt{nixpkgs} 那套不对称机制原本的领域。Nix 是一门带头等函数的函数式语言;然而一份典型的模块配置几乎完全由嵌套的属性集构成,函数只是偶尔作为模块系统的 DSL 语法出现,例如 \texttt{mkIf} 与 \texttt{mkMerge}。没有任何计算理论刻画了这一机制所展现的可扩展性。
+\else
 Configuration languages such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
 CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
 Kustomize~\cite{kustomize}, and JSON
@@ -281,6 +343,7 @@ occasionally as DSL syntax of the module system
 such as \texttt{mkIf} and \texttt{mkMerge}.
 No computational theory captures the extensibility that this
 mechanism exhibits.
+\fi
 
 The $\lambda$-calculus has no analogue for declarative
 programming. This gap matters because the two paradigms differ in
@@ -687,41 +750,140 @@ $\lambda$-calculus cannot macro-express the inheritance constructors,
 so inheritance-calculus is strictly more expressive in
 Felleisen's sense~\cite{felleisen1991-expressive-power}.
 
-\section{Syntax}
+\section{\bilingual{Syntax}{语法}}
 \label{sec:syntax}
 
+\ifInheritanceChinese
+设 $e$ 表示一个表达式,$s$ 表示一个元素列表,$c$ 表示一个元素,
+$q$ 表示一个限定符,$w$ 表示一个投影列表,$\ell$ 表示一个充当
+属性名的标签,$n$ 表示一个 de~Bruijn 索引。
+空串 $\varepsilon$ 是空元素列表。
+\else
 Let $e$ denote an expression, $s$ an element list, $c$ an element,
 $q$ a qualifier, $w$ a projection list, $\ell$ a label serving as a
 property name, and $n$ a de~Bruijn index.
 The empty string $\varepsilon$ is the empty element list.
+\fi
 
 \begin{align*}
   e \quad ::= \quad & \{\, s \,\}
-  && \text{(record)} \\[6pt]
+  && \text{\bilingual{(record)}{(记录)}} \\[6pt]
   s \quad ::= \quad & \varepsilon
-  && \text{(empty)} \\*
+  && \text{\bilingual{(empty)}{(空)}} \\*
   \mid\quad & c
-  && \text{(one element)} \\*
+  && \text{\bilingual{(one element)}{(一个元素)}} \\*
   \mid\quad & c,\; s
-  && \text{(element, then more)} \\[6pt]
+  && \text{\bilingual{(element, then more)}{(一个元素,然后更多)}} \\[6pt]
   c \quad ::= \quad & \ell \mapsto e
-  && \text{(definition)} \\*
+  && \text{\bilingual{(definition)}{(定义)}} \\*
   \mid\quad & q.\, w
-  && \text{(inheritance: qualifier and projections)} \\*
+  && \text{\bilingual{(inheritance: qualifier and projections)}{(继承:限定符与投影)}} \\*
   \mid\quad & q
-  && \text{(inheritance: qualifier only)} \\*
+  && \text{\bilingual{(inheritance: qualifier only)}{(继承:仅限定符)}} \\*
   \mid\quad & w
-  && \text{(inheritance: projections only)} \\[6pt]
+  && \text{\bilingual{(inheritance: projections only)}{(继承:仅投影)}} \\[6pt]
   q \quad ::= \quad & \qualifiedthis{\ell_{\mathrm{qualifier}}}
-  && \text{(named qualifier)} \\*
+  && \text{\bilingual{(named qualifier)}{(具名限定符)}} \\*
   \mid\quad & \dbi{n}
-  && \text{(indexed qualifier)} \\[6pt]
+  && \text{\bilingual{(indexed qualifier)}{(索引限定符)}} \\[6pt]
   w \quad ::= \quad & \ell_{\mathrm{projection}}
-  && \text{(one projection)} \\*
+  && \text{\bilingual{(one projection)}{(一个投影)}} \\*
   \mid\quad & \ell_{\mathrm{projection}}.\, w
-  && \text{(projection, then more)}
+  && \text{\bilingual{(projection, then more)}{(一个投影,然后更多)}}
 \end{align*}
 
+\ifInheritanceChinese
+一个表达式将一个元素列表 $s$ 包裹在花括号中,而每个元素
+$c$ 要么是一个定义 $\ell \mapsto e$,要么是一个继承源。
+语法把 $s$ 写成一个递归列表,但该列表被读作一个
+\emph{集合}:元素的顺序无关紧要,重复元素也没有任何作用,
+因此两个仅在重排或重复上有所不同的元素列表表示
+同一个表达式。由于表达式是集合,继承本身就是
+可交换、幂等且可结合的。
+图~\ref{fig:cheatsheet} 中的记录 $\mathrm{Complex} \mapsto \{ \mathrm{re} \mapsto \ldots,\;
+\mathrm{im} \mapsto \ldots,\; \mathrm{Plus} \mapsto \ldots \}$
+就是一个这样的多元素列表。
+
+$\ell \mapsto e$ 中的 $\mapsto$ 定义了一个名为 $\ell$、其值为
+$e$ 的属性;例如,图~\ref{fig:cheatsheet} 中的 $\mathrm{re} \mapsto \{\ldots\}$ 与
+$\mathrm{Complex} \mapsto \{\ldots\}$。
+MIXINv2 还通过一个
+外部函数接口(FFI)提供标量类型;继承演算就是
+去掉 FFI 之后所剩下的部分。
+本文中没有任何例子用到 FFI 或任何标量值。
+
+\paragraph{\bilingual{Inheritance}{继承}}
+一个继承通过一个限定符 $q$ 引用一个作用域;该限定符
+沿作用域层级向上导航,然后通过一个投影列表 $w$
+向下投影属性。限定符 $q$ 容许两种等价的
+记法:
+\begin{description}
+  \item[\bilingual{Named form}{具名形式}]
+    $\qualifiedthis{\ell_{\mathrm{qualifier}}}.\, w$,
+    类比于 Java 的 \texttt{Outer.this.field},其中 $w$ 是一个
+    投影列表。
+    每个 $\{\ldots\}$ 记录在它的外围作用域中都有一个标签;
+    $\ell_{\mathrm{qualifier}}$ 命名目标外围作用域。
+    例如,图~\ref{fig:cheatsheet} 中的
+    $\qualifiedthis{\mathrm{ComplexModule}}.\mathrm{Float}$
+    投影单个标签,而
+    $\qualifiedthis{\mathrm{Plus}}.\mathrm{other}.\mathrm{re}$ 展示了一个
+    多标签的投影列表 $w$。
+  \item[\bilingual{Indexed form}{索引形式}]
+    $\dbi{n}.\, w$,
+    其中 $n \ge 0$ 是一个 de~Bruijn 索引~\cite{debruijn1972-nameless-dummies}:
+    $n = 0$ 指向该引用的外围作用域,
+    而 $n$ 每加一,就向外移动一个作用域层级。
+\end{description}
+两种形式都先取出目标作用域,即所有继承都应用完毕之后
+那个完全继承后的记录,然后从中投影由投影列表 $w$
+所命名的属性。
+具名形式在解析期间脱糖为索引形式,
+如第~\ref{sec:mixin-trees} 节所述。
+
+每个 $\{\ldots\}$ 记录字面量都会创建一个新的作用域层级。%
+\footnote{
+  我们用\emph{记录}指那个语法构造,用\emph{作用域}指
+  它所创建的名字解析语境,用\emph{mixin} 指它
+  作为可组合单元的角色;在继承演算中这些是同一个实体的三种
+  视角。
+}
+该作用域包含那个 mixin 的所有属性,包括那些
+通过继承源继承而来的属性。
+例如,$\{a \mapsto \{\},\; b \mapsto \{\}\}$ 是单个 mixin,其作用域
+同时包含 $a$ 与 $b$;$\{r,\; a \mapsto \{\}\}$ 也是如此,其中 $r$
+是对一个包含 $b$ 的记录的引用。
+继承源不会创建额外的作用域层级。
+在图~\ref{fig:cheatsheet} 中,绑定到 $\mathrm{Plus}$ 的记录
+就是一个这样的作用域,它包含 $\mathrm{other}$、$\mathrm{\_sumReCall}$、
+$\mathrm{\_sumRe}$ 以及在其内部直接定义的其他属性。
+
+\begin{itemize}
+  \item $\qualifiedthis{\mathrm{Foo}}$(等价地,$\dbi{n}$,其中
+    $\mathrm{Foo}$ 在外围作用域之上 $n$ 步)
+    取出名为 $\mathrm{Foo}$ 的记录。
+  \item $\qualifiedthis{\mathrm{Foo}}.\ell$,或等价地,$\dbi{n}.\ell$,
+    从 $\mathrm{Foo}$ 投影属性 $\ell$。
+  \item 一个仅限定符的源 $q$(没有投影列表)继承
+    整个外围作用域,这可能产生一棵无限深的
+    树;图~\ref{fig:cheatsheet} 中裸的 $\mathrm{BuiltIns}$、$\mathrm{Math}$ 与
+    $\mathrm{Operator}$ 源就是此类
+    仅限定符的导入。
+\end{itemize}
+
+当限定符无歧义时,它可以省略:这种简写是
+一个裸的投影列表 $w$。它的首个投影针对
+那个在其记录字面量中直接定义首个投影标签的
+最内层外围作用域来解析,而该源脱糖为
+对应的索引形式。
+例如,图~\ref{fig:cheatsheet} 中的 $\mathrm{\_sumReCall}.\mathrm{result}$、
+$\mathrm{a}.\mathrm{Plus}$ 与 $\mathrm{\_totalCall}.\mathrm{result}$
+就是此类省略限定符的简写。
+由于这一搜索只检查记录字面量的定义,该
+简写只能访问在记录字面量中定义的属性,而不能访问
+那些通过继承而继承来的属性;对于继承来的属性或要绕过变量遮蔽,
+都需要两种限定形式之一。
+\else
 An expression encloses an element list $s$ in braces, and each element
 $c$ is either a definition $\ell \mapsto e$ or an inheritance source.
 The grammar writes $s$ as a recursive list, but this list is read as a
@@ -811,10 +973,43 @@ Because this search inspects only record-literal definitions, the
 shorthand can only access properties defined in record literals, not
 those inherited through inheritance; one of the two qualified forms is
 required for inherited properties or to bypass variable shadowing.
+\fi
 
-\section{Mixin Trees}
+\section{\bilingual{Mixin Trees}{Mixin 树}}
 \label{sec:mixin-trees}
 
+\ifInheritanceChinese
+在面向对象编程中,一个
+\emph{mixin}~\cite{bracha1990-mixin-inheritance} 是一段行为片段;
+它可以通过继承组合到一个类上。
+继承演算只有一个抽象,即
+\emph{深可合并 mixin}(deep-mergeable mixin),其成员是
+\emph{深可合并属性}(deep-mergeable properties)。%
+\footnote{
+  在不引起歧义之处,我们简写为``mixin''与``property''。
+  正如图~\ref{fig:cheatsheet} 所示,二者各自推广了它们在先前
+  工作中的同名物:Bracha--Cook 的 mixin~\cite{bracha1990-mixin-inheritance} 与
+  面向对象语言的属性。
+}
+它可以同时充当模块、类、对象、方法、字段以及
+局部绑定,正如图~\ref{fig:cheatsheet} 所展示的那样,因为
+没有不透明的方法:每个值都是
+一个透明的记录,而继承总是对子树执行一次深度
+合并。
+我们把所得到的结构称为一棵\emph{mixin 树}。
+它的语义是纯\emph{观察式}(observational)的:给定一个
+继承演算程序,我们查询某个
+标签 $\ell$ 是否是某个给定位置 $p$ 处的一个属性。
+
+本节通过六个相互递归的
+路径上的一阶函数来定义语义。
+这六个函数把面向对象的概念映射为
+集合论的运算:$\properties$ 与 $\supers$
+推广成员查找与继承链,
+$\overrides$ 与 $\bases$ 捕捉方法覆盖与
+基类,而 $\resolve$ 与 $\this$ 处理名字
+解析与限定 $\this$ 解析。
+\else
 In object-oriented programming, a
 \emph{mixin}~\cite{bracha1990-mixin-inheritance} is a fragment of behavior
 that can be composed onto a class via inheritance.
@@ -845,11 +1040,28 @@ generalize member lookup and inheritance chains,
 $\overrides$ and $\bases$ capture method override and
 base classes, and $\resolve$ and $\this$ handle name
 resolution and qualified $\this$ resolution.
+\fi
 
-\subsection{Definitions}
+\subsection{\bilingual{Definitions}{定义}}
 \label{sec:definitions}
 
-\paragraph{Path}
+\paragraph{\bilingual{Path}{路径}}
+\ifInheritanceChinese
+一个 $\Path$ 是一个标签序列
+$(\ell_1, \ell_2, \ldots, \ell_n)$;它标识树中的一个
+位置。
+我们用 $p$ 表示一条路径。
+\emph{根路径}是空序列 $()$。
+给定一条路径 $p$ 与一个标签 $\ell$,
+$p \snoc \ell$ 是序列 $p$ 用 $\ell$ 扩展后的结果。
+对于非根路径,父路径 $\init(p)$ 是 $p$ 去掉
+其最后一个元素后的结果,
+而末尾标签 $\last(p)$ 是 $p$ 的最后一个元素。
+为方便起见,当路径在上下文中清楚时,我们有时
+用 $\ell$ 表示 $\last(p)$。
+有了路径,我们就能陈述 AST 在
+每条路径处提供什么。
+\else
 A $\Path$ is a sequence of labels
 $(\ell_1, \ell_2, \ldots, \ell_n)$ that identifies a position in
 the tree.
@@ -864,8 +1076,21 @@ For convenience, we sometimes write $\ell$ for $\last(p)$
 when the path is clear from context.
 With paths in hand, we can state what the AST provides
 at each path.
+\fi
 
 \paragraph{AST}
+\ifInheritanceChinese
+来自第~\ref{sec:syntax} 节的一个表达式 $e$ 被解析成一棵 AST。
+我们以两种等价的风格给出 AST:首先是一个固定其形状的
+代数数据类型,然后是两个派生的投影;本节其余部分的
+语义函数消费它们。
+
+\emph{代数数据类型风格}把规范化后的 AST 给出为一个由节点项
+构成的纯语法。一个节点 $N$ 把一个定义列表 $d$ 与一个
+引用列表 $b$ 配成对;每个定义把一个标签绑定到一个子节点,而
+每个引用是一个 de~Bruijn 索引 $n$ 连同一个投影列表
+$w$:
+\else
 An expression $e$ from Section~\ref{sec:syntax} is parsed into an AST.
 We give the AST in two equivalent styles: first an algebraic
 datatype that fixes its shape, then two derived projections that
@@ -876,22 +1101,37 @@ grammar of node terms. A node $N$ pairs a definition list $d$ with a
 reference list $b$; each definition binds a label to a child node, and
 each reference is a de~Bruijn index $n$ together with a projection list
 $w$:
+\fi
 \begin{align*}
   N \quad ::= \quad & \langle\, d \,;\; b \,\rangle
-  && \text{(node: definitions and references)} \\[6pt]
+  && \text{\bilingual{(node: definitions and references)}{(节点:定义与引用)}} \\[6pt]
   d \quad ::= \quad & \varepsilon
-  && \text{(no definitions)} \\*
+  && \text{\bilingual{(no definitions)}{(没有定义)}} \\*
   \mid\quad & (\ell \mapsto N),\; d
-  && \text{(definition, then more)} \\[6pt]
+  && \text{\bilingual{(definition, then more)}{(一个定义,然后更多)}} \\[6pt]
   b \quad ::= \quad & \varepsilon
-  && \text{(no references)} \\*
+  && \text{\bilingual{(no references)}{(没有引用)}} \\*
   \mid\quad & (n,\; w),\; b
-  && \text{(reference, then more)} \\[6pt]
+  && \text{\bilingual{(reference, then more)}{(一个引用,然后更多)}} \\[6pt]
   w \quad ::= \quad & \varepsilon
-  && \text{(no projections)} \\*
+  && \text{\bilingual{(no projections)}{(没有投影)}} \\*
   \mid\quad & \ell.\, w
-  && \text{(projection, then more)}
+  && \text{\bilingual{(projection, then more)}{(一个投影,然后更多)}}
 \end{align*}
+\ifInheritanceChinese
+与表达式的元素列表一样,定义列表 $d$ 是
+递归写成的,但读取时不计重排与重复:它
+表示从其各绑定收集而来的有限偏映射 $\defs : \Label \rightharpoonup \Node$;该映射
+对每个被定义的标签恰有一条目,而
+$N.\defs(\ell)$ 是绑定到 $\ell$ 的子节点(当 $\ell$
+未绑定时无定义)。同样地,引用列表 $b$ 表示由继承源
+$(n,\; w)$ 构成的集合
+$\refs \subseteq \mathbb{N} \times \Label^{*}$,读取时不计重排与重复。由于继承
+是幂等的且记录是集合,这些商不丢失任何
+信息。
+该语法只固定形状;一个节点项是良构的,当它
+满足:
+\else
 Like the element list of an expression, the definition list $d$ is
 written recursively but read up to reordering and duplication: it
 denotes the finite partial map $\defs : \Label \rightharpoonup \Node$
@@ -904,13 +1144,31 @@ is idempotent and a record is a set, these quotients lose no
 information.
 The grammar fixes only the shape; a node term is well-formed when it
 satisfies:
+\fi
 \begin{enumerate}
-  \item Each source $(n,\; w)$ at path $p$ satisfies $n < |p|$.
-  \item A source $(n,\; \varepsilon)$ with empty $w$ is the
+  \item \ifInheritanceChinese 路径 $p$ 处的每个源 $(n,\; w)$ 满足 $n < |p|$。\else Each source $(n,\; w)$ at path $p$ satisfies $n < |p|$.\fi
+  \item \ifInheritanceChinese 一个 $w$ 为空的源 $(n,\; \varepsilon)$ 是
+    一个仅限定符源的规范化;第~\ref{sec:syntax} 节的表达式语法
+    没有 $w$ 为空的仅投影源。\else A source $(n,\; \varepsilon)$ with empty $w$ is the
     normalization of a qualifier-only source; the expression grammar of
     Section~\ref{sec:syntax} has no projection-only source with empty
-    $w$.
-\end{enumerate} The node grammar is read \emph{coinductively}: through
+    $w$.\fi
+\end{enumerate}
+\ifInheritanceChinese
+该节点语法被\emph{余归纳地}(coinductively)读取:通过
+继承,一个子节点可能展开成一棵无界乃至
+无限深的树,所以这些产生式描述的是最大不动点,
+而非有限生成的最小不动点。整个程序是单个
+全局节点 $\ASTroot$,即顶层记录的规范化 AST。
+
+\emph{余代数风格}(coalgebraic style)用两个由路径 $p$ 索引的
+原始函数替换全局树,每次观察一个节点。它们通过沿 $p$
+导航从 $\ASTroot$ 派生而来:
+从 $\ASTroot$ 出发,在 $p$ 的每个标签处跟随 $\defs$ 映射
+到达 $p$ 处的节点,而这两个投影读出其
+字段。
+\else
+The node grammar is read \emph{coinductively}: through
 inheritance a child node may expand to a tree of unbounded or even
 infinite depth, so the productions describe the greatest fixed point,
 not a finitely generated least one. The whole program is a single
@@ -922,6 +1180,7 @@ time. They are derived from $\ASTroot$ by navigating along $p$:
 starting at $\ASTroot$ and following the $\defs$ map at each label
 of $p$ reaches the node at $p$, and the two projections read off its
 fields.
+\fi
 \begin{align}
   \defines(p) &= \operatorname{dom}\bigl(
     \ASTroot.\defs(\ell_1).\defs(\ell_2)\cdots\defs(\ell_n).\defs
@@ -930,6 +1189,51 @@ fields.
   \inherits(p) &= \ASTroot.\defs(\ell_1).\defs(\ell_2)\cdots\defs(\ell_n).\refs
   \label{eq:inherits}
 \end{align}
+\ifInheritanceChinese
+其中 $p = (\ell_1, \ldots, \ell_n)$,从而 $\defines(p)$ 是
+那些使得 $p$ 包含一个定义 $\ell \mapsto e$ 的标签 $\ell$ 的集合,
+而 $\inherits(p)$ 是 $p$ 处的引用对
+$(n,\; w)$ 的集合。
+在根路径 $()$ 处导航为空,给出
+$\defines(()) = \operatorname{dom}(\ASTroot.\defs)$ 以及
+$\inherits(()) = \ASTroot.\refs$。
+下文的语义函数只使用 $\defines$ 与 $\inherits$,
+所以任一风格皆可取作原始。
+
+在解析期间,三种语法形式全都被解析为
+de~Bruijn 索引对 $(n,\; w)$。
+\emph{索引形式} $\dbi{n}.\, w$
+已经直接携带 de~Bruijn 索引 $n$;
+不需要解析。
+路径 $p$ 处的一个\emph{具名引用} $\qualifiedthis{\ell_{\mathrm{qualifier}}}.\, w$
+通过在 $p$ 的标签中找到
+$\ell_{\mathrm{qualifier}}$ 的最后一次出现来解析。
+设 $p_{\mathrm{target}}$ 为 $p$ 的前缀,直到并包括
+那次出现。
+de~Bruijn 索引为 $n = |p| - |p_{\mathrm{target}}| - 1$,
+而投影列表 $w$ 原样保留。
+路径 $p$ 处一个首投影为 $\ell$ 的\emph{词法引用} $w$
+通过找到 $p$ 的最近前缀 $p'$
+使得 $\ell \in \defines(p')$ 来解析。
+de~Bruijn 索引为 $n = |p| - |p'| - 1$,而投影列表
+$w$ 原样保留。
+三种形式都产生同一种表示;下文的语义函数
+只在 de~Bruijn 索引对上操作。
+
+AST 是纯数据,由程序文本固定,而不是
+运行期状态的函数。%
+\footnote{
+  一个实现可以非严格地解析 AST:$\ASTroot$ 不必
+  预先被完全物化。每个 $\Node$ 把它的源
+  文本保持为未解析,直到某个查询观察它,从而读取
+  $\defines(p)$ 或 $\inherits(p)$ 时按需强制
+  沿 $p$ 的子树。这只影响解析何时发生,而不影响其结果,
+  因为 AST 是引用透明的。
+}
+有了两个原始函数 $\defines$ 与 $\inherits$,我们现在可以回答
+本节开头提出的那个问题:
+某个标签 $\ell$ 是否是某个给定位置 $p$ 处的一个属性。
+\else
 for $p = (\ell_1, \ldots, \ell_n)$, so that $\defines(p)$ is the set
 of labels $\ell$ for which $p$ contains a definition $\ell \mapsto e$,
 and $\inherits(p)$ is the set of reference pairs
@@ -973,10 +1277,16 @@ of runtime state.%
 Given the two primitives $\defines$ and $\inherits$, we can now answer
 the question posed at the beginning of this section:
 whether a label $\ell$ is a property at a given position $p$.
+\fi
 
-\paragraph{Properties}
+\paragraph{\bilingual{Properties}{属性}}
+\ifInheritanceChinese
+一条路径的属性是它自身的属性,连同
+从所有 supers 继承而来的属性:
+\else
 The properties of a path are its own properties together with
 those inherited from all supers:
+\fi
 \begin{equation}\label{eq:properties}
   \properties(p) =
   \bigl\{\; \ell \;\big|\;
@@ -984,11 +1294,28 @@ those inherited from all supers:
     \ell \in \defines(p_{\mathrm{override}})
   \;\bigr\}
 \end{equation}
+\ifInheritanceChinese
+本节其余部分定义 $\supers$,
+即传递的继承闭包,
+及其依赖项。
+\else
 The remainder of this section defines $\supers$,
 the transitive inheritance closure,
 and its dependencies.
+\fi
 
 \paragraph{Supers}
+\ifInheritanceChinese
+直观上,$\supers(p)$ 收集 $p$ 所继承的每一条路径:
+$p$ 自身的 $\overrides$,
+加上 $p$ 的每个
+直接基 $\bases$ 的 $\overrides$,如此传递下去。
+每个结果与到达它所经由的继承点语境
+$\init(p_{\mathrm{base}})$ 配成对。
+我们下文定义的限定 $\this$ 解析需要这一来源,
+以便把一个定义点 mixin 映射回
+那些纳入它的继承点路径:
+\else
 Intuitively, $\supers(p)$ collects every path that $p$ inherits from:
 the $\overrides$ of $p$ itself,
 plus the $\overrides$ of each
@@ -998,6 +1325,7 @@ $\init(p_{\mathrm{base}})$ through which it is reached.
 This provenance is needed by qualified $\this$ resolution,
 which we define below, to map a definition-site mixin back to
 the inheritance-site paths that incorporate it:
+\fi
 \begin{equation}\label{eq:supers}
   \supers(p) =
   \bigl\{\; (\init(p_{\mathrm{base}}),\; p_{\mathrm{override}}) \;\big|\;
@@ -1005,12 +1333,33 @@ the inheritance-site paths that incorporate it:
     p_{\mathrm{override}} \in \overrides(p_{\mathrm{base}})
   \;\bigr\}
 \end{equation}
+\ifInheritanceChinese
+这里 $\bases^*$ 表示 $\bases$ 的自反传递闭包。
+$\supers$ 公式依赖两个函数:
+$\overrides$ 与单跳引用目标 $\bases$。
+我们先定义 $\overrides$。
+\else
 Here $\bases^*$ denotes the reflexive-transitive closure of $\bases$.
 The $\supers$ formula depends on two functions:
 $\overrides$ and the one-hop reference targets $\bases$.
 We define $\overrides$ first.
+\fi
 
 \paragraph{Overrides}
+\ifInheritanceChinese
+由于一个 mixin 可以扮演一个方法的角色,
+一个子作用域应当能够
+通过父作用域的标签找到它,即便该子作用域
+并不重新定义那个标签;这就是方法覆盖。
+具体地说,继承可以在同一个作用域层级引入同一标签的
+多个定义;
+$\overrides(p)$ 收集所有与 $p$ 共享
+\emph{相同身份}(same identity)的这类路径,从而使它们的定义
+相互合并而非相互遮蔽,以实现深度合并。
+$p$ 的 overrides 包含 $p$ 自身
+以及对于 $\init(p)$ 的每个
+也定义 $\last(p)$ 的分支 $p_{\mathrm{branch}}$,$p_{\mathrm{branch}} \snoc \last(p)$:
+\else
 Since a mixin can play the role of a method,
 a child scope should be
 able to find it through the parent's label even if the child
@@ -1023,6 +1372,7 @@ merge rather than shadow each other, enabling deep merge.
 The overrides of $p$ include $p$ itself
 and $p_{\mathrm{branch}} \snoc \last(p)$ for every
 branch $p_{\mathrm{branch}}$ of $\init(p)$ that also defines $\last(p)$:
+\fi
 \begin{equation}\label{eq:overrides}
   \overrides(p) =
   \begin{cases}
@@ -1038,14 +1388,26 @@ branch $p_{\mathrm{branch}}$ of $\init(p)$ that also defines $\last(p)$:
     & \text{if } p \neq ()
   \end{cases}
 \end{equation}
+\ifInheritanceChinese
+还剩下要定义 $\bases$,即 $\supers$ 的另一个依赖项。
+\else
 It remains to define $\bases$, the other dependency of $\supers$.
+\fi
 
 \paragraph{Bases}
+\ifInheritanceChinese
+直观上,$\bases(p)$ 是 $p$ 通过引用直接
+继承的那些路径,类比于面向对象语言中的直接
+基类。
+具体地说,$\bases$ 把 $p$ 的 $\overrides$ 中的每个引用
+解析一步:
+\else
 Intuitively, $\bases(p)$ are the paths that $p$ directly
 inherits from via references, analogous to the direct base
 classes in object-oriented languages.
 Concretely, $\bases$ resolves every reference in
 $p$'s $\overrides$ one step:
+\fi
 \begin{equation}\label{eq:bases}
   \bases(p) =
   \left\{\; p_{\mathrm{target}} \;\middle|\;
@@ -1056,9 +1418,28 @@ $p$'s $\overrides$ one step:
     \end{aligned}
   \right\}
 \end{equation}
+\ifInheritanceChinese
+$\bases$ 公式调用引用解析函数 $\resolve$,我们接下来定义它。
+\else
 The $\bases$ formula calls the reference resolution function $\resolve$, which we define next.
+\fi
 
-\paragraph{Reference resolution}
+\paragraph{\bilingual{Reference resolution}{引用解析}}
+\ifInheritanceChinese
+直观上,$\resolve$ 把一个语法引用转化为它在
+完全继承后的树中所指向的路径集合。
+它取一条继承点路径 $p_{\mathrm{site}}$、
+一条定义点路径 $p_{\mathrm{def}}$、
+一个 de~Bruijn 索引 $n$,
+以及投影列表 $w$。
+解析分两个阶段进行:
+$\this$ 从外围作用域 $\init(p_{\mathrm{def}})$ 出发
+执行 $n$ 次向上步进,
+把定义点路径映射为继承点路径;
+然后追加
+$w = \ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$
+的向下投影:
+\else
 Intuitively, $\resolve$ turns a syntactic reference into the
 set of paths it points to in the fully inherited tree.
 It takes an inheritance-site path $p_{\mathrm{site}}$,
@@ -1072,6 +1453,7 @@ mapping the definition-site path to inheritance-site paths;
 then the downward projections of
 $w = \ell_{\mathrm{projection},1}\ldots\ell_{\mathrm{projection},k}$
 are appended:
+\fi
 \begin{multline}\label{eq:resolve}
   \resolve(p_{\mathrm{site}},\; p_{\mathrm{def}},\; n,\; w)
   = \\
@@ -1082,11 +1464,27 @@ are appended:
     \this(\{p_{\mathrm{site}}\},\; \init(p_{\mathrm{def}}),\; n)
   \;\bigr\}
 \end{multline}
+\ifInheritanceChinese
+$\resolve$ 返回一个集合而非单条路径,因为
+$\this$ 可能解析到多个目标。
+我们现在定义 $\this$。
+\else
 $\resolve$ returns a set rather than a single path because
 $\this$ may resolve to multiple targets.
 We now define $\this$.
+\fi
 
-\paragraph{Qualified $\this$ resolution}
+\paragraph{\bilingual{Qualified $\this$ resolution}{限定 $\this$ 解析}}
+\ifInheritanceChinese
+$\this$ 回答这个问题:
+``在完全继承后的树中,定义点作用域
+$p_{\mathrm{def}}$ 究竟住在哪里?''
+每一步在前沿 $S$ 中每条路径的 supers 当中,
+找出那些其 override 分量匹配
+$p_{\mathrm{def}}$ 的,并把对应的
+继承点路径收集为新的前沿。
+经过 $n$ 步后,前沿就包含答案:
+\else
 $\this$ answers the question:
 ``in the fully inherited tree, where does
 the definition-site scope $p_{\mathrm{def}}$ actually live?''
@@ -1095,6 +1493,7 @@ frontier $S$, those whose override component matches
 $p_{\mathrm{def}}$, and collects the corresponding
 inheritance-site paths as the new frontier.
 After $n$ steps the frontier contains the answer:
+\fi
 {\small
   \begin{equation}\label{eq:this}
     \this(S,\; p_{\mathrm{def}},\; n) =
@@ -1115,6 +1514,32 @@ After $n$ steps the frontier contains the answer:
       & \text{if } n > 0
     \end{cases}
 \end{equation}}%
+\ifInheritanceChinese
+每一步 $\init$ 把 $p_{\mathrm{def}}$ 缩短一个标签,
+而 $n$ 减少一。
+由于 $n$ 是一个非负整数,该递归终止。%
+\footnote{
+  若在某一步不存在匹配对
+  $(p_{\mathrm{site}},\; p_{\mathrm{override}})$,
+  则前沿变为空集,而
+  $\resolve$ 返回 $\varnothing$:该引用没有
+  目标;不继承任何属性。
+  这是无类型演算最为自洽的
+  语义。
+  MIXINv2\anon[~(补充材料)]{~\cite{mixin2025}} 更为严格:它的解析器拒绝
+  前沿变为空的引用,在编译期报告一个
+  解析错误。
+}
+
+这就完成了计算 $\properties(p)$ 所需的整条定义链。
+
+附录~\ref{app:evaluation-trace} 把这六个方程逐步
+应用到一个突出 $\resolve$ 集合值本质的例子上;
+在那里前沿 $S$ 携带多个目标,而
+$\this$ 同时解析到它们,而非如 Scala~3 与 NixOS 模块
+这类面向对象语言中所见的单个目标
+(附录~\ref{app:scala-multi-target})。
+\else
 At each step $\init$ shortens $p_{\mathrm{def}}$ by one label
 and $n$ decreases by one.
 Since $n$ is a nonnegative integer, the recursion terminates.%
@@ -1139,8 +1564,66 @@ where the frontier $S$ carries multiple targets that
 $\this$ resolves to simultaneously rather than the single target
 seen in object-oriented languages such as Scala~3 and NixOS modules
 (Appendix~\ref{app:scala-multi-target}).
+\fi
 
-\subsection{Recursive Evaluation}
+\subsection{\bilingual{Recursive Evaluation}{递归求值}}
+\ifInheritanceChinese
+六个方程~(\ref{eq:properties})--(\ref{eq:this})
+通过相互递归定义 $\properties(p)$:
+$\ell \in \properties(p)$ 成立,当且仅当它能
+由这些函数的有限次应用链
+确立。
+这些函数\emph{就是}解释器:观察者
+通过选择检查哪条路径来驱动计算,
+而每个方程按需展开。
+由于这些函数是纯的且与顺序无关,
+(\ref{eq:supers}) 中的自反传递闭包 $\bases^*$
+可以按广度优先或
+深度优先来探索而不影响结果;
+路径可以被 intern,从而结构相等
+退化为指针相等;
+而这六个函数构成一个以路径为键的可记忆化
+动态规划递推式。
+
+在操作上,求值使用\emph{tabled
+求值}~\cite{tamaki1986-tabled-resolution}:
+每个查询在首次遇到时被记忆化,而
+重入调用,即对应于依赖图中的环的调用,
+返回当前的累加器而非发散。
+在指称上,六个方程定义了一个单调的
+直接后承
+算子~$T_P$~\cite{vanemden1976-predicate-logic-semantics};
+它的右端只使用 $\cup$、$\in$、相等以及
+正向集合概括,没有否定、集合
+差或补。
+由 Knaster--Tarski
+定理~\cite{tarski1955-lattice-fixpoint-theorem},$T_P$ 有一个唯一的
+最小不动点 $\mathrm{lfp}(T_P)$;它充当
+指称语义。
+这一指称刻画把上文引入的观察式
+语义形式化:观察者驱动的查询
+由同一组不动点方程计算。
+求值是否终止取决于程序。
+回忆 $\supers$(方程~\ref{eq:supers})取
+$\bases$(方程~\ref{eq:bases})的自反传递
+闭包;所得的图就是
+\emph{继承层级}(inheritance hierarchy)。
+由于每个继承源在 mixin 树中占据一个不同的节点,
+这一层级可从
+树结构中直接读出。
+继承层级无环的程序在
+一趟内终止。
+当层级包含环时,
+当每个查询有有限的答案域时求值
+终止:有限格上的升链条件保证
+收敛~\cite{bancilhon1986-recursive-query-strategies},
+如同在 Datalog~\cite{vanemden1976-predicate-logic-semantics} 中那样。
+当层级无限时,求值可能
+发散;这是图灵完备性所固有的。
+附录~\ref{app:well-definedness} 证明 tabled
+求值绝不返回错误答案,并把
+这些终止条件形式化。
+\else
 The six equations~(\ref{eq:properties})--(\ref{eq:this})
 define $\properties(p)$ by mutual recursion:
 $\ell \in \properties(p)$ holds if and only if it can
@@ -1197,6 +1680,7 @@ diverge; this is inherent to Turing completeness.
 Appendix~\ref{app:well-definedness} proves that tabled
 evaluation never returns a wrong answer and formalizes
 these termination conditions.
+\fi
 
 %% === 审稿人备忘：六个方程的渐近复杂度分析 ===
 %%
@@ -1273,10 +1757,33 @@ these termination conditions.
 %% 复杂度是固有的，与引擎无关。
 %% ================================================================
 
-\section{Embedding the \texorpdfstring{$\lambda$}{λ}-Calculus}
+\section{\bilingual{Embedding the \texorpdfstring{$\lambda$}{λ}-Calculus}{嵌入 \texorpdfstring{$\lambda$}{λ}-演算}}
 \label{sec:translation}
 \label{sec:forward-translation}
 
+\ifInheritanceChinese
+以下翻译将 A-正规形式（ANF）~\cite{flanagan1993-essence-compiling-continuations}的 $\lambda$-演算映射到继承演算。
+在 ANF 中,每个中间结果都绑定到一个名字,且每个表达式至多包含一次应用。
+我们用一个\emph{值绑定} $\mathbf{let}\; x = V \;\mathbf{in}\; M$ 来扩展标准 ANF 语法,该值绑定将一个并非应用结果的值命名:%
+\footnote{
+  标准 ANF 允许将值内联用作操作数;值绑定产生式为其命名,使得翻译后程序的每个子表达式都可通过词法引用访问(附录~\ref{app:expressiveness})。
+}
+\[
+  \begin{array}{r@{\;::=\;}l}
+    M & \mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M
+    \mid \mathbf{let}\; x = V \;\mathbf{in}\; M
+    \mid V_1\; V_2
+    \mid V \\
+    V & x \mid \lambda x.\, M
+  \end{array}
+\]
+每个 $\lambda$-项都可以通过对中间结果命名的方式机械地转换为 ANF。\footnote{%
+  这可以选择性地包括对值的命名;由于每个 ANF 项也是一个 $\lambda$-项,ANF 既不是 $\lambda$-演算的限制,也不是其扩展。
+}
+ANF 结构与继承演算天然吻合:每个 $\mathbf{let}$-绑定成为一个命名的记录属性,每次应用则通过 $.\mathrm{result}$ 包装并投影。
+
+设 $\mathcal{T}$ 为翻译函数。每个 $\lambda$-抽象在翻译后的 mixin 树中引入一个作用域层级。
+\else
 The following translation maps the $\lambda$-calculus in
 A-normal form (ANF)~\cite{flanagan1993-essence-compiling-continuations} to inheritance-calculus.
 In ANF, every intermediate result is bound to a name and each
@@ -1313,14 +1820,15 @@ $.\mathrm{result}$.
 Let $\mathcal{T}$ denote the translation function.
 Each $\lambda$-abstraction introduces one scope level
 in the translated mixin tree.
+\fi
 
 \medskip
 \begin{center}
   \small
   \begin{tabular}{l@{\quad$\longrightarrow$\quad}l}
-    $x$ \text{\scriptsize($\lambda$-bound, index $n'$)} &
+    $x$ \text{\scriptsize(\bilingual{$\lambda$-bound, index $n'$}{$\lambda$-绑定,索引 $n'$})} &
     $\dbi{n'}.\mathrm{argument}$ \\[4pt]
-    $x$ \text{\scriptsize(let-bound)} &
+    $x$ \text{\scriptsize(\bilingual{let-bound}{let-绑定})} &
     $x.\mathrm{result}$ \\[4pt]
     $\lambda x.\, M$ &
     $\{\mathrm{argument} \mapsto \{\},\;
@@ -1334,7 +1842,7 @@ in the translated mixin tree.
     \;\mathbf{in}\; M$ &
     $\{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
     \mathrm{result} \mapsto \mathcal{T}(M)\}$ \\[4pt]
-    $V_1\; V_2$ \text{\scriptsize(tail call)} &
+    $V_1\; V_2$ \text{\scriptsize(\bilingual{tail call}{尾调用})} &
     $\{\mathrm{tailCall} \mapsto \{\mathcal{T}(V_1),\;
       \mathrm{argument} \mapsto \mathcal{T}(V_2)\},$ \\
     & $\;\mathrm{result} \mapsto \{\mathrm{tailCall}.\mathrm{result}\}\}$
@@ -1342,6 +1850,19 @@ in the translated mixin tree.
 \end{center}
 \medskip
 
+\ifInheritanceChinese
+带 de~Bruijn 索引 $n$ 的 $\lambda$-绑定变量 $x$(即从引用处到其绑定者之间包围的 $\lambda$ 数目)翻译为 $\dbi{n'}.\mathrm{argument}$,该引用到达绑定 $x$ 的抽象并访问其 $\mathrm{argument}$ 槽。%
+\footnote{\label{fn:debruijn-adjust}在 $\lambda$-演算中,de~Bruijn 索引只计数 $\lambda$-抽象。在继承演算中,de~Bruijn 索引计数所有包围的作用域层级,包括由 $\mathbf{let}$-绑定和尾调用引入的层级。因此翻译会调整该索引:若一个 $\lambda$-绑定变量跨越 $k$ 个中间的 $\mathbf{let}$-绑定或尾调用作用域(即 $k$ 计数从变量出现处到其绑定的 $\lambda$ 在 ANF 语法树中路径上的 $\mathbf{let}$- 和尾调用构造数),则其继承演算索引为 $n' = n + k$,而非 $n$。let-绑定变量不受影响,因为它们使用词法引用(如 $x.\mathrm{result}$)而非 de~Bruijn 索引。我们假设翻译引入的合成标签($\mathrm{argument}$、$\mathrm{result}$、$\mathrm{tailCall}$)与用户定义的标签(如 let-绑定名 $x$)来自不相交的字母表,因此不会发生冲突。}
+let-绑定变量 $x$ 翻译为词法引用 $x.\mathrm{result}$,从封闭记录中的兄弟属性 $x$ 投影应用结果。
+
+抽象 $\lambda x.\, M$ 翻译为具有自身属性 $\{\mathrm{argument}, \mathrm{result}\}$ 的记录;我们称之为\emph{抽象形状}。在应用 $\mathbf{let}$-绑定规则中,名字 $x$ 绑定到继承记录 $\{\mathcal{T}(V_1),\;\mathrm{argument} \mapsto \mathcal{T}(V_2)\}$,而 $\mathcal{T}(M)$ 可引用 $x.\mathrm{result}$ 以获取应用的值。在值 $\mathbf{let}$-绑定规则中,$x$ 将 $\mathcal{T}(V)$ 包装在一个 $\mathrm{result}$ 子节点之下,使得统一访问器 $x.\mathrm{result}$ 产生 $\mathcal{T}(V)$ 本身,即翻译后的值。这个额外的包装在语义上是惰性的,但与证明相关:它使得用于应用的同一 $\mathrm{result}$-追踪论证在充分性证明中能均匀地扩展到值 $\mathbf{let}$-绑定(附录~\ref{app:bohm-tree-proofs})。在尾调用规则中,新标签 $\mathrm{tailCall}$ 起到相同作用,而 $\mathrm{result}$ 投影出答案。在应用和尾调用两种情形中,执行应用的继承被封装在一个命名属性之后,使其内部结构(被调用者的 $\mathrm{argument}$ 和 $\mathrm{result}$ 标签)不会泄漏到封闭作用域。
+
+以上六条规则构成了从 $\lambda$-演算(经由 ANF)到继承演算的完整翻译:每个 ANF 项都有一个像,且构造是复合的。由于 $\lambda$-演算是图灵完备的,继承演算也是。%
+\footnote{
+  MIXINv2 将符号解析(解析词法引用和限定 $\this$ 引用)与运行时 mixin 求值分离,但符号解析是逐符号即时执行的,而非提前执行,因此它不提供传统意义上的静态类型检查。尽管如此,MIXINv2 的解析阶段比无类型的继承演算更严格。本文中的所有示例均从 MIXINv2 移植而来,并同时符合两种语义。为满足解析器而添加的元素对此处呈现的算法无害,且可能有助于可读性。
+}
+然而,图灵完备性并未说明翻译保留了什么;下一小节将精确刻画语义对应关系。
+\else
 A $\lambda$-bound variable $x$ with de~Bruijn index $n$
 (the number of enclosing $\lambda$s between
 the reference and its binder) becomes
@@ -1421,10 +1942,16 @@ inheritance-calculus.%
 Turing completeness, however, says nothing about what the
 translation preserves; the next subsection pins down
 the semantic correspondence.
+\fi
 
-\subsection{B\"ohm Tree Correspondence}
+\subsection{\bilingual{B\"ohm Tree Correspondence}{Böhm 树对应}}
 \label{sec:bohm-tree}
 
+\ifInheritanceChinese
+翻译 $\mathcal{T}$ 将 $\lambda$-演算嵌入继承演算的一个子语言中。直觉上,mixin 树以附加的语义结构增广了 AST;对于翻译后的 $\lambda$-项,这一附加结构的投影与 Böhm 树同构。若从根出发追踪有限次 $\mathrm{result}$ 投影后到达一个同时拥有 $\mathrm{argument}$ 和 $\mathrm{result}$ 的节点(即 $\mathcal{T}(\lambda x.\, M)$ 产生的\emph{抽象形状}),则称 mixin 树 $T$ \emph{收敛},记为 $T{\Downarrow}$。翻译保持并反映收敛性(充分性)。记 $\mathcal{T}(M) \approx_\lambda \mathcal{T}(N)$ 当对所有封闭的 $\lambda$-演算上下文 $C[\cdot]$ 均有 $\mathcal{T}(C[M]){\Downarrow} \Leftrightarrow \mathcal{T}(C[N]){\Downarrow}$;则 $\approx_\lambda$ 恰好与 Böhm 树等价~\cite{barendregt1984-lambda-calculus} 重合。形式化陈述和证明见附录~\ref{app:bohm-tree-proofs}。注意 $\approx_\lambda$ 仅在 $\lambda$-演算上下文上量化;继承演算的上下文区分能力严格更强,如第~\ref{sec:asymmetry} 节所证。以上对应关系在首次迭代近似 $T_P\!\uparrow\!1$ 处成立;我们现在考察在完整最小不动点处会发生什么。
+
+在 $T_P\!\uparrow\!1$ 处,每个方程被求值一次,可重入调用返回 $\bot$;这对应于 $\beta$-规约。在完整的 $\mathrm{lfp}(T_P)$ 处,可重入引用改而解析为幂集格上的最小不动点:迭代在\emph{容器}层级计算不动点,求出满足 $S = F(S)$ 的集合 $S$。这正是递归 Datalog 在循环图上收敛的机制(附录~\ref{app:datalog-encoding},第~\ref{sec:recursive-rules} 节);既非不动点组合子(如 $Y$),也非 Haskell 的 \texttt{mfix}(\texttt{RecursiveDo})能够表达它:两者都在项层级打结,而非在语义所累积的集合上打结。破坏 Böhm 树对应关系的这种\emph{幂集}更多确定性(图~\ref{fig:calculi-matrix})的最小见证例是 $\mathbf{let}\; x = x \;\mathbf{in}\; x$:它在 $\beta$-规约下发散,但其翻译 $\{x \mapsto \{\mathrm{result} \mapsto \{x.\mathrm{result}\}\},\; \mathrm{result} \mapsto \{x.\mathrm{result}\}\}$ 在 $\mathrm{lfp}(T_P)$ 下稳定,tabling 求值检测到循环并返回确定结果 $\properties(\mathrm{root}) = \{x, \mathrm{result}\}$。因此本小节的对应关系是 $T_P\!\uparrow\!1$ 独有的性质。下一小节考察继承演算是否也严格更具表达力。
+\else
 The translation $\mathcal{T}$ embeds the $\lambda$-calculus
 into a sublanguage of inheritance-calculus.
 Intuitively, a mixin tree augments the AST with
@@ -1480,10 +2007,14 @@ The correspondence of this subsection is therefore a property
 of $T_P\!\uparrow\!1$ alone.
 The next subsection examines whether inheritance-calculus is
 also strictly more expressive.
+\fi
 
-\subsection{Expressive Asymmetry}
+\subsection{\bilingual{Expressive Asymmetry}{表达力不对称}}
 \label{sec:asymmetry}
 \label{sec:formal-separation}
+\ifInheritanceChinese
+两个 Böhm 树等价的 $\lambda$-项,在 $\lambda$-演算中因此无法区分,可以被一个混合了 $\lambda$-演算与继承演算构造子的上下文分离;该上下文通过开放扩展在已有定义上继承新的可观测投影。根据 Felleisen 的表达力判据~\cite{felleisen1991-expressive-power},继承演算严格比惰性 $\lambda$-演算更具表达力(定理~\ref{thm:expressive-asymmetry}):$\lambda$-演算可以通过 ANF 转换和 $\mathcal{T}$ 宏表达于继承演算中(引理~\ref{lem:anf-equiv},定理~\ref{thm:forward-macro}),但惰性 $\lambda$-演算无法宏表达继承(定理~\ref{thm:cartesian-nonexpressibility})。形式化定义、构造和证明见附录~\ref{app:expressiveness};该分离构造本身是表达式问题的一个微型实例,它在不修改已有定义的情况下添加了一个新的可观测投影。
+\else
 Two $\lambda$-terms that are B\"ohm-tree equivalent,
 and therefore indistinguishable in the $\lambda$-calculus,
 can be
@@ -1505,11 +2036,17 @@ Appendix~\ref{app:expressiveness};
 the separating construction is itself a miniature instance of
 the Expression Problem, adding a new observable projection to
 an existing definition without modifying it.
+\fi
 
-\section{Case Study: Nat Arithmetic}
+\section{\bilingual{Case Study: Nat Arithmetic}{案例研究：Nat(自然数)算术}}
 \label{sec:case-study}
 \label{sec:expression-problem}
 
+\ifInheritanceChinese
+我们在继承演算中实现了布尔逻辑与自然数算术,包括一元与二进制两种形式。
+本节详细追踪一元 Nat 的情形:其数据表示、加法与相等判断。
+该实现遵循普通的 Gang-of-Four 设计模式~\cite{gamma1994-design-patterns},采用声明式面向对象风格,将每项关注点沿两个轴分解为 mixin:操作轴与情形轴。由于演算本身没有方法,所有名称均为名词或形容词:UpperCamelCase 名称扮演模块、类型、数据构造子与方法的角色,lowerCamelCase 名称扮演字段与参数的角色。
+\else
 We implemented boolean logic and natural number arithmetic, both unary
 and binary, in inheritance-calculus.
 This section traces the unary Nat case in detail: its data representation,
@@ -1521,10 +2058,15 @@ cases. Because the calculus has no methods of its own, every name is a noun or
 adjective: UpperCamelCase names play the roles of modules, types, data
 constructors, and methods, and lowerCamelCase names the roles of fields and
 parameters.
+\fi
 
 \paragraph{NatData}
+\ifInheritanceChinese
+mixin $\mathrm{NatData}$ 是自然数接口及其工厂。$\mathrm{NatFactory}$ 是一个工厂,其抽象产品类型被别名为 $\mathrm{Nat}$:
+\else
 The mixin $\mathrm{NatData}$ is the natural-number interface and its factory.
 $\mathrm{NatFactory}$ is a factory whose abstract product type is aliased as $\mathrm{Nat}$:
+\fi
 \[
   \mathrm{NatData} \mapsto \left\{
     \begin{aligned}
@@ -1534,9 +2076,13 @@ $\mathrm{NatFactory}$ is a factory whose abstract product type is aliased as $\m
 \]
 
 \paragraph{NatDataZero}
+\ifInheritanceChinese
+每个数据构造子都是一个独立的实现 mixin,继承 $\mathrm{NatData}$。一个 $\mathrm{Zero}$ 值继承 $\mathrm{Product}$:
+\else
 Each data constructor is a separate implementation mixin that inherits
 $\mathrm{NatData}$.
 A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
+\fi
 \[
   \mathrm{NatDataZero} \mapsto \left\{
     \begin{aligned}
@@ -1546,8 +2092,12 @@ A $\mathrm{Zero}$ value inherits $\mathrm{Product}$:
 \]
 
 \paragraph{NatDataSuccessor}
+\ifInheritanceChinese
+一个 $\mathrm{Successor}$ 值继承 $\mathrm{Product}$,并暴露一个类型为 $\mathrm{Product}$ 的 $\mathrm{predecessor}$ 属性:
+\else
 A $\mathrm{Successor}$ value inherits $\mathrm{Product}$ and
 exposes a $\mathrm{predecessor}$ property whose type is $\mathrm{Product}$:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatDataSuccessor} \mapsto \\
@@ -1563,12 +2113,19 @@ exposes a $\mathrm{predecessor}$ property whose type is $\mathrm{Product}$:
   \end{aligned}\right\}
   \end{aligned}
 \]
+\ifInheritanceChinese
+与 $\mathrm{NatDataZero}$ 合在一起,这以开放的方式完成了自然数的 Peano 编码,即函子 $F(X) = 1 + X$ 的初始代数:两个构造子作为独立的 mixin 加入,而非固定在单个封闭的数据类型定义中。
+\else
 Together with $\mathrm{NatDataZero}$, this completes the Peano encoding of
 the natural numbers, the initial algebra of the functor $F(X) = 1 + X$,
 in an open way: the two constructors are added as independent mixins
 rather than fixed in a single closed datatype definition.
+\fi
 
 \paragraph{NatPlus}
+\ifInheritanceChinese
+加法操作沿情形轴分解为一个\emph{接口} mixin $\mathrm{NatPlus}$,该接口 mixin 保留关注点的名称并在抽象 $\mathrm{Product}$ 上声明命令,以及每个情形对应一个\emph{实现} mixin,实现 mixin 在名称后附加构造子名称(即下文的 $\mathrm{NatPlusZero}$ 与 $\mathrm{NatPlusSuccessor}$)。$\mathrm{NatPlus}$ 继承 $\mathrm{NatData}$。面向对象方法会用动词命名的地方,命令模式~\cite{gamma1994-design-patterns} 将其具化为以名词命名的命令,因此加法方法被命名为 $\mathrm{Plus}$ 而非 $\mathrm{Add}$,并通过投影属性 $\mathrm{sum}$ 暴露其结果;这里已指定类型,但尚未计算:
+\else
 The addition operation is split along the case axis into an \emph{interface}
 mixin $\mathrm{NatPlus}$, which keeps the concern's name and declares the command
 on the abstract $\mathrm{Product}$, and one \emph{implementation} mixin per case,
@@ -1580,6 +2137,7 @@ pattern~\cite{gamma1994-design-patterns} reifies it as a noun-named command, so
 the addition method is named $\mathrm{Plus}$ rather than $\mathrm{Add}$, and it
 exposes its result through the projection property $\mathrm{sum}$, here typed but
 not yet computed:
+\fi
 \[
   \mathrm{NatPlus} \mapsto \left\{
     \begin{aligned}
@@ -1589,9 +2147,13 @@ not yet computed:
 \]
 
 \paragraph{NatPlusZero}
+\ifInheritanceChinese
+基础情形为 $0 + m = m$。这里 $\mathrm{NatPlusZero}$ 充当一个导入其他模块的模块:它继承 $\mathrm{Zero}$ 数据与 $\mathrm{Plus}$ 接口,并直接返回被加数:
+\else
 The base case is $0 + m = m$. Here $\mathrm{NatPlusZero}$ acts as a module that
 imports other modules: it inherits the $\mathrm{Zero}$ data and the $\mathrm{Plus}$
 interface, and returns the addend directly:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatPlusZero} \mapsto \\
@@ -1608,8 +2170,12 @@ interface, and returns the addend directly:
 \]
 
 \paragraph{NatPlusSuccessor}
+\ifInheritanceChinese
+递归情形将 $\mathrm{S}(n_0) + m$ 规约为 $n_0 + \mathrm{S}(m)$,方法是以递增后的被加数委托给 $n_0$ 的 $\mathrm{Plus}$:
+\else
 The recursive case reduces $\mathrm{S}(n_0) + m$ to $n_0 + \mathrm{S}(m)$
 by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatPlusSuccessor} \mapsto \\
@@ -1639,12 +2205,16 @@ by delegating to $n_0$'s $\mathrm{Plus}$ with an incremented addend:
 \]
 
 \paragraph{NatVisitor}
+\ifInheritanceChinese
+相等判断需要对数据构造子进行情形分析;我们使用访问者模式~\cite{gamma1994-design-patterns}。$\mathrm{NatVisitor}$ 向 $\mathrm{Product}$ 添加一个 $\mathrm{Acceptance}$ 命令,即访问者模式的 $\mathrm{accept}$ 方法的名词形式。mixin $\mathrm{NatVisitor}$ 将其声明为空,留下 $\mathrm{VisitorMap}$ 与 $\mathrm{Accepted}$ 属性由各构造子的实现来填充:
+\else
 Equality requires case analysis on the data constructor; we use the
 visitor pattern~\cite{gamma1994-design-patterns}.
 $\mathrm{NatVisitor}$ adds an $\mathrm{Acceptance}$ command to $\mathrm{Product}$,
 the noun form of the visitor pattern's $\mathrm{accept}$ method.
 The mixin $\mathrm{NatVisitor}$ declares it empty, leaving a $\mathrm{VisitorMap}$ and an
 $\mathrm{Accepted}$ property for the per-constructor implementations to fill in:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatVisitor} \mapsto \\
@@ -1657,11 +2227,15 @@ $\mathrm{Accepted}$ property for the per-constructor implementations to fill in:
 \]
 
 \paragraph{NatVisitorZero}
+\ifInheritanceChinese
+$\mathrm{Zero}$ 的实现选择 $\mathrm{ZeroVisitor}$ 分支。这里的访问者模式与~\cite{gamma1994-design-patterns} 中的表述不同,那里数据构造子由 $\mathrm{accept}$ 接口固定;此处通过组合允许添加新的构造子,因为每个构造子作为独立的 mixin 贡献其自身的分支:
+\else
 The $\mathrm{Zero}$ implementation selects the $\mathrm{ZeroVisitor}$ branch.
 The visitor pattern here, unlike its formulation in
 \cite{gamma1994-design-patterns} where the data constructors are fixed by the
 $\mathrm{accept}$ interface, admits new constructors by composition, since each
 constructor contributes its own branch as a separate mixin:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatVisitorZero} \mapsto \\
@@ -1678,7 +2252,11 @@ constructor contributes its own branch as a separate mixin:
 \]
 
 \paragraph{NatVisitorSuccessor}
+\ifInheritanceChinese
+$\mathrm{Successor}$ 的实现选择 $\mathrm{SuccessorVisitor}$ 分支:
+\else
 The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ branch:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatVisitorSuccessor} \mapsto \\
@@ -1700,7 +2278,11 @@ The $\mathrm{Successor}$ implementation selects the $\mathrm{SuccessorVisitor}$ 
 \]
 
 \paragraph{BooleanData}
+\ifInheritanceChinese
+$\mathrm{BooleanData}$ 定义输出的域:
+\else
 $\mathrm{BooleanData}$ defines the output sort:
+\fi
 \[
   \mathrm{BooleanData} \mapsto \left\{
     \begin{aligned}
@@ -1715,6 +2297,9 @@ $\mathrm{BooleanData}$ defines the output sort:
 \]
 \paragraph{NatEquality}
 \label{sec:nat-equality}
+\ifInheritanceChinese
+为了验证 $2 + 3 = 5$,我们需要对 Nat 值进行相等判断。mixin $\mathrm{NatEquality}$ 导入 $\mathrm{NatVisitor}$ 与 $\mathrm{BooleanData}$,并在 $\mathrm{Product}$ 上声明一个 $\mathrm{Equal}$ 命令,由各构造子的实现提供。由于 $\mathrm{NatEquality}$ 继承 $\mathrm{BooleanData}$,限定 $\this$ $\qualifiedthis{\mathrm{NatEquality}}$ 可以到达 $\mathrm{Boolean}$,因此 $\mathrm{Equal}$ 以类型 $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$ 声明其结果 $\mathrm{equal}$:
+\else
 To test that $2 + 3 = 5$, we needed equality on Nat values.
 The mixin $\mathrm{NatEquality}$ imports $\mathrm{NatVisitor}$ and $\mathrm{BooleanData}$,
 and declares an $\mathrm{Equal}$ command on $\mathrm{Product}$ that the per-constructor implementations provide.
@@ -1722,6 +2307,7 @@ Because $\mathrm{NatEquality}$ inherits $\mathrm{BooleanData}$,
 the qualified this $\qualifiedthis{\mathrm{NatEquality}}$ can reach $\mathrm{Boolean}$,
 so $\mathrm{Equal}$ declares its result
 $\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boolean}$:
+\fi
 \[
   \begin{aligned}
     &\mathrm{NatEquality} \mapsto \\
@@ -1738,6 +2324,9 @@ $\mathrm{equal}$ with the type $\qualifiedthis{\mathrm{NatEquality}}.\mathrm{Boo
 \]
 
 \paragraph{NatEqualityZero}
+\ifInheritanceChinese
+$\mathrm{Zero}$ 只与另一个 $\mathrm{Zero}$ 相等。这里的继承执行情形分析:继承 $\mathrm{other}.\mathrm{Acceptance}$ 对 $\mathrm{other}$ 是由 $\mathrm{Zero}$ 还是 $\mathrm{Successor}$ 构建进行分派,在 $\mathrm{ZeroVisitor}$ 分支返回 $\mathrm{True}$,否则返回 $\mathrm{False}$,即 $\mathrm{equal} = \{ \mathrm{True} \text{ 若 } \mathrm{other} = \mathrm{Zero},\; \mathrm{False} \text{ 若 } \mathrm{other} = \mathrm{Successor} \}$。$\mathrm{True}$ 与 $\mathrm{False}$ 均为 $\mathrm{BooleanFactory}$ 的数据构造子;该工厂来自 $\mathrm{BooleanData}$,通过继承的 $\mathrm{NatEquality}$ 间接导入,并以 $\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{BooleanFactory}$ 到达。同一继承机制也提供了结果类型:在 $\mathrm{Accepted}$ 中,$\mathrm{equal}$ 继承 $\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}$,从而声明其类型为 $\mathrm{Boolean}$:
+\else
 $\mathrm{Zero}$ is equal only to another $\mathrm{Zero}$.
 Inheriting here performs case analysis:
 inheriting $\mathrm{other}.\mathrm{Acceptance}$ dispatches on whether $\mathrm{other}$
@@ -1752,6 +2341,7 @@ The same inheritance mechanism also supplies the result type: in
 $\mathrm{Accepted}$, $\mathrm{equal}$ inherits
 $\qualifiedthis{\mathrm{NatEqualityZero}}.\mathrm{Boolean}$, declaring its type to
 be $\mathrm{Boolean}$:
+\fi
 {\small
   \[
     \begin{aligned}
@@ -1790,9 +2380,13 @@ be $\mathrm{Boolean}$:
 \]}
 
 \paragraph{NatEqualitySuccessor}
+\ifInheritanceChinese
+$\mathrm{Successor}$ 只与另一个具有相等前驱的 $\mathrm{Successor}$ 相等,因此其实现通过 $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$ 进行递归:
+\else
 $\mathrm{Successor}$ is equal only to another $\mathrm{Successor}$ with an equal
 predecessor, so its implementation recurses through
 $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
+\fi
 {\small
   \[
     \begin{aligned}
@@ -1871,12 +2465,16 @@ $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}.\mathrm{Equal}$:
 %% 正如 ANF 变换本身是机械化的。但这是表面语法的选择，
 %% 不影响演算本身的语义。
 %% ================================================================
+\ifInheritanceChinese
+通过继承来组合 $\mathrm{Plus}$ 与 $\mathrm{Equal}$ 的实现,无需修改任何 mixin,即可使所得的 Nat 值自动同时具备 $\mathrm{Plus}$ 与 $\mathrm{Equal}$。具体的数字常量存放在一个只继承两个数据构造子的共享 mixin 中:
+\else
 Composing the $\mathrm{Plus}$ and $\mathrm{Equal}$ implementations by
 inheriting them, with no modifications to any mixin, gives the
 resulting Nat values both $\mathrm{Plus}$ and $\mathrm{Equal}$
 automatically.
 The concrete numerals live in a shared mixin that inherits only the
 two data constructors:
+\fi
 \[
   \mathrm{NatConstants} \mapsto \left\{
     \begin{aligned}
@@ -1908,7 +2506,11 @@ two data constructors:
       \end{aligned}\right\}
   \end{aligned}\right\}
 \]
+\ifInheritanceChinese
+算术测试继承 $\mathrm{NatConstants}$ 以及它所需的操作:
+\else
 The arithmetic test inherits $\mathrm{NatConstants}$ together with the operations it needs:
+\fi
 \[
   \mathrm{Test} \mapsto \left\{
     \begin{aligned}
@@ -1926,6 +2528,13 @@ The arithmetic test inherits $\mathrm{NatConstants}$ together with the operation
       \end{aligned}\right\}
   \end{aligned}\right\}
 \]
+\ifInheritanceChinese
+路径 $\mathrm{Test}.\mathrm{FiveEqualTwoPlusThree}.\mathrm{equal}$ 继承 $\mathrm{True}$。%
+\footnote{
+  读取一个结果,需要借助 FFI 来打印,或者借助元语言观察以在该路径上调用 $\supers$。
+}
+没有任何现有 mixin 被修改。$\mathrm{NatEquality}$(一项新操作)与 $\mathrm{Boolean}$(一种新数据类型)各自只需要一个新 mixin:沿操作轴与情形轴均可扩展。
+\else
 The path $\mathrm{Test}.\mathrm{FiveEqualTwoPlusThree}.\mathrm{equal}$
 inherits $\mathrm{True}$.%
 \footnote{
@@ -1936,9 +2545,15 @@ No existing mixin was modified.
 $\mathrm{NatEquality}$, a new operation, and $\mathrm{Boolean}$,
 a new data type, each required only a new mixin: extensibility along both
 the operation axis and the case axis.
+\fi
 
-\paragraph{Tree-level inheritance and return types}
+\paragraph{\bilingual{Tree-level inheritance and return types}{树层次的继承与返回类型}}
 \label{sec:discussion-expression-problem}
+\ifInheritanceChinese
+每个操作都是一个独立的 mixin,扩展工厂的子树。继承递归地合并共享同一标签的子树,因此工厂中的每个标签都从所有被继承的 mixin 获得全部操作。关键在于,这同样适用于返回类型:$\mathrm{NatPlus}$ 从 $\mathrm{NatFactory}$ 返回值,而 $\mathrm{NatEquality}$ 独立地向同一工厂添加 $\mathrm{Equal}$。同时继承两者,使得 $\mathrm{Plus}$ 返回的值自动携带 $\mathrm{Equal}$,无需修改任何一个 mixin。在对象代数~\cite{oliveira2012-object-algebras} 与 finally tagless 解释器~\cite{carette2009-finally-tagless} 中,独立定义的操作不会自动丰富彼此的返回类型;需要额外的样板代码或类型类机制。
+
+多目标限定 $\this$(方程~\ref{eq:this})至关重要。在上述测试 mixin 中,$\mathrm{NatPlusSuccessor}$ 与 $\mathrm{NatEqualitySuccessor}$ 均继承 $\mathrm{NatDataSuccessor}$。当两个操作被组合时,所得的 $\mathrm{Successor}$ 通过两条独立路由继承 $\mathrm{NatDataSuccessor}$ 的模式。每个操作内部的引用 $\qualifiedthis{\mathrm{Successor}}.\mathrm{predecessor}$ 通过两条路由解析,由于继承是幂等的,所有路由贡献相同的属性。在 Scala 中,同样的模式,即两个独立定义的内部类扩展同一外部类的特质,会触发``冲突基类型''拒绝(附录~\ref{app:scala-multi-target}),因为 DOT 的 self 变量是单值的,无法同时通过多条继承路由解析。表达式问题在 Scala 中仍可使用对象代数或类似模式求解,但组合独立定义的操作本质上会产生上述对共享模式的多目标 $\this$ 解析。
+\else
 Each operation is an independent mixin that extends a factory's
 subtree.
 Inheritance recursively merges subtrees that share a label,
@@ -1976,9 +2591,17 @@ The Expression Problem can still be solved in Scala using
 object algebras or similar patterns, but composing independently
 defined operations inherently produces the multi-target $\this$
 resolution to shared schemas just described.
+\fi
 
-\paragraph{Church-encoded Nats are tries}
+\paragraph{\bilingual{Church-encoded Nats are tries}{Church 编码的 Nat 是字典树}}
 \label{sec:case-study-cartesian}
+\ifInheritanceChinese
+Church 编码的 Nat 是一个记录,其结构映射了构建它所用的数据构造子路径:$\mathrm{Zero}$ 是一个平坦记录;$\mathrm{S}(\mathrm{Zero})$ 是一个带有 $\mathrm{predecessor}$ 属性、指向一个 $\mathrm{Zero}$ 记录的记录;依此类推。这恰好是字典树的形状。%
+\footnote{
+  一元 Nat 的字典树可以被视为一个稀疏链表,其深度等于它所代表的数值:在字典树并中,链表中的某些 $\mathrm{Successor}$ 节点指向 $\mathrm{Zero}$(叶节点),因此链表中并非每个位置都被占用。\anon[{} 补充材料]{{} MIXINv2 源码~\cite{mixin2025}}{} 中包含一个字典树深度为对数级的二进制自然数(BinNat)算术。
+}
+一个同时继承两个 Nat 值的作用域是一个字典树并。下面的测试将 $\mathrm{Plus}$ 应用于 $\{1,2\}$ 的字典树并,被加数为 $\{3,4\}$ 的字典树并,然后用 $\mathrm{Equal}$ 将结果与自身比较:
+\else
 A Church-encoded Nat is a record whose structure mirrors the
 data-constructor path used to build it: $\mathrm{Zero}$ is a flat record;
 $\mathrm{S}(\mathrm{Zero})$ is a record with a $\mathrm{predecessor}$
@@ -1997,6 +2620,7 @@ A scope that simultaneously inherits two Nat values is a trie union.
 The following test applies $\mathrm{Plus}$ to a trie union of $\{1,2\}$
 with addend a trie union of $\{3,4\}$, then compares the result to itself
 with $\mathrm{Equal}$:
+\fi
 \[
   \mathrm{CartesianTest} \mapsto \left\{
     \begin{aligned}
@@ -2008,6 +2632,11 @@ with $\mathrm{Equal}$:
       &\mathrm{Check} \mapsto \left\{\mathrm{Result}.\mathrm{sum}.\mathrm{Equal},\; \mathrm{other} \mapsto \{\mathrm{Result}.\mathrm{sum}\}\right\}
   \end{aligned}\right\}
 \]
+\ifInheritanceChinese
+$\mathrm{Result}.\mathrm{sum}$ 求值为字典树 $\{4,5,6\}$,即所有两两之和的集合。$\mathrm{Equal}$ 随后对从 $\{4,5,6\} \times \{4,5,6\}$ 中取出的每一对进行应用;路径 $\mathrm{CartesianTest}.\mathrm{Check}.\mathrm{equal}$ 同时继承 $\mathrm{True}$ 与 $\mathrm{False}$。笛卡尔积直接来自语义方程。$\mathrm{OneOrTwo}$ 同时继承 $\mathrm{One}$ 与 $\mathrm{Two}$,因此 $\bases(\mathrm{OneOrTwo})$ 包含两条路径。当 $\mathrm{Result}$ 继承 $\mathrm{OneOrTwo}.\mathrm{Plus}$ 时,$\mathrm{Result}$ 的 $\bases$ 包含 $\mathrm{One}$ 与 $\mathrm{Two}$ 各自的 $\mathrm{Plus}$。每个 $\mathrm{Plus}$ 通过 $\this$ 解析其 $\mathrm{addend}$,到达 $\mathrm{ThreeOrFour}$;该值本身是 $\mathrm{Three}$ 与 $\mathrm{Four}$ 的字典树并,因此 $\mathrm{addend}$ 路径的 $\supers$ 包含两个值。由于 $\mathrm{Successor}.\mathrm{Plus}$ 以递增后的被加数递归委托给 $\mathrm{predecessor}.\mathrm{Plus}$,而 $\mathrm{predecessor}$ 也通过字典树并解析,递归在每个字典树节点处分支。因此结果 $\mathrm{sum}$ 收集了通过两个操作数的任意组合所能到达的全部路径,即笛卡尔积。
+
+同样操作单个值的 $\mathrm{Plus}$ 与 $\mathrm{Equal}$ 文件,无需修改,即产生逻辑编程的关系语义:$\overrides$ 与 $\supers$ 收集所有继承路径,每个操作都在其上分布。
+\else
 $\mathrm{Result}.\mathrm{sum}$ evaluates to the trie $\{4,5,6\}$, the set of all pairwise sums.
 $\mathrm{Equal}$ then applies to every pair drawn from $\{4,5,6\} \times \{4,5,6\}$;
 the path $\mathrm{CartesianTest}.\mathrm{Check}.\mathrm{equal}$
@@ -2036,6 +2665,7 @@ single values thus produce, without modification, the relational
 semantics of logic programming:
 $\overrides$ and $\supers$ collect all inheritance paths, and
 every operation distributes over them.
+\fi
 
 \section{Discussion}
 
@@ -2491,12 +3121,18 @@ that the Expression Problem demands.
 Deep merge with multi-target late-binding $\this$ is what
 remained.
 
-\section{Related Work}
+\section{\bilingual{Related Work}{相关工作}}
 \label{sec:related-work}
 
-\subsection{Computational Models and \texorpdfstring{$\lambda$}{λ}-Calculus Semantics}
+\subsection{\bilingual{Computational Models and \texorpdfstring{$\lambda$}{λ}-Calculus Semantics}{计算模型与 \texorpdfstring{$\lambda$}{λ}-演算语义}}
 
-\paragraph{Minimal Turing-complete models}
+\paragraph{\bilingual{Minimal Turing-complete models}{最小图灵完备模型}}
+\ifInheritanceChinese
+Sch\"onfinkel~\cite{schonfinkel1924-combinatory-logic} 与 Curry~\cite{curry1958-combinatory-logic} 证明了 $\lambda$-演算可以归约为三个组合子 $S$、$K$、$I$%
+\footnote{
+  组合子 $I$ 是冗余的,因为 $I = SKK$。
+}。将 $\lambda$-项编译为 SKI 的括号抽象是机械的,但会导致项大小的指数级膨胀;在 $\lambda$-演算中已有的计算模式之外,不会涌现出任何新的计算模式。在语义上,两者共享相同的模型:Meyer~\cite{meyer1982-model-of-lambda-calculus} 证明了满足五个附加条件的组合代数恰好就是 $\lambda$-代数。从未有人展示过一个独立的 SKI 语义域,并从中推导出 $\lambda$-演算的语义。方向始终是反过来的:Scott 的 $D_\infty$ 是为 $\lambda$-演算而构建的,而 SKI 随后被解释于其中。Dolan~\cite{dolan2013-mov-turing-complete} 证明了 x86 的 \texttt{mov} 指令单独就已图灵完备,其方法是利用寻址模式作为可变内存上的隐式算术;由此得到的程序是正确的,但不提供任何超越 RAM 机的抽象机制。图灵机本身虽然是通用的,却缺乏随机访问:读取距离为 $d$ 处的格需要 $d$ 次顺序的磁带移动。这些模型中的每一个,都在某个已有模型的语义框架内实现了图灵完备性,且对其中任何一个都从未展示过独立的语义域。
+\else
 Sch\"onfinkel~\cite{schonfinkel1924-combinatory-logic} and
 Curry~\cite{curry1958-combinatory-logic} showed that the
 $\lambda$-calculus reduces to three combinators $S$, $K$, $I$
@@ -2528,6 +3164,7 @@ Each of these models achieves Turing completeness
 within the semantic framework of an existing model,
 and no independent semantic domain has been exhibited
 for any of them.
+\fi
 
 %% === 审稿人备忘：SF-calculus 与 inheritance-calculus 的关系 ===
 %%
@@ -2595,7 +3232,14 @@ for any of them.
 %% 如果审稿人提到 SF-calculus，可以基于上述分析撰写回复或补充段落。
 %% ================================================================
 
-\paragraph{Semantic descriptions of the $\lambda$-calculus}
+\paragraph{\bilingual{Semantic descriptions of the $\lambda$-calculus}{$\lambda$-演算的语义描述}}
+\ifInheritanceChinese
+$\lambda$-演算的语义可以用几种根本上不同的方式来定义。\emph{操作语义}将 $\beta$-归约 $(\lambda x.\,M)\,N \to M[N/x]$ 作为计算的基本概念~\cite{church1936-lambda-calculus,church1941-calculi-of-lambda-conversion,barendregt1984-lambda-calculus}。这要求捕获-回避替换,其微妙之处促使了 de~Bruijn 索引~\cite{debruijn1972-nameless-dummies} 与显式替换演算~\cite{abadi1991-explicit-substitutions} 的出现。它还要求选择求值策略:按名调用与按值调用~\cite{plotkin1975-call-by-name-call-by-value},或 Abramsky 的惰性策略~\cite{abramsky1990-lazy-lambda-calculus}。\emph{指称语义}~\cite{scott1970-mathematical-theory-of-computation,scott1976-data-types-as-lattices} 将项解释于一个数学域中,但赋予 $\beta$-归约意义需要一个自反域 $D \cong [D \to D]$,由 Cantor 定理知该域无集合论解。Scott 的 $D_\infty$ 通过将 $D$ 构造为连续格的逆极限~\cite{scott1972-continuous-lattices} 来解决这一问题。由此得到的语义是适当的,但不是完全抽象的~\cite{plotkin1977-lcf-as-programming-language,milner1977-fully-abstract-models}:它将观察等价所区分的项等同了起来。\emph{博弈语义}~\cite{abramsky2000-full-abstraction-pcf,hyland2000-full-abstraction-pcf,nickau1994-hereditarily-sequential-functionals} 对 PCF 与惰性 $\lambda$-演算~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda} 实现了完全抽象,需要竞技场、策略与无害性条件。在这些方法的每一种中,函数空间 $[D \to D]$ 都是核心障碍:操作语义通过替换隐式地需要它,而指称语义则显式地构造它,博弈语义则通过策略加以精化。这些方法中的每一种都涉及高阶结构%
+\footnote{
+  指称语义中的函数空间,博弈语义中的策略,以及操作语义中的替换。
+}
+并在其语义域中保留了函数空间。在每种情形下,指称帐和操作帐都是相互独立的形式体系。三者都继承了 $\beta$-归约在递归程序上的发散:例如,有向图上一个朴素的传递闭包在每个框架下都会发散。
+\else
 The semantics of the $\lambda$-calculus can be defined in
 several fundamentally different ways.
 \emph{Operational semantics} takes $\beta$-reduction
@@ -2642,8 +3286,12 @@ formalisms in each case.
 All three inherit $\beta$-reduction's divergence on
 recursive programs: a na\"ive transitive closure on a cyclic
 graph, for instance, diverges in every framework.
+\fi
 
-\paragraph{Set-theoretic models of the $\lambda$-calculus}
+\paragraph{\bilingual{Set-theoretic models of the $\lambda$-calculus}{$\lambda$-演算的集合论模型}}
+\ifInheritanceChinese
+$\lambda$-演算的几个模型族通过在集合论而非域论框架下工作,避免了 Scott 的 $D_\infty$ 的逆极限构造。这些模型消除了 Scott 拓扑,但并未消除函数空间本身:它们仍然是高阶的,通过注入、交叉类型或多重集关系将 $[D \to D]$ 编码于 $D$ 之中。\emph{图模型}~\cite{engeler1981-algebras-and-combinators,plotkin1993-set-theoretic-lambda-models} 通过幂集格上的 web 注入来编码函数;Bucciarelli 与 Salibra~\cite{bucciarelli2008-graph-lambda-theories} 证明了最大的合理图理论等于 Böhm 树理论 $\mathcal{B}$。\emph{过滤器模型}~\cite{barendregt1983-filter-lambda-model,coppo1978-intersection-type-assignment} 将一个项解释为可从中推导出的交叉类型集合;Dezani-Ciancaglini 等人~\cite{dezani1998-intersection-types-bohm-trees} 证明了 BCD 过滤器模型的 $\lambda$-理论恰好与 Böhm 树相等性重合。\emph{关系模型}~\cite{ehrhard2005-finiteness-spaces,bucciarelli2001-phase-semantics-exponentials} 通过有限多重集从线性逻辑的关系语义中涌现;Ehrhard~\cite{ehrhard2005-finiteness-spaces} 证明了在这一范畴中,纯 $\lambda$-演算的标准自反对象不能存在。这三个模型族都是语义模型:它们将 $\lambda$-项解释于一个外部数学结构中,并在该结构中将 $\beta$-归约验证为一个等式,而不是定义一个具有自身原语的独立演算。每一种都编码函数空间而非消除它,且每一种都需要高阶机制才能为惰性 $\lambda$-演算获得完全抽象。
+\else
 Several families of $\lambda$-calculus models avoid the
 inverse-limit construction of Scott's $D_\infty$ by working
 in set-theoretic rather than domain-theoretic settings.
@@ -2676,8 +3324,12 @@ primitives.
 Each encodes the function space rather than eliminating it,
 and each requires higher-order machinery to obtain full
 abstraction for the lazy $\lambda$-calculus.
+\fi
 
-\paragraph{Recursive equations and fixpoint semantics}
+\paragraph{\bilingual{Recursive equations and fixpoint semantics}{递归方程与不动点语义}}
+\ifInheritanceChinese
+Van~Emden 与 Kowalski~\cite{vanemden1976-predicate-logic-semantics} 证明了谓词逻辑作为编程语言的语义允许三种等价的刻画:操作性的\footnote{通常是 SLD 归结。}、模型论的\footnote{基于最小 Herbrand 模型。}以及不动点的\footnote{即基原子幂集上即时后承算子 $T_P$ 的最小不动点。}。Aczel~\cite{aczel1977-inductive-definitions} 通过幂集格上的单调算子对归纳定义给出了系统性处理,为 Datalog 风格的语义所依赖的逻辑基础奠定了基础。Leroy 与 Grall~\cite{leroy2006-coinductive-big-step} 通过余归纳定义处理了大步语义中的发散,需要在归纳求值判断之外引入一个单独的余归纳判断来说明非终止。Van~Emden 与 Kowalski 的 $T_P$ 在一阶域上为递归 Datalog 程序计算 $\mathrm{lfp}$。传统的 $\lambda$-演算语义在语义域中需要函数空间,且递归的 $\lambda$-项在 $\beta$-归约下通常会发散;利用一阶域上的 $T_P$ 为 $\lambda$-演算赋予一种改变哪些项收敛的不动点语义,尚未被探索。在近期工作中,Yang~\cite{yang2026-co-lambda} 将 tabling 求值~\cite{tamaki1986-tabled-resolution} 直接引入纯 $\lambda$-演算:首部规范化被读作一个余代数方程,其状态为被驻留的 $\lambda$-项,即具有可判定同一性的一阶对象,而 tabling 求解该方程,在有限时间内将 $\Omega$ 这样的非生产性循环判定为 $\bot$。该处理保留了标准的惰性 (Lévy--Longo) 树语义,仅改变了求值器;它占据了图~\ref{fig:calculi-matrix} 中不动点 $\lambda$ 节点。它在机制上也有所不同。表以整个被驻留的项为键,而非以进入作用域树的路径为键,因此在路径前缀上重叠的查询之间不共享部分结果。偏序不是集合包含下的幂集格,而是树近似序,其中 $\bot$ 叶被精化为子树,且不动点是唯一的(最小与最大因有护性而重合):一个重入调用被以单一的最终 $\bot$ 回答,而后续任何迭代都不会精化该 $\bot$,因此迭代无法增大一个累加器。其比惰性 $\lambda$-演算更确定的部分因此恰好是图~\ref{fig:calculi-matrix} 中非生产性的 $\bot$,即发散被判定为确定 $\bot$ 答案的那些项,别无其他;而幂集序才使得迭代可以积累并产生新的非 $\bot$ 值。
+\else
 Van~Emden and Kowalski~\cite{vanemden1976-predicate-logic-semantics} showed that
 the semantics of predicate logic as a programming language admits
 three equivalent characterizations:
@@ -2732,10 +3384,20 @@ Figure~\ref{fig:calculi-matrix}, terms whose divergence is
 decided as a definite~$\bot$ answer, and nothing more;
 the powerset order is what lets iteration accumulate and
 produce new non-$\bot$ values.
+\fi
 
-\subsection{Inheritance, Objects, and Records}
+\subsection{\bilingual{Inheritance, Objects, and Records}{继承、对象与记录}}
 
-\paragraph{Denotational semantics of inheritance}
+\paragraph{\bilingual{Denotational semantics of inheritance}{继承的指称语义}}
+\ifInheritanceChinese
+Cook~\cite{cook1989-denotational-inheritance} 给出了继承的第一个指称语义,将对象建模为递归记录。继承是\emph{生成器}%
+\footnote{
+  这些是从 self 到完整对象的函数。
+}与\emph{包装器}%
+\footnote{
+  包装器是修改生成器的函数。
+}的复合,由一个不动点构造来求解。Cook 的关键洞见是,继承是一种可适用于任何形式的递归定义的通用机制,而不仅仅是面向对象的方法。这一洞见是本工作的出发点之一。该模型有四个原语(记录、函数、生成器和包装器),并需要一个不动点组合子。复合是不对称的:包装器修改生成器,反之则不然。不动点构造依赖函数域中的 Scott 连续性。由此得到的指称不能直接执行,因此需要一个单独的操作语义来在运行时定义方法分派与对象构造。
+\else
 Cook~\cite{cook1989-denotational-inheritance} gave the first denotational
 semantics of inheritance, modeling objects as recursive records.
 Inheritance is composition of \emph{generators}
@@ -2757,8 +3419,12 @@ The fixed-point construction relies on Scott continuity in a
 domain of functions. The resulting denotations are not directly
 executable, so a separate operational semantics is needed to
 define method dispatch and object construction at runtime.
+\fi
 
-\paragraph{Mixins and traits}
+\paragraph{\bilingual{Mixins and traits}{Mixin 与 trait}}
+\ifInheritanceChinese
+Bracha 与 Cook~\cite{bracha1990-mixin-inheritance} 将 mixin 形式化为抽象子类,即从超类参数到子类的函数。由于 mixin 应用是函数复合,它\emph{既不可交换也不幂等};C3 线性化算法~\cite{barrett1996-c3-linearization} 后来被开发出来以施加一个确定性顺序。Schärli 等人~\cite{scharli2003-traits} 引入了 trait,其复合是可交换的,但拒绝同名冲突~\cite{ducasse2006-traits-fine-grained-reuse}。两种机制都在\emph{方法层级}操作:对同名的两个定义进行复合会导致覆盖或冲突,而非嵌套结构的递归合并。两者都预设了 $\lambda$-演算:方法体是函数,而复合机制本身不是图灵完备的。Mixin 与 trait 均不支持深合并。
+\else
 Bracha and Cook~\cite{bracha1990-mixin-inheritance} formalized mixins as
 abstract subclasses, that is, functions from a superclass parameter to a
 subclass.
@@ -2775,8 +3441,12 @@ not a recursive merge of nested structure.
 Both presuppose the $\lambda$-calculus: method bodies are functions,
 and the composition mechanism itself is not Turing complete.
 Neither mixins nor traits are deep-mergeable.
+\fi
 
-\paragraph{Object and record calculi}
+\paragraph{\bilingual{Object and record calculi}{对象演算与记录演算}}
+\ifInheritanceChinese
+Abadi 与 Cardelli~\cite{abadi1996-theory-of-objects} 将对象作为基本概念,但方法是以 self 为参数的函数,且对象扩展是不对称的。Boudol~\cite{boudol2004-recursive-record-semantics} 证明了自引用记录需要一个不安全的不动点算子,其适定性依赖于求值策略。Harper 与 Pierce~\cite{harper1991-symmetric-record-concatenation} 给出了一个具有对称连接的记录演算,该演算拒绝同标签的复合;Cardelli~\cite{cardelli1992-extensible-records} 研究了带子类型的可扩展记录;Rémy~\cite{remy1989-row-polymorphism} 为 ML 中的记录和变体引入了行多态。这些演算全都在\emph{平坦}记录上操作:没有嵌套结构的递归合并,没有惰性观察,$\this$ 也需要一个显式的不动点组合子。
+\else
 Abadi and Cardelli~\cite{abadi1996-theory-of-objects} treat objects as the
 primitive notion, but methods are functions that take self as a
 parameter and object extension is asymmetric.
@@ -2793,8 +3463,12 @@ records and variants in ML.
 All of these calculi operate on \emph{flat} records: there is
 no recursive merging of nested structure, no lazy observation,
 and $\this$ requires an explicit fixed-point combinator.
+\fi
 
-\paragraph{Family polymorphism and DOT}
+\paragraph{\bilingual{Family polymorphism and DOT}{族多态与 DOT}}
+\ifInheritanceChinese
+Ernst~\cite{ernst2001-family-polymorphism} 引入了族多态;Ernst、Ostermann 与 Cook~\cite{ernst2006-virtual-class-calculus} 在虚类演算中将其形式化,其中类通过路径表达式 \texttt{this.out.C} 来访问。Amin 等人~\cite{amin2016-dependent-object-types} 在 DOT 演算中形式化了路径依赖类型,这是 Scala 的理论基础。在这两个框架中,每条路径都解析为\emph{单一}封闭对象中的\emph{单一}类。当多条继承路径通向同一作用域时,单值解析必须选择其中一条路径并丢弃其余;DOT 的 self 变量 $\nu(x : T)\, d$ 将 $x$ 绑定到单一对象,而 Scala 在编译时拒绝由此产生的交叉类型(附录~\ref{app:scala-multi-target})。两个框架均未提供集合值解析的机制。
+\else
 Ernst~\cite{ernst2001-family-polymorphism} introduced family polymorphism;
 Ernst, Ostermann, and Cook~\cite{ernst2006-virtual-class-calculus}
 formalized it in the virtual class calculus, where classes are
@@ -2811,10 +3485,14 @@ type at compile time
 (Appendix~\ref{app:scala-multi-target}).
 Neither framework provides a mechanism for set-valued
 resolution.
+\fi
 
-\subsection{Configuration Languages and Module Systems}
+\subsection{\bilingual{Configuration Languages and Module Systems}{配置语言与模块系统}}
 
-\paragraph{Configuration languages}
+\paragraph{\bilingual{Configuration languages}{配置语言}}
+\ifInheritanceChinese
+CUE~\cite{cue2019} 在单一格中统一了类型与值,其中以 \texttt{\&} 表示的合一是可交换、可结合且幂等的。CUE 的设计受到 Google 的 Borg 配置语言 (GCL) 的启发,后者使用了图合一。CUE 的格包含标量类型,其冲突语义规定合一不相容标量会得到 $\bot$;标量对于配置语言是否必要,还是仅凭树结构就已足够,是一个有趣的设计问题。Jsonnet~\cite{jsonnet} 通过 \texttt{+} 运算符提供了具有 mixin 语义的对象继承:复合\emph{不是}可交换的,因为在标量冲突上右侧胜出,而深合并需要在每个字段上通过 \texttt{+:} 语法显式选择加入,因此深合并虽可用但并非默认行为。Dhall~\cite{dhall2017} 采取函数式方法:它是一个带记录的类型化 $\lambda$-演算,其中复合是记录合并算子,而非继承机制。
+\else
 CUE~\cite{cue2019} unifies types and values in a single lattice
 where unification, denoted by \texttt{\&}, is commutative, associative, and
 idempotent.
@@ -2833,8 +3511,12 @@ available but not the default.
 Dhall~\cite{dhall2017} takes a functional approach: it is a typed
 $\lambda$-calculus with records, where composition is a record merge
 operator, not an inheritance mechanism.
+\fi
 
-\paragraph{Module systems and deep merge}
+\paragraph{\bilingual{Module systems and deep merge}{模块系统与深合并}}
+\ifInheritanceChinese
+NixOS 模块系统~\cite{dolstra2010-nixos,nixosmodules} 通过\emph{递归合并嵌套属性集}来组合模块,而非通过线性化或方法层级的覆盖,这与先前的 mixin 和 trait 演算中区分树层级继承与方法层级复合的深合并语义相同。当两个模块定义了相同的嵌套路径时,其子树被合并而非覆盖。NixOS 模块系统集成了深合并、递归的 $\this$、模块的延迟求值,以及其上的丰富类型检查层。同一机制为 NixOS 系统配置、Home Manager~\cite{homemanager}、nix-darwin~\cite{nixdarwin}、flake-parts~\cite{flakeparts} 以及数十个其他生态系统提供支持,共同管理任意复杂度的配置。一个似乎尚未被完全解决的方面是 $\this$ 在多重继承下的语义。当两个各自继承自同一延迟模块的独立模块被组合时,每次导入都会引入对共享选项自己的声明;模块系统的 \texttt{merge\-Option\-Decls} 以静态错误拒绝重复声明(附录~\ref{app:scala-multi-target})。模块系统无法表达两条路径对同一选项的贡献是均等的,即递归合并自然产生的多目标情形,正是这一情形促成了第~\ref{sec:mixin-trees} 节的观测语义。
+\else
 The NixOS module system~\cite{dolstra2010-nixos,nixosmodules}
 composes modules by \emph{recursively merging nested attribute sets},
 not by linearization or method-level override, which is the same deep-merge
@@ -2861,11 +3543,15 @@ The module system cannot express that both routes contribute
 equally to the same option, that is, the multi-target situation that
 recursive merging naturally gives rise to, which motivated the
 observational semantics of Section~\ref{sec:mixin-trees}.
+\fi
 
-\subsection{Our Companion Work}
+\subsection{\bilingual{Our Companion Work}{我们的配套工作}}
 
-\paragraph{Modular software architectures}
+\paragraph{\bilingual{Modular software architectures}{模块化软件架构}}
 \label{sec:practical-modular}
+\ifInheritanceChinese
+插件系统、组件框架与依赖注入框架通过声明式继承实现了软件的可扩展性。第~\ref{sec:mixin-trees} 节所确立的继承的对称性与可结合性解释了这类系统为何有效:组件可以以任意顺序继承而不改变行为。MIXINv2\anon[~(补充材料)]{~\cite{mixin2025}} 本身就是一个依赖注入框架:每个作用域将其依赖声明为具名槽,复合跨越作用域边界按名解析它们,从而使继承演算的模式显式化而非随意拼凑。
+\else
 Plugin systems, component frameworks, and dependency injection frameworks
 enable software extensibility through declarative inheritance. The
 symmetric, associative nature of inheritance established in Section~\ref{sec:mixin-trees} explains why such
@@ -2876,9 +3562,13 @@ is itself a dependency injection framework:
 each scope declares its dependencies as named slots, and
 composition resolves them by name across scope boundaries,
 making the inheritance-calculus patterns explicit rather than ad~hoc.
+\fi
 
-\paragraph{Union file systems}
+\paragraph{\bilingual{Union file systems}{联合文件系统}}
 \label{sec:practical-union-fs}
+\ifInheritanceChinese
+联合文件系统,如 UnionFS、OverlayFS 与 AUFS,将多个目录层次叠加以呈现统一视图。其语义与继承演算相似,表现在后面的层覆盖前面的层且所有层的文件均可访问,但其设计在具体之处有所不同:继承是不对称的,标量文件的冲突解决是不可交换的,且层与层之间不存在晚绑定或动态分派。我们将继承演算直接实现为联合文件系统\anon[~(作为补充材料附上)]{~\cite{ratarmount2025}},仅凭三个原语就获得了文件查询的晚绑定语义与动态分派,无需任何额外机制。在软件包管理器、构建系统与操作系统发行版中,外部工具链将配置转换为文件树;而在这里,文件系统作为自身的配置,转换即是继承:这是一种\emph{文件系统即编译器},其中目录树既是源程序又是编译目标。
+\else
 Union file systems, such as UnionFS, OverlayFS, and AUFS, layer multiple directory
 hierarchies to present a unified view. Their semantics resembles
 inheritance-calculus in that later layers override earlier layers and files from all
@@ -2896,10 +3586,14 @@ here, the file system serves as configuration to itself,
 and the transformation is inheritance: a
 \emph{file-system-as-compiler} in which the directory tree is
 both the source program and the compilation target.
+\fi
 
-\section{Future Work}
+\section{\bilingual{Future Work}{未来工作}}
 \label{sec:future-work}
 
+\ifInheritanceChinese
+\anon[辅助实现]{MIXINv2~\cite{mixin2025}}{} 是继承演算的一个可执行实现,它已经超越了本文所呈现的无类型演算:它包含编译期检查,以验证所有引用都解析到 mixin 树中的有效路径,以及一个从宿主语言引入标量值的外部函数接口 (FFI)。以下所描述的未来工作,关注的是这一实现与一门完全实用的语言之间的差距,横跨理论基础与库层面的编码两个方面。
+\else
 \anon[The supplementary implementation]{MIXINv2~\cite{mixin2025}}{} is an executable implementation of inheritance-calculus
 that already goes beyond the untyped calculus presented here:
 it includes compile-time checking that all references resolve to
@@ -2908,8 +3602,14 @@ that introduces scalar values from the host language.
 The future work described below concerns the distance between this
 implementation and a fully practical language, spanning both
 theoretical foundations and library-level encodings.
+\fi
 
-\subsection{Type System}
+\subsection{\bilingual{Type System}{类型系统}}
+\ifInheritanceChinese
+MIXINv2 现有的编译期检查验证每条引用路径都解析到继承结果中存在的属性。将这些检查的可靠性形式化,即证明类型良好的程序在运行时不产生悬空引用,是未来工作的一个方向。这样的形式化与 DOT 演算~\cite{amin2016-dependent-object-types} 的关系,类似于继承演算与 $\lambda$-演算的关系:有类型的继承演算可以看作不含 $\lambda$ 的 DOT,它保留了路径依赖类型,同时以 mixin 继承取代函数。正式的类型系统将适合在 Coq 和 Agda 等证明助手中机械化,以验证类型安全、进展和保持等性质。
+
+在现有检查的可靠性之外,额外的类型系统特性将强化这门语言。一个关键的例子是\emph{完全性检查}:验证一个继承为所有必需槽位提供了实现,而不仅仅是引用能够解析。在无类型的继承演算中,写下 $\mathrm{magnitude} \mapsto \{\}$ 纯属说明性质:它定义了一个结构槽位,但不对填充它的内容施加任何约束。完全性检查将在静态上强制这类声明,拒绝使必需槽位保持未填充状态的继承。
+\else
 MIXINv2's existing compile-time checks verify that every
 reference path resolves to a property that exists in the inherited
 result. Formalizing the soundness of these checks, that is, proving that
@@ -2935,8 +3635,18 @@ is purely documentary: it defines a structural slot but imposes no
 constraint on what must fill it.
 Totality checking would enforce such declarations statically,
 rejecting inheritances that leave required slots unfilled.
+\fi
 
-\subsection{Standard Library}
+\subsection{\bilingual{Standard Library}{标准库}}
+\ifInheritanceChinese
+其余几项涉及标准库:它们不需要对演算或类型系统进行扩展,但需要在现有框架内进行非平凡的编码。
+
+继承演算\emph{默认是开放的}:继承可以自由合并任意两个 mixin,一个值可以同时具有多个数据构造子(例如,$\{\mathrm{Zero},\; \mathrm{Odd},\; \mathrm{half} \mapsto \{\mathrm{Zero}\}\}$)。这是该演算自然的 trie 语义,也是第~\ref{sec:expression-problem}~节求解表达式问题的基础。然而,许多操作(例如等值测试)假设值是\emph{线性的},即恰好具有一个数据构造子。第~\ref{sec:case-study}~节的观察者模式并不强制这一点:将其应用于一个具有多个数据构造子的值时,所有回调都会触发,其结果被继承在一起。
+
+\emph{模式验证}可以在库层面使用现有原语来实现。观察者可以测试某个特定的数据构造子是否存在,返回一个布尔值;第二次布尔派发随后基于该结果进行分支。通过链接这样的测试,工厂可以验证一个值恰好匹配一个数据构造子并携带所需的属性。这并不限制继承本身(继承仍然不受约束),但提供了一种在不变式违反传播之前检测到它的方式。
+
+同样的技术,即观察者返回布尔值后接布尔派发,可以产生\emph{封闭模式匹配}。第~\ref{sec:case-study}~节的观察者模式本质上是\emph{开放的}:新的数据构造子情况可以通过继承添加。封闭匹配(其中恰好执行一个分支)可以编码为一个\emph{访问者链}:一个由 if-then-else 节点组成的链表,每个节点测试一个数据构造子,在不匹配时向后传递。这类似于 GHC.Generics 的 $\mathrm{(:+:)}$ 和类型表示~\cite{magalhaes2010-generic-deriving},其中每个链节对应一个求和项。一个重要的推论是,这样的链\emph{不}可交换,因为它们具有固定的顺序,因此无法通过开放继承来扩展,而这正是封闭派发的正确语义。
+\else
 The remaining items concern the standard library: they require
 no extensions to the calculus or type system, but involve nontrivial
 encodings within the existing framework.
@@ -2979,9 +3689,25 @@ An important consequence is that such chains do \emph{not}
 commute, as they have a fixed order, and therefore cannot be extended
 through open inheritance, which is the correct semantics for closed
 dispatch.
+\fi
 
-\section{Conclusion}
+\section{\bilingual{Conclusion}{结论}}
 
+\ifInheritanceChinese
+对不可扩展性的免疫指导了继承演算的设计。第~\ref{sec:semantic-variants}~节排除了每一种替代的组合机制和引用解析,使得带有多目标晚绑定限定 $\this$ 的深合并成为唯一的幸存者。mixin 充当了统一模块、类、对象、方法、字段和局部绑定的单一抽象;mixin 树的深合并使继承具有可交换性、幂等性和可结合性,从而多重继承的线性化问题不再出现。第~\ref{sec:mixin-trees}~节的六个一阶方程,具有指称语义且可由 tabling~\cite{tamaki1986-tabled-resolution} 计算,足以定义语义;观察者通过查询一棵惰性构造的树中的路径来驱动计算。这些方程是对标准面向对象语义的最小偏离:唯一的改变是 $\overrides$ 方程~(\ref{eq:overrides}),它以子树的深合并取代了方法层面的遮蔽。面向对象编程传统上被归类为命令式的;去掉可变状态和函数体,便得到纯面向对象编程,%
+\footnote{
+  ``纯''具有双重含义:不纯粹意味着不纯洁,即值是不可变的且组合没有副作用;而不混合意味着组合完全依赖继承,没有函数式抽象,例如 $\lambda$ 或 $\beta$-归约。
+}
+这是声明式编程的一个最小计算模型。
+
+由于 $\overrides$ 合并的是子树而非方法体,函数不再是原语。$\lambda$-演算在第~\ref{sec:translation}~节通过六条翻译规则宏表达到继承演算中。第~\ref{sec:bohm-tree}~节的 Böhm 树对应将这一一阶语义扩展到了 $\lambda$-演算:先前的高阶语义框架被证明忠实于继承演算一阶方程的一个子语言的首次迭代近似。
+
+继承演算进一步获得了 $\lambda$-演算无法表达的三种现象;事实上,正如第~\ref{sec:asymmetry}~节所示,在 Felleisen 意义下~\cite{felleisen1991-expressive-power},继承演算严格地比惰性 $\lambda$-演算更具表达力。第~\ref{sec:expression-problem}~节在表达式问题~\cite{wadler1998-expression-problem}意义下建立了对不可扩展性的免疫。第~\ref{sec:case-study}~节的案例研究表明,普通算术产生了逻辑编程的关系语义:循环继承层次结构通过与递归 Datalog 所支配的相同的升链条件收敛,附录~\ref{app:datalog-encoding}给出了一个系统性的编码。第~\ref{sec:practical-function-color}~节展示了函数颜色盲性~\cite{nystrom2015-function-color}。
+
+单个 mixin 同时是数据、程序、配置、函数、关系和对象。它宏表达了 $\lambda$-演算,并恢复了逻辑编程的关系语义,同时对两者均无法逃脱的不可扩展性保持免疫。
+
+引言提出了配置本身是否能成为实用的通用编程的问题。答案是肯定的。我们提出继承演算作为实用通用编程的基础,我们相信它优于任何已知的计算模型。
+\else
 Immunity to nonextensibility guided the design of
 inheritance-calculus.
 Section~\ref{sec:semantic-variants} eliminated every
@@ -3055,9 +3781,13 @@ It can.
 We propose inheritance-calculus as a foundation for practical
 general-purpose programming, one we believe better than any
 known computational model.
+\fi
 
-\section{Data Availability Statement}
+\section{\bilingual{Data Availability Statement}{数据可用性声明}}
 
+\ifInheritanceChinese
+可执行实现 (MIXINv2) 以及本文中的所有示例以 MIT 许可证作为开源软件公开发布\anon[{} (匿名审查期间省略 URL)]{~\cite{mixin2025}}。每个以继承演算记法呈现的示例都有对应的可执行 MIXINv2 源码,且一套测试套件复现了论文中的每个示例。案例研究 (第~\ref{sec:case-study}~节) 的布尔逻辑和一元自然数算术、附录~\ref{app:datalog-encoding}~的 Datalog 编码 (包括双跳、常量连接和多变量连接关系程序以及重复访问者自连接回归示例),以及函数颜色盲性段落 (第~\ref{sec:practical-function-color}~节) 中讨论的同步和异步运行时实例,均包含在这些源码中。第~\ref{sec:practical-union-fs}~节所讨论的 ratarmount 补丁\anon[也已公开发布 (匿名审查期间省略 URL)]{作为一个开放的拉取请求~\cite{ratarmount2025}可以获取}。\anon[以上所有内容也作为辅助材料一并附上。]{}
+\else
 The executable implementation (MIXINv2) and all examples from
 this paper are openly available as open-source software under
 the MIT license\anon[{} (URL omitted for anonymous review)]{~\cite{mixin2025}}.
@@ -3078,6 +3808,7 @@ Section~\ref{sec:practical-union-fs} is
 \anon[also openly available (URL omitted for anonymous review)]{available as an open pull
 request~\cite{ratarmount2025}}.
 \anon[All of the above are also included as supplementary material.]{}
+\fi
 
 \begin{acks}
   Claude Code, GitHub Copilot, Gemini Code Assist, and Codex were utilized to generate sections of this Work,
@@ -3096,9 +3827,13 @@ request~\cite{ratarmount2025}}.
 \ifInheritanceAppendix
 \appendix
 
-\section{Well-Definedness of the Semantic Functions}
+\section{\bilingual{Well-Definedness of the Semantic Functions}{语义函数的良定义性}}
 \label{app:well-definedness}
 
+\ifInheritanceChinese
+六个语义方程~(\ref{eq:properties})--(\ref{eq:this}) 是一阶的:其输入与输出均为路径及路径的集合,不涉及函数空间、闭包或高阶构造。
+本节通过证明这六个方程定义了一个单调算子来确立良定义性;该算子的最小不动点由 tabling 求值~\cite{tamaki1986-tabled-resolution} 可靠地计算。
+\else
 The six semantic
 equations~(\ref{eq:properties})--(\ref{eq:this}) are
 first-order: their inputs and outputs are paths and sets of
@@ -3108,8 +3843,17 @@ This section establishes well-definedness by showing that
 the six equations define a monotone operator whose least
 fixed point is computed soundly by tabled
 evaluation~\cite{tamaki1986-tabled-resolution}.
+\fi
 
-\begin{definition}[Dependency graph]\label{def:dependency-graph}
+\begin{definition}[\bilingual{Dependency graph}{依赖图}]\label{def:dependency-graph}
+\ifInheritanceChinese
+  固定一棵 AST 及其原始函数 $\defines$ 与 $\inherits$。
+  \emph{依赖图}~$G$ 以由该 AST 产生的所有语义函数应用
+  ($\properties(p)$、\allowbreak$\supers(p)$、\allowbreak$\overrides(p)$、\allowbreak$\bases(p)$、\allowbreak
+  $\resolve(\ldots)$、\allowbreak$\this(\ldots)$) 为顶点。
+  当通过方程~(\ref{eq:properties})--(\ref{eq:this}) 计算~$u$
+  需要~$v$ 的值时,从顶点~$u$ 到顶点~$v$ 有一条有向边。
+\else
   Fix an AST with its primitive functions $\defines$ and
   $\inherits$.
   The \emph{dependency graph}~$G$ has as vertices all
@@ -3121,10 +3865,22 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   whenever computing~$u$ via
   equations~(\ref{eq:properties})--(\ref{eq:this})
   requires the value of~$v$.
+\fi
 \end{definition}
 
-\begin{definition}[Immediate consequence operator $T_P$]%
+\begin{definition}[\bilingual{Immediate consequence operator $T_P$}{直接后果算子 $T_P$}]%
   \label{def:tp-operator}
+\ifInheritanceChinese
+  设 $\mathcal{Q}$ 为所有语义函数查询(即~$G$ 的顶点)的集合。
+  对每个查询 $q \in \mathcal{Q}$,设 $\mathcal{V}_q$ 为形状与~$q$ 相匹配的答案值的集合
+  (依定义~$q$ 的方程,为路径、路径的集合或路径对的集合)。
+  \emph{查询--答案映射}是逐点乘积
+  $\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q)$ 中的一个元素;
+  等价地,它为每个查询~$q$ 指派一个候选答案集合 $M(q) \subseteq \mathcal{V}_q$。
+  \emph{直接后果算子}~\cite{vanemden1976-predicate-logic-semantics}
+  $T_P$ 将查询--答案映射~$M$ 映射为新的查询--答案映射~$T_P(M)$,方式是:对每个查询~$q$,
+  求值定义~$q$ 的那条方程的右侧,并以当前近似~$M(q')$ 解释每个子查询~$q'$。
+\else
   Let $\mathcal{Q}$ be the set of all
   semantic-function queries
   (vertices of~$G$).
@@ -3145,14 +3901,27 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   query~$q$, the right-hand side of the equation that
   defines~$q$, interpreting every sub-query~$q'$ by
   the current approximation~$M(q')$.
+\fi
 \end{definition}
 
-\begin{lemma}[Monotonicity]\label{lem:monotonicity}
+\begin{lemma}[\bilingual{Monotonicity}{单调性}]\label{lem:monotonicity}
+  \ifInheritanceChinese
+  算子 $T_P$ 在完备格
+  $\Bigl(\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q),\; \subseteq\Bigr)$
+  上是单调的。
+  \else
   The operator $T_P$ is monotone on the complete lattice
   $\Bigl(\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q),\; \subseteq\Bigr)$.
+  \fi
 \end{lemma}
 
 \begin{proof}
+\ifInheritanceChinese
+  每条方程的右侧均由 $\cup$、$\in$、等式测试以及正集合
+  概括 $\{\, x \mid x \in S, \ldots \,\}$ 构成。
+  六条方程均不使用否定、集合差或补集。
+  因此,若 $M \subseteq M'$(逐点),则 $T_P(M) \subseteq T_P(M')$。
+\else
   Each equation's right-hand side is built from
   $\cup$, $\in$, equality tests, and positive set
   comprehension $\{\, x \mid x \in S, \ldots \,\}$.
@@ -3160,15 +3929,30 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   difference, or complement.
   Therefore, if $M \subseteq M'$ (pointwise), then
   $T_P(M) \subseteq T_P(M')$.
+\fi
 \end{proof}
 
-\begin{theorem}[Existence and uniqueness of
-  $\mathrm{lfp}(T_P)$]\label{thm:lfp-exists}
+\begin{theorem}[\bilingual{Existence and uniqueness of
+  $\mathrm{lfp}(T_P)$}{$\mathrm{lfp}(T_P)$ 的存在性与唯一性}]\label{thm:lfp-exists}
+  \ifInheritanceChinese
+  算子 $T_P$ 有唯一的最小不动点 $\mathrm{lfp}(T_P)$。
+  \else
   The operator $T_P$ has a unique least fixed point
   $\mathrm{lfp}(T_P)$.
+  \fi
 \end{theorem}
 
 \begin{proof}
+\ifInheritanceChinese
+  每个幂集格
+  $(\mathcal{P}(\mathcal{V}_q), \subseteq)$
+  都是完备的,
+  因此逐点乘积格
+  $\Bigl(\prod_{q \in \mathcal{Q}} \mathcal{P}(\mathcal{V}_q), \subseteq\Bigr)$
+  也是完备的。
+  由 Knaster--Tarski 定理~\cite{tarski1955-lattice-fixpoint-theorem},
+  完备格上的每个单调函数都有唯一的最小不动点。
+\else
   Each powerset lattice
   $(\mathcal{P}(\mathcal{V}_q), \subseteq)$
   is complete,
@@ -3179,19 +3963,47 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
   theorem~\cite{tarski1955-lattice-fixpoint-theorem},
   every monotone function on a complete lattice has a
   unique least fixed point.
+\fi
 \end{proof}
 
-\begin{theorem}[Well-definedness]\label{thm:well-defined}
+\begin{theorem}[\bilingual{Well-definedness}{良定义性}]\label{thm:well-defined}
+  \ifInheritanceChinese
+  语义函数 $\properties$、\allowbreak$\supers$、\allowbreak$\overrides$、\allowbreak$\bases$、\allowbreak
+  $\resolve$、\allowbreak$\this$ 是良定义的:
+  其指称语义为 $\mathrm{lfp}(T_P)$,即直接后果算子的唯一最小不动点。
+  \else
   The semantic functions
   $\properties$, $\supers$, $\overrides$, $\bases$,
   $\resolve$, $\this$ are well-defined:
   their denotational semantics is
   $\mathrm{lfp}(T_P)$, the unique least fixed point of
   the immediate consequence operator.
+  \fi
 \end{theorem}
 
-\begin{theorem}[Tabling soundness]%
+\begin{theorem}[\bilingual{Tabling soundness}{Tabling 可靠性}]%
   \label{thm:tabling-soundness}
+  \ifInheritanceChinese
+  即使依赖图~$G$ 是无穷的,方程~(\ref{eq:properties})--(\ref{eq:this}) 的
+  tabling 求值也绝不会返回错误答案。具体而言:
+  \begin{enumerate}
+    \item \textbf{可靠性(无假正例)。}
+      tabling 返回的每个事实均由某条方程的右侧在其输入上求值产生。
+      对求值轨迹进行归纳,每个返回的事实都属于 $\mathrm{lfp}(T_P)$。
+
+    \item \textbf{单调积累。}
+      tabling 累加器在各轮迭代之间只通过集合并增长,任何事实都不会被删除。
+
+    \item \textbf{不动点检测的正确性。}
+      若求值过程中没有子查询被重入,则所有子查询均在无近似的情况下被完整计算,结果是精确的。
+      若发生了重入但累加器是稳定的(即没有新事实被添加),则累加器等于
+      $\mathrm{lfp}(T_P)$ 在可达查询上的限制,因为它是一个从~$\bot$ 上升到达的前不动点。
+
+    \item \textbf{可靠的失败。}
+      当 tabling 无法确定答案时(无论是因为迭代预算耗尽还是因为存在无穷非循环链),
+      它会抛出错误而非返回错误答案。
+  \end{enumerate}
+  \else
   Tabled evaluation of
   equations~(\ref{eq:properties})--(\ref{eq:this})
   never returns a wrong answer, even when the
@@ -3228,9 +4040,35 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
       it raises an error rather than
       returning a wrong answer.
   \end{enumerate}
+  \fi
 \end{theorem}
 
 \begin{proof}
+\ifInheritanceChinese
+  对于~(1),每个返回的事实都是某条方程的右侧作用于先前返回的事实上的输出;
+  归纳地,所有输入均属于 $\mathrm{lfp}(T_P)$,因此输出也是(由单调性和不动点性质)。
+
+  对于~(2),实现通过 $A \leftarrow A \cup T_P(A)$ 进行积累,这对~$A$ 是单调的。
+
+  对于~(3),当没有重入时,求值是有限无环可达子图上的普通记忆化递归,
+  因此每个子查询都被精确计算,不涉及任何近似。
+  当发生重入时,设 $R \subseteq \mathcal{Q}$ 为从初始查询可达的查询集合,
+  设 $T_P^R$ 表示 $T_P$ 到~$R$ 上映射的限制。
+  若累加器稳定,即 $A = A \cup T_P^R(A)$,则
+  $T_P^R(A) \subseteq A$,从而~$A$ 是~$T_P^R$ 的一个前不动点。
+
+  由~(1),曾被添加到累加器中的每个事实均由某次右侧求值产生,
+  因此属于 $\mathrm{lfp}(T_P^R)$。
+  故 $A \subseteq \mathrm{lfp}(T_P^R)$。
+
+  反之,由 Knaster--Tarski 将最小不动点刻画为最小前不动点,
+  $\mathrm{lfp}(T_P^R)$ 包含于~$T_P^R$ 的每个前不动点中,特别地包含于~$A$ 中。
+  从而 $\mathrm{lfp}(T_P^R) \subseteq A$。
+
+  因此 $A = \mathrm{lfp}(T_P^R)$,即稳定的累加器等于可达查询上的精确指称。
+
+  对于~(4),预算耗尽与栈溢出均产生异常,而非静默的错误答案。
+\else
   For~(1), each returned fact is the output of some
   equation's right-hand side applied to previously
   returned facts; by induction, all inputs are in
@@ -3270,9 +4108,24 @@ evaluation~\cite{tamaki1986-tabled-resolution}.
 
   For~(4), budget exhaustion and stack overflow both
   produce exceptions, never silent wrong answers.
+\fi
 \end{proof}
 
-\paragraph{Termination}
+% 终止性依赖程序结构:无环有限子图→一趟即止;有环有限逐查询值域→有限格上升链条件收敛;
+% 无穷可达子图→固有发散,属图灵完备性,非求值策略的缺陷。
+\paragraph{\bilingual{Termination}{终止性}}
+\ifInheritanceChinese
+求值是否终止取决于程序:
+\begin{itemize}
+  \item \textbf{无环、有限可达子图。}
+    一趟即足;求值终止。
+  \item \textbf{有环、逐查询值域有限。}
+    多趟迭代在有限格的上升链条件下收敛~\cite{bancilhon1986-recursive-query-strategies}。
+    这是 Datalog 的情形(第~\ref{sec:recursive-rules} 节)。
+  \item \textbf{无穷可达子图。}
+    求值可能发散;这是图灵完备性的固有属性,而非求值策略的缺陷。
+\end{itemize}
+\else
 Whether evaluation terminates depends on the
 program:
 \begin{itemize}
@@ -3289,6 +4142,7 @@ program:
     Turing completeness and not a defect of the
     evaluation strategy.
 \end{itemize}
+\fi
 
 \section{B\"ohm Tree Correspondence: Proofs}
 \label{app:bohm-tree-proofs}
@@ -5688,4 +6542,9 @@ $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
 \bibliography{references}
 \fi
 
+% \clearpage before closing CJK* ships every remaining page and float while the
+% CJK active characters still mean CJK (the running head and any deferred float
+% are typeset in the output routine, after \end{CJK*} would otherwise restore the
+% default UTF-8 meaning).
+\ifInheritanceChinese\clearpage\end{CJK*}\fi
 \end{document}

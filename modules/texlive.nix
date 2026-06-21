@@ -16,6 +16,9 @@
         "scheme-medium"
         "cjk"
         "xpinyin"
+        # CJKutf8 (from cjk) + the Arphic gbsn font render the Chinese preprint
+        # (preprint-zh.tex) under pdfLaTeX, like the English entries.
+        "arphic"
         "latexmk"
         # acmart dependencies not in scheme-medium
         "xstring"
@@ -86,6 +89,10 @@
         ../paper/supplement-xref.tex
         ../paper/submission.tex
         ../paper/preprint.tex
+        ../paper/preprint-zh.tex
+        # \input by submission.tex and supplement.tex (drops acmart's tocindent
+        # labels when importing the cross-document .aux via xr-hyper).
+        ../paper/xr-tocindent-filter.tex
         ../paper/acmart.cls
         ../paper/ACM-Reference-Format.bst
         ../paper/references.bib
@@ -109,6 +116,15 @@
         root = ../paper;
         fileset = inheritanceCalculusSources;
         entry = "submission";
+      };
+
+      # The Chinese preprint: the same full document as the English preprint with
+      # reader-facing prose in Chinese, built with pdfLaTeX via CJKutf8.
+      inheritanceCalculusPreprintZhPdf = mkPaperPdf {
+        name = "inheritance-calculus-preprint-zh.pdf";
+        root = ../paper;
+        fileset = inheritanceCalculusSources;
+        entry = "preprint-zh";
       };
 
       # The arxiv submission bundle: build preprint.pdf, then tar the exact set of
@@ -154,6 +170,7 @@
       inheritanceCalculusTexlivePackages = texlivePackages;
       packages.inheritance-calculus-appendix = inheritanceCalculusAppendixPdf;
       packages.inheritance-calculus-submission = inheritanceCalculusSubmissionPdf;
+      packages.inheritance-calculus-preprint-zh = inheritanceCalculusPreprintZhPdf;
       packages.inheritance-calculus-arxiv = inheritanceCalculusArxiv;
     };
 }
