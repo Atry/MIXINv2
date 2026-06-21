@@ -125,8 +125,9 @@
 % defaults include everything, so the full build (preprint.tex) sets
 % nothing; submission.tex clears the appendices (POPL 2027 requires them
 % as separate supplemental material), supplement.tex clears the body.
-% The single bibliography lives at the end and is always emitted, since
-% both the main matter and the appendices cite.
+% The single bibliography is emitted exactly once, after the main matter and
+% before the appendix, since both cite it. In the appendix-only build (no main
+% matter) it instead follows the appendix; see the two guarded copies below.
 \makeatletter
 \@ifundefined{ifInheritanceBody}{\newif\ifInheritanceBody\InheritanceBodytrue}{}
 \@ifundefined{ifInheritanceAppendix}{\newif\ifInheritanceAppendix\InheritanceAppendixtrue}{}
@@ -3084,6 +3085,14 @@ request~\cite{ratarmount2025}}.
 \end{acks}
 \fi % end \ifInheritanceBody (the main matter)
 
+% References follow the main matter and precede the appendix. This copy fires
+% whenever the main matter is present (preprint, submission); the appendix-only
+% build emits its copy after the appendix instead.
+\ifInheritanceBody
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+\fi
+
 \ifInheritanceAppendix
 \appendix
 
@@ -5470,7 +5479,11 @@ $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
 
 \fi % end \ifInheritanceAppendix
 
+% Appendix-only build (supplement.tex): no main matter ran above, so emit the
+% bibliography here, after the appendix.
+\ifInheritanceBody\else
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
+\fi
 
 \end{document}
