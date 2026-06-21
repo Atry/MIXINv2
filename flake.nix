@@ -31,10 +31,6 @@
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
-    devenv-root = {
-      url = "file+file:///dev/null";
-      flake = false;
-    };
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -57,22 +53,12 @@
       url = "github:TyberiusPrime/uv2nix_hammer_overrides";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    doi-mcp = {
-      url = "github:tfscharff/doi-mcp";
-      flake = false;
-    };
-
   };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
-        ./modules/dev.nix
         ./modules/texlive.nix
         ./modules/python.nix
-        ./modules/jupyter.nix
-        ./modules/codex.nix
-        ./modules/doi-mcp.nix
       ];
       systems = import inputs.systems;
     };

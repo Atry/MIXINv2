@@ -1,33 +1,5 @@
 {
   "nodes": {
-    "devenv-root": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-d6xi4mKdjkX2JFicDIv5niSzpyI0m/Hnm8GGAIU04kY=",
-        "type": "file",
-        "url": "file:///dev/null"
-      },
-      "original": {
-        "type": "file",
-        "url": "file:///dev/null"
-      }
-    },
-    "doi-mcp": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1778669573,
-        "narHash": "sha256-ln9aWQ+GIcsW0M3AyBMSG+/2dN0pcbvtbld6lX0fiag=",
-        "owner": "tfscharff",
-        "repo": "doi-mcp",
-        "rev": "cbf94c2ee7830ef3aa7e9476fa017c7d4100b2f2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tfscharff",
-        "repo": "doi-mcp",
-        "type": "github"
-      }
-    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
@@ -145,8 +117,6 @@
     },
     "root": {
       "inputs": {
-        "devenv-root": "devenv-root",
-        "doi-mcp": "doi-mcp",
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs",
         "pyproject-build-systems": "pyproject-build-systems",
