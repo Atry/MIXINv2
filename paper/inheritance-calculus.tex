@@ -5635,17 +5635,25 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   \fi
 \end{proof}
 
-\section{Multi-Target \texorpdfstring{$\this$}{this} Resolution in Other Systems}
+\section{\bilingual{Multi-Target \texorpdfstring{$\this$}{this} Resolution in Other Systems}{其他系统中的多目标 \texorpdfstring{$\this$}{this} 解析}}
 \label{app:scala-multi-target}
 
+\ifInheritanceChinese
+本附录说明两个具有代表性的系统——Scala~3 和 NixOS 模块系统——拒绝了继承演算能够自然处理的多目标 $\this$ 解析模式。
+\else
 This appendix demonstrates that two representative systems, Scala~3
 and the NixOS module system, reject the multi-target $\this$ resolution
 pattern that inheritance-calculus handles naturally.
+\fi
 
-\subsection*{Scala~3}
+\subsection*{\bilingual{Scala~3}{Scala~3}}
 
+\ifInheritanceChinese
+考虑两个独立扩展同一外部类的对象，每个对象各自提供内部 trait 的一份副本：
+\else
 Consider two objects that independently extend an outer class,
 each providing its own copy of an inner trait:
+\fi
 
 \begin{lstlisting}[style=scala]
 class MyOuter:
@@ -5659,7 +5667,11 @@ object HasMultipleOuters extends Object1.MyInner
 \end{lstlisting}
 
 \noindent
+\ifInheritanceChinese
+Scala~3 以如下错误拒绝了 \texttt{HasMultipleOuters}：
+\else
 Scala~3 rejects \texttt{HasMultipleOuters} with the error:
+\fi
 
 \begin{lstlisting}
 trait MyInner is extended twice
@@ -5669,6 +5681,9 @@ object HasMultipleOuters cannot be instantiated since
 \end{lstlisting}
 
 \noindent
+\ifInheritanceChinese
+该拒绝并非表面层面的限制，而是 DOT 类型论基础的必然后果~\cite{amin2016-dependent-object-types}。在 DOT 中，一个对象被构造为 $\nu(x : T)\, d$，其中 self 变量~$x$ 绑定到\emph{单一}对象。\texttt{Object1.MyInner} 和 \texttt{Object2.MyInner} 是不同的路径依赖类型，每个都将外部 $\this$ 约束到不同的对象。它们的交集要求 \texttt{outer} 同时返回 \texttt{Object1} 和 \texttt{Object2}，但 DOT 的 self 变量是单值的，使得这一交集不可实现。
+\else
 The rejection is not a surface-level restriction but a consequence
 of DOT's type-theoretic foundations~\cite{amin2016-dependent-object-types}.
 In DOT, an object is constructed as $\nu(x : T)\, d$, where the
@@ -5679,8 +5694,13 @@ to a different object.
 Their intersection requires \texttt{outer} to simultaneously
 return \texttt{Object1} and \texttt{Object2}, but DOT's self
 variable is single-valued, making this intersection unrealizable.
+\fi
 
+\ifInheritanceChinese
+等价的继承演算定义如下：
+\else
 The equivalent inheritance-calculus definition is:
+\fi
 \begin{align*}
   \{ \quad \mathrm{MyOuter} &\mapsto \{
       \mathrm{MyInner} \mapsto \{
@@ -5692,6 +5712,9 @@ The equivalent inheritance-calculus definition is:
     \mathrm{Object2}.\mathrm{MyInner}\}
   \quad \}
 \end{align*}
+\ifInheritanceChinese
+此定义在继承演算中是良定义的。$\mathrm{outer}$ 内部的引用 $\qualifiedthis{\mathrm{MyOuter}}$ 具有 de~Bruijn 索引 $n = 1$：从 $\mathrm{outer}$ 的封闭作用域 $\mathrm{MyInner}$ 出发，经过一步 $\this$ 便到达 $\mathrm{MyOuter}$。当 $\mathrm{HasMultipleOuters}$ 同时继承 $\mathrm{Object1}.\mathrm{MyInner}$ 和 $\mathrm{Object2}.\mathrm{MyInner}$ 时，$\this$ 函数（方程~\ref{eq:this}）通过在 $\supers(\mathrm{HasMultipleOuters})$ 中搜索与 $\mathrm{MyInner}$ 定义位置匹配的覆盖路径来解析 $\qualifiedthis{\mathrm{MyOuter}}$。它找到两条继承位置路径，一条经由 $\mathrm{Object1}$，另一条经由 $\mathrm{Object2}$，并返回两者。两条路径都通向继承自同一 $\mathrm{MyOuter}$ 的记录，因此查询 $\mathrm{HasMultipleOuters}.\mathrm{outer}$ 无论走哪条路由都能得到 $\mathrm{MyOuter}$ 的 $\properties$。由于属性解析通过集合并来聚合结果（这是一种本质上幂等的操作），来自两条路由的相同属性定义无冲突地合并。因此，该演算消除了对任何人为路由优先级或线性化规则的需求。
+\else
 This is well-defined in inheritance-calculus.
 The reference
 $\qualifiedthis{\mathrm{MyOuter}}$ inside $\mathrm{outer}$
@@ -5715,14 +5738,19 @@ $\mathrm{HasMultipleOuters}.\mathrm{outer}$ yields the
 $\properties$ of $\mathrm{MyOuter}$ regardless of which
 route is taken.
 Because attribute resolution aggregates results via set union (which is an intrinsically idempotent operation), identical property definitions from the two routes merge without conflict. Thus, the calculus eliminates the need for any artificial route-priority or linearization rules.
+\fi
 
-\subsection*{NixOS Module System}
+\subsection*{\bilingual{NixOS Module System}{NixOS 模块系统}}
 
+\ifInheritanceChinese
+NixOS 模块系统以静态错误拒绝了相同的模式。该翻译使用了模块系统自身的抽象：\texttt{deferredModule} 对应 trait（即未求值的模块值，被导入到其他不动点中），\texttt{submoduleWith} 对应对象（在其自身的不动点中求值）。
+\else
 The NixOS module system rejects the same pattern with a static error.
 The translation uses the module system's own abstractions:
 \texttt{deferredModule} for traits, which are unevaluated module values imported
 into other fixpoints, and \texttt{submoduleWith} for objects, which are evaluated
 in their own fixpoints.
+\fi
 
 \begin{lstlisting}[style=nix]
 let
@@ -5791,7 +5819,11 @@ in
 \end{lstlisting}
 
 \noindent
+\ifInheritanceChinese
+NixOS 模块系统以如下错误拒绝了此代码：
+\else
 The NixOS module system rejects this with:
+\fi
 
 \begin{lstlisting}
 error: The option `HasMultipleOuters.outer'
@@ -5801,6 +5833,9 @@ error: The option `HasMultipleOuters.outer'
 \end{lstlisting}
 
 \noindent
+\ifInheritanceChinese
+该拒绝发生的原因是：\texttt{Object1.\allowbreak{}My\-Inner} 和 \texttt{Object2.\allowbreak{}My\-Inner} 各自携带了 \texttt{My\-Inner} 延迟模块的完整 \texttt{static\-Modules}，其中包括声明 \texttt{options.\allowbreak{}outer}。当 \texttt{HasMultipleOuters} 同时导入两者时，模块系统的 \texttt{merge\-Option\-Decls} 遇到了同一选项的两个声明，并产生静态错误；它无法表达两个声明源自同一 trait 且应被统一这一事实。
+\else
 The rejection occurs because
 \texttt{Object1.\allowbreak{}My\-Inner} and
 \texttt{Object2.\allowbreak{}My\-Inner} each carry the full
@@ -5812,7 +5847,11 @@ When \texttt{HasMultipleOuters} imports both, the module system's
 same option and raises a static error; it cannot express that
 both declarations originate from the same trait and should be
 unified.
+\fi
 
+\ifInheritanceChinese
+该拒绝与上文 Scala 的``冲突基类型''错误类似：两个系统都假设每个选项或类型成员只有单一的声明位置，并拒绝两条继承路由独立引入同一声明的多目标情形。在继承演算中，相同的模式是良定义的，因为 $\overrides$（方程~\ref{eq:overrides}）能够识别两条路由通向同一定义，而 $\supers$（方程~\ref{eq:supers}）则无重复地收集两个继承位置上下文。
+\else
 The rejection is analogous to Scala's ``conflicting base types''
 error above: both systems assume that each option or type member
 has a single declaration site, and reject the multi-target situation
@@ -5823,6 +5862,7 @@ $\overrides$ (equation~\ref{eq:overrides}) recognizes that both
 routes lead to the same definition, and $\supers$
 (equation~\ref{eq:supers}) collects both inheritance-site
 contexts without duplication.
+\fi
 
 \section{Encoding Datalog in Inheritance-Calculus}
 \label{app:datalog-encoding}
