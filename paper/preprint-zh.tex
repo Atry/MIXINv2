@@ -1,0 +1,19 @@
+%%
+%% Chinese preprint build using the ACM SIGPLAN acmart format.
+%%
+%% Same full document as preprint.tex (main matter and appendices), but with the
+%% reader-facing prose rendered in Chinese: setting \InheritanceChinesetrue selects
+%% the Chinese branch of every bilingual switch in the shared body and loads
+%% CJKutf8 for Chinese glyphs. Built with pdfLaTeX, like the English entries, so
+%% every build renders identically (see modules/texlive.nix and the
+%% inheritance-calculus-preprint-zh package).
+%%
+\documentclass[acmsmall,screen,nonacm]{acmart}
+
+%% Disable ACM-specific metadata for preprint
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+
+\newif\ifInheritanceChinese\InheritanceChinesetrue
+\input{inheritance-calculus}

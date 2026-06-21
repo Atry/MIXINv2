@@ -4049,11 +4049,14 @@ $\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-
 Neither pillar requires defining or comparing
 absolute paths inside mixin trees.
 
-\section{Expressive Asymmetry: Proofs}
+\section{\bilingual{Expressive Asymmetry: Proofs}{表达力的不对称:证明}}
 \label{app:expressiveness}
 
-\begin{definition}[Macro-expressibility, after Felleisen~\cite{felleisen1991-expressive-power}]
+\begin{definition}[\bilingual{Macro-expressibility, after Felleisen~\cite{felleisen1991-expressive-power}}{宏可表达性,据 Felleisen~\cite{felleisen1991-expressive-power}}]
   \label{def:macro-expressibility}
+  \ifInheritanceChinese
+  语言 $\mathscr{L}_1$ 的一个构造 $C$ 在语言 $\mathscr{L}_0$ 中是\emph{宏可表达的},若存在一个翻译 $\mathcal{E}$,使得对每一个含有 $C$ 的出现的程序 $P$,翻译 $\mathcal{E}(P)$ 是通过将 $C$ 的每次出现替换为一个仅依赖于 $C$ 的子表达式的 $\mathscr{L}_0$ 表达式而得到的,并保持 $P$ 的所有其他构造不变。
+  \else
   A construct $C$ of language $\mathscr{L}_1$ is \emph{macro-expressible}
   in language $\mathscr{L}_0$ if there exists a translation $\mathcal{E}$
   such that for every program $P$ containing occurrences of $C$,
@@ -4061,19 +4064,29 @@ absolute paths inside mixin trees.
   occurrence of $C$ with an $\mathscr{L}_0$ expression that depends only
   on $C$'s subexpressions, leaving all other constructs of $P$
   unchanged.
+  \fi
 \end{definition}
 
-\begin{lemma}[Composition of macro-expressible translations]
+\begin{lemma}[\bilingual{Composition of macro-expressible translations}{宏可表达翻译的复合}]
   \label{lem:macro-composition}
+  \ifInheritanceChinese
+  若 $\mathcal{E}_1$ 在 $\mathscr{L}_0$ 中宏可表达 $\mathscr{L}_1$ 的构造,且 $\mathcal{E}_2$ 在 $\mathscr{L}_1$ 中宏可表达 $\mathscr{L}_2$ 的构造,则复合 $\mathcal{E}_1 \circ \mathcal{E}_2$ 在 $\mathscr{L}_0$ 中宏可表达 $\mathscr{L}_2$ 的构造。
+  \else
   If $\mathcal{E}_1$ macro-expresses the constructs of
   $\mathscr{L}_1$ in $\mathscr{L}_0$ and
   $\mathcal{E}_2$ macro-expresses the constructs of
   $\mathscr{L}_2$ in $\mathscr{L}_1$, then the composition
   $\mathcal{E}_1 \circ \mathcal{E}_2$ macro-expresses the
   constructs of $\mathscr{L}_2$ in $\mathscr{L}_0$.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  $\mathscr{L}_2$ 的每个构造 $F$ 在 $\mathscr{L}_1$ 上有一个固定的语法抽象 $A_F^{(2)}$。
+  出现在 $A_F^{(2)}$ 中的每个 $\mathscr{L}_1$-构造 $G$ 在 $\mathscr{L}_0$ 上有一个固定的语法抽象 $A_G^{(1)}$。
+  将 $A_F^{(2)}$ 中的每个 $G$ 替换为 $A_G^{(1)}$,得到 $F$ 在 $\mathscr{L}_0$ 上的一个固定语法抽象,从而满足 E4。
+  \else
   Each construct~$F$ of~$\mathscr{L}_2$ has a fixed
   syntactic abstraction~$A_F^{(2)}$
   over~$\mathscr{L}_1$.
@@ -4085,10 +4098,24 @@ absolute paths inside mixin trees.
   in~$A_F^{(2)}$ yields a fixed syntactic
   abstraction over~$\mathscr{L}_0$ for~$F$,
   satisfying~E4.
+  \fi
 \end{proof}
 
-\begin{definition}[Language universe]
+\begin{definition}[\bilingual{Language universe}{语言全集}]
   \label{def:language-universe}
+  \ifInheritanceChinese
+  设 $\mathscr{U}$ 为一个语言,其构造子是继承演算的构造子、惰性 $\lambda$-演算的构造子(包括 $\lambda$-抽象、应用与变量)以及 $\mathbf{let}$-绑定的并集。
+  $\mathscr{U}$ 的语义通过将每个 $\mathscr{U}$-程序翻译为继承演算来给出,分三步:
+  \begin{enumerate}
+    \item 将每个极大 $\lambda$-演算子表达式(即根节点与所有内部节点仅使用 $\lambda$-演算构造子的每棵子树)转化为 A-范式~\cite{flanagan1993-essence-compiling-continuations}。
+    \item 将翻译 $\mathcal{T}$(第~\ref{sec:forward-translation} 节)应用于每个 ANF $\lambda$-演算子表达式。
+    \item 按第~\ref{sec:mixin-trees} 节的规则对所得继承演算程序求值。
+  \end{enumerate}
+  当一个 $\mathscr{U}$-表达式交错使用 $\lambda$-演算与继承演算的构造子(例如,一个 $\mathbf{let}$-绑定,其被绑定的值是一个继承演算表达式)时,翻译从叶到根组合地应用:每个 $\lambda$-演算构造子通过 $\mathcal{T}$ 替换为其继承演算等价物,同时将继承演算子表达式视为不透明的值。
+  由于 $\mathcal{T}$ 的每条规则(第~\ref{sec:forward-translation} 节)都是一个固定的语法抽象,仅依赖于被翻译的子表达式,因此这种自底向上的应用是良定义的,并为步骤~(3) 产生一个纯继承演算程序。
+
+  若一个 $\mathscr{U}$-程序 $P$ 的翻译收敛,则 $P$ 收敛,记为 $\mathrm{eval}_{\mathscr{U}}(P)$。
+  \else
   Let $\mathscr{U}$ be the language whose constructors are
   the union of the constructors of inheritance-calculus,
   the constructors of the lazy $\lambda$-calculus
@@ -4129,9 +4156,15 @@ absolute paths inside mixin trees.
   A $\mathscr{U}$-program $P$ converges,
   $\mathrm{eval}_{\mathscr{U}}(P)$, iff its translation
   converges.
+  \fi
 \end{definition}
 
 \begin{remark}\label{rem:universe-properties}
+  \ifInheritanceChinese
+  惰性 $\lambda$-演算与继承演算是 $\mathscr{U}$ 的保守性限制:各自通过去掉另一方的构造子来得到。
+  对于纯继承演算程序,步骤~(1) 与~(2) 是平凡的,因此 $\mathrm{eval}_{\mathscr{U}}$ 与继承演算的语义一致。
+  对于纯 $\lambda$-演算程序,步骤~(1)--(3) 的复合由充分性(定理~\ref{thm:adequacy})与惰性求值一致。
+  \else
   The lazy $\lambda$-calculus and inheritance-calculus are
   conservative restrictions of $\mathscr{U}$: each is
   obtained by removing the other's constructors.
@@ -4142,8 +4175,12 @@ absolute paths inside mixin trees.
   For a pure $\lambda$-calculus program, the composition
   of steps~(1)--(3) agrees with lazy evaluation by
   Adequacy (Theorem~\ref{thm:adequacy}).
+  \fi
 \end{remark}
 
+\ifInheritanceChinese
+三步翻译是有效的(ANF 转换与 $\mathcal{T}$ 是语法变换),而继承演算的递归求值(第~\ref{sec:mixin-trees} 节)是一个半判定过程,因此 $\mathrm{eval}_{\mathscr{U}}$ 是递归可枚举的,满足 Felleisen 框架~\cite{felleisen1991-expressive-power} 的要求。
+\else
 The three-step translation is effective (ANF conversion
 and~$\mathcal{T}$ are syntactic transformations) and the
 recursive evaluation of inheritance-calculus
@@ -4151,35 +4188,63 @@ recursive evaluation of inheritance-calculus
 procedure, so $\mathrm{eval}_{\mathscr{U}}$ is
 recursively enumerable, as required by
 Felleisen's framework~\cite{felleisen1991-expressive-power}.
+\fi
 
-\begin{lemma}[$\mathbf{let}$-binding is macro-expressible
-  in the lazy $\lambda$-calculus]
+\begin{lemma}[\bilingual{$\mathbf{let}$-binding is macro-expressible
+  in the lazy $\lambda$-calculus}{$\mathbf{let}$-绑定在惰性 $\lambda$-演算中是宏可表达的}]
   \label{lem:let-macro}
+  \ifInheritanceChinese
+  翻译 $\mathbf{let}\; x = e_1 \;\mathbf{in}\; e_2 \;\mapsto\; (\lambda x.\, e_2)\; e_1$ 是 $\mathbf{let}$ 在惰性 $\lambda$-演算中的一个宏可表达的消去。
+  \else
   The translation
   $\mathbf{let}\; x = e_1 \;\mathbf{in}\; e_2
   \;\mapsto\; (\lambda x.\, e_2)\; e_1$
   is a macro-expressible elimination of $\mathbf{let}$
   in the lazy $\lambda$-calculus.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  该翻译将每个 $\mathbf{let}$-绑定替换为一个仅依赖于两个子表达式 $e_1$ 与 $e_2$ 的 $\lambda$-表达式。
+  这是 Felleisen~\cite{felleisen1991-expressive-power} 的命题 3.7。
+  \else
   The translation replaces each $\mathbf{let}$-binding
   with a $\lambda$-expression that depends only on the
   two subexpressions $e_1$ and~$e_2$.
   This is Proposition~3.7 of
   Felleisen~\cite{felleisen1991-expressive-power}.
+  \fi
 \end{proof}
 
-\begin{lemma}[Equal expressiveness of the lazy
-  $\lambda$-calculus and its ANF fragment]
+\begin{lemma}[\bilingual{Equal expressiveness of the lazy
+  $\lambda$-calculus and its ANF fragment}{惰性 $\lambda$-演算与其 ANF 片段的等同表达力}]
   \label{lem:anf-equiv}
+  \ifInheritanceChinese
+  在 $\mathscr{U}$ 中,惰性 $\lambda$-演算与 ANF 惰性 $\lambda$-演算(第~\ref{sec:forward-translation} 节)具有相同的宏可表达力。
+  \else
   In $\mathscr{U}$, the lazy $\lambda$-calculus and the
   ANF lazy $\lambda$-calculus
   (Section~\ref{sec:forward-translation}) are equally
   macro-expressive.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  每个 ANF 项都是一个 $\lambda$-项,因此 ANF 片段嵌入完整 $\lambda$-演算的映射是恒等变换,平凡地宏可表达。
+  对于反方向,ANF 变换~\cite{flanagan1993-essence-compiling-continuations} 由两步构成,每步都是宏可表达的:
+  \begin{enumerate}
+    \item \emph{\bilingual{Application flattening}{应用展开}。}
+      将每个嵌套应用 $(e_1\; e_2)\; e_3$ 替换为 $\mathbf{let}\; x = e_1\; e_2 \;\mathbf{in}\; x\; e_3$。
+      其语法抽象为 $A(\cdot_1, \cdot_2, \cdot_3) = \mathbf{let}\; x = \cdot_1\; \cdot_2 \;\mathbf{in}\; x\; \cdot_3$,仅依赖三个子表达式。
+    \item \emph{\bilingual{Value lifting}{值提升}。}
+      将应用位置上每个自由值 $V$ 替换为 $\mathbf{let}\; x = V \;\mathbf{in}\; x$。
+      其语法抽象为 $A(\cdot_1) = \mathbf{let}\; x = \cdot_1 \;\mathbf{in}\; x$。
+  \end{enumerate}
+  由引理~\ref{lem:let-macro},每个所得 $\mathbf{let}$-绑定本身在 $\lambda$-演算中是宏可表达的。
+  由引理~\ref{lem:macro-composition},复合这些宏可表达翻译,得到一个从完整 $\lambda$-演算到其 ANF 片段的宏可表达翻译。
+  \else
   Every ANF term is a $\lambda$-term, so the embedding
   of the ANF fragment into the full $\lambda$-calculus is
   the identity, which is trivially macro-expressible.
@@ -4212,16 +4277,45 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   these macro-expressible translations
   yields a macro-expressible translation from the full
   $\lambda$-calculus to its ANF fragment.
+  \fi
 \end{proof}
 
-\begin{theorem}[Forward macro-expressibility]
+\begin{theorem}[\bilingual{Forward macro-expressibility}{正向宏可表达性}]
   \label{thm:forward-macro}
+  \ifInheritanceChinese
+  翻译 $\mathcal{T}$(第~\ref{sec:forward-translation} 节)是 $\lambda$-演算嵌入继承演算的一个宏可表达的嵌入。
+  \else
   The translation $\mathcal{T}$
   (Section~\ref{sec:forward-translation}) is a macro-expressible
   embedding of the $\lambda$-calculus into inheritance-calculus.
+  \fi
 \end{theorem}
 
 \begin{proof}
+  \ifInheritanceChinese
+  我们验证 Felleisen~\cite[Definition~3.11]{felleisen1991-expressive-power} 的条件 E4:对于每个元数为 $a$ 的 $\lambda$-演算构造子 $F$,必须存在一个固定的 $a$ 元语法抽象 $A_F(\cdot_1,\ldots,\cdot_a)$ 使得 $\mathcal{T}(F(e_1,\ldots,e_a)) = A_F(\mathcal{T}(e_1),\ldots,\mathcal{T}(e_a))$。
+  我们逐条检验 $\mathcal{T}$ 的规则(第~\ref{sec:forward-translation} 节):
+  \begin{enumerate}
+    \item \emph{\bilingual{$\lambda$-bound variable}{$\lambda$-绑定变量}}($x$,de~Bruijn 索引为 $n'$)。
+      这是一个零元构造子,因此没有子表达式。
+      语法抽象是常量 $A = \dbi{n'}.\mathrm{argument}$。
+    \item \emph{\bilingual{Let-bound variable}{Let-绑定变量}}($x$)。
+      零元。$A = x.\mathrm{result}$。
+    \item \emph{\bilingual{$\lambda$-abstraction}{$\lambda$-抽象}},记为 $\lambda x.\, M$。
+      关于体 $M$ 是一元的。
+      $A(\cdot_1) = \{\mathrm{argument} \mapsto \{\},\; \mathrm{result} \mapsto \cdot_1\}$。
+    \item \emph{\bilingual{Application let-binding}{应用 Let-绑定}}($\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M$)。
+      关于 $V_1$、$V_2$ 与 $M$ 是三元的。
+      $A(\cdot_1, \cdot_2, \cdot_3) = \{x \mapsto \{\cdot_1,\; \mathrm{argument} \mapsto \cdot_2\},\; \mathrm{result} \mapsto \cdot_3\}$。
+    \item \emph{\bilingual{Value let-binding}{值 Let-绑定}}($\mathbf{let}\; x = V \;\mathbf{in}\; M$)。
+      关于 $V$ 与 $M$ 是二元的。
+      $A(\cdot_1, \cdot_2) = \{x \mapsto \{\mathrm{result} \mapsto \cdot_1\},\; \mathrm{result} \mapsto \cdot_2\}$。
+    \item \emph{\bilingual{Tail call}{尾调用}}($V_1\; V_2$)。
+      二元。\newline
+      $A(\cdot_1, \cdot_2) = \{\mathrm{tailCall} \mapsto \{\cdot_1,\; \mathrm{argument} \mapsto \cdot_2\},\; \mathrm{result} \mapsto \{\mathrm{tailCall}.\mathrm{result}\}\}$。
+  \end{enumerate}
+  在每种情况下,语法抽象 $A_F$ 都是一个固定的继承演算上下文,其空位由子表达式的递归翻译填充,从而满足 E4。
+  \else
   We verify condition~E4 of
   Felleisen~\cite[Definition~3.11]{felleisen1991-expressive-power}:
   for each $\lambda$-calculus construct~$F$ of arity~$a$,
@@ -4272,16 +4366,51 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   inheritance-calculus context whose holes are filled
   by the recursive translations of the subexpressions,
   satisfying~E4.
+  \fi
 \end{proof}
 
-\begin{theorem}[Nonexpressibility of inheritance]
+\begin{theorem}[\bilingual{Nonexpressibility of inheritance}{继承的不可宏表达性}]
   \label{thm:cartesian-nonexpressibility}
+  \ifInheritanceChinese
+  惰性 $\lambda$-演算不能宏可表达 $\mathscr{U}$(定义~\ref{def:language-universe})的继承构造子。
+  \else
   The lazy $\lambda$-calculus cannot macro-express the
   inheritance constructors of $\mathscr{U}$
   (Definition~\ref{def:language-universe}).
+  \fi
 \end{theorem}
 
 \begin{proof}
+  \ifInheritanceChinese
+  我们对 $L_0 = \text{惰性 $\lambda$-演算}$,$L_1 = \mathscr{U}$ 应用 Felleisen~\cite{felleisen1991-expressive-power} 的定理 3.14(i)。
+  由定义~\ref{def:language-universe},$\mathscr{U} = L_0 + \{$mixin-树构造子$\}$ 是 $L_0$ 的一个保守性扩展(Felleisen~\cite{felleisen1991-expressive-power} 的定义 3.2)。
+  我们验证四个条件:
+  \begin{enumerate}
+    \item[(i)] \emph{$L_0 \subseteq L_1$:} $\mathscr{U}$ 的语法包含所有 $L_0$-短语。
+    \item[(ii)] \emph{不引入新的 $L_0$-短语:} mixin-树构造子不在 $L_0$ 中引入新短语。
+    \item[(iii)] \emph{构造子不相交:} mixin-树构造子与 $L_0$-构造子不相交。
+    \item[(iv)] \emph{语义保持:} 对纯 $\lambda$-项,定义~\ref{def:language-universe} 的步骤~(1) 与~(2) 是平凡的,步骤~(3) 由充分性(定理~\ref{thm:adequacy})给出惰性求值,因此 $\mathrm{eval}_{\mathscr{U}}$ 在 $L_0$-短语上与 $\mathrm{eval}_{L_0}$ 一致。
+  \end{enumerate}
+  该定理要求我们给出两个 $L_0$-项 $M$ 与 $N$,满足 $M \cong_0 N$ 但 $M \not\cong_1 N$,其中 $\cong_0$ 是 $L_0$ 中的操作等价,$\cong_1$ 是 $\mathscr{U}$ 中的操作等价。
+
+  \paragraph{\bilingual{Operational equivalence in $L_0$}{$L_0$ 中的操作等价}}
+  由 Böhm 树等价~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}(定理~\ref{thm:first-order-semantics}),对于封闭 $\lambda$-项 $M$ 与 $N$:$M \cong_0 N$ 当且仅当 $\mathrm{BT}(M) = \mathrm{BT}(N)$。
+
+  \paragraph{\bilingual{Separating pair}{分离对}}
+  定义 Church 布尔值与 Church 布尔相等:$\mathrm{true} = \lambda t.\,\lambda f.\, t$,$\mathrm{false} = \lambda t.\,\lambda f.\, f$,以及 $\mathrm{eq} = \lambda a.\,\lambda b.\, (a\;b)\;(b\;\mathrm{false}\;\mathrm{true})$。
+  令
+  \[
+    M = \mathrm{eq}\;\mathrm{false}\;\mathrm{false}
+    \qquad
+    N = \mathrm{eq}\;\mathrm{true}\;\mathrm{true}.
+  \]
+  两者在惰性 $\lambda$-演算中均归约为 Church~$\mathrm{true}$,因此 $\mathrm{BT}(M) = \mathrm{BT}(N)$,从而 $M \cong_0 N$。
+
+  \paragraph{\bilingual{Distinguishing $\mathscr{U}$-context}{区分 $\mathscr{U}$-上下文}}
+  我们现在构造一个区分 $M$ 与 $N$ 的 $\mathscr{U}$-上下文。
+  $M$ 与 $N$ 是语法封闭的 $\lambda$-项;由定义~\ref{def:language-universe},它们在 $\mathscr{U}$ 中的语义通过 ANF 转换后接 $\mathcal{T}$ 将其翻译为继承演算来给出。
+  在扩展的 ANF 约定(第~\ref{sec:forward-translation} 节)下,应用位置上的每个自由值首先被绑定到一个名字:
+  \else
   We apply Theorem~3.14(i) of
   Felleisen~\cite{felleisen1991-expressive-power} to the pair
   $L_0 = \text{lazy $\lambda$-calculus}$,
@@ -4351,6 +4480,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   Under the extended ANF convention
   (Section~\ref{sec:forward-translation}), every free
   value used in an application is first bound to a name:
+  \fi
   \begin{align*}
     \mathrm{ANF}(M) ={} &
     \mathbf{let}\;\mathrm{eq} =
@@ -4376,7 +4506,11 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
     \;\mathbf{in}\;
     \mathrm{eqFalse}\;f_2
   \end{align*}
+  \ifInheritanceChinese
+  应用 $\mathcal{T}$:
+  \else
   Applying~$\mathcal{T}$:
+  \fi
   \begin{align*}
     \mathcal{T}(\mathrm{ANF}(M)) \;=\; \{&
       \mathrm{eq} \mapsto \{\mathrm{result} \mapsto
@@ -4397,6 +4531,18 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
       \{\mathrm{tailCall}.\mathrm{result}\}
     \;\}
   \end{align*}
+  \ifInheritanceChinese
+  对 $N$ 类似,以 $\mathrm{true}$ 替换 $\mathrm{false}$。
+  注意 $\mathrm{eq}$ 是 $\mathcal{T}(\mathrm{ANF}(M))$ 的一个具名子项,通过值 let-绑定绑定。
+  在 $\mathrm{eq}$ 的翻译内部,$\lambda b$ 作用域包含 $x_1$、$f_1$、$x_2$、$t_1$、$x_3$ 的 let-绑定以及一个尾调用。
+  特别地,$\dbi{1}.\mathrm{argument}$ 到达外层 $\lambda a$ 作用域,而 $\dbi{0}.\mathrm{argument}$ 到达 $\lambda b$ 自身。\footnote{
+    这些索引使用压缩约定,仅计数 $\lambda$-作用域。
+    如翻译脚注(第~\ref{sec:forward-translation} 节)所述,每个 let-绑定与尾调用在继承演算中引入一个额外的作用域层级;形式索引相应地更大,但目标作用域相同。
+  }
+
+  $\mathscr{U}$-上下文使用继承在 $\mathrm{eq}$ 的 $\lambda b$ 作用域内添加一个 $\mathrm{repr}$ 记录,该记录投影第一个操作数。
+  定义上下文 $C[\cdot]$ 为:
+  \else
   and symmetrically for $N$ with $\mathrm{true}$ in place
   of $\mathrm{false}$.
   Note that $\mathrm{eq}$ is a named child
@@ -4423,6 +4569,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   a $\mathrm{repr}$ record inside the $\lambda b$ scope
   of $\mathrm{eq}$ that projects the first operand.
   Define the context $C[\cdot]$ as:
+  \fi
   \begin{align*}
     C[\cdot] ={} & \mathbf{let}\;
     \mathrm{extended} = \{[\cdot],\;
@@ -4437,6 +4584,29 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
     & \mathbf{in}\;
     \mathrm{extended}.\mathrm{tailCall}.\mathrm{repr}.\mathrm{firstOperand}
   \end{align*}
+  \ifInheritanceChinese
+  这里 $[\cdot]$ 是空位。
+  注意 mixin 中 $\mathrm{result}$ 的两层嵌套:外层 $\mathrm{result}$ 进入 $\mathrm{eq}$ 的值 let-绑定包装器,而内层 $\mathrm{result}$ 进入 $\lambda a$ 作用域。
+  第二个 $\mathrm{result}$ 则包含 $\lambda b$ 作用域,因此 $\mathrm{repr}$ 被放置在 $\lambda b$ 作用域层级。
+  mixin $\{\mathrm{eq} \mapsto \{\mathrm{result} \mapsto \{\mathrm{result} \mapsto \{\mathrm{repr} \mapsto \cdots\}\}\}\}$ 是一个继承演算表达式:它仅使用 $\mathscr{U}$ 的 mixin-树构造子。
+  外层 $\mathbf{let}$-绑定与投影是 $\lambda$-演算构造(引理~\ref{lem:let-macro})。
+  因此 $C[\cdot]$ 是一个合法的 $\mathscr{U}$-上下文。
+
+  $\mathrm{repr}$ 中的 de~Bruijn 索引 $\dbi{2}$ 计数作用域层级(在压缩约定下):$\dbi{0}$ 是 $\mathrm{repr}$ 自身,$\dbi{1}$ 是 $\lambda b$ 作用域,而 $\dbi{2}$ 是 $\lambda a$ 作用域。
+  因此 $\mathrm{firstOperand}$ 投影 $\lambda a$ 的参数。
+
+  由于 $\mathrm{eqFalse}$(相应地,$\mathrm{eqTrue}$)继承 $\mathrm{eq}.\mathrm{result}$,而 $\mathrm{tailCall}$ 继承 $\mathrm{eqFalse}.\mathrm{result}$($\lambda b$ 作用域),mixin 在 $\lambda b$ 作用域层级放置的 $\mathrm{repr}$ 记录通过继承链传播到 $\mathrm{tailCall}$。
+  在 $C[M]$ 中:$\mathrm{eqFalse}$ 绑定向 $\lambda a$ 作用域提供 $\mathrm{argument} \mapsto \{f_1.\mathrm{result}\}$(即 $\mathrm{false}$),因此 $\mathrm{firstOperand}$ 求值为 $\mathrm{false} = \lambda t.\,\lambda f.\, f$。
+  在 $C[N]$ 中:$\mathrm{eqTrue}$ 绑定提供 $\mathrm{argument} \mapsto \mathrm{true}$,因此 $\mathrm{firstOperand}$ 求值为 $\mathrm{true} = \lambda t.\,\lambda f.\, t$。
+
+  定义 $D[\cdot] = (\lambda x.\, x\;\Omega\;I)\; C[\cdot]$。
+  则 $\mathrm{eval}_{\mathscr{U}}$ 对 $D[M]$ 成立(因为 $\mathrm{false}\;\Omega\;I \to I$,收敛),但对 $D[N]$ 不成立(因为 $\mathrm{true}\;\Omega\;I \to \Omega$,发散)。
+  因此 $M \not\cong_1 N$。
+
+  \paragraph{\bilingual{Conclusion}{结论}}
+  我们有 $M \cong_0 N$ 但 $M \not\cong_1 N$,故 ${\cong_0} \neq {(\cong_1|_{L_0})}$。
+  由 Felleisen~\cite{felleisen1991-expressive-power} 的定理 3.14(i),惰性 $\lambda$-演算不能宏可表达 $\mathscr{U}$ 的继承构造子。
+  \else
   Here $[\cdot]$ is the hole.
   Note the two levels of $\mathrm{result}$ nesting in the
   mixin: the outer $\mathrm{result}$ enters the value
@@ -4497,10 +4667,14 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   Felleisen~\cite{felleisen1991-expressive-power},
   the lazy $\lambda$-calculus cannot macro-express the
   inheritance constructors of~$\mathscr{U}$.
+  \fi
 \end{proof}
 
-\begin{theorem}[Expressive asymmetry]
+\begin{theorem}[\bilingual{Expressive asymmetry}{表达力的不对称}]
   \label{thm:expressive-asymmetry}
+  \ifInheritanceChinese
+  在语言全集 $\mathscr{U}$(定义~\ref{def:language-universe})中,继承演算比惰性 $\lambda$-演算具有严格更强的表达力:它能宏可表达 $\lambda$-演算能宏可表达的每个 $\mathscr{U}$-构造,但反之不然(Felleisen~\cite{felleisen1991-expressive-power} 的定义 3.17)。
+  \else
   In the language universe $\mathscr{U}$
   (Definition~\ref{def:language-universe}),
   inheritance-calculus is strictly more expressive than
@@ -4509,9 +4683,36 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   can, but not conversely
   (Definition~3.17 of
   Felleisen~\cite{felleisen1991-expressive-power}).
+  \fi
 \end{theorem}
 
 \begin{proof}
+  \ifInheritanceChinese
+  我们须证明:(a)~继承演算能宏可表达惰性 $\lambda$-演算能宏可表达的每个 $\mathscr{U}$-构造,以及 (b)~反之不成立。
+
+  \paragraph{\bilingual{Part (b): the lazy $\lambda$-calculus $\not\geq$
+  inheritance-calculus}{第 (b) 部分:惰性 $\lambda$-演算 $\not\geq$ 继承演算}}
+  $\lambda$-演算包含其自身的构造子($\lambda$、应用、变量),并能宏可表达 $\mathbf{let}$-绑定(引理~\ref{lem:let-macro}),但不能宏可表达 $\mathscr{U}$ 的继承构造子(定理~\ref{thm:cartesian-nonexpressibility})。
+  继承演算包含那些构造子。
+  因此,惰性 $\lambda$-演算对于 $\mathscr{U}$ 而言表达力不及继承演算。
+
+  \paragraph{\bilingual{Part (a): inheritance-calculus $\geq$ the lazy
+  $\lambda$-calculus}{第 (a) 部分:继承演算 $\geq$ 惰性 $\lambda$-演算}}
+  我们证明继承演算能宏可表达 $\lambda$-演算所包含的或能宏可表达的每个 $\mathscr{U}$-构造。
+  $\lambda$-演算包含 $\lambda$-抽象、应用与变量;它能宏可表达 $\mathbf{let}$-绑定(引理~\ref{lem:let-macro})。
+  我们须证明继承演算能宏可表达这四个构造。
+  翻译分两个阶段进行:
+  \begin{enumerate}
+    \item \emph{\bilingual{ANF conversion}{ANF 转换}。}
+      A-范式变换~\cite{flanagan1993-essence-compiling-continuations} 将嵌套应用替换为 $\mathbf{let}$-绑定;由引理~\ref{lem:anf-equiv},它在 $\lambda$-演算中是宏可表达的。
+      在反方向,$\mathbf{let}$-绑定由 Felleisen~\cite{felleisen1991-expressive-power} 的命题 3.7(重述为引理~\ref{lem:let-macro})在 $\lambda$-演算中是宏可表达的。
+      因此,ANF 转换是 $\lambda$-演算与其 ANF 片段之间的一个宏可表达的等价。
+    \item \emph{\bilingual{The translation $\mathcal{T}$}{翻译 $\mathcal{T}$}。}
+      每个 ANF $\lambda$-演算构造子映射到继承演算上的一个固定语法抽象(定理~\ref{thm:forward-macro}),满足 Felleisen~\cite[Definition~3.11]{felleisen1991-expressive-power} 的条件 E4。
+  \end{enumerate}
+  由引理~\ref{lem:macro-composition},复合两个宏可表达翻译,得到一个从 $\lambda$-演算(含 $\mathbf{let}$)到继承演算的宏可表达翻译。
+  由于继承演算平凡地包含其自身的构造子,它能宏可表达 $\lambda$-演算所包含的或能宏可表达的每个 $\mathscr{U}$-构造。
+  \else
   We must show:
   (a)~inheritance-calculus can macro-express every
   $\mathscr{U}$-construct that the lazy $\lambda$-calculus
@@ -4577,6 +4778,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   constructors, it can macro-express every
   $\mathscr{U}$-construct that the $\lambda$-calculus
   contains or can macro-express.
+  \fi
 \end{proof}
 
 \section{Multi-Target \texorpdfstring{$\this$}{this} Resolution in Other Systems}
