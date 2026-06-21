@@ -6076,9 +6076,20 @@ routes lead to the same definition, and $\supers$
 contexts without duplication.
 \fi
 
-\section{Encoding Datalog in Inheritance-Calculus}
+\section{\bilingual{Encoding Datalog in Inheritance-Calculus}{在继承演算中编码 Datalog}}
 \label{app:datalog-encoding}
 
+\ifInheritanceChinese
+第~\ref{sec:emergent-phenomena}~节观察到继承演算原生产生逻辑编程的关系语义。
+本附录通过给出 Datalog 到继承演算的系统性编码,使该观察精确化。
+该编码不使用演算的任何扩展;它可用第~\ref{sec:syntax}~节的三个基本原语表达。
+本附录的所有示例均有可执行的 MIXINv2 实现\anon[~(补充材料)]{~\cite{mixin2025}}。
+需要区分三个要素。
+首先,关系以 trie 形式存储,因此元组查找通过前缀索引,而非扫描平面事实集。
+其次,控制骨架采用第~\ref{sec:case-study}~节已使用的访问者模式风格编写;从函数式编程的角度看,这与 Scott 编码的情况分析所扮演的角色相同。
+第三,继承并和 tabling 求值赋予最终程序关系式的最小不动点语义。
+本附录按此顺序展开:先是数据表示,然后是控制流,最后是递归。
+\else
 Section~\ref{sec:emergent-phenomena} observed that
 inheritance-calculus natively produces the relational semantics
 of logic programming.
@@ -6099,9 +6110,49 @@ Third, inheritance union and tabled evaluation give the resulting
 program its relational, least-fixed-point semantics.
 The appendix proceeds in that order: data representation first,
 then control flow, then recursion.
+\fi
 
-\subsection{Relations as Tries}
+\subsection{\bilingual{Relations as Tries}{关系作为 Trie}}
 
+\ifInheritanceChinese
+有限域 $D = \{a, b, c, \ldots\}$ 上的二元关系表示为 \emph{trie}:一棵路径编码元组的 mixin 树。
+该 trie 由三个基础作用域构成:
+$\mathrm{Relation}$（抽象基础）、
+$\mathrm{Cons}$（非空节点）和 $\mathrm{Nil}$（终止符）。
+每个常量 $d \in D$ 继承自 $\mathrm{Cons}$,并携带一个 $\mathrm{TailMap}$,该映射提供逐常量的子 trie:
+\begin{align*}
+  &\mathrm{Relation} \mapsto \{\},\quad
+  \mathrm{Cons} \mapsto \{\mathrm{Relation},\;
+  \mathrm{Tail} \mapsto \{\mathrm{Relation}\}\},\quad
+  \mathrm{Nil} \mapsto \{\mathrm{Relation}\}\\[2pt]
+  &d \mapsto \{\mathrm{Cons},\;
+    \mathrm{Tail} \mapsto \{\},\;
+  \mathrm{TailMap} \mapsto \{d \mapsto \{\mathrm{Tail}\}\}\}
+\end{align*}
+事实 $R(d_1, d_2)$ 编码为深度为 2 的 trie 路径,带有 $\mathrm{Nil}$ 终止符。
+逐常量的子 trie 通过 $\mathrm{TailMap}.d$ 访问:
+\begin{align*}
+  R(a, b) \;\leadsto\quad
+  R \mapsto \{a,\; \mathrm{TailMap} \mapsto \{a \mapsto
+  \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\}\}\}
+\end{align*}
+同一关系的多个事实通过继承（trie 并）累积。
+添加 $R(b, c)$:
+\[
+  R \mapsto \left\{
+    \begin{aligned}
+      &a,\; b,\\
+      &\mathrm{TailMap} \mapsto \left\{
+        \begin{aligned}
+          &a \mapsto \{b,\; \mathrm{TailMap} \mapsto \{b \mapsto \{\mathrm{Nil}\}\}\},\\
+          &b \mapsto \{c,\; \mathrm{TailMap} \mapsto \{c \mapsto \{\mathrm{Nil}\}\}\}
+      \end{aligned}\right\}
+  \end{aligned}\right\}
+\]
+trie 表示的意义不仅在于它是树形编码。
+它还提供后续连接所使用的索引结构:一旦选定常量 $d$,编码就直接移至 $\mathrm{TailMap}.d$ 并从匹配的子 trie 继续。
+这就是为什么本附录使用 trie 这一说法,而非有限元组集的任意编码。
+\else
 A binary relation over a finite domain $D = \{a, b, c, \ldots\}$
 is represented as a \emph{trie}: a mixin tree whose paths
 encode tuples.
@@ -6150,9 +6201,15 @@ directly to $\mathrm{TailMap}.d$ and continues from the matching
 sub-trie.
 This is why the appendix speaks about tries rather than about an
 arbitrary encoding of finite sets of tuples.
+\fi
 
-\subsection{Infrastructure}
+\subsection{\bilingual{Infrastructure}{基础设施}}
 
+\ifInheritanceChinese
+每个常量 $d$ 携带编码所使用的四组样板定义。
+这些定义的作用类似于 Haskell 中派生的类型类实例:每个常量必须提供编码的通用模式所依赖的一组固定属性。
+继承演算没有内置的派生机制,因此样板需手动写出;但每个常量的样板量为 $O(1)$,不随域大小 $|D|$ 增长,因此添加新常量不需要修改任何现有作用域,从而保留了表达式问题属性。
+\else
 Each constant $d$ carries four groups of boilerplate
 definitions used by the encoding.
 These play a role analogous to derived type-class instances
@@ -6165,11 +6222,18 @@ and does not grow with the domain size $|D|$,
 so adding a new constant
 does not require modifying any existing scope, preserving
 the expression-problem property.
+\fi
 
 % 我们可以通过引入类似ECMAScript的Symbol机制来消除这些重复定义，但这让语言更复杂了
 
 \begin{description}
-  \item[Acceptance]
+  \item[\bilingual{Acceptance}{Acceptance}]
+    \ifInheritanceChinese
+    第~\ref{sec:case-study}~节的访问者模式基础设施。
+    操作上,这是对当前常量进行情况分析的面向对象写法。
+    每个常量 $d$ 定义一个 $\mathrm{VisitorMap}$,其中包含以 $d$ 为键的分支、一个带有逐常量结果槽 $\mathrm{Visited}$ 的 $\mathrm{Visitor}$,以及一个将匹配分支的 $\mathrm{Visited}$ 值委托给外部的 $\mathrm{Accepted}$ 属性。
+    这是分派机制:给定一个可能包含多个常量的作用域,$\mathrm{Acceptance}$ 选择每个存在常量对应的分支,并收集逐常量的 $\mathrm{Visited}$ 结果。
+    \else
     The visitor-pattern infrastructure from
     Section~\ref{sec:case-study}.
     Operationally, this is the object-oriented spelling of a
@@ -6183,8 +6247,15 @@ the expression-problem property.
     contain multiple constants, $\mathrm{Acceptance}$ selects the
     branch corresponding to each constant present and
     collects the per-constant $\mathrm{Visited}$ results.
+    \fi
 
-  \item[WithVisitorTail]
+  \item[\bilingual{WithVisitorTail}{WithVisitorTail}]
+    \ifInheritanceChinese
+    将每个常量 $d$ 映射到其子 trie 条目 $\mathrm{TailMap}.d$,标记为 $\mathrm{VisitorTail}$。
+    这提供了连接的右端\footnote{
+      在访问者模式的语境中,这充当访问者。
+    }:当两个关系的 $\mathrm{VisitorMap}$ 条目组合时,$\mathrm{VisitorTail}$ 携带已连接关系中匹配常量的行数据。
+    \else
     Maps each constant $d$ to its sub-trie entry
     $\mathrm{TailMap}.d$, labeled as $\mathrm{VisitorTail}$.
     This provides the right-hand side of a join\footnote{
@@ -6192,8 +6263,15 @@ the expression-problem property.
     }: when two relations' $\mathrm{VisitorMap}$ entries are
     composed, $\mathrm{VisitorTail}$ carries the joined
     relation's row data for the matched constant.
+    \fi
 
-  \item[WithVisiteeTail]
+  \item[\bilingual{WithVisiteeTail}{WithVisiteeTail}]
+    \ifInheritanceChinese
+    将每个常量 $d$ 映射到其子 trie 条目 $\mathrm{TailMap}.d$,标记为 $\mathrm{VisiteeTail}$。
+    这提供了左端\footnote{
+      这充当被访问者。
+    }:即被迭代的关系。$\mathrm{WithVisitorTail}$ 和 $\mathrm{WithVisiteeTail}$ 共同支持值级连接,其中只有\emph{两个}关系中均存在的常量才产生输出。
+    \else
     Maps each constant $d$ to its sub-trie entry
     $\mathrm{TailMap}.d$, labeled as $\mathrm{VisiteeTail}$.
     This provides the left-hand side\footnote{
@@ -6203,8 +6281,14 @@ the expression-problem property.
     $\mathrm{WithVisitorTail}$ and $\mathrm{WithVisiteeTail}$
     enable value-level joins where only constants present
     in \emph{both} relations produce output.
+    \fi
 
-  \item[Replacement]
+  \item[\bilingual{Replacement}{Replacement}]
+    \ifInheritanceChinese
+    给定一个 $\mathrm{NewTail}$ 值,产生一个 $\mathrm{Replaced}$ 作用域,该作用域继承标签 $d$,但将 $\mathrm{TailMap}.d$ 替换为 $\mathrm{NewTail}$。
+    这是输出构造机制:它通过将新子 trie 替换到常量包装器中来构建输出元组。
+    关键在于,$\mathrm{Replacement}$ 定义在逐常量的 $\mathrm{TailMap}$ 条目上（而非合并后的作用域上）,确保输出构造作用于单个常量而非其并集。
+    \else
     Given a $\mathrm{NewTail}$ value, produces a
     $\mathrm{Replaced}$ scope that inherits the label $d$
     but substitutes $\mathrm{TailMap}.d$ with
@@ -6216,8 +6300,19 @@ the expression-problem property.
     per-constant $\mathrm{TailMap}$ entry (not on the merged
     scope), ensuring that output construction operates on
     individual constants rather than their union.
+    \fi
 \end{description}
 
+\ifInheritanceChinese
+我们以可执行的两跳编码
+$\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
+为贯穿示例,取自
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}。
+其顶层作用域按编码各阶段命名:\texttt{\_XAcceptance} 迭代第一列,\texttt{\_YAcceptance} 执行共享变量连接,\texttt{\_NilAcceptance0} 确认第一个事实的末尾,\texttt{\_ZAcceptance} 迭代输出列,\texttt{\_NilAcceptance1} 触发最终的 \texttt{Replacement} 链。
+下面的示意编码应理解为该可执行 MIXINv2 文件的抽象。
+若暂时忽略关系累积并将每次分派读作普通的情况分析,则控制流为:从第一个关系中选取 $X$,选取匹配的 $Y$,确认第一个元组已完整,从第二个关系匹配行中选取 $Z$,确认第二个元组已完整,并输出 $(X, Z)$。
+本附录的其余部分解释这一熟悉的单值控制骨架如何通过对 trie 的访问者分派实现,并随后通过继承并提升为关系语义。
+\else
 As a running example, we use the executable two-hop encoding
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 from
@@ -6241,9 +6336,30 @@ The rest of the appendix explains how that familiar
 single-valued control skeleton is realised by visitor dispatch
 over tries and then lifted to relational semantics by
 inheritance union.
+\fi
 
-\subsection{Encoding Rules}
+\subsection{\bilingual{Encoding Rules}{编码规则}}
 
+\ifInheritanceChinese
+Datalog 规则 $H(\bar{X}) \mathrel{{:}\!{-}} B_1(\bar{Y}_1), \ldots, B_n(\bar{Y}_n)$ 通过在该控制骨架内嵌套三种机制来编码:
+
+\begin{enumerate}
+  \item \textbf{列迭代。}
+    对每个列位置,一次 $\mathrm{Acceptance}$ 分派迭代存在的常量。
+    $\mathrm{VisitorMap}$ 从 $\mathrm{WithVisiteeTail}$ 填充,因此每个匹配常量的 $\mathrm{Visitor}$ 接收 $\mathrm{VisiteeTail}$:该位置处逐常量的子 trie。
+    处理每个常量的结果放入 $\mathrm{Visited}$,$\mathrm{Accepted}$ 收集所有逐常量的结果。
+    （详见第~\ref{sec:encoding-variables}、\ref{sec:encoding-constants}~和~\ref{sec:encoding-multi}~节。）
+
+  \item \textbf{连接。}
+    对于体原子之间的每个共享变量,内层 $\mathrm{Acceptance}$ 的 $\mathrm{VisitorMap}$ 同时继承自 $\mathrm{WithVisitorTail}$（来自被连接关系）和 $\mathrm{WithVisiteeTail}$（来自被迭代关系）。
+    常量 $d$ 仅当出现在两个关系中时才产生 $\mathrm{Visitor}$ 条目,从而实现值级连接。
+    随后 $\mathrm{Visitor}$ 接收 $\mathrm{VisiteeTail}$ 和 $\mathrm{VisitorTail}$ 两者,从而可访问匹配常量在两个关系中的数据。
+
+  \item \textbf{输出构造。}
+    在最内层的 $\mathrm{Nil}$ 确认（验证每个体原子的元组已完整）内部,从最内层输出列向外链式执行 $\mathrm{Replacement}$ 操作,每步将 $\mathrm{NewTail}$ 设为前一个 $\mathrm{Replaced}$ 值,最终由 $\mathrm{Nil}$ 终止。
+    最终的 $\mathrm{Replaced}$ 值赋给 $\mathrm{Visited}$。
+\end{enumerate}
+\else
 A Datalog rule $H(\bar{X}) \mathrel{{:}\!{-}} B_1(\bar{Y}_1), \ldots, B_n(\bar{Y}_n)$
 is encoded by nesting three mechanisms inside that control
 skeleton:
@@ -6286,10 +6402,23 @@ skeleton:
     The final $\mathrm{Replaced}$ value is assigned to
     $\mathrm{Visited}$.
 \end{enumerate}
+\fi
 
-\subsection{Variable Join}
+\subsection{\bilingual{Variable Join}{变量连接}}
 \label{sec:encoding-variables}
 
+\ifInheritanceChinese
+考虑最简单的连接:
+$\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$。
+该模式的可执行自连接实例为
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+其作用域名称在下文括号中给出。
+这里可以清楚地看到节引言中的分工:访问者分派提供控制流,trie 提供对匹配尾部的直接访问,而 $\supers$ 累积每次成功匹配产生的输出。
+
+共享变量 $Y$ 要求在 $\alpha$ 的第二列和 $\beta$ 的第一列之间匹配常量。
+编码嵌套五次 $\mathrm{Acceptance}$ 分派:从 $\alpha$ 迭代 $X$、在 $\alpha$ 与 $\beta$ 之间对 $Y$ 连接、确认 $\alpha$ 中 $Y$ 之后的 $\mathrm{Nil}$、从 $\beta$ 匹配行迭代 $Z$、确认 $Z$ 之后的 $\mathrm{Nil}$。
+我们将每一层作为一个命名子作用域呈现。
+\else
 Consider the simplest join:
 $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$.
 The executable self-join instance of this pattern is
@@ -6309,9 +6438,15 @@ and $\beta$, confirm $\mathrm{Nil}$ after $Y$ in $\alpha$,
 iterate $Z$ from $\beta$'s matched row, and confirm
 $\mathrm{Nil}$ after $Z$.
 We present each level as a named sub-scope.
+\fi
 
+\ifInheritanceChinese
+\paragraph{第~1~层: 从 \texorpdfstring{$\alpha$}{α} 迭代 \texorpdfstring{$X$}{X}}
+(可执行作用域: \texttt{\_XAcceptance}。)
+\else
 \paragraph{Level~1: iterate $X$ from $\alpha$}
 (Executable scope: \texttt{\_XAcceptance}.)
+\fi
 {\small
   \[
     \mathrm{xAcc} \mapsto \left\{
@@ -6325,15 +6460,23 @@ We present each level as a named sub-scope.
     \end{aligned}\right\}
 \]}
 
+\ifInheritanceChinese
+\paragraph{第~2~层: 将 \texorpdfstring{$\alpha$}{α} 的 \texorpdfstring{$Y$}{Y} 列与 \texorpdfstring{$\beta$}{β} 的第一列连接}
+(可执行作用域: \texttt{\_YAcceptance}。)
+\else
 \paragraph{Level~2: join $\alpha$'s $Y$-column with $\beta$'s first column}
-
 (Executable scope: \texttt{\_YAcceptance}.)
+\fi
 
+\ifInheritanceChinese
+$\mathrm{VisitorMap}$ 同时继承自 $\beta.\mathrm{WithVisitorTail}$ 和 $\_X.\mathrm{WithVisiteeTail}$,仅当常量 $d$ 同时出现在 $\alpha$ 的第二列（通过 $\_X$）和 $\beta$ 的第一列时才产生条目。
+\else
 The $\mathrm{VisitorMap}$ inherits from \emph{both}
 $\beta.\mathrm{WithVisitorTail}$ and
 $\_X.\mathrm{WithVisiteeTail}$, producing an entry for
 constant $d$ only if $d$ appears in both $\alpha$'s
 second column (via $\_X$) and $\beta$'s first column.
+\fi
 {\small
   \[
     \mathrm{yAcc} \mapsto \left\{
@@ -6349,14 +6492,23 @@ second column (via $\_X$) and $\beta$'s first column.
     \end{aligned}\right\}
 \]}
 
+\ifInheritanceChinese
+\paragraph{第~3~层: 确认 \texorpdfstring{$\alpha$}{α} 中 \texorpdfstring{$Y$}{Y} 之后的 \texorpdfstring{$\mathrm{Nil}$}{Nil}}
+(可执行作用域: \texttt{\_NilAcceptance0}。)
+\else
 \paragraph{Level~3: confirm $\mathrm{Nil}$ after $Y$ in $\alpha$}
-
 (Executable scope: \texttt{\_NilAcceptance0}.)
+\fi
 
+\ifInheritanceChinese
+此步骤检查 $\alpha(X, Y)$ 是一个完整的二列事实（其 trie 路径在 $Y$ 之后终止于 $\mathrm{Nil}$）。
+在 $\mathrm{Nil}$ 分支内部,编码继续通过 $\mathrm{VisitorTail}$ 迭代 $\beta$ 的第二列:
+\else
 This checks that $\alpha(X, Y)$ is a complete two-column
 fact (its trie path terminates at $\mathrm{Nil}$ after $Y$).
 Inside the $\mathrm{Nil}$ branch, the encoding proceeds to
 iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
+\fi
 {\small
   \[
     \mathrm{nilAcc}_0 \mapsto \left\{
@@ -6370,8 +6522,13 @@ iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
     \end{aligned}\right\}
 \]}
 
+\ifInheritanceChinese
+\paragraph{第~4~层: 从 \texorpdfstring{$\beta$}{β} 的匹配行迭代 \texorpdfstring{$Z$}{Z}}
+(可执行作用域: \texttt{\_ZAcceptance}。)
+\else
 \paragraph{Level~4: iterate $Z$ from $\beta$'s matched row}
 (Executable scope: \texttt{\_ZAcceptance}.)
+\fi
 {\small
   \[
     \mathrm{zAcc} \mapsto \left\{
@@ -6385,9 +6542,14 @@ iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
     \end{aligned}\right\}
 \]}
 
+\ifInheritanceChinese
+\paragraph{第~5~层: 确认 \texorpdfstring{$Z$}{Z} 之后的 \texorpdfstring{$\mathrm{Nil}$}{Nil} 并构造输出}
+(可执行作用域: \texttt{\_NilAcceptance1},包含 \texttt{\_ZReplacement} 和 \texttt{\_XReplacement}。)
+\else
 \paragraph{Level~5: confirm $\mathrm{Nil}$ after $Z$ and construct output}
 (Executable scope: \texttt{\_NilAcceptance1}, with
 \texttt{\_ZReplacement} and \texttt{\_XReplacement}.)
+\fi
 {\small
   \[
     \mathrm{nilAcc}_1 \mapsto \left\{
@@ -6402,12 +6564,23 @@ iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
     \end{aligned}\right\}
 \]}
 
-\paragraph{Final result}
+\paragraph{\bilingual{Final result}{最终结果}}
 \[
   \mathrm{composed} \mapsto \{\mathrm{xAcc}.\mathrm{Accepted}\}
 \]
 
-\paragraph{Semantics}
+\paragraph{\bilingual{Semantics}{语义}}
+\ifInheritanceChinese
+在第~2~层,组合的 $\mathrm{VisitorMap}$ 确保常量 $d$ 仅当同时出现在 $\alpha$ 的第二列\emph{和} $\beta$ 的第一列时才产生 $\mathrm{Visitor}$。
+每个匹配常量 $d$ 的 $\mathrm{Visitor}$ 独立接收 $\mathrm{VisiteeTail}$（$\alpha$ 中 $d$ 的数据）和 $\mathrm{VisitorTail}$（$\beta$ 中 $d$ 的行）。
+输出构造（第~5~层）在这个逐常量的 $\mathrm{Visitor}$ 内部执行,因此 $\mathrm{Replacement}$ 作用于\emph{单个}常量的数据,而非合并后的作用域。
+每个匹配常量 $d$ 在 $\mathrm{Visited}$ 中产生其自身的输出元组,这些元组由 $\mathrm{Accepted}$ 通过 trie 并（$\supers$）收集。
+这产生了标准 Datalog 元组级语义:只有实际在两个关系中均匹配的常量才对输出有贡献。
+对于具体实例
+$\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$,如编码于
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+第~1~层选取 $a$,第~2~层匹配 $b$,第~3~层确认 $\mathrm{edge}(a,b)$ 终止于 $\mathrm{Nil}$,第~4~层迭代 $\mathrm{edge}.\mathrm{TailMap}.b$ 并选取 $c$,第~5~层再次确认 $\mathrm{Nil}$,随后两次 $\mathrm{Replacement}$ 操作重建 $(a,c)$。
+\else
 At Level~2, the combined $\mathrm{VisitorMap}$ ensures that a
 constant $d$ produces a $\mathrm{Visitor}$ only when $d$
 appears in both $\alpha$'s second column \emph{and}
@@ -6434,17 +6607,32 @@ that $\mathrm{edge}(a,b)$ ends in $\mathrm{Nil}$, Level~4
 iterates $\mathrm{edge}.\mathrm{TailMap}.b$ and selects $c$,
 and Level~5 confirms $\mathrm{Nil}$ again before the two
 $\mathrm{Replacement}$ operations reconstruct $(a,c)$.
+\fi
 
-\subsection{Constant Match and Navigation}
+\subsection{\bilingual{Constant Match and Navigation}{常量匹配与导航}}
 \label{sec:encoding-constants}
 
+\ifInheritanceChinese
+Datalog 原子中的常量使用两种机制,均非连接。
+它们比变量连接更简单,因为不需要将第二个关系的值与当前选定的常量进行匹配:
+\else
 Constants in Datalog atoms use two mechanisms, neither of
 which is a join.
 They are simpler than variable joins because no value from a
 second relation needs to be matched against the currently chosen
 constant:
+\fi
 
-\paragraph{Type existence match}
+\paragraph{\bilingual{Type existence match}{类型存在匹配}}
+\ifInheritanceChinese
+原子 $R(X, b)$（第二位置为常量）要求检查常量 $b$ 是否存在于 $R$ 在匹配行处的第二列。
+这编码为一次 $\mathrm{Acceptance}$,其手工构造的 $\mathrm{VisitorMap}$ \emph{仅}包含 $b$ 分支（而非从 $\mathrm{WithVisitorTail}$ 组合,后者会为所有常量创建分支）:
+{\small
+  \begin{align*}
+    \mathrm{VisitorMap} \mapsto \{b \mapsto \{\ldots\}\}
+\end{align*}}
+若 $b$ 存在于分派作用域中,则 $b$ 分支触发；否则 $\mathrm{Accepted}$ 不接收任何匹配分支。
+\else
 An atom $R(X, b)$ with a constant in the second position
 requires checking that constant $b$ exists in $R$'s
 second column at the matched row.
@@ -6460,8 +6648,16 @@ all constants):
 If $b$ exists in the dispatching scope, the
 $b$ branch fires; otherwise, $\mathrm{Accepted}$
 receives no matching branch.
+\fi
 
-\paragraph{Direct navigation}
+\paragraph{\bilingual{Direct navigation}{直接导航}}
+\ifInheritanceChinese
+原子 $R(b, Z)$（第一位置为常量）直接导航到 $b$ 的子 trie:
+\[
+  \mathrm{edgeB}_Z \mapsto \{R.\mathrm{TailMap}.b\}
+\]
+这完全绕过了访问者机制,通过访问逐常量的 $\mathrm{TailMap}$ 条目将作用域限制为仅 $b$ 的数据。
+\else
 An atom $R(b, Z)$ with a constant in the first position
 navigates directly to $b$'s sub-trie:
 \[
@@ -6470,8 +6666,16 @@ navigates directly to $b$'s sub-trie:
 This bypasses the visitor mechanism entirely, accessing
 the per-constant $\mathrm{TailMap}$ entry to restrict the
 scope to only $b$'s data.
+\fi
 
-\paragraph{Example}
+\paragraph{\bilingual{Example}{示例}}
+\ifInheritanceChinese
+$\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
+结合了两种机制。
+可执行的 MIXINv2 编码为
+\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}。
+编码迭代 $\mathrm{edge}$ 以得到 $X$（第~1~层）,然后用手工构造的 $\mathrm{VisitorMap}$ 检查 $X$ 的行中是否存在常量 $b$（第~2~层）,导航 $\mathrm{edge}.\mathrm{TailMap}.b$ 以得到 $Z$（第~3~层）,确认 $\mathrm{Nil}$（第~4~层）,并通过 $\mathrm{Replacement}$ 构造 $(X, Z)$。
+\else
 $\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
 combines both mechanisms.
 The executable MIXINv2 encoding is
@@ -6482,10 +6686,16 @@ hand-crafted $\mathrm{VisitorMap}$ (Level~2), navigates
 $\mathrm{edge}.\mathrm{TailMap}.b$ for $Z$ (Level~3),
 confirms $\mathrm{Nil}$ (Level~4), and constructs $(X, Z)$
 via $\mathrm{Replacement}$.
+\fi
 
-\subsection{Multi-Body Rules}
+\subsection{\bilingual{Multi-Body Rules}{多体规则}}
 \label{sec:encoding-multi}
 
+\ifInheritanceChinese
+含 $n > 2$ 个体原子的规则链接额外的连接层。
+每个共享变量在前一层的 $\mathrm{Visitor}$ 内引入一个组合的 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ 连接,输出构造放置在最内层的 $\mathrm{Nil}$ 确认内部。
+因此,二元规则的编码在结构上已是完整故事:更大的规则体只是增加同一模式的更多嵌套副本。
+\else
 Rules with $n > 2$ body atoms chain additional join levels.
 Each shared variable introduces one combined
 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ join
@@ -6494,8 +6704,15 @@ and the output construction is placed inside the innermost
 $\mathrm{Nil}$ confirmation.
 So the binary-rule encoding is the whole story structurally:
 larger bodies only add more nested copies of the same pattern.
+\fi
 
-\paragraph{Three-body rule}
+\paragraph{\bilingual{Three-body rule}{三体规则}}
+\ifInheritanceChinese
+$\mathrm{chain}(X, W) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z),\; \gamma(Z, W)$
+需要两次连接:对 $Y$（在 $\alpha$ 和 $\beta$ 之间）以及对 $Z$（在 $\beta$ 和 $\gamma$ 之间）。
+结构为:从 $\alpha$ 迭代 $X$、对 $Y$ 连接（获取 $\alpha$ 和 $\beta$ 两者的数据）、确认 $\alpha$ 中 $Y$ 之后的 $\mathrm{Nil}$,然后在 $\mathrm{Nil}$ 分支内将 $\beta$ 的 $Z$ 列与 $\gamma$ 的第一列连接、从 $\gamma$ 匹配行迭代 $W$、确认 $\mathrm{Nil}$,并构造 $(X, W)$。
+$Z$ 连接嵌套在 $Y$ 连接的 $\mathrm{Nil}$ 确认内部,确保 $\beta$ 中匹配的 $Y$ 常量的数据（通过 $\mathrm{VisitorTail}$ 可得）被用于迭代 $\beta$ 的第二列。
+\else
 $\mathrm{chain}(X, W) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z),\; \gamma(Z, W)$
 requires two joins: on $Y$ (between $\alpha$ and $\beta$)
 and on $Z$ (between $\beta$ and $\gamma$).
@@ -6511,8 +6728,15 @@ $\mathrm{Nil}$ confirmation, ensuring that $\beta$'s data
 for the matched $Y$ constant (available via
 $\mathrm{VisitorTail}$) is used to iterate $\beta$'s
 second column.
+\fi
 
-\paragraph{Mixed constants and variables}
+\paragraph{\bilingual{Mixed constants and variables}{混合常量与变量}}
+\ifInheritanceChinese
+$\mathrm{constJoin}(X, W) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, b),\; \mathrm{edge}(b, W)$
+结合了对 $Y$ 的变量连接、对 $b$ 的常量匹配（手工构造的仅含 $b$ 条目的 $\mathrm{VisitorMap}$）以及通过 $\mathrm{edge}.\mathrm{TailMap}.b$ 对 $W$ 的直接导航。
+对应的可执行 MIXINv2 文件为
+\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}。
+\else
 $\mathrm{constJoin}(X, W) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, b),\; \mathrm{edge}(b, W)$
 combines a variable join on $Y$, a constant match on $b$
 (hand-crafted $\mathrm{VisitorMap}$ with only the $b$ entry),
@@ -6520,9 +6744,14 @@ and direct navigation via $\mathrm{edge}.\mathrm{TailMap}.b$
 for $W$.
 The corresponding executable MIXINv2 file is
 \anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}.
+\fi
 
-\subsection{Multi-Variable Join}
+\subsection{\bilingual{Multi-Variable Join}{多变量连接}}
 
+\ifInheritanceChinese
+当一条规则在两个体原子之间共享\emph{多个}变量时,每个共享变量需要其自身的 $\mathrm{Acceptance}$ 检查。
+这些检查链式排列:外层 $\mathrm{Acceptance}$ 使用组合的 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ 对一对列连接,其 $\mathrm{Visitor}$ 内含对另一对列进行连接的内层 $\mathrm{Acceptance}$。
+\else
 When a rule shares \emph{multiple} variables between two
 body atoms, each shared variable requires its own
 $\mathrm{Acceptance}$ check.
@@ -6531,8 +6760,18 @@ joins on one column pair using combined
 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$, and
 its $\mathrm{Visitor}$ contains an inner $\mathrm{Acceptance}$
 joining on another column pair.
+\fi
 
-\paragraph{Example}
+\paragraph{\bilingual{Example}{示例}}
+\ifInheritanceChinese
+$\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
+共享 $X$ 和 $Y$ 两者。
+可执行的 MIXINv2 编码为
+\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}。
+外层 $\mathrm{Acceptance}$ 使用组合的 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ 连接 $r$ 和 $s$ 的第一列（变量 $X$）。
+在外层 $\mathrm{Visitor}$ 内部,内层 $\mathrm{Acceptance}$ 类似地连接 $r$ 和 $s$ 的第二列（变量 $Y$）。
+两次连接均须匹配才能产生输出,逐常量的 $\mathrm{Visited}$ 模式确保只有两个关系中均存在的常量才有贡献。
+\else
 $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 shares both $X$ and $Y$.
 The executable MIXINv2 encoding is
@@ -6546,10 +6785,20 @@ $\mathrm{Acceptance}$ joins $r$'s and $s$'s second columns
 Both joins must match for the output to be produced, and
 the per-constant $\mathrm{Visited}$ pattern ensures that
 only constants present in both relations contribute.
+\fi
 
-\subsection{Recursive Rules}
+\subsection{\bilingual{Recursive Rules}{递归规则}}
 \label{sec:recursive-rules}
 
+\ifInheritanceChinese
+递归 Datalog 规则（例如传递闭包
+$\mathrm{path}(X, Y) \mathrel{{:}\!{-}} \mathrm{edge}(X, Z),\; \mathrm{path}(Z, Y)$）的编码与非递归规则完全相同:头部关系 $\mathrm{path}$ 既作为已定义的作用域出现,也作为规则体中的引用出现（为 $Z$ 连接提供 $\mathrm{WithVisitorTail}$）。
+这不应被理解为单值惰性程序中普通的 $\this$。
+在操作上,tabling 求值（第~\ref{sec:mixin-trees}~节,附录~\ref{app:well-definedness}）计算 $\mathrm{lfp}(T_P)$:对 $\mathrm{path}$ 的每次查询通过递归规则体触发进一步求值,trie 并（$\supers$）累积所有可达元组。
+这与 $T_P$ 算子~\cite{vanemden1976-predicate-logic-semantics}的\emph{朴素求值}~\cite{bancilhon1986-recursive-query-strategies}完全对应:每次迭代将所有规则应用于当前事实集并添加新导出的事实。
+由于 Datalog 编码的关系在每次查询中只有有限多个常量,查询的答案域是有限的,收敛性由有限格上的升链条件保证。
+\emph{半朴素求值}~\cite{bancilhon1986-recursive-query-strategies}（限制每次迭代仅使用至少一个新导出事实的规则）是一种自然的优化,留待未来工作。
+\else
 Recursive Datalog rules, such as transitive closure
 $\mathrm{path}(X, Y) \mathrel{{:}\!{-}} \mathrm{edge}(X, Z),\; \mathrm{path}(Z, Y)$,
 are encoded identically to non-recursive rules: the
@@ -6579,13 +6828,18 @@ chain condition on a finite lattice.
 which restricts each iteration to rules that use at
 least one newly derived fact, is a natural
 optimisation left for future work.
+\fi
 
-\paragraph{The recursive rule as monadic pseudocode}
+\paragraph{\bilingual{The recursive rule as monadic pseudocode}{递归规则作为单子伪代码}}
+\ifInheritanceChinese
+上述递归规则大致对应以下伪代码（类 Haskell 语法,带有 \texttt{RebindableSyntax} 和 \texttt{OverloadedLists} 语义,其中 do 记法脱糖为基于 \texttt{Set} 的绑定,列表字面量表示集合）:
+\else
 The recursive rule above roughly corresponds to the
 following pseudocode (Haskell-like syntax with
   \texttt{RebindableSyntax} and \texttt{OverloadedLists}
   semantics, where do-notation desugars to a
 \texttt{Set}-based bind and list literals denote sets):
+\fi
 \begin{lstlisting}[style=haskell]
 {-# LANGUAGE RebindableSyntax, OverloadedLists #-}
 s >>= f = unions [f x | x <- s]
@@ -6600,31 +6854,65 @@ path = edge <> do
   return (x, z)
 \end{lstlisting}
 \noindent
+\ifInheritanceChinese
+伪代码的每一行在继承演算编码（第~\ref{sec:encoding-variables}~节）中都有直接对应:
+\else
 Each line of the pseudocode has a direct counterpart in
 the inheritance-calculus encoding
 (Section~\ref{sec:encoding-variables}):
+\fi
 \begin{description}
-  \item[\texttt{edge}] corresponds to the base-fact trie;
+  \item[\texttt{edge}]
+    \ifInheritanceChinese 对应基础事实 trie;\else corresponds to the base-fact trie;\fi
   \item[\texttt{path = edge <> do \ldots}]
+    \ifInheritanceChinese
+    对应 $\mathrm{path}$ 继承 $\mathrm{edge}$（基础事实）和递归规则体（通过 $\supers$ 得到的导出事实）;
+    \else
     corresponds to $\mathrm{path}$ inheriting $\mathrm{edge}$
     (base facts) and the recursive body (derived facts via
     $\supers$);
+    \fi
   \item[\texttt{(x, y0) <- edge}]
+    \ifInheritanceChinese
+    对应第~1~层（$\mathrm{xAcc}$）,从 $\mathrm{edge}$ 迭代 $X$;
+    \else
     corresponds to Level~1 ($\mathrm{xAcc}$), iterating $X$
     from $\mathrm{edge}$;
+    \fi
   \item[\texttt{(y1, z) <- path}]
+    \ifInheritanceChinese
+    对应第~2~层（$\mathrm{yAcc}$）,与 $\mathrm{path}$ 对 $Y$ 进行连接,以及第~4~层（$\mathrm{zAcc}$）,迭代 $Z$;
+    \else
     corresponds to Level~2 ($\mathrm{yAcc}$), joining on $Y$
     with $\mathrm{path}$, and Level~4 ($\mathrm{zAcc}$),
     iterating $Z$;
+    \fi
   \item[\texttt{guard (y0 == y1)}]
+    \ifInheritanceChinese
+    对应第~2~层中 $\mathrm{WithVisitorTail} \cap \mathrm{WithVisiteeTail}$ 的交集:常量仅当出现在两个关系中时才产生 $\mathrm{Visitor}$ 条目;
+    \else
     corresponds to the $\mathrm{WithVisitorTail} \cap
     \mathrm{WithVisiteeTail}$ intersection in Level~2: a
     constant produces a $\mathrm{Visitor}$ entry only if it
     appears in both relations;
+    \fi
   \item[\texttt{return (x, z)}]
+    \ifInheritanceChinese
+    对应第~5~层的 $\mathrm{Replacement}$ 链,构造输出元组 $(X, Z)$。
+    \else
     corresponds to the $\mathrm{Replacement}$ chain in
     Level~5, constructing the output tuple $(X, Z)$.
+    \fi
 \end{description}
+\ifInheritanceChinese
+唯一的区别是求值策略:Haskell 惰性求值 \texttt{path}（发散）,而继承演算通过 tabling $T_P$ 迭代求值（收敛到 $\mathrm{lfp}$）。
+
+然而,该单子程序并不收敛,因为 \texttt{path} 是递归定义的。%
+\footnote{
+  启用 \texttt{RecursiveDo} 扩展并无帮助:\texttt{mfix} 通过惰性在\emph{元素}级别打结,而传递闭包方程需要在\emph{容器}级别求不动点,即找到满足 $S = F(S)$ 的集合 $S$。
+}
+继承演算通过 tabling 求值（第~\ref{sec:mixin-trees}~节）解决了这一问题,它通过在 mixin 树的格上迭代来计算 $T_P$ 算子的最小不动点,恰好是上述伪代码无法表达的容器级不动点。
+\else
 The only difference is the evaluation strategy:
 Haskell evaluates \texttt{path} lazily (diverges),
 whereas inheritance-calculus evaluates it via tabled
@@ -6644,10 +6932,29 @@ Inheritance-calculus solves this through tabled evaluation
 least fixed point of the $T_P$ operator by iterating
 over the lattice of mixin trees, precisely the
 container-level fixed point that the pseudocode above cannot express.
+\fi
 
-\subsection{Semantic Correspondence with Standard Datalog}
+\subsection{\bilingual{Semantic Correspondence with Standard Datalog}{与标准 Datalog 的语义对应}}
 \label{sec:datalog-semantics}
 
+\ifInheritanceChinese
+该编码产生标准 Datalog 的元组级语义。
+综合前几节:trie 提供带索引的元组存储,访问者分派提供控制骨架,逐常量的 $\mathrm{Replacement}$ 将输出构造局限于每个见证。
+关键机制是逐常量的 $\mathrm{Visited}$ 模式:输出构造（$\mathrm{Replacement}$）发生在每个匹配常量的 $\mathrm{Visitor}$ 作用域内部,作用于\emph{单个}常量的数据,而非合并后的作用域。
+随后 $\mathrm{Accepted}$ 属性通过 trie 并（$\supers$）收集所有逐常量的 $\mathrm{Visited}$ 结果。
+
+例如,给定 $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$（一个 3-环），两跳自连接
+$\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
+恰好产生 $3$ 对:$\{(a,c),\; (b,a),\; (c,b)\}$,与标准 Datalog 一致。
+这是
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}
+所呈现的行为。
+当 $Y$ 连接匹配到常量 $b$（同时出现在 $(a,b)$ 产生的 $\mathrm{edge}$ 第二列和 $\mathrm{edge}$ 的第一列中）时,$b$ 的 $\mathrm{Visitor}$ 接收 $\mathrm{VisitorTail} = \mathrm{edge}.\mathrm{TailMap}.b$（仅含 $c$），$\mathrm{Replacement}$ 构造单个输出元组 $(a, c)$,而非 $\{a,b,c\}$ 的全部。
+
+这种值级精确性源于每个常量的 $\mathrm{Replacement}$ 作用于 $\mathrm{TailMap}.d$（逐常量的子 trie）,而非合并后的 trie。
+同样的观点在重复访问者自连接回归示例\anon[~(补充材料)]{~\cite{mixin2025}}中也可见:重复的访问者分派阻止不同常量的见证被错误合并。
+尽管 $\bases$（方程~\ref{eq:bases}）在基本层仍计算叉积,该编码在任何合并发生之前将计算路由通过逐常量的 $\mathrm{TailMap}$ 条目,从而达到与标准 Datalog 元组级求值相同的效果。
+\else
 The encoding produces standard Datalog tuple-level semantics.
 Putting the previous subsections together: tries provide indexed
 tuple storage, visitor dispatch supplies the control skeleton,
@@ -6688,10 +6995,18 @@ cross-joins at the primitive level, the encoding routes
 computation through per-constant $\mathrm{TailMap}$ entries
 before any merging occurs, achieving the same effect as
 standard Datalog's tuple-level evaluation.
+\fi
 
-\section{Evaluation Trace of Multi-Target \texorpdfstring{$\this$}{this} Resolution}
+\section{\bilingual{Evaluation Trace of Multi-Target \texorpdfstring{$\this$}{this} Resolution}{多目标 \texorpdfstring{$\this$}{this} 解析的求值轨迹}}
 \label{app:evaluation-trace}
 
+\ifInheritanceChinese
+本附录给出附录~\ref{app:scala-multi-target}~程序的逐步求值轨迹,通过第~\ref{sec:definitions}~节的六个函数（方程~\ref{eq:properties}~至~\ref{eq:this}）计算 $\properties((\text{``HasMultipleOuters''},\, \text{``outer''}))$。
+$\overrides$、$\bases$、$\resolve$、$\this$ 和 $\supers$ 的每次调用均连同其参数和返回集合一起展示。
+求值轨迹存在于元语言中:每个参数和结果都是一条\emph{路径},即标识树中某个位置的标签序列 $(\ell_1, \ldots, \ell_n)$（第~\ref{sec:definitions}~节），而非继承演算表达式。
+为使标签与第~\ref{sec:definitions}~节的元语言变量（斜体 $p$、$\ell$、$n$、$S$）区分,我们对每个具体标签加引号,因此路径写作带括号的逗号分隔引号标签序列。
+从而 $(\text{``HasMultipleOuters''}, \text{``outer''})$ 是继承演算投影 $\mathrm{HasMultipleOuters}.\mathrm{outer}$ 所标识的路径,根路径为空序列 $()$。
+\else
 This appendix gives a step-by-step evaluation trace of the program of
 Appendix~\ref{app:scala-multi-target}, computing
 $\properties((\text{``HasMultipleOuters''},\, \text{``outer''}))$ by the six
@@ -6711,8 +7026,9 @@ Thus $(\text{``HasMultipleOuters''}, \text{``outer''})$ is the path that
 the inheritance-calculus projection
 $\mathrm{HasMultipleOuters}.\mathrm{outer}$ identifies, and the root path
 is the empty sequence $()$.
+\fi
 
-\paragraph{Program}
+\paragraph{\bilingual{Program}{程序}}
 \begin{align*}
   \{ \quad \mathrm{MyOuter} &\mapsto \{
       \mathrm{MyInner} \mapsto \{
@@ -6725,9 +7041,13 @@ is the empty sequence $()$.
   \quad \}
 \end{align*}
 
-\paragraph{AST primitives}
+\paragraph{\bilingual{AST primitives}{AST 基本原语}}
+\ifInheritanceChinese
+解析填充 $\defines$ 和 $\inherits$（第~\ref{sec:definitions}~节）:
+\else
 Parsing populates $\defines$ and $\inherits$
 (Section~\ref{sec:definitions}):
+\fi
 \begin{align*}
   \defines(()) &= \{
     \text{``MyOuter''},\;
@@ -6744,12 +7064,23 @@ Parsing populates $\defines$ and $\inherits$
   \{(0,\, (\text{``Object1''}, \text{``MyInner''})),\;
   (0,\, (\text{``Object2''}, \text{``MyInner''}))\}.
 \end{align*}
+\ifInheritanceChinese
+所有其他 $\defines$ 和 $\inherits$ 为空。
+每个 $\inherits$ 条目是引用对 $(n,\, w)$,其中 $n$ 是向上步数,$w$ 是向下投影列表（第~\ref{sec:definitions}~节）。
+\else
 All other $\defines$ and $\inherits$ are empty.
 Each $\inherits$ entry is a reference pair $(n,\, w)$,
 where $n$ is the number of upward steps and $w$ the
 downward projection list (Section~\ref{sec:definitions}).
+\fi
 
-\paragraph{Trace}
+\paragraph{\bilingual{Trace}{轨迹}}
+\ifInheritanceChinese
+我们以依赖顺序将求值轨迹呈现为语义函数调用的编号列表:某次调用出现在其所依赖的调用之后,每个条目说明它使用了哪些较早的条目、如何计算以及产生什么结果。
+每个不同的调用列出一次,因此单个条目可被多个后续条目使用,这正是实现可以通过 tabling~\cite{tamaki1986-tabled-resolution}实现的复用。
+参数和结果是元语言值:标签是引号字符串（如 $\text{``outer''}$），路径是标签的元组（如 $(\text{``HasMultipleOuters''}, \text{``outer''})$），根路径写作 $()$。
+查询为 $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$。
+\else
 We present the trace as a numbered list of semantic-function calls in
 dependency order: a call appears after the calls it depends on, and each
 item states, in English, which earlier items it uses, how it computes, and
@@ -6762,10 +7093,19 @@ $(\text{``HasMultipleOuters''}, \text{``outer''})$, with the root path
 written $()$.
 The query is
 $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
+\fi
 
 \input{generated-evaluation-trace.tex}
 
 \begin{remark}
+\ifInheritanceChinese
+  关键在于 $\this$ 步骤（条目~\ref{trace:this-Has-MyOuter-MyInner-1}）。
+  $(\text{``MyOuter''}, \text{``MyInner''}, \text{``outer''})$ 处的继承引用向上走一步,因此 $\this$ 从 $(\text{``MyOuter''}, \text{``MyInner''})$ 向上走一步,产生前沿 $\{(\text{``Object1''}), (\text{``Object2''})\}$,即合并了 $\text{``MyInner''}$ 的两个继承站点。
+  这正是 Scala~3 和 NixOS 模块系统拒绝的多目标情况（附录~\ref{app:scala-multi-target}）:在那里 $\this$ 必须选择单个站点。
+  之所以能到达 $(\text{``MyOuter''})$ 的属性,是因为 $(\text{``Object1''})$ 和 $(\text{``Object2''})$ 都以 $(\text{``MyOuter''})$ 为基础,因此最终的 $\supers$ 通过两条路径都包含 $(\text{``MyOuter''})$；由于属性解析通过集合并聚合,两条路径折叠为唯一答案
+  $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))
+  = \{\text{``MyInner''}\} = \properties((\text{``MyOuter''}))$。
+\else
   The crux is the $\this$ step (item~\ref{trace:this-Has-MyOuter-MyInner-1}).
   The inheritance reference at
   $(\text{``MyOuter''}, \text{``MyInner''}, \text{``outer''})$ takes one step
@@ -6783,6 +7123,7 @@ $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
   the single answer
   $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))
   = \{\text{``MyInner''}\} = \properties((\text{``MyOuter''}))$.
+\fi
 \end{remark}
 
 \fi % end \ifInheritanceAppendix
