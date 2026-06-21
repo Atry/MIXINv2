@@ -280,22 +280,22 @@
 \label{sec:introduction}
 
 \ifInheritanceChinese
-诸如 Jsonnet~\cite{jsonnet}、Hydra~\cite{hydra2023}、CUE~\cite{cue2019}、Dhall~\cite{dhall2017}、Kustomize~\cite{kustomize} 与 JSON Patch~\cite{rfc6902-json-patch} 这样的配置语言,都提供了通过继承或合并来组合结构化数据的机制。
+诸如 Jsonnet~\cite{cunningham2014-jsonnet}、Hydra~\cite{yadan2023-hydra}、CUE~\cite{van-lohuizen2019-cue}、Dhall~\cite{gonzalez2017-dhall}、Kustomize~\cite{kubernetes-sig-2018-kustomize} 与 JSON Patch~\cite{bryan2013-json-patch} 这样的配置语言,都提供了通过继承或合并来组合结构化数据的机制。
 
 在这些之中,Nix 生态系统~\cite{dolstra2010-nixos} 格外突出,无论是就其规模还是其设计的走向而言。它的软件包集合 \texttt{nixpkgs} 收录了超过 113{,}000 个软件包,%
 \footnote{
-  据 Repology~\cite{repology2025},这接近 Debian 或 Ubuntu 软件包数量的三倍,而贡献者数量相近。并非每个软件包都用到这里所描述的可扩展性机制,但同样的告诫也适用于其他发行版。
+  据 Repology~\cite{repology-contributors-2025-statistics},这接近 Debian 或 Ubuntu 软件包数量的三倍,而贡献者数量相近。并非每个软件包都用到这里所描述的可扩展性机制,但同样的告诫也适用于其他发行版。
 }
 是现存最大的软件包集合之一。软件包的组合最初依赖一条线性化的 mixin 链,其中每一层都能看见它的前一层,%
 \footnote{
   Nix overlay 通过一条线性化的 \texttt{self}/\texttt{super} 链来组合软件包集合,遵循 Bracha--Cook 的 mixin 模式~\cite{bracha1990-mixin-inheritance}:\texttt{self} 晚绑定到不动点结果,而 \texttt{super} 指向前一层。该机制是不对称且依赖顺序的。
 }
-但该生态系统已日益汇聚到一种对称的替代方案上:NixOS 模块系统~\cite{dolstra2010-nixos,nixosmodules},它通过对嵌套的属性集进行递归合并、配以自引用求值与延迟模块~\cite{nixosmodules} 来组合,而这种组合是可交换、幂等且可结合的。模块系统最初为系统配置而设计,如今已被用于用户环境~\cite{homemanager}、macOS 配置~\cite{nixdarwin}、磁盘分区~\cite{disko}、flake 结构~\cite{flakeparts}、开发者环境~\cite{devenv}、Kubernetes 集群~\cite{kubenix,nixidy},以及多语言软件包构建~\cite{dream2nix},而最后这一项正是 \texttt{nixpkgs} 那套不对称机制原本的领域。Nix 是一门带头等函数的函数式语言;然而一份典型的模块配置几乎完全由嵌套的属性集构成,函数只是偶尔作为模块系统的 DSL 语法出现,例如 \texttt{mkIf} 与 \texttt{mkMerge}。没有任何计算理论刻画了这一机制所展现的可扩展性。
+但该生态系统已日益汇聚到一种对称的替代方案上:NixOS 模块系统~\cite{dolstra2010-nixos, nixos-contributors-nixos-modules},它通过对嵌套的属性集进行递归合并、配以自引用求值与延迟模块~\cite{nixos-contributors-nixos-modules} 来组合,而这种组合是可交换、幂等且可结合的。模块系统最初为系统配置而设计,如今已被用于用户环境~\cite{helgesson2017-home-manager}、macOS 配置~\cite{jordan2017-nix-darwin}、磁盘分区~\cite{lassulus2022-disko}、flake 结构~\cite{hensing2022-flake-parts}、开发者环境~\cite{kozar2022-devenv}、Kubernetes 集群~\cite{xtruder2022-kubenix, ingolfsson2024-nixidy},以及多语言软件包构建~\cite{hauer2021-dream2nix},而最后这一项正是 \texttt{nixpkgs} 那套不对称机制原本的领域。Nix 是一门带头等函数的函数式语言;然而一份典型的模块配置几乎完全由嵌套的属性集构成,函数只是偶尔作为模块系统的 DSL 语法出现,例如 \texttt{mkIf} 与 \texttt{mkMerge}。没有任何计算理论刻画了这一机制所展现的可扩展性。
 \else
-Configuration languages such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
-CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
-Kustomize~\cite{kustomize}, and JSON
-Patch~\cite{rfc6902-json-patch} all provide mechanisms for
+Configuration languages such as Jsonnet~\cite{cunningham2014-jsonnet}, Hydra~\cite{yadan2023-hydra},
+CUE~\cite{van-lohuizen2019-cue}, Dhall~\cite{gonzalez2017-dhall},
+Kustomize~\cite{kubernetes-sig-2018-kustomize}, and JSON
+Patch~\cite{bryan2013-json-patch} all provide mechanisms for
 composing structured data through inheritance or merging.
 
 Among these, the Nix ecosystem~\cite{dolstra2010-nixos} stands out,
@@ -303,7 +303,7 @@ both for scale and for the trajectory of its design.
 Its package collection, \texttt{nixpkgs}, contains over
 113{,}000 packages,%
 \footnote{
-  According to Repology~\cite{repology2025},
+  According to Repology~\cite{repology-contributors-2025-statistics},
   nearly three times the package count of Debian or Ubuntu,
   achieved with a similar number of contributors.
   Not every package exercises the extensibility mechanisms
@@ -322,19 +322,19 @@ chain in which each layer sees its predecessor,%
 }
 but the ecosystem has increasingly converged on a symmetric
 alternative: the NixOS module
-system~\cite{dolstra2010-nixos,nixosmodules}, which composes by
+system~\cite{dolstra2010-nixos, nixos-contributors-nixos-modules}, which composes by
 recursively merging nested attribute sets with self-referential
-evaluation and deferred modules~\cite{nixosmodules}---commutative,
+evaluation and deferred modules~\cite{nixos-contributors-nixos-modules}---commutative,
 idempotent,
 and associative.
 Originally designed for system configuration, the module system
-has been adopted for user environments~\cite{homemanager},
-macOS configuration~\cite{nixdarwin},
-disk partitioning~\cite{disko},
-flake structure~\cite{flakeparts},
-developer environments~\cite{devenv},
-Kubernetes clusters~\cite{kubenix,nixidy},
-and multi-language package building~\cite{dream2nix}---the
+has been adopted for user environments~\cite{helgesson2017-home-manager},
+macOS configuration~\cite{jordan2017-nix-darwin},
+disk partitioning~\cite{lassulus2022-disko},
+flake structure~\cite{hensing2022-flake-parts},
+developer environments~\cite{kozar2022-devenv},
+Kubernetes clusters~\cite{xtruder2022-kubenix, ingolfsson2024-nixidy},
+and multi-language package building~\cite{hauer2021-dream2nix}---the
 original domain of \texttt{nixpkgs}'s asymmetric mechanism.
 Nix is a functional language with first-class functions;
 yet a typical module configuration consists almost entirely of
@@ -430,7 +430,7 @@ Guided by this observation, we set out to reduce the
 NixOS module system to a minimal set of primitives.
 The reduction produced MIXIN, an early implementation in Nix,
 and subsequently
-MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now implemented in Python: a declarative programming
+MIXINv2\anon[~(included as supplementary material)]{~\cite{yang2026-mixinv2}}, now implemented in Python: a declarative programming
 language with only three constructs (record, definition,
 and inheritance) and no functions or let-bindings.
 MIXINv2 obtains scalars such as floating-point numbers through a
@@ -627,7 +627,7 @@ Section~\ref{sec:syntax} gives its formal syntax, and
 Section~\ref{sec:mixin-trees} expands this first look into the full
 semantics.
 The linearization problem of mixin-based
-systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
+systems~\cite{bracha1990-mixin-inheritance, barrett1996-c3-linearization}
 did not arise: inheritance is inherently commutative, idempotent,
 and associative, and $\this$ naturally resolves to
 \emph{multiple targets} rather than one: when inheritance places the
@@ -1526,7 +1526,7 @@ After $n$ steps the frontier contains the answer:
   目标;不继承任何属性。
   这是无类型演算最为自洽的
   语义。
-  MIXINv2\anon[~(补充材料)]{~\cite{mixin2025}} 更为严格:它的解析器拒绝
+  MIXINv2\anon[~(补充材料)]{~\cite{yang2026-mixinv2}} 更为严格:它的解析器拒绝
   前沿变为空的引用,在编译期报告一个
   解析错误。
 }
@@ -1551,7 +1551,7 @@ Since $n$ is a nonnegative integer, the recursion terminates.%
   target; no properties are inherited.
   This is the most self-consistent semantics for the
   untyped calculus.
-  MIXINv2\anon[~(supplementary material)]{~\cite{mixin2025}} is stricter: its resolver rejects
+  MIXINv2\anon[~(supplementary material)]{~\cite{yang2026-mixinv2}} is stricter: its resolver rejects
   references whose frontier becomes empty, reporting a
   resolution error at compile time.
 }
@@ -2598,7 +2598,7 @@ resolution to shared schemas just described.
 \ifInheritanceChinese
 Church 编码的 Nat 是一个记录,其结构映射了构建它所用的数据构造子路径:$\mathrm{Zero}$ 是一个平坦记录;$\mathrm{S}(\mathrm{Zero})$ 是一个带有 $\mathrm{predecessor}$ 属性、指向一个 $\mathrm{Zero}$ 记录的记录;依此类推。这恰好是字典树的形状。%
 \footnote{
-  一元 Nat 的字典树可以被视为一个稀疏链表,其深度等于它所代表的数值:在字典树并中,链表中的某些 $\mathrm{Successor}$ 节点指向 $\mathrm{Zero}$(叶节点),因此链表中并非每个位置都被占用。\anon[{} 补充材料]{{} MIXINv2 源码~\cite{mixin2025}}{} 中包含一个字典树深度为对数级的二进制自然数(BinNat)算术。
+  一元 Nat 的字典树可以被视为一个稀疏链表,其深度等于它所代表的数值:在字典树并中,链表中的某些 $\mathrm{Successor}$ 节点指向 $\mathrm{Zero}$(叶节点),因此链表中并非每个位置都被占用。\anon[{} 补充材料]{{} MIXINv2 源码~\cite{yang2026-mixinv2}}{} 中包含一个字典树深度为对数级的二进制自然数(BinNat)算术。
 }
 一个同时继承两个 Nat 值的作用域是一个字典树并。下面的测试将 $\mathrm{Plus}$ 应用于 $\{1,2\}$ 的字典树并,被加数为 $\{3,4\}$ 的字典树并,然后用 $\mathrm{Equal}$ 将结果与自身比较:
 \else
@@ -2613,7 +2613,7 @@ This is exactly the shape of a trie.%
   in a trie union, some $\mathrm{Successor}$ nodes along
   the list point to $\mathrm{Zero}$ (leaf nodes),
   so not every position in the list is occupied.
-  The\anon[{} supplementary material]{{} MIXINv2 source~\cite{mixin2025}}{} includes a binary natural number
+  The\anon[{} supplementary material]{{} MIXINv2 source~\cite{yang2026-mixinv2}}{} includes a binary natural number
   (BinNat) arithmetic whose trie depth is logarithmic.
 }
 A scope that simultaneously inherits two Nat values is a trie union.
@@ -2689,17 +2689,14 @@ every operation distributes over them.
     }
     一个新操作和一个新数据类型各自作为独立的 mixin 添加，沿操作轴和情形轴均进行了扩展，且无需修改任何已有 mixin。
     在其他场景中，访问者模式允许添加新操作但不允许添加新情形；而这里两者都允许，因为第~\ref{sec:syntax}~节的每个构造都可通过深度合并（公式~\ref{eq:overrides}）进行扩展，所以不可扩展的那一半根本无法写出；第~\ref{sec:asymmetry}~节（定理~\ref{thm:cartesian-nonexpressibility}）则形式化了使这一结论无条件成立的不对称性。
-    在其他地方恢复第二个扩展维度需要专门的机制~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types,
-      swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras,
-      kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads,
-    wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}。
+    在其他地方恢复第二个扩展维度需要专门的机制~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types, swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras, kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads, wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}。
     第~\ref{sec:semantic-variants}~节分析了为何深度合并是唯一能实现这一点的组合机制。
     这第二个可扩展性维度是对访问者模式的非预期用法中涌现出来的。
 
 \end{description}
 
 \label{sec:practical-function-color}%
-更多现象依赖于 FFI，而本文中的示例排除了 FFI。其中一种是函数颜色盲~\cite{nystrom2015-function-color}：同一个 MIXINv2 文件可以在同步和异步运行时下运行，这是通过继承进行依赖注入的非预期用法。补充材料\anon[]{~\cite{mixin2025}}给出了相关示例。
+更多现象依赖于 FFI，而本文中的示例排除了 FFI。其中一种是函数颜色盲~\cite{nystrom2015-function-color}：同一个 MIXINv2 文件可以在同步和异步运行时下运行，这是通过继承进行依赖注入的非预期用法。补充材料\anon[]{~\cite{yang2026-mixinv2}}给出了相关示例。
 \else
 Developing real programs in MIXINv2 surfaced three phenomena, each an
 off-label use of an adopted design pattern beyond its original abilities.
@@ -2743,10 +2740,7 @@ off-label use of an adopted design pattern beyond its original abilities.
     (Theorem~\ref{thm:cartesian-nonexpressibility}) formalizes the
     asymmetry that makes this unconditional.
     Recovering that second dimension elsewhere takes dedicated
-    mechanisms~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types,
-      swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras,
-      kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads,
-    wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}.
+    mechanisms~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types, swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras, kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads, wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}.
     Section~\ref{sec:semantic-variants} analyzes why deep merge
     is the only composition mechanism that achieves this.
     This second extensibility dimension emerged from an off-label use
@@ -2760,7 +2754,7 @@ exclude. One is function color
 blindness~\cite{nystrom2015-function-color}: the same MIXINv2 file runs
 under both synchronous and asynchronous runtimes, an off-label use of
 dependency injection via inheritance. The
-supplementary material\anon[]{~\cite{mixin2025}} gives the example.
+supplementary material\anon[]{~\cite{yang2026-mixinv2}} gives the example.
 \fi
 
 \subsection{\bilingual{Semantic Alternatives}{语义替代方案}}
@@ -2772,7 +2766,7 @@ supplementary material\anon[]{~\cite{mixin2025}} gives the example.
 \paragraph{\bilingual{Degrees of freedom}{自由度}}
 以下分析假设 AST 是一棵\emph{命名树}：从父节点到子节点的每条边都携带一个标签，因此每个节点都由从根节点出发的路径唯一标识。对于配置语言，这自然成立：JSON、YAML 或 Nix 属性集中的每个键都是一个标签，而嵌套产生路径。%
 \footnote{
-  Nix 是一门具有一等函数的函数式语言；仅凭其属性集并不构成命名树 DSL。然而，NixOS 模块系统~\cite{nixosmodules}将用户界面限制为通过递归合并组合的嵌套属性集，而正是这种 DSL 层面的结构自然地构成了命名树。
+  Nix 是一门具有一等函数的函数式语言；仅凭其属性集并不构成命名树 DSL。然而，NixOS 模块系统~\cite{nixos-contributors-nixos-modules}将用户界面限制为通过递归合并组合的嵌套属性集，而正是这种 DSL 层面的结构自然地构成了命名树。
 }
 对于主流编程语言，AST 并不直接是命名树，因为匿名表达式位置和隐式作用域缺乏标签。然而，经过 ANF 变换~\cite{flanagan1993-essence-compiling-continuations}后，每个中间结果都绑定到一个名字，而剩余的匿名位置%
 \footnote{
@@ -2870,7 +2864,7 @@ supplementary material\anon[]{~\cite{mixin2025}} gives the example.
     同名定义被作为错误拒绝。三个等式性质均成立，但为空洞成立：这些等式得到满足，是因为用于验证它们的组合被拒绝了。冲突拒绝阻止了对已有标签的扩展~\cite{harper1991-symmetric-record-concatenation}，而这恰恰是表达问题~\cite{wadler1998-expression-problem}所要求的可组合性。
 
   \item[\bilingual{Priority merge}{优先级合并}]
-    一个来源具有优先权~\cite{jsonnet,dolstra2010-nixos}，因此 $A + B \neq B + A$，引入了顺序依赖。
+    一个来源具有优先权~\cite{cunningham2014-jsonnet, dolstra2010-nixos}，因此 $A + B \neq B + A$，引入了顺序依赖。
 
   \item[$\beta$-\bilingual{reduction}{归约}]
     只有作者放置的参数才是扩展点；函数体是封闭的。要使一个新的方面可扩展，原函数必须被重写以接受一个额外参数。任何基于函数应用的组合机制都继承了这一限制，因为 $\beta$-归约使函数体封闭。表达问题~\cite{wadler1998-expression-problem}在此类语言中之所以困难，原因相同：可扩展性是按需选择的。模拟对不可扩展性免疫的框架（访问者模式、对象代数~\cite{oliveira2012-object-algebras}、finally tagless 解释器~\cite{carette2009-finally-tagless}）正是为绕过这一限制而生的机制。
@@ -2888,17 +2882,17 @@ supplementary material\anon[]{~\cite{mixin2025}} gives the example.
 
 \begin{description}
   \item[\bilingual{Early binding}{早期绑定}]
-    使用早期绑定时，引用在定义时即解析到一个固定路径，与记录后来如何被继承无关。CUE~\cite{cue2019}是这方面的典型：字段引用被静态解析，嵌套字段无法引用其封闭上下文中由后续组合贡献的属性。这使得 mixin 无法充当 $\lambda$-演算的调用栈：$\beta$-归约要求被调用方能观察到调用点提供的参数，而那是一次后续组合。使用早期绑定时，引用在此组合发生前就已被冻结。在方程中，$\resolve$~(\ref{eq:resolve}) 调用 $\this$~(\ref{eq:this})，后者遍历继承的树结构；迟绑定正是使 $\this$ 能够观察到后续组合的 mixin 所贡献属性的原因。若没有图灵完备的 mixin，函数必须被重新引入为组合机制，从而再次暴露上述按需选择的可扩展性问题。
+    使用早期绑定时，引用在定义时即解析到一个固定路径，与记录后来如何被继承无关。CUE~\cite{van-lohuizen2019-cue}是这方面的典型：字段引用被静态解析，嵌套字段无法引用其封闭上下文中由后续组合贡献的属性。这使得 mixin 无法充当 $\lambda$-演算的调用栈：$\beta$-归约要求被调用方能观察到调用点提供的参数，而那是一次后续组合。使用早期绑定时，引用在此组合发生前就已被冻结。在方程中，$\resolve$~(\ref{eq:resolve}) 调用 $\this$~(\ref{eq:this})，后者遍历继承的树结构；迟绑定正是使 $\this$ 能够观察到后续组合的 mixin 所贡献属性的原因。若没有图灵完备的 mixin，函数必须被重新引入为组合机制，从而再次暴露上述按需选择的可扩展性问题。
 
   \item[\bilingual{Dynamic scope}{动态作用域}]
-    使用动态作用域时，引用在使用点而非定义点处解析。Jsonnet~\cite{jsonnet}采用此方式：\texttt{self} 始终指向最终合并后的对象，而非定义点处的对象。联合文件系统在文件系统层面表现出相同的性质：符号链接的相对路径在解引用时相对于挂载上下文解析，而非相对于定义该链接的层。动态作用域破坏了第~\ref{sec:forward-translation}~节的 $\lambda$-演算嵌入。替换引理（引理~\ref{lem:substitution}）依赖于基本情况 $M = y$（$y \neq x$）：$y$ 的 de~Bruijn 指标 $m$ 从定义点路径 $\init(p_{\mathrm{def}})$ 向上走到一个与 $x$ 的绑定器不同的作用域层级，因此 $x$ 作用域处的替换 $\mathrm{argument} \mapsto \mathcal{T}(V)$ 不产生任何效果。动态作用域下，这种分离不再成立。%
+    使用动态作用域时，引用在使用点而非定义点处解析。Jsonnet~\cite{cunningham2014-jsonnet}采用此方式：\texttt{self} 始终指向最终合并后的对象，而非定义点处的对象。联合文件系统在文件系统层面表现出相同的性质：符号链接的相对路径在解引用时相对于挂载上下文解析，而非相对于定义该链接的层。动态作用域破坏了第~\ref{sec:forward-translation}~节的 $\lambda$-演算嵌入。替换引理（引理~\ref{lem:substitution}）依赖于基本情况 $M = y$（$y \neq x$）：$y$ 的 de~Bruijn 指标 $m$ 从定义点路径 $\init(p_{\mathrm{def}})$ 向上走到一个与 $x$ 的绑定器不同的作用域层级，因此 $x$ 作用域处的替换 $\mathrm{argument} \mapsto \mathcal{T}(V)$ 不产生任何效果。动态作用域下，这种分离不再成立。%
     \footnote{
       反例：$(\lambda x.\, \lambda y.\, x)\; V_1\; V_2$。$\lambda y.\, x$ 内部对 $x$ 的引用翻译为 $\dbi{1}.\mathrm{argument}$（de~Bruijn 指标 $1$）。使用迟绑定时，$\this$ 从定义点作用域（内层 $\lambda$）出发，向上走一层到外层 $\lambda$，到达槽 $\mathrm{argument} \mapsto \mathcal{T}(V_1)$。使用动态作用域时，引用从使用点上下文解析，其中最内层封闭作用域是应用 $\{C_1.\mathrm{result},\; \mathrm{argument} \mapsto \mathcal{T}(V_2)\}$；向上走一层到达该作用域的 $\mathrm{argument}$ 槽，返回 $\mathcal{T}(V_2)$ 而非 $\mathcal{T}(V_1)$。这是动态作用域的经典变量捕获失败。
     }
     与早期绑定一样，mixin 无法完全替代函数。
 
   \item[\bilingual{Single-target $\this$}{单目标 $\this$}]
-    单目标 $\this$ 是一个有前途的候选方案：单路径引理~(\ref{lem:single-path})表明，对于翻译后的 $\lambda$-项，$\this$~(\ref{eq:this}) 中的前沿集 $S$ 始终恰好包含一条路径，因此 $\lambda$-演算嵌入不需要多目标解析。然而，单目标 $\this$ 因另一原因而对不可扩展性脆弱。当多条继承路径到达同一作用域时，单目标解析必须拒绝该情况或选择其中一条路径。NixOS 模块系统~\cite{nixosmodules}会引发重复声明错误（附录~\ref{app:scala-multi-target}）。这拒绝了两个独立编写的模块定义同一选项的嵌套扩展，而这种组合在求解表达问题~\cite{wadler1998-expression-problem}时会出现，如第~\ref{sec:expression-problem}~节所示。
+    单目标 $\this$ 是一个有前途的候选方案：单路径引理~(\ref{lem:single-path})表明，对于翻译后的 $\lambda$-项，$\this$~(\ref{eq:this}) 中的前沿集 $S$ 始终恰好包含一条路径，因此 $\lambda$-演算嵌入不需要多目标解析。然而，单目标 $\this$ 因另一原因而对不可扩展性脆弱。当多条继承路径到达同一作用域时，单目标解析必须拒绝该情况或选择其中一条路径。NixOS 模块系统~\cite{nixos-contributors-nixos-modules}会引发重复声明错误（附录~\ref{app:scala-multi-target}）。这拒绝了两个独立编写的模块定义同一选项的嵌套扩展，而这种组合在求解表达问题~\cite{wadler1998-expression-problem}时会出现，如第~\ref{sec:expression-problem}~节所示。
 
     我们对 MIXINv2 的前三个实现使用了 $\this$ 解析的标准技术：遵循 Cook~\cite{cook1989-denotational-inheritance}的基于闭包的不动点，以及使用 de~Bruijn 指标~\cite{debruijn1972-nameless-dummies}的基于栈的环境查找。当继承引入到同一封闭作用域的多条路径时，三种实现都产生了隐晦的错误。困难在于结构上。闭包捕获单一环境，因此不动点组合子只能为单一 $\this$ 目标求解。基于栈的环境是一条线性链，每个作用域层级只有一个父节点。这两种数据结构都内嵌了一个与多重继承自然产生的多目标情况不相容的单值假设（附录~\ref{app:scala-multi-target}）。公式~(\ref{eq:this})是在放弃这一假设后涌现出来的：它跟踪一个\emph{前沿集} $S$，而非单一当前作用域。
 \end{description}
@@ -2920,7 +2914,7 @@ supplementary material\anon[]{~\cite{mixin2025}} gives the example.
     & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
     & \bilingual{Priority merge}{优先级合并}
     & \bilingual{ordering dependency}{顺序依赖}
-    & Jsonnet~\texttt{+}~\cite{jsonnet},
+    & Jsonnet~\texttt{+}~\cite{cunningham2014-jsonnet},
     Nix~\texttt{//}~\cite{dolstra2010-nixos} \\
     & $\beta$-\bilingual{reduction}{归约}
     & \bilingual{opt-in extensibility}{按需选择的可扩展性}
@@ -2932,13 +2926,13 @@ supplementary material\anon[]{~\cite{mixin2025}} gives the example.
     \multirow{3}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{resolution}{解析}}}
     & \bilingual{Early binding}{早期绑定}
     & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
-    & CUE~\cite{cue2019} \\
+    & CUE~\cite{van-lohuizen2019-cue} \\
     & \bilingual{Dynamic scope}{动态作用域}
     & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
-    & Jsonnet~\cite{jsonnet}, union FS \\
+    & Jsonnet~\cite{cunningham2014-jsonnet}, union FS \\
     & \bilingual{Single-target $\this$}{单目标 $\this$}
     & \bilingual{nested extensions rejected}{嵌套扩展被拒绝}
-    & NixOS modules~\cite{nixosmodules} \\
+    & NixOS modules~\cite{nixos-contributors-nixos-modules} \\
   \end{tabular}
 \end{center}
 
@@ -2963,7 +2957,7 @@ produces paths.%
 \footnote{
   Nix is a functional language with first-class functions;
   its attribute sets alone do not form a named-tree DSL.
-  The NixOS module system~\cite{nixosmodules}, however,
+  The NixOS module system~\cite{nixos-contributors-nixos-modules}, however,
   restricts the user-facing interface to nested attribute sets
   composed by recursive merging, and it is this DSL-level
   structure that naturally forms a named tree.
@@ -3105,7 +3099,7 @@ associativity~(A), and by their extensibility model.
 
   \item[Priority merge]
     One source takes
-    precedence~\cite{jsonnet,dolstra2010-nixos},
+    precedence~\cite{cunningham2014-jsonnet, dolstra2010-nixos},
     so $A + B \neq B + A$, introducing
     an ordering dependency.
 
@@ -3171,7 +3165,7 @@ We examine the three known candidates.
   \item[Early binding]
     With early binding, references resolve at definition time to a
     fixed path, independently of how the record is later inherited.
-    CUE~\cite{cue2019} exemplifies this: field references are
+    CUE~\cite{van-lohuizen2019-cue} exemplifies this: field references are
     statically resolved, and a nested field cannot refer to
     properties of its enclosing context contributed by later
     composition.
@@ -3194,7 +3188,7 @@ We examine the three known candidates.
   \item[Dynamic scope]
     With dynamic scope, references resolve at the point of use
     rather than the definition site.
-    Jsonnet~\cite{jsonnet} follows this approach: \texttt{self}
+    Jsonnet~\cite{cunningham2014-jsonnet} follows this approach: \texttt{self}
     always refers to the final merged object, not the object at
     the definition site.
     Union file systems exhibit the same property at the
@@ -3245,7 +3239,7 @@ We examine the three known candidates.
     When multiple inheritance routes reach the same scope,
     single-target resolution must reject the situation or select
     one route.
-    The NixOS module system~\cite{nixosmodules} raises a
+    The NixOS module system~\cite{nixos-contributors-nixos-modules} raises a
     duplicate-declaration error
     (Appendix~\ref{app:scala-multi-target}).
     This rejects nested extensions where two independently authored
@@ -3293,7 +3287,7 @@ alternatives at both levels.
     & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
     & \bilingual{Priority merge}{优先级合并}
     & \bilingual{ordering dependency}{顺序依赖}
-    & Jsonnet~\texttt{+}~\cite{jsonnet},
+    & Jsonnet~\texttt{+}~\cite{cunningham2014-jsonnet},
     Nix~\texttt{//}~\cite{dolstra2010-nixos} \\
     & $\beta$-\bilingual{reduction}{归约}
     & \bilingual{opt-in extensibility}{按需选择的可扩展性}
@@ -3305,13 +3299,13 @@ alternatives at both levels.
     \multirow{3}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{resolution}{解析}}}
     & \bilingual{Early binding}{早期绑定}
     & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
-    & CUE~\cite{cue2019} \\
+    & CUE~\cite{van-lohuizen2019-cue} \\
     & \bilingual{Dynamic scope}{动态作用域}
     & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
-    & Jsonnet~\cite{jsonnet}, union FS \\
+    & Jsonnet~\cite{cunningham2014-jsonnet}, union FS \\
     & \bilingual{Single-target $\this$}{单目标 $\this$}
     & \bilingual{nested extensions rejected}{嵌套扩展被拒绝}
-    & NixOS modules~\cite{nixosmodules} \\
+    & NixOS modules~\cite{nixos-contributors-nixos-modules} \\
   \end{tabular}
 \end{center}
 
@@ -3446,7 +3440,7 @@ for any of them.
 
 \paragraph{\bilingual{Semantic descriptions of the $\lambda$-calculus}{$\lambda$-演算的语义描述}}
 \ifInheritanceChinese
-$\lambda$-演算的语义可以用几种根本上不同的方式来定义。\emph{操作语义}将 $\beta$-归约 $(\lambda x.\,M)\,N \to M[N/x]$ 作为计算的基本概念~\cite{church1936-lambda-calculus,church1941-calculi-of-lambda-conversion,barendregt1984-lambda-calculus}。这要求捕获-回避替换,其微妙之处促使了 de~Bruijn 索引~\cite{debruijn1972-nameless-dummies} 与显式替换演算~\cite{abadi1991-explicit-substitutions} 的出现。它还要求选择求值策略:按名调用与按值调用~\cite{plotkin1975-call-by-name-call-by-value},或 Abramsky 的惰性策略~\cite{abramsky1990-lazy-lambda-calculus}。\emph{指称语义}~\cite{scott1970-mathematical-theory-of-computation,scott1976-data-types-as-lattices} 将项解释于一个数学域中,但赋予 $\beta$-归约意义需要一个自反域 $D \cong [D \to D]$,由 Cantor 定理知该域无集合论解。Scott 的 $D_\infty$ 通过将 $D$ 构造为连续格的逆极限~\cite{scott1972-continuous-lattices} 来解决这一问题。由此得到的语义是适当的,但不是完全抽象的~\cite{plotkin1977-lcf-as-programming-language,milner1977-fully-abstract-models}:它将观察等价所区分的项等同了起来。\emph{博弈语义}~\cite{abramsky2000-full-abstraction-pcf,hyland2000-full-abstraction-pcf,nickau1994-hereditarily-sequential-functionals} 对 PCF 与惰性 $\lambda$-演算~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda} 实现了完全抽象,需要竞技场、策略与无害性条件。在这些方法的每一种中,函数空间 $[D \to D]$ 都是核心障碍:操作语义通过替换隐式地需要它,而指称语义则显式地构造它,博弈语义则通过策略加以精化。这些方法中的每一种都涉及高阶结构%
+$\lambda$-演算的语义可以用几种根本上不同的方式来定义。\emph{操作语义}将 $\beta$-归约 $(\lambda x.\,M)\,N \to M[N/x]$ 作为计算的基本概念~\cite{church1936-lambda-calculus, church1941-calculi-of-lambda-conversion, barendregt1984-lambda-calculus}。这要求捕获-回避替换,其微妙之处促使了 de~Bruijn 索引~\cite{debruijn1972-nameless-dummies} 与显式替换演算~\cite{abadi1991-explicit-substitutions} 的出现。它还要求选择求值策略:按名调用与按值调用~\cite{plotkin1975-call-by-name-call-by-value},或 Abramsky 的惰性策略~\cite{abramsky1990-lazy-lambda-calculus}。\emph{指称语义}~\cite{scott1970-mathematical-theory-of-computation, scott1976-data-types-as-lattices} 将项解释于一个数学域中,但赋予 $\beta$-归约意义需要一个自反域 $D \cong [D \to D]$,由 Cantor 定理知该域无集合论解。Scott 的 $D_\infty$ 通过将 $D$ 构造为连续格的逆极限~\cite{scott1972-continuous-lattices} 来解决这一问题。由此得到的语义是适当的,但不是完全抽象的~\cite{plotkin1977-lcf-as-programming-language, milner1977-fully-abstract-models}:它将观察等价所区分的项等同了起来。\emph{博弈语义}~\cite{abramsky2000-full-abstraction-pcf, hyland2000-full-abstraction-pcf, nickau1994-hereditarily-sequential-functionals} 对 PCF 与惰性 $\lambda$-演算~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda} 实现了完全抽象,需要竞技场、策略与无害性条件。在这些方法的每一种中,函数空间 $[D \to D]$ 都是核心障碍:操作语义通过替换隐式地需要它,而指称语义则显式地构造它,博弈语义则通过策略加以精化。这些方法中的每一种都涉及高阶结构%
 \footnote{
   指称语义中的函数空间,博弈语义中的策略,以及操作语义中的替换。
 }
@@ -3456,7 +3450,7 @@ The semantics of the $\lambda$-calculus can be defined in
 several fundamentally different ways.
 \emph{Operational semantics} takes $\beta$-reduction
 $(\lambda x.\,M)\,N \to M[N/x]$ as the primitive notion of
-computation~\cite{church1936-lambda-calculus,church1941-calculi-of-lambda-conversion,barendregt1984-lambda-calculus}.
+computation~\cite{church1936-lambda-calculus, church1941-calculi-of-lambda-conversion, barendregt1984-lambda-calculus}.
 This requires capture-avoiding substitution, a mechanism whose
 subtleties motivated de~Bruijn
 indices~\cite{debruijn1972-nameless-dummies} and explicit substitution
@@ -3465,7 +3459,7 @@ It also requires a choice of evaluation
 strategy: call-by-name versus
 call-by-value~\cite{plotkin1975-call-by-name-call-by-value} or the lazy
 strategy of Abramsky~\cite{abramsky1990-lazy-lambda-calculus}.
-\emph{Denotational semantics}~\cite{scott1970-mathematical-theory-of-computation,scott1976-data-types-as-lattices}
+\emph{Denotational semantics}~\cite{scott1970-mathematical-theory-of-computation, scott1976-data-types-as-lattices}
 interprets terms in a mathematical domain, but giving meaning
 to $\beta$-reduction requires a reflexive domain
 $D \cong [D \to D]$, which has no set-theoretic solution by
@@ -3473,12 +3467,12 @@ Cantor's theorem. Scott's $D_\infty$ resolves this by
 constructing $D$ as an inverse limit of continuous
 lattices~\cite{scott1972-continuous-lattices}.
 The resulting semantics is adequate but not fully
-abstract~\cite{plotkin1977-lcf-as-programming-language,milner1977-fully-abstract-models}:
+abstract~\cite{plotkin1977-lcf-as-programming-language, milner1977-fully-abstract-models}:
 it identifies terms that observational equivalence
 distinguishes.
-\emph{Game semantics}~\cite{abramsky2000-full-abstraction-pcf,hyland2000-full-abstraction-pcf,nickau1994-hereditarily-sequential-functionals}
+\emph{Game semantics}~\cite{abramsky2000-full-abstraction-pcf, hyland2000-full-abstraction-pcf, nickau1994-hereditarily-sequential-functionals}
 achieves full abstraction for PCF and for the lazy
-$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda},
+$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda},
 requiring arenas, strategies, and innocence conditions.
 In each of these approaches, the function space $[D \to D]$
 is the central obstacle: operational semantics needs it
@@ -3502,7 +3496,7 @@ graph, for instance, diverges in every framework.
 
 \paragraph{\bilingual{Set-theoretic models of the $\lambda$-calculus}{$\lambda$-演算的集合论模型}}
 \ifInheritanceChinese
-$\lambda$-演算的几个模型族通过在集合论而非域论框架下工作,避免了 Scott 的 $D_\infty$ 的逆极限构造。这些模型消除了 Scott 拓扑,但并未消除函数空间本身:它们仍然是高阶的,通过注入、交叉类型或多重集关系将 $[D \to D]$ 编码于 $D$ 之中。\emph{图模型}~\cite{engeler1981-algebras-and-combinators,plotkin1993-set-theoretic-lambda-models} 通过幂集格上的 web 注入来编码函数;Bucciarelli 与 Salibra~\cite{bucciarelli2008-graph-lambda-theories} 证明了最大的合理图理论等于 Böhm 树理论 $\mathcal{B}$。\emph{过滤器模型}~\cite{barendregt1983-filter-lambda-model,coppo1978-intersection-type-assignment} 将一个项解释为可从中推导出的交叉类型集合;Dezani-Ciancaglini 等人~\cite{dezani1998-intersection-types-bohm-trees} 证明了 BCD 过滤器模型的 $\lambda$-理论恰好与 Böhm 树相等性重合。\emph{关系模型}~\cite{ehrhard2005-finiteness-spaces,bucciarelli2001-phase-semantics-exponentials} 通过有限多重集从线性逻辑的关系语义中涌现;Ehrhard~\cite{ehrhard2005-finiteness-spaces} 证明了在这一范畴中,纯 $\lambda$-演算的标准自反对象不能存在。这三个模型族都是语义模型:它们将 $\lambda$-项解释于一个外部数学结构中,并在该结构中将 $\beta$-归约验证为一个等式,而不是定义一个具有自身原语的独立演算。每一种都编码函数空间而非消除它,且每一种都需要高阶机制才能为惰性 $\lambda$-演算获得完全抽象。
+$\lambda$-演算的几个模型族通过在集合论而非域论框架下工作,避免了 Scott 的 $D_\infty$ 的逆极限构造。这些模型消除了 Scott 拓扑,但并未消除函数空间本身:它们仍然是高阶的,通过注入、交叉类型或多重集关系将 $[D \to D]$ 编码于 $D$ 之中。\emph{图模型}~\cite{engeler1981-algebras-and-combinators, plotkin1993-set-theoretic-lambda-models} 通过幂集格上的 web 注入来编码函数;Bucciarelli 与 Salibra~\cite{bucciarelli2008-graph-lambda-theories} 证明了最大的合理图理论等于 Böhm 树理论 $\mathcal{B}$。\emph{过滤器模型}~\cite{barendregt1983-filter-lambda-model, coppo1978-intersection-type-assignment} 将一个项解释为可从中推导出的交叉类型集合;Dezani-Ciancaglini 等人~\cite{dezani1998-intersection-types-bohm-trees} 证明了 BCD 过滤器模型的 $\lambda$-理论恰好与 Böhm 树相等性重合。\emph{关系模型}~\cite{ehrhard2005-finiteness-spaces, bucciarelli2001-phase-semantics-exponentials} 通过有限多重集从线性逻辑的关系语义中涌现;Ehrhard~\cite{ehrhard2005-finiteness-spaces} 证明了在这一范畴中,纯 $\lambda$-演算的标准自反对象不能存在。这三个模型族都是语义模型:它们将 $\lambda$-项解释于一个外部数学结构中,并在该结构中将 $\beta$-归约验证为一个等式,而不是定义一个具有自身原语的独立演算。每一种都编码函数空间而非消除它,且每一种都需要高阶机制才能为惰性 $\lambda$-演算获得完全抽象。
 \else
 Several families of $\lambda$-calculus models avoid the
 inverse-limit construction of Scott's $D_\infty$ by working
@@ -3511,18 +3505,18 @@ These models eliminate Scott topology but not the function
 space itself: they remain higher-order, encoding $[D \to D]$
 inside $D$ via injections, intersection types, or multiset
 relations.
-\emph{Graph models}~\cite{engeler1981-algebras-and-combinators,plotkin1993-set-theoretic-lambda-models}
+\emph{Graph models}~\cite{engeler1981-algebras-and-combinators, plotkin1993-set-theoretic-lambda-models}
 encode functions via a web injection on powerset lattices;
 Bucciarelli and Salibra~\cite{bucciarelli2008-graph-lambda-theories}
 proved that the greatest sensible graph theory equals the
 B\"ohm tree theory~$\mathcal{B}$.
-\emph{Filter models}~\cite{barendregt1983-filter-lambda-model,coppo1978-intersection-type-assignment}
+\emph{Filter models}~\cite{barendregt1983-filter-lambda-model, coppo1978-intersection-type-assignment}
 interpret a term as the set of intersection types derivable
 for it;
 Dezani-Ciancaglini et al.~\cite{dezani1998-intersection-types-bohm-trees}
 showed that the BCD filter model's $\lambda$-theory
 coincides exactly with B\"ohm tree equality.
-\emph{Relational models}~\cite{ehrhard2005-finiteness-spaces,bucciarelli2001-phase-semantics-exponentials}
+\emph{Relational models}~\cite{ehrhard2005-finiteness-spaces, bucciarelli2001-phase-semantics-exponentials}
 arise from the relational semantics of linear logic via
 finite multisets;
 Ehrhard~\cite{ehrhard2005-finiteness-spaces} showed that a standard
@@ -3703,9 +3697,9 @@ resolution.
 
 \paragraph{\bilingual{Configuration languages}{配置语言}}
 \ifInheritanceChinese
-CUE~\cite{cue2019} 在单一格中统一了类型与值,其中以 \texttt{\&} 表示的合一是可交换、可结合且幂等的。CUE 的设计受到 Google 的 Borg 配置语言 (GCL) 的启发,后者使用了图合一。CUE 的格包含标量类型,其冲突语义规定合一不相容标量会得到 $\bot$;标量对于配置语言是否必要,还是仅凭树结构就已足够,是一个有趣的设计问题。Jsonnet~\cite{jsonnet} 通过 \texttt{+} 运算符提供了具有 mixin 语义的对象继承:复合\emph{不是}可交换的,因为在标量冲突上右侧胜出,而深合并需要在每个字段上通过 \texttt{+:} 语法显式选择加入,因此深合并虽可用但并非默认行为。Dhall~\cite{dhall2017} 采取函数式方法:它是一个带记录的类型化 $\lambda$-演算,其中复合是记录合并算子,而非继承机制。
+CUE~\cite{van-lohuizen2019-cue} 在单一格中统一了类型与值,其中以 \texttt{\&} 表示的合一是可交换、可结合且幂等的。CUE 的设计受到 Google 的 Borg 配置语言 (GCL) 的启发,后者使用了图合一。CUE 的格包含标量类型,其冲突语义规定合一不相容标量会得到 $\bot$;标量对于配置语言是否必要,还是仅凭树结构就已足够,是一个有趣的设计问题。Jsonnet~\cite{cunningham2014-jsonnet} 通过 \texttt{+} 运算符提供了具有 mixin 语义的对象继承:复合\emph{不是}可交换的,因为在标量冲突上右侧胜出,而深合并需要在每个字段上通过 \texttt{+:} 语法显式选择加入,因此深合并虽可用但并非默认行为。Dhall~\cite{gonzalez2017-dhall} 采取函数式方法:它是一个带记录的类型化 $\lambda$-演算,其中复合是记录合并算子,而非继承机制。
 \else
-CUE~\cite{cue2019} unifies types and values in a single lattice
+CUE~\cite{van-lohuizen2019-cue} unifies types and values in a single lattice
 where unification, denoted by \texttt{\&}, is commutative, associative, and
 idempotent.
 CUE's design was motivated by Google's Borg Configuration
@@ -3714,22 +3708,22 @@ CUE's lattice includes scalar types with a conflict
 semantics where unifying incompatible scalars yields $\bot$; whether
 scalars are necessary for a configuration language, or whether
 tree structure alone suffices, is an interesting design question.
-Jsonnet~\cite{jsonnet} provides object inheritance via the
+Jsonnet~\cite{cunningham2014-jsonnet} provides object inheritance via the
 \texttt{+} operator with mixin semantics: composition is
 \emph{not} commutative since the right-hand side wins on scalar
 conflicts, and deep merging requires explicit opt-in via the \texttt{+:}
 syntax on a per-field basis, so deep merge is
 available but not the default.
-Dhall~\cite{dhall2017} takes a functional approach: it is a typed
+Dhall~\cite{gonzalez2017-dhall} takes a functional approach: it is a typed
 $\lambda$-calculus with records, where composition is a record merge
 operator, not an inheritance mechanism.
 \fi
 
 \paragraph{\bilingual{Module systems and deep merge}{模块系统与深合并}}
 \ifInheritanceChinese
-NixOS 模块系统~\cite{dolstra2010-nixos,nixosmodules} 通过\emph{递归合并嵌套属性集}来组合模块,而非通过线性化或方法层级的覆盖,这与先前的 mixin 和 trait 演算中区分树层级继承与方法层级复合的深合并语义相同。当两个模块定义了相同的嵌套路径时,其子树被合并而非覆盖。NixOS 模块系统集成了深合并、递归的 $\this$、模块的延迟求值,以及其上的丰富类型检查层。同一机制为 NixOS 系统配置、Home Manager~\cite{homemanager}、nix-darwin~\cite{nixdarwin}、flake-parts~\cite{flakeparts} 以及数十个其他生态系统提供支持,共同管理任意复杂度的配置。一个似乎尚未被完全解决的方面是 $\this$ 在多重继承下的语义。当两个各自继承自同一延迟模块的独立模块被组合时,每次导入都会引入对共享选项自己的声明;模块系统的 \texttt{merge\-Option\-Decls} 以静态错误拒绝重复声明(附录~\ref{app:scala-multi-target})。模块系统无法表达两条路径对同一选项的贡献是均等的,即递归合并自然产生的多目标情形,正是这一情形促成了第~\ref{sec:mixin-trees} 节的观测语义。
+NixOS 模块系统~\cite{dolstra2010-nixos, nixos-contributors-nixos-modules} 通过\emph{递归合并嵌套属性集}来组合模块,而非通过线性化或方法层级的覆盖,这与先前的 mixin 和 trait 演算中区分树层级继承与方法层级复合的深合并语义相同。当两个模块定义了相同的嵌套路径时,其子树被合并而非覆盖。NixOS 模块系统集成了深合并、递归的 $\this$、模块的延迟求值,以及其上的丰富类型检查层。同一机制为 NixOS 系统配置、Home Manager~\cite{helgesson2017-home-manager}、nix-darwin~\cite{jordan2017-nix-darwin}、flake-parts~\cite{hensing2022-flake-parts} 以及数十个其他生态系统提供支持,共同管理任意复杂度的配置。一个似乎尚未被完全解决的方面是 $\this$ 在多重继承下的语义。当两个各自继承自同一延迟模块的独立模块被组合时,每次导入都会引入对共享选项自己的声明;模块系统的 \texttt{merge\-Option\-Decls} 以静态错误拒绝重复声明(附录~\ref{app:scala-multi-target})。模块系统无法表达两条路径对同一选项的贡献是均等的,即递归合并自然产生的多目标情形,正是这一情形促成了第~\ref{sec:mixin-trees} 节的观测语义。
 \else
-The NixOS module system~\cite{dolstra2010-nixos,nixosmodules}
+The NixOS module system~\cite{dolstra2010-nixos, nixos-contributors-nixos-modules}
 composes modules by \emph{recursively merging nested attribute sets},
 not by linearization or method-level override, which is the same deep-merge
 semantics that distinguishes tree-level inheritance from method-level
@@ -3741,8 +3735,8 @@ recursive $\this$, deferred evaluation of modules, and a
 rich type-checking layer on top.
 The same mechanism powers
 NixOS system configuration, Home
-Manager~\cite{homemanager}, nix-darwin~\cite{nixdarwin},
-flake-parts~\cite{flakeparts}, and dozens of other ecosystems,
+Manager~\cite{helgesson2017-home-manager}, nix-darwin~\cite{jordan2017-nix-darwin},
+flake-parts~\cite{hensing2022-flake-parts}, and dozens of other ecosystems,
 collectively managing configurations of arbitrary complexity.
 The one aspect that appears not to have been fully addressed is the
 semantics of $\this$ under multiple inheritance.
@@ -3762,14 +3756,14 @@ observational semantics of Section~\ref{sec:mixin-trees}.
 \paragraph{\bilingual{Modular software architectures}{模块化软件架构}}
 \label{sec:practical-modular}
 \ifInheritanceChinese
-插件系统、组件框架与依赖注入框架通过声明式继承实现了软件的可扩展性。第~\ref{sec:mixin-trees} 节所确立的继承的对称性与可结合性解释了这类系统为何有效:组件可以以任意顺序继承而不改变行为。MIXINv2\anon[~(补充材料)]{~\cite{mixin2025}} 本身就是一个依赖注入框架:每个作用域将其依赖声明为具名槽,复合跨越作用域边界按名解析它们,从而使继承演算的模式显式化而非随意拼凑。
+插件系统、组件框架与依赖注入框架通过声明式继承实现了软件的可扩展性。第~\ref{sec:mixin-trees} 节所确立的继承的对称性与可结合性解释了这类系统为何有效:组件可以以任意顺序继承而不改变行为。MIXINv2\anon[~(补充材料)]{~\cite{yang2026-mixinv2}} 本身就是一个依赖注入框架:每个作用域将其依赖声明为具名槽,复合跨越作用域边界按名解析它们,从而使继承演算的模式显式化而非随意拼凑。
 \else
 Plugin systems, component frameworks, and dependency injection frameworks
 enable software extensibility through declarative inheritance. The
 symmetric, associative nature of inheritance established in Section~\ref{sec:mixin-trees} explains why such
 systems work: components can be inherited in any order without changing
 behavior.
-MIXINv2\anon[~(supplementary material)]{~\cite{mixin2025}}
+MIXINv2\anon[~(supplementary material)]{~\cite{yang2026-mixinv2}}
 is itself a dependency injection framework:
 each scope declares its dependencies as named slots, and
 composition resolves them by name across scope boundaries,
@@ -3779,7 +3773,7 @@ making the inheritance-calculus patterns explicit rather than ad~hoc.
 \paragraph{\bilingual{Union file systems}{联合文件系统}}
 \label{sec:practical-union-fs}
 \ifInheritanceChinese
-联合文件系统,如 UnionFS、OverlayFS 与 AUFS,将多个目录层次叠加以呈现统一视图。其语义与继承演算相似,表现在后面的层覆盖前面的层且所有层的文件均可访问,但其设计在具体之处有所不同:继承是不对称的,标量文件的冲突解决是不可交换的,且层与层之间不存在晚绑定或动态分派。我们将继承演算直接实现为联合文件系统\anon[~(作为补充材料附上)]{~\cite{ratarmount2025}},仅凭三个原语就获得了文件查询的晚绑定语义与动态分派,无需任何额外机制。在软件包管理器、构建系统与操作系统发行版中,外部工具链将配置转换为文件树;而在这里,文件系统作为自身的配置,转换即是继承:这是一种\emph{文件系统即编译器},其中目录树既是源程序又是编译目标。
+联合文件系统,如 UnionFS、OverlayFS 与 AUFS,将多个目录层次叠加以呈现统一视图。其语义与继承演算相似,表现在后面的层覆盖前面的层且所有层的文件均可访问,但其设计在具体之处有所不同:继承是不对称的,标量文件的冲突解决是不可交换的,且层与层之间不存在晚绑定或动态分派。我们将继承演算直接实现为联合文件系统\anon[~(作为补充材料附上)]{~\cite{yang2025-ratarmount}},仅凭三个原语就获得了文件查询的晚绑定语义与动态分派,无需任何额外机制。在软件包管理器、构建系统与操作系统发行版中,外部工具链将配置转换为文件树;而在这里,文件系统作为自身的配置,转换即是继承:这是一种\emph{文件系统即编译器},其中目录树既是源程序又是编译目标。
 \else
 Union file systems, such as UnionFS, OverlayFS, and AUFS, layer multiple directory
 hierarchies to present a unified view. Their semantics resembles
@@ -3789,7 +3783,7 @@ inheritance is asymmetric, conflict resolution for scalar files
 is noncommutative, and there is no late-binding or dynamic
 dispatch across layers.
 We implemented inheritance-calculus directly as a union file
-system\anon[~(included as supplementary material)]{~\cite{ratarmount2025}},
+system\anon[~(included as supplementary material)]{~\cite{yang2025-ratarmount}},
 obtaining late-binding semantics and dynamic dispatch for file lookups
 with no additional mechanism beyond the three primitives.
 In package managers, build systems, and OS distributions,
@@ -3804,9 +3798,9 @@ both the source program and the compilation target.
 \label{sec:future-work}
 
 \ifInheritanceChinese
-\anon[辅助实现]{MIXINv2~\cite{mixin2025}}{} 是继承演算的一个可执行实现,它已经超越了本文所呈现的无类型演算:它包含编译期检查,以验证所有引用都解析到 mixin 树中的有效路径,以及一个从宿主语言引入标量值的外部函数接口 (FFI)。以下所描述的未来工作,关注的是这一实现与一门完全实用的语言之间的差距,横跨理论基础与库层面的编码两个方面。
+\anon[辅助实现]{MIXINv2~\cite{yang2026-mixinv2}}{} 是继承演算的一个可执行实现,它已经超越了本文所呈现的无类型演算:它包含编译期检查,以验证所有引用都解析到 mixin 树中的有效路径,以及一个从宿主语言引入标量值的外部函数接口 (FFI)。以下所描述的未来工作,关注的是这一实现与一门完全实用的语言之间的差距,横跨理论基础与库层面的编码两个方面。
 \else
-\anon[The supplementary implementation]{MIXINv2~\cite{mixin2025}}{} is an executable implementation of inheritance-calculus
+\anon[The supplementary implementation]{MIXINv2~\cite{yang2026-mixinv2}}{} is an executable implementation of inheritance-calculus
 that already goes beyond the untyped calculus presented here:
 it includes compile-time checking that all references resolve to
 valid paths in the mixin tree, and a foreign-function interface (FFI)
@@ -3998,11 +3992,11 @@ known computational model.
 \section{\bilingual{Data Availability Statement}{数据可用性声明}}
 
 \ifInheritanceChinese
-可执行实现 (MIXINv2) 以及本文中的所有示例以 MIT 许可证作为开源软件公开发布\anon[{} (匿名审查期间省略 URL)]{~\cite{mixin2025}}。每个以继承演算记法呈现的示例都有对应的可执行 MIXINv2 源码,且一套测试套件复现了论文中的每个示例。案例研究 (第~\ref{sec:case-study}~节) 的布尔逻辑和一元自然数算术、附录~\ref{app:datalog-encoding}~的 Datalog 编码 (包括双跳、常量连接和多变量连接关系程序以及重复访问者自连接回归示例),以及函数颜色盲性段落 (第~\ref{sec:practical-function-color}~节) 中讨论的同步和异步运行时实例,均包含在这些源码中。第~\ref{sec:practical-union-fs}~节所讨论的 ratarmount 补丁\anon[也已公开发布 (匿名审查期间省略 URL)]{作为一个开放的拉取请求~\cite{ratarmount2025}可以获取}。\anon[以上所有内容也作为辅助材料一并附上。]{}
+可执行实现 (MIXINv2) 以及本文中的所有示例以 MIT 许可证作为开源软件公开发布\anon[{} (匿名审查期间省略 URL)]{~\cite{yang2026-mixinv2}}。每个以继承演算记法呈现的示例都有对应的可执行 MIXINv2 源码,且一套测试套件复现了论文中的每个示例。案例研究 (第~\ref{sec:case-study}~节) 的布尔逻辑和一元自然数算术、附录~\ref{app:datalog-encoding}~的 Datalog 编码 (包括双跳、常量连接和多变量连接关系程序以及重复访问者自连接回归示例),以及函数颜色盲性段落 (第~\ref{sec:practical-function-color}~节) 中讨论的同步和异步运行时实例,均包含在这些源码中。第~\ref{sec:practical-union-fs}~节所讨论的 ratarmount 补丁\anon[也已公开发布 (匿名审查期间省略 URL)]{作为一个开放的拉取请求~\cite{yang2025-ratarmount}可以获取}。\anon[以上所有内容也作为辅助材料一并附上。]{}
 \else
 The executable implementation (MIXINv2) and all examples from
 this paper are openly available as open-source software under
-the MIT license\anon[{} (URL omitted for anonymous review)]{~\cite{mixin2025}}.
+the MIT license\anon[{} (URL omitted for anonymous review)]{~\cite{yang2026-mixinv2}}.
 Every example rendered in inheritance-calculus notation has a
 corresponding executable MIXINv2 source, and a test suite
 reproduces every example in the paper.
@@ -4018,7 +4012,7 @@ these sources.
 The ratarmount patch discussed in
 Section~\ref{sec:practical-union-fs} is
 \anon[also openly available (URL omitted for anonymous review)]{available as an open pull
-request~\cite{ratarmount2025}}.
+request~\cite{yang2025-ratarmount}}.
 \anon[All of the above are also included as supplementary material.]{}
 \fi
 
@@ -4427,11 +4421,11 @@ is an infinite labeled tree defined by:
   \end{cases}
 \]
 \ifInheritanceChinese
-Böhm 树等价 $\mathrm{BT}(M) = \mathrm{BT}(N)$ 是惰性 $\lambda$-演算的标准观测等价~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}。
+Böhm 树等价 $\mathrm{BT}(M) = \mathrm{BT}(N)$ 是惰性 $\lambda$-演算的标准观测等价~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}。
 \else
 B\"ohm tree equivalence $\mathrm{BT}(M) = \mathrm{BT}(N)$ is the
 standard observational equivalence of the lazy
-$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}.
+$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}.
 \fi
 
 \subsection{\bilingual{Path Encoding}{路径编码}}
@@ -5640,7 +5634,7 @@ term's behavior within the $\lambda$-definable fragment.
   \ifInheritanceChinese
   （$\Rightarrow$）
   设 $\mathrm{BT}(M) \neq \mathrm{BT}(N)$。
-  Böhm 树等价与惰性 $\lambda$-演算的观测等价吻合~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}：
+  Böhm 树等价与惰性 $\lambda$-演算的观测等价吻合~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}：
   存在上下文 $C[\cdot]$ 使得 $C[M]$ 收敛而 $C[N]$ 发散，或反之。
   由定理~\ref{thm:adequacy}，$\mathcal{T}(C[M]){\Downarrow}$
   且 $\mathcal{T}(C[N]){\Uparrow}$。
@@ -5650,7 +5644,7 @@ term's behavior within the $\lambda$-definable fragment.
   Suppose $\mathrm{BT}(M) \neq \mathrm{BT}(N)$.
   B\"ohm tree equivalence coincides with observational
   equivalence for the lazy
-  $\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}:
+  $\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}:
   there exists a context $C[\cdot]$ such that $C[M]$ converges
   and $C[N]$ diverges, or vice versa.
   By Theorem~\ref{thm:adequacy},
@@ -5663,14 +5657,14 @@ term's behavior within the $\lambda$-definable fragment.
 \noindent
 \ifInheritanceChinese
 该证明依赖两个支柱：Adequacy（充分性）（定理~\ref{thm:adequacy}），这是我们的贡献；
-以及 Böhm 树等价等于惰性 $\lambda$-演算的观测等价这一经典结论~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}。
+以及 Böhm 树等价等于惰性 $\lambda$-演算的观测等价这一经典结论~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}。
 两个支柱都不需要定义或比较 mixin 树中的绝对路径。
 \else
 The proof rests on two pillars: Adequacy
 (Theorem~\ref{thm:adequacy}), which is our contribution, and
 the classical result that B\"ohm tree equivalence equals
 observational equivalence for the lazy
-$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}.
+$\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}.
 Neither pillar requires defining or comparing
 absolute paths inside mixin trees.
 \fi
@@ -6020,7 +6014,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
   该定理要求我们给出两个 $L_0$-项 $M$ 与 $N$,满足 $M \cong_0 N$ 但 $M \not\cong_1 N$,其中 $\cong_0$ 是 $L_0$ 中的操作等价,$\cong_1$ 是 $\mathscr{U}$ 中的操作等价。
 
   \paragraph{\bilingual{Operational equivalence in $L_0$}{$L_0$ 中的操作等价}}
-  由 Böhm 树等价~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}(定理~\ref{thm:first-order-semantics}),对于封闭 $\lambda$-项 $M$ 与 $N$:$M \cong_0 N$ 当且仅当 $\mathrm{BT}(M) = \mathrm{BT}(N)$。
+  由 Böhm 树等价~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}(定理~\ref{thm:first-order-semantics}),对于封闭 $\lambda$-项 $M$ 与 $N$:$M \cong_0 N$ 当且仅当 $\mathrm{BT}(M) = \mathrm{BT}(N)$。
 
   \paragraph{\bilingual{Separating pair}{分离对}}
   定义 Church 布尔值与 Church 布尔相等:$\mathrm{true} = \lambda t.\,\lambda f.\, t$,$\mathrm{false} = \lambda t.\,\lambda f.\, f$,以及 $\mathrm{eq} = \lambda a.\,\lambda b.\, (a\;b)\;(b\;\mathrm{false}\;\mathrm{true})$。
@@ -6073,7 +6067,7 @@ Felleisen's framework~\cite{felleisen1991-expressive-power}.
 
   \paragraph{Operational equivalence in $L_0$}
   By B\"ohm tree
-  equivalence~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}
+  equivalence~\cite{abramsky1993-full-abstraction-lazy-lambda, abramsky1995-games-full-abstraction-lazy-lambda}
   (Theorem~\ref{thm:first-order-semantics}), for closed
   $\lambda$-terms $M$ and $N$:
   $M \cong_0 N$ iff $\mathrm{BT}(M) = \mathrm{BT}(N)$.
@@ -6643,7 +6637,7 @@ contexts without duplication.
 第~\ref{sec:emergent-phenomena}~节观察到继承演算原生产生逻辑编程的关系语义。
 本附录通过给出 Datalog 到继承演算的系统性编码,使该观察精确化。
 该编码不使用演算的任何扩展;它可用第~\ref{sec:syntax}~节的三个基本原语表达。
-本附录的所有示例均有可执行的 MIXINv2 实现\anon[~(补充材料)]{~\cite{mixin2025}}。
+本附录的所有示例均有可执行的 MIXINv2 实现\anon[~(补充材料)]{~\cite{yang2026-mixinv2}}。
 需要区分三个要素。
 首先,关系以 trie 形式存储,因此元组查找通过前缀索引,而非扫描平面事实集。
 其次,控制骨架采用第~\ref{sec:case-study}~节已使用的访问者模式风格编写;从函数式编程的角度看,这与 Scott 编码的情况分析所扮演的角色相同。
@@ -6658,7 +6652,7 @@ systematic encoding of Datalog into inheritance-calculus.
 The encoding uses no extensions to the calculus; it is
 expressible in the three primitives of Section~\ref{sec:syntax}.
 All examples in this appendix have executable MIXINv2
-implementations\anon[~(supplementary material)]{~\cite{mixin2025}}.
+implementations\anon[~(supplementary material)]{~\cite{yang2026-mixinv2}}.
 There are three ingredients to keep separate.
 First, relations are stored as tries, so tuple lookup is indexed
 by prefixes rather than by scanning a flat set of facts.
@@ -6867,7 +6861,7 @@ the expression-problem property.
 我们以可执行的两跳编码
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 为贯穿示例,取自
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}。
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}}。
 其顶层作用域按编码各阶段命名:\texttt{\_XAcceptance} 迭代第一列,\texttt{\_YAcceptance} 执行共享变量连接,\texttt{\_NilAcceptance0} 确认第一个事实的末尾,\texttt{\_ZAcceptance} 迭代输出列,\texttt{\_NilAcceptance1} 触发最终的 \texttt{Replacement} 链。
 下面的示意编码应理解为该可执行 MIXINv2 文件的抽象。
 若暂时忽略关系累积并将每次分派读作普通的情况分析,则控制流为:从第一个关系中选取 $X$,选取匹配的 $Y$,确认第一个元组已完整,从第二个关系匹配行中选取 $Z$,确认第二个元组已完整,并输出 $(X, Z)$。
@@ -6876,7 +6870,7 @@ $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y
 As a running example, we use the executable two-hop encoding
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 from
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}.
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}}.
 Its top-level scopes are named after the stages of the
 encoding: \texttt{\_XAcceptance} iterates the first column,
 \texttt{\_YAcceptance} performs the shared-variable join,
@@ -6971,7 +6965,7 @@ skeleton:
 考虑最简单的连接:
 $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$。
 该模式的可执行自连接实例为
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}},
 其作用域名称在下文括号中给出。
 这里可以清楚地看到节引言中的分工:访问者分派提供控制流,trie 提供对匹配尾部的直接访问,而 $\supers$ 累积每次成功匹配产生的输出。
 
@@ -6982,7 +6976,7 @@ $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$。
 Consider the simplest join:
 $\mathrm{composed}(X, Z) \mathrel{{:}\!{-}} \alpha(X, Y),\; \beta(Y, Z)$.
 The executable self-join instance of this pattern is
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}},
 whose scope names are shown in parentheses below.
 This is the right place to see the division of labour from the
 section introduction: visitor dispatch provides the control flow,
@@ -7138,7 +7132,7 @@ iterate $\beta$'s second column via $\mathrm{VisitorTail}$:
 这产生了标准 Datalog 元组级语义:只有实际在两个关系中均匹配的常量才对输出有贡献。
 对于具体实例
 $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$,如编码于
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}},
 第~1~层选取 $a$,第~2~层匹配 $b$,第~3~层确认 $\mathrm{edge}(a,b)$ 终止于 $\mathrm{Nil}$,第~4~层迭代 $\mathrm{edge}.\mathrm{TailMap}.b$ 并选取 $c$,第~5~层再次确认 $\mathrm{Nil}$,随后两次 $\mathrm{Replacement}$ 操作重建 $(a,c)$。
 \else
 At Level~2, the combined $\mathrm{VisitorMap}$ ensures that a
@@ -7161,7 +7155,7 @@ constants that actually match between both relations
 contribute to the output.
 For the concrete instance
 $\mathrm{edge} = \{(a,b),\; (b,c),\; (c,a)\}$, as encoded in
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}},
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}},
 Level~1 selects $a$, Level~2 matches $b$, Level~3 confirms
 that $\mathrm{edge}(a,b)$ ends in $\mathrm{Nil}$, Level~4
 iterates $\mathrm{edge}.\mathrm{TailMap}.b$ and selects $c$,
@@ -7233,13 +7227,13 @@ scope to only $b$'s data.
 $\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
 结合了两种机制。
 可执行的 MIXINv2 编码为
-\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}。
+\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{yang2026-mixinv2}}。
 编码迭代 $\mathrm{edge}$ 以得到 $X$（第~1~层）,然后用手工构造的 $\mathrm{VisitorMap}$ 检查 $X$ 的行中是否存在常量 $b$（第~2~层）,导航 $\mathrm{edge}.\mathrm{TailMap}.b$ 以得到 $Z$（第~3~层）,确认 $\mathrm{Nil}$（第~4~层）,并通过 $\mathrm{Replacement}$ 构造 $(X, Z)$。
 \else
 $\mathrm{viaB}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, b),\; \mathrm{edge}(b, Z)$
 combines both mechanisms.
 The executable MIXINv2 encoding is
-\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{mixin2025}}.
+\anon[\nolinkurl{RelationalConstant.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstant.mixin.yaml}~\cite{yang2026-mixinv2}}.
 The encoding iterates $\mathrm{edge}$ for $X$ (Level~1),
 then checks for constant $b$ in $X$'s row with a
 hand-crafted $\mathrm{VisitorMap}$ (Level~2), navigates
@@ -7295,7 +7289,7 @@ second column.
 $\mathrm{constJoin}(X, W) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, b),\; \mathrm{edge}(b, W)$
 结合了对 $Y$ 的变量连接、对 $b$ 的常量匹配（手工构造的仅含 $b$ 条目的 $\mathrm{VisitorMap}$）以及通过 $\mathrm{edge}.\mathrm{TailMap}.b$ 对 $W$ 的直接导航。
 对应的可执行 MIXINv2 文件为
-\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}。
+\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{yang2026-mixinv2}}。
 \else
 $\mathrm{constJoin}(X, W) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, b),\; \mathrm{edge}(b, W)$
 combines a variable join on $Y$, a constant match on $b$
@@ -7303,7 +7297,7 @@ combines a variable join on $Y$, a constant match on $b$
 and direct navigation via $\mathrm{edge}.\mathrm{TailMap}.b$
 for $W$.
 The corresponding executable MIXINv2 file is
-\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{mixin2025}}.
+\anon[\nolinkurl{RelationalConstantJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalConstantJoin.mixin.yaml}~\cite{yang2026-mixinv2}}.
 \fi
 
 \subsection{\bilingual{Multi-Variable Join}{多变量连接}}
@@ -7327,7 +7321,7 @@ joining on another column pair.
 $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 共享 $X$ 和 $Y$ 两者。
 可执行的 MIXINv2 编码为
-\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}。
+\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{yang2026-mixinv2}}。
 外层 $\mathrm{Acceptance}$ 使用组合的 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$ 连接 $r$ 和 $s$ 的第一列（变量 $X$）。
 在外层 $\mathrm{Visitor}$ 内部,内层 $\mathrm{Acceptance}$ 类似地连接 $r$ 和 $s$ 的第二列（变量 $Y$）。
 两次连接均须匹配才能产生输出,逐常量的 $\mathrm{Visited}$ 模式确保只有两个关系中均存在的常量才有贡献。
@@ -7335,7 +7329,7 @@ $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 $\mathrm{multiJoin}(X, Y) \mathrel{{:}\!{-}} r(X, Y),\; s(X, Y)$
 shares both $X$ and $Y$.
 The executable MIXINv2 encoding is
-\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{mixin2025}}.
+\anon[\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalMultiVariableJoin.mixin.yaml}~\cite{yang2026-mixinv2}}.
 The outer $\mathrm{Acceptance}$ joins $r$'s and $s$'s first
 columns (variable $X$) using combined
 $\mathrm{WithVisitorTail}$/$\mathrm{WithVisiteeTail}$.
@@ -7507,12 +7501,12 @@ container-level fixed point that the pseudocode above cannot express.
 $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y, Z)$
 恰好产生 $3$ 对:$\{(a,c),\; (b,a),\; (c,b)\}$,与标准 Datalog 一致。
 这是
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(补充材料)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}}
 所呈现的行为。
 当 $Y$ 连接匹配到常量 $b$（同时出现在 $(a,b)$ 产生的 $\mathrm{edge}$ 第二列和 $\mathrm{edge}$ 的第一列中）时,$b$ 的 $\mathrm{Visitor}$ 接收 $\mathrm{VisitorTail} = \mathrm{edge}.\mathrm{TailMap}.b$（仅含 $c$），$\mathrm{Replacement}$ 构造单个输出元组 $(a, c)$,而非 $\{a,b,c\}$ 的全部。
 
 这种值级精确性源于每个常量的 $\mathrm{Replacement}$ 作用于 $\mathrm{TailMap}.d$（逐常量的子 trie）,而非合并后的 trie。
-同样的观点在重复访问者自连接回归示例\anon[~(补充材料)]{~\cite{mixin2025}}中也可见:重复的访问者分派阻止不同常量的见证被错误合并。
+同样的观点在重复访问者自连接回归示例\anon[~(补充材料)]{~\cite{yang2026-mixinv2}}中也可见:重复的访问者分派阻止不同常量的见证被错误合并。
 尽管 $\bases$（方程~\ref{eq:bases}）在基本层仍计算叉积,该编码在任何合并发生之前将计算路由通过逐常量的 $\mathrm{TailMap}$ 条目,从而达到与标准 Datalog 元组级求值相同的效果。
 \else
 The encoding produces standard Datalog tuple-level semantics.
@@ -7534,7 +7528,7 @@ $\mathrm{twoHop}(X, Z) \mathrel{{:}\!{-}} \mathrm{edge}(X, Y),\; \mathrm{edge}(Y
 produces exactly $3$ pairs:
 $\{(a,c),\; (b,a),\; (c,b)\}$, matching standard Datalog.
 This is the behavior exhibited by
-\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{mixin2025}}.
+\anon[\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~(supplementary material)]{\nolinkurl{RelationalTwoHopRepeatedVisitor.mixin.yaml}~\cite{yang2026-mixinv2}}.
 When the $Y$-join matches constant $b$ (present in both
   $\mathrm{edge}$'s second column from $(a,b)$ and
 $\mathrm{edge}$'s first column), the $\mathrm{Visitor}$ for
@@ -7547,7 +7541,7 @@ $\mathrm{Replacement}$ operates on $\mathrm{TailMap}.d$
 (the per-constant sub-trie) rather than on the merged
 trie.
 The same point is visible in
-the repeated-visitor self-join regression example\anon[~(supplementary material)]{~\cite{mixin2025}},
+the repeated-visitor self-join regression example\anon[~(supplementary material)]{~\cite{yang2026-mixinv2}},
 where repeated visitor dispatch prevents witnesses from
 different constants from being merged spuriously.
 Although $\bases$ (equation~\ref{eq:bases}) still computes
