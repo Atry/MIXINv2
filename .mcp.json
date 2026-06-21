@@ -1,13 +1,5 @@
 {
   "mcpServers": {
-    "doi-mcp": {
-      "command": "direnv",
-      "args": [
-        "exec",
-        ".",
-        "doi-mcp"
-      ]
-    },
     "jupyter": {
       "command": "direnv",
       "args": [
