@@ -2667,11 +2667,40 @@ $\overrides$ and $\supers$ collect all inheritance paths, and
 every operation distributes over them.
 \fi
 
-\section{Discussion}
+\section{\bilingual{Discussion}{讨论}}
 
-\subsection{Emergent Phenomena}
+\subsection{\bilingual{Emergent Phenomena}{涌现现象}}
 \label{sec:emergent-phenomena}
 
+\ifInheritanceChinese
+在 MIXINv2 中开发真实程序的过程中，我们发现了三种现象，每一种都是对某种已有设计模式的非预期用法，超出了该模式的原始能力。
+
+\begin{description}
+  \item[关系语义]
+    第~\ref{sec:case-study}~节案例研究中的笛卡尔积之所以出现，是因为字典树是一种集合结构，因此对字典树的深度合并即为集合并，而对合并后字典树的操作则遍历其操作数的笛卡尔积。
+    这并不局限于 $\mathrm{Nat}$：任何 Datalog 元组都可编码为链表，而深度合并在这些元组上计算集合操作，我们认为这正是 Datalog 语义。
+    附录~\ref{app:datalog-encoding}~将 Datalog 编码进继承演算，仅用第~\ref{sec:syntax}~节的三个基本构造即可表达变量连接、常量匹配、多体规则和递归规则。
+    这种逻辑编程语义是对编码案例研究算术的工厂模式的非预期用法中涌现出来的。
+
+  \item[对不可扩展性的免疫]\label{item:immunity}
+    在第~\ref{sec:case-study}~节的案例研究中，$\mathrm{Nat}$ 编码被证明是无类型表达问题~\cite{wadler1998-expression-problem}的一个实例：%
+    \footnote{
+      表达问题有两个要求：沿操作轴和数据构造子轴均可扩展，以及静态类型安全。无类型演算无法满足类型安全要求，因此我们只考虑双轴可扩展性要求。
+    }
+    一个新操作和一个新数据类型各自作为独立的 mixin 添加，沿操作轴和情形轴均进行了扩展，且无需修改任何已有 mixin。
+    在其他场景中，访问者模式允许添加新操作但不允许添加新情形；而这里两者都允许，因为第~\ref{sec:syntax}~节的每个构造都可通过深度合并（公式~\ref{eq:overrides}）进行扩展，所以不可扩展的那一半根本无法写出；第~\ref{sec:asymmetry}~节（定理~\ref{thm:cartesian-nonexpressibility}）则形式化了使这一结论无条件成立的不对称性。
+    在其他地方恢复第二个扩展维度需要专门的机制~\cite{liang1995-monad-transformers, lammel2003-scrap-your-boilerplate, loh2006-open-data-types,
+      swierstra2008-data-types-a-la-carte, carette2009-finally-tagless, oliveira2012-object-algebras,
+      kiselyov2013-extensible-effects, wu2014-effect-handlers-in-scope, kiselyov2015-freer-monads,
+    wang2016-expression-problem-trivially, leijen2017-row-typed-algebraic-effects, poulsen2023-hefty-algebras}。
+    第~\ref{sec:semantic-variants}~节分析了为何深度合并是唯一能实现这一点的组合机制。
+    这第二个可扩展性维度是对访问者模式的非预期用法中涌现出来的。
+
+\end{description}
+
+\label{sec:practical-function-color}%
+更多现象依赖于 FFI，而本文中的示例排除了 FFI。其中一种是函数颜色盲~\cite{nystrom2015-function-color}：同一个 MIXINv2 文件可以在同步和异步运行时下运行，这是通过继承进行依赖注入的非预期用法。补充材料\anon[]{~\cite{mixin2025}}给出了相关示例。
+\else
 Developing real programs in MIXINv2 surfaced three phenomena, each an
 off-label use of an adopted design pattern beyond its original abilities.
 
@@ -2732,17 +2761,199 @@ blindness~\cite{nystrom2015-function-color}: the same MIXINv2 file runs
 under both synchronous and asynchronous runtimes, an off-label use of
 dependency injection via inheritance. The
 supplementary material\anon[]{~\cite{mixin2025}} gives the example.
+\fi
 
-\subsection{Semantic Alternatives}
+\subsection{\bilingual{Semantic Alternatives}{语义替代方案}}
 \label{sec:semantic-variants}
 
+\ifInheritanceChinese
+上述\hyperref[item:immunity]{对不可扩展性的免疫}条目确立了继承演算对不可扩展性的免疫性。我们将此作为设计目标，并通过调查我们已知的所有候选方案，询问是否有替代设计能共享这一性质。
+
+\paragraph{\bilingual{Degrees of freedom}{自由度}}
+以下分析假设 AST 是一棵\emph{命名树}：从父节点到子节点的每条边都携带一个标签，因此每个节点都由从根节点出发的路径唯一标识。对于配置语言，这自然成立：JSON、YAML 或 Nix 属性集中的每个键都是一个标签，而嵌套产生路径。%
+\footnote{
+  Nix 是一门具有一等函数的函数式语言；仅凭其属性集并不构成命名树 DSL。然而，NixOS 模块系统~\cite{nixosmodules}将用户界面限制为通过递归合并组合的嵌套属性集，而正是这种 DSL 层面的结构自然地构成了命名树。
+}
+对于主流编程语言，AST 并不直接是命名树，因为匿名表达式位置和隐式作用域缺乏标签。然而，经过 ANF 变换~\cite{flanagan1993-essence-compiling-continuations}后，每个中间结果都绑定到一个名字，而剩余的匿名位置%
+\footnote{
+  例如，$\mathbf{let}$ 的主体。
+}
+可以被分配合成的新鲜标签，例如第~\ref{sec:forward-translation}~节中的 $\mathrm{result}$ 和 $\mathrm{tailCall}$，从而得到一棵命名树。
+
+在此前提下，每种程序是带引用的命名树的语言，都可以由两个有限集来刻画：一个由\emph{节点类型}构成的集合 $\mathcal{N}$，每种节点类型决定子树如何组织其子节点；以及一个由\emph{引用类型}构成的集合 $\mathcal{R}$，每种引用类型决定树中一个位置如何引用另一个位置。语法由 $\mathcal{N}$ 和 $\mathcal{R}$ 的选择固定；语义则由每种节点类型如何构造组合以及每种引用类型如何解析其目标来决定。
+
+{\small
+  \begin{center}
+    \begin{tabular}{lp{0.38\columnwidth}p{0.33\columnwidth}}
+      \bilingual{\textbf{Language}}{\textbf{语言}}
+      & \bilingual{\textbf{Node types $\mathcal{N}$}}{\textbf{节点类型 $\mathcal{N}$}}
+      & \bilingual{\textbf{Reference types $\mathcal{R}$}}{\textbf{引用类型 $\mathcal{R}$}} \\
+      \hline
+      Java (OOP)
+      & \bilingual{class, interface, method,
+      block, conditional, loop,
+      \texttt{throw}, lambda, \ldots}{类、接口、方法、块、条件、循环、\texttt{throw}、lambda、\ldots}
+      & \bilingual{variable, field access, method call,
+      \texttt{extends}/\texttt{implements},
+      \texttt{import}, \ldots}{变量、字段访问、方法调用、\texttt{extends}/\texttt{implements}、\texttt{import}、\ldots} \\[3pt]
+      Haskell (FP)
+      & \bilingual{$\lambda$, application, \texttt{let},
+      \texttt{case}, \texttt{data},
+      type class, instance, \ldots}{$\lambda$、应用、\texttt{let}、\texttt{case}、\texttt{data}、类型类、实例、\ldots}
+      & \bilingual{variable, constructor,
+      type class dispatch,
+      \texttt{import}, \ldots}{变量、构造子、类型类分派、\texttt{import}、\ldots} \\[3pt]
+      Scala\footnote{
+        \bilingual{Scala is a multi-paradigm language.}{Scala 是一门多范式语言。}
+      }
+      & \bilingual{class, trait, object, method,
+      block, conditional, \texttt{match},
+      \texttt{while}, \texttt{throw}, \ldots}{类、trait、对象、方法、块、条件、\texttt{match}、\texttt{while}、\texttt{throw}、\ldots}
+      & \bilingual{variable, member access,
+      \texttt{extends}, \texttt{with},
+      implicits, \texttt{import}, \ldots}{变量、成员访问、\texttt{extends}、\texttt{with}、隐式参数、\texttt{import}、\ldots} \\
+      \hline
+      $\lambda$-\bilingual{calculus}{演算}
+      & \bilingual{abstraction, application}{抽象、应用}
+      & \bilingual{variable}{变量} \\
+      \bilingual{Inheritance-calculus}{继承演算}
+      & \bilingual{record}{记录}
+      & \bilingual{inheritance}{继承} \\
+    \end{tabular}
+  \end{center}
+}
+
+\paragraph{\bilingual{Immunity to nonextensibility}{对不可扩展性的免疫}}
+程序 $P$ 中的路径 $p$ 是\emph{可扩展的}，若存在程序 $Q$，使得通过引用将 $P$ 与 $Q$ 组合后，在不修改 $P$ 的前提下，$p$ 处能够观察到新的属性。一种语言\emph{对不可扩展性免疫}，若其每个良构程序的每条路径都是可扩展的。
+
+我们现在对设计空间进行分类，以解释为何我们选择第~\ref{sec:mixin-trees}~节的语义。两个维度保持自由：\emph{组合机制}，决定单一引用类型如何合并定义；以及\emph{引用解析}，决定单一引用类型如何找到其目标。
+
+\subsubsection*{\bilingual{The composition mechanism}{组合机制}}
+
+每种组合机制决定了一个抽象的定义如何被合并进另一个抽象。下表按各候选方案是否满足可交换性~(C)、幂等性~(I) 和可结合性~(A)，以及其可扩展性模型对已知候选方案进行分类。
+
+\begin{center}
+  \begin{tabular}{lcccll}
+    \bilingual{\textbf{Candidate}}{\textbf{候选方案}} & \textbf{C} & \textbf{I} & \textbf{A}
+    & \bilingual{\textbf{Extensibility}}{\textbf{可扩展性}} & \bilingual{\textbf{Representative}}{\textbf{代表}} \\
+    \hline
+    \bilingual{Deep merge}{深度合并}
+    & $\checkmark$ & $\checkmark$ & $\checkmark$
+    & \bilingual{universal}{通用} & \bilingual{this paper}{本文} \\
+    \bilingual{Shallow merge}{浅层合并}
+    & $\times$ & $\checkmark$ & $\checkmark$
+    & \bilingual{top-level only}{仅顶层} & JS spread \\
+    \bilingual{Conflict rejection}{冲突拒绝}
+    & $\checkmark$ & $\checkmark$ & $\checkmark$
+    & \bilingual{none on overlap}{重叠时无扩展}
+    & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
+    \bilingual{Priority merge}{优先级合并}
+    & $\times$ & $\times$ & $\checkmark$
+    & \bilingual{universal}{通用} & Jsonnet~\texttt{+}, Nix~\texttt{//} \\
+    $\beta$-\bilingual{reduction}{归约}
+    & $\times$ & $\times$ & $\times$
+    & \bilingual{opt-in}{按需选择} & Java, Haskell, Scala, \ldots \\
+    \bilingual{Conditional}{条件并入}
+    & \multicolumn{3}{c}{\bilingual{causes divergence}{导致发散}}
+    & --- & --- \\
+  \end{tabular}
+\end{center}
+
+\begin{description}
+  \item[\bilingual{Deep merge}{深度合并}]
+    对同名定义的合并递归进入其子树（$\overrides$，公式~\ref{eq:overrides}）。每个标签都是一个扩展点，无论原作者是否预期了扩展。
+
+  \item[\bilingual{Shallow merge}{浅层合并}]
+    嵌套标签无法被独立扩展。
+
+  \item[\bilingual{Conflict rejection}{冲突拒绝}]
+    同名定义被作为错误拒绝。三个等式性质均成立，但为空洞成立：这些等式得到满足，是因为用于验证它们的组合被拒绝了。冲突拒绝阻止了对已有标签的扩展~\cite{harper1991-symmetric-record-concatenation}，而这恰恰是表达问题~\cite{wadler1998-expression-problem}所要求的可组合性。
+
+  \item[\bilingual{Priority merge}{优先级合并}]
+    一个来源具有优先权~\cite{jsonnet,dolstra2010-nixos}，因此 $A + B \neq B + A$，引入了顺序依赖。
+
+  \item[$\beta$-\bilingual{reduction}{归约}]
+    只有作者放置的参数才是扩展点；函数体是封闭的。要使一个新的方面可扩展，原函数必须被重写以接受一个额外参数。任何基于函数应用的组合机制都继承了这一限制，因为 $\beta$-归约使函数体封闭。表达问题~\cite{wadler1998-expression-problem}在此类语言中之所以困难，原因相同：可扩展性是按需选择的。模拟对不可扩展性免疫的框架（访问者模式、对象代数~\cite{oliveira2012-object-algebras}、finally tagless 解释器~\cite{carette2009-finally-tagless}）正是为绕过这一限制而生的机制。
+
+  \item[\bilingual{Conditional incorporation}{条件并入}]
+    根据其他定义的存在与否来移除或有条件地包含定义，会产生依赖循环：某定义是否存在，取决于另一定义是否存在，而后者又取决于前者。当添加和移除交替出现时，递归求值（附录~\ref{app:well-definedness}）无法到达不动点，从而导致发散。这与图灵完备性固有的发散不同：图灵完备程序发散是因为计算无界，而条件并入发散是因为直接后果算子 $T_P$ 振荡而非单调递增。
+\end{description}
+
+\noindent
+在上述候选方案中，深度合并是我们找到的唯一一个可交换、幂等、可结合且对不可扩展性免疫的方案。其他候选方案各自引入了对不可扩展性的脆弱性，或导致发散。
+
+\subsubsection*{\bilingual{The reference resolution}{引用解析}}
+
+一旦将记录上的深度合并确定为组合机制，六个语义方程中的四个便由语法决定：$\properties$~(\ref{eq:properties}) 读取记录的标签，$\bases$~(\ref{eq:bases}) 读取其继承来源，$\supers$~(\ref{eq:supers}) 取传递闭包，$\overrides$~(\ref{eq:overrides}) 实现合并。唯一剩余的自由度是引用的解析方式：$\resolve$~(\ref{eq:resolve}) 和 $\this$~(\ref{eq:this}) 方程。我们考察三个已知候选方案。
+
+\begin{description}
+  \item[\bilingual{Early binding}{早期绑定}]
+    使用早期绑定时，引用在定义时即解析到一个固定路径，与记录后来如何被继承无关。CUE~\cite{cue2019}是这方面的典型：字段引用被静态解析，嵌套字段无法引用其封闭上下文中由后续组合贡献的属性。这使得 mixin 无法充当 $\lambda$-演算的调用栈：$\beta$-归约要求被调用方能观察到调用点提供的参数，而那是一次后续组合。使用早期绑定时，引用在此组合发生前就已被冻结。在方程中，$\resolve$~(\ref{eq:resolve}) 调用 $\this$~(\ref{eq:this})，后者遍历继承的树结构；迟绑定正是使 $\this$ 能够观察到后续组合的 mixin 所贡献属性的原因。若没有图灵完备的 mixin，函数必须被重新引入为组合机制，从而再次暴露上述按需选择的可扩展性问题。
+
+  \item[\bilingual{Dynamic scope}{动态作用域}]
+    使用动态作用域时，引用在使用点而非定义点处解析。Jsonnet~\cite{jsonnet}采用此方式：\texttt{self} 始终指向最终合并后的对象，而非定义点处的对象。联合文件系统在文件系统层面表现出相同的性质：符号链接的相对路径在解引用时相对于挂载上下文解析，而非相对于定义该链接的层。动态作用域破坏了第~\ref{sec:forward-translation}~节的 $\lambda$-演算嵌入。替换引理（引理~\ref{lem:substitution}）依赖于基本情况 $M = y$（$y \neq x$）：$y$ 的 de~Bruijn 指标 $m$ 从定义点路径 $\init(p_{\mathrm{def}})$ 向上走到一个与 $x$ 的绑定器不同的作用域层级，因此 $x$ 作用域处的替换 $\mathrm{argument} \mapsto \mathcal{T}(V)$ 不产生任何效果。动态作用域下，这种分离不再成立。%
+    \footnote{
+      反例：$(\lambda x.\, \lambda y.\, x)\; V_1\; V_2$。$\lambda y.\, x$ 内部对 $x$ 的引用翻译为 $\dbi{1}.\mathrm{argument}$（de~Bruijn 指标 $1$）。使用迟绑定时，$\this$ 从定义点作用域（内层 $\lambda$）出发，向上走一层到外层 $\lambda$，到达槽 $\mathrm{argument} \mapsto \mathcal{T}(V_1)$。使用动态作用域时，引用从使用点上下文解析，其中最内层封闭作用域是应用 $\{C_1.\mathrm{result},\; \mathrm{argument} \mapsto \mathcal{T}(V_2)\}$；向上走一层到达该作用域的 $\mathrm{argument}$ 槽，返回 $\mathcal{T}(V_2)$ 而非 $\mathcal{T}(V_1)$。这是动态作用域的经典变量捕获失败。
+    }
+    与早期绑定一样，mixin 无法完全替代函数。
+
+  \item[\bilingual{Single-target $\this$}{单目标 $\this$}]
+    单目标 $\this$ 是一个有前途的候选方案：单路径引理~(\ref{lem:single-path})表明，对于翻译后的 $\lambda$-项，$\this$~(\ref{eq:this}) 中的前沿集 $S$ 始终恰好包含一条路径，因此 $\lambda$-演算嵌入不需要多目标解析。然而，单目标 $\this$ 因另一原因而对不可扩展性脆弱。当多条继承路径到达同一作用域时，单目标解析必须拒绝该情况或选择其中一条路径。NixOS 模块系统~\cite{nixosmodules}会引发重复声明错误（附录~\ref{app:scala-multi-target}）。这拒绝了两个独立编写的模块定义同一选项的嵌套扩展，而这种组合在求解表达问题~\cite{wadler1998-expression-problem}时会出现，如第~\ref{sec:expression-problem}~节所示。
+
+    我们对 MIXINv2 的前三个实现使用了 $\this$ 解析的标准技术：遵循 Cook~\cite{cook1989-denotational-inheritance}的基于闭包的不动点，以及使用 de~Bruijn 指标~\cite{debruijn1972-nameless-dummies}的基于栈的环境查找。当继承引入到同一封闭作用域的多条路径时，三种实现都产生了隐晦的错误。困难在于结构上。闭包捕获单一环境，因此不动点组合子只能为单一 $\this$ 目标求解。基于栈的环境是一条线性链，每个作用域层级只有一个父节点。这两种数据结构都内嵌了一个与多重继承自然产生的多目标情况不相容的单值假设（附录~\ref{app:scala-multi-target}）。公式~(\ref{eq:this})是在放弃这一假设后涌现出来的：它跟踪一个\emph{前沿集} $S$，而非单一当前作用域。
+\end{description}
+
+\noindent
+下表总结了两个层面上所有替代方案的脆弱性。
+
+\begin{center}
+  \begin{tabular}{llll}
+    & \bilingual{\textbf{Candidate}}{\textbf{候选方案}} & \bilingual{\textbf{Vulnerability}}{\textbf{脆弱性}}
+    & \bilingual{\textbf{Representative}}{\textbf{代表}} \\
+    \hline
+    \multirow{5}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{composition}{组合}}}
+    & \bilingual{Shallow merge}{浅层合并}
+    & \bilingual{nested extensions not composable}{嵌套扩展不可组合}
+    & JS spread \\
+    & \bilingual{Conflict rejection}{冲突拒绝}
+    & \bilingual{same-label extensions rejected}{同名扩展被拒绝}
+    & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
+    & \bilingual{Priority merge}{优先级合并}
+    & \bilingual{ordering dependency}{顺序依赖}
+    & Jsonnet~\texttt{+}~\cite{jsonnet},
+    Nix~\texttt{//}~\cite{dolstra2010-nixos} \\
+    & $\beta$-\bilingual{reduction}{归约}
+    & \bilingual{opt-in extensibility}{按需选择的可扩展性}
+    & Java, Haskell, Scala, \ldots \\
+    & \bilingual{Conditional}{条件并入}
+    & \bilingual{causes divergence}{导致发散}
+    & --- \\
+    \hline
+    \multirow{3}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{resolution}{解析}}}
+    & \bilingual{Early binding}{早期绑定}
+    & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
+    & CUE~\cite{cue2019} \\
+    & \bilingual{Dynamic scope}{动态作用域}
+    & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
+    & Jsonnet~\cite{jsonnet}, union FS \\
+    & \bilingual{Single-target $\this$}{单目标 $\this$}
+    & \bilingual{nested extensions rejected}{嵌套扩展被拒绝}
+    & NixOS modules~\cite{nixosmodules} \\
+  \end{tabular}
+\end{center}
+
+\noindent
+我们在两个层面考察的所有替代方案，均对不可扩展性不免疫。
+
+我们通过尝试本节中的每个替代方案并发现其失败，从而得到了这一语义：浅层合并无法组合嵌套扩展；优先级合并引入了顺序依赖；早期绑定在组合能够提供引用目标之前就将引用冻结；动态作用域破坏了 $\lambda$-演算嵌入所依赖的替换；单目标 $\this$ 拒绝了表达问题所要求的多目标组合。深度合并加上多目标迟绑定 $\this$，正是最终剩下的选择。
+\else
 The \hyperref[item:immunity]{immunity-to-nonextensibility item} above established that inheritance-calculus is immune
 to nonextensibility.
 We adopt this as a design goal and ask whether an alternative
 design could share this property
 by surveying every candidate known to us.
 
-\paragraph{Degrees of freedom}
+\paragraph{\bilingual{Degrees of freedom}{自由度}}
 The analysis below assumes that the AST is a \emph{named tree}:%
 every edge from parent to child carries a label, so that every
 node is uniquely identified by the path from the root.
@@ -2823,7 +3034,7 @@ target.
   \end{center}
 }
 
-\paragraph{Immunity to nonextensibility}
+\paragraph{\bilingual{Immunity to nonextensibility}{对不可扩展性的免疫}}
 A path~$p$ in a program~$P$ is \emph{extensible} if there exists
 a program~$Q$ such that composing $P$ with~$Q$ through a reference
 makes new properties observable at~$p$ without modifying~$P$.
@@ -2838,7 +3049,7 @@ type incorporates definitions;
 and the \emph{reference resolution}, which determines how the single reference
 type finds its target.
 
-\subsubsection*{The composition mechanism}
+\subsubsection*{\bilingual{The composition mechanism}{组合机制}}
 
 Every composition mechanism determines how the definitions of one
 abstraction are incorporated into another.
@@ -2848,27 +3059,27 @@ associativity~(A), and by their extensibility model.
 
 \begin{center}
   \begin{tabular}{lcccll}
-    \textbf{Candidate} & \textbf{C} & \textbf{I} & \textbf{A}
-    & \textbf{Extensibility} & \textbf{Representative} \\
+    \bilingual{\textbf{Candidate}}{\textbf{候选方案}} & \textbf{C} & \textbf{I} & \textbf{A}
+    & \bilingual{\textbf{Extensibility}}{\textbf{可扩展性}} & \bilingual{\textbf{Representative}}{\textbf{代表}} \\
     \hline
-    Deep merge
+    \bilingual{Deep merge}{深度合并}
     & $\checkmark$ & $\checkmark$ & $\checkmark$
-    & universal & this paper \\
-    Shallow merge
+    & \bilingual{universal}{通用} & \bilingual{this paper}{本文} \\
+    \bilingual{Shallow merge}{浅层合并}
     & $\times$ & $\checkmark$ & $\checkmark$
-    & top-level only & JS spread \\
-    Conflict rejection
+    & \bilingual{top-level only}{仅顶层} & JS spread \\
+    \bilingual{Conflict rejection}{冲突拒绝}
     & $\checkmark$ & $\checkmark$ & $\checkmark$
-    & none on overlap
+    & \bilingual{none on overlap}{重叠时无扩展}
     & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
-    Priority merge
+    \bilingual{Priority merge}{优先级合并}
     & $\times$ & $\times$ & $\checkmark$
-    & universal & Jsonnet~\texttt{+}, Nix~\texttt{//} \\
-    $\beta$-reduction
+    & \bilingual{universal}{通用} & Jsonnet~\texttt{+}, Nix~\texttt{//} \\
+    $\beta$-\bilingual{reduction}{归约}
     & $\times$ & $\times$ & $\times$
-    & opt-in & Java, Haskell, Scala, \ldots \\
-    Conditional
-    & \multicolumn{3}{c}{causes divergence}
+    & \bilingual{opt-in}{按需选择} & Java, Haskell, Scala, \ldots \\
+    \bilingual{Conditional}{条件并入}
+    & \multicolumn{3}{c}{\bilingual{causes divergence}{导致发散}}
     & --- & --- \\
   \end{tabular}
 \end{center}
@@ -2941,7 +3152,7 @@ immune to nonextensibility.
 The other candidates each introduce a vulnerability to
 nonextensibility or cause divergence.
 
-\subsubsection*{The reference resolution}
+\subsubsection*{\bilingual{The reference resolution}{引用解析}}
 
 Once deep merge over records is fixed as the composition
 mechanism, four of the six semantic equations are determined
@@ -3070,36 +3281,36 @@ alternatives at both levels.
 
 \begin{center}
   \begin{tabular}{llll}
-    & \textbf{Candidate} & \textbf{Vulnerability}
-    & \textbf{Representative} \\
+    & \bilingual{\textbf{Candidate}}{\textbf{候选方案}} & \bilingual{\textbf{Vulnerability}}{\textbf{脆弱性}}
+    & \bilingual{\textbf{Representative}}{\textbf{代表}} \\
     \hline
-    \multirow{5}{*}{\rotatebox[origin=c]{90}{\scriptsize composition}}
-    & Shallow merge
-    & nested extensions not composable
+    \multirow{5}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{composition}{组合}}}
+    & \bilingual{Shallow merge}{浅层合并}
+    & \bilingual{nested extensions not composable}{嵌套扩展不可组合}
     & JS spread \\
-    & Conflict rejection
-    & same-label extensions rejected
+    & \bilingual{Conflict rejection}{冲突拒绝}
+    & \bilingual{same-label extensions rejected}{同名扩展被拒绝}
     & Harper--Pierce~\cite{harper1991-symmetric-record-concatenation} \\
-    & Priority merge
-    & ordering dependency
+    & \bilingual{Priority merge}{优先级合并}
+    & \bilingual{ordering dependency}{顺序依赖}
     & Jsonnet~\texttt{+}~\cite{jsonnet},
     Nix~\texttt{//}~\cite{dolstra2010-nixos} \\
-    & $\beta$-reduction
-    & opt-in extensibility
+    & $\beta$-\bilingual{reduction}{归约}
+    & \bilingual{opt-in extensibility}{按需选择的可扩展性}
     & Java, Haskell, Scala, \ldots \\
-    & Conditional
-    & causes divergence
+    & \bilingual{Conditional}{条件并入}
+    & \bilingual{causes divergence}{导致发散}
     & --- \\
     \hline
-    \multirow{3}{*}{\rotatebox[origin=c]{90}{\scriptsize resolution}}
-    & Early binding
-    & mixin cannot replace function
+    \multirow{3}{*}{\rotatebox[origin=c]{90}{\scriptsize \bilingual{resolution}{解析}}}
+    & \bilingual{Early binding}{早期绑定}
+    & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
     & CUE~\cite{cue2019} \\
-    & Dynamic scope
-    & mixin cannot replace function
+    & \bilingual{Dynamic scope}{动态作用域}
+    & \bilingual{mixin cannot replace function}{mixin 无法替代函数}
     & Jsonnet~\cite{jsonnet}, union FS \\
-    & Single-target $\this$
-    & nested extensions rejected
+    & \bilingual{Single-target $\this$}{单目标 $\this$}
+    & \bilingual{nested extensions rejected}{嵌套扩展被拒绝}
     & NixOS modules~\cite{nixosmodules} \\
   \end{tabular}
 \end{center}
@@ -3120,6 +3331,7 @@ single-target $\this$ rejected the multi-target compositions
 that the Expression Problem demands.
 Deep merge with multi-target late-binding $\this$ is what
 remained.
+\fi
 
 \section{\bilingual{Related Work}{相关工作}}
 \label{sec:related-work}
