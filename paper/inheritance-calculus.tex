@@ -4356,9 +4356,20 @@ program:
 \end{itemize}
 \fi
 
-\section{B\"ohm Tree Correspondence: Proofs}
+\section{\bilingual{B\"ohm Tree Correspondence: Proofs}{Böhm 树对应：证明}}
 \label{app:bohm-tree-proofs}
 
+\ifInheritanceChinese
+本附录证明与 $\lambda$-演算对应的继承演算子语言的两个结论
+（第~\ref{sec:bohm-tree}~节）。
+首先，第一次迭代近似 $T_P\!\uparrow\!1$ 关于 Böhm 树等价是完全抽象的
+（定理~\ref{thm:adequacy} 与~\ref{thm:first-order-semantics}），
+从而确立了第一次迭代与惰性 $\lambda$-演算相吻合。
+其次，完整的 $\mathrm{lfp}(T_P)$ 语义在图~\ref{fig:calculi-matrix}
+的幂集意义下是严格更精确定义的：
+在 $\beta$-归约下发散的已翻译 $\lambda$-项可能收敛到确定的集合，
+如第~\ref{sec:bohm-tree}~节所示。
+\else
 This appendix proves two results about the sublanguage of
 inheritance-calculus corresponding to the $\lambda$-calculus
 (Section~\ref{sec:bohm-tree}).
@@ -4373,9 +4384,18 @@ more defined in the powerset sense of
 Figure~\ref{fig:calculi-matrix}: translated $\lambda$-terms
 that diverge under $\beta$-reduction may converge to definite
 sets, as shown in Section~\ref{sec:bohm-tree}.
+\fi
 
-\subsection{B\"ohm Trees}
+\subsection{\bilingual{B\"ohm Trees}{Böhm 树}}
 
+\ifInheritanceChinese
+我们简要回顾 Böhm 树的定义~\cite{barendregt1984-lambda-calculus}。
+\emph{首部归约} $M \to_h M'$ 仅收缩最外层的 $\beta$-redex：
+若 $M$ 的形式为 $(\lambda x.\, e)\; v\; M_1 \cdots M_k$，则
+$M \to_h e[v/x]\; M_1 \cdots M_k$。
+若项 $M$ 没有首部 redex，则称其处于\emph{首部范式}（HNF），
+即 $M = \lambda x_1 \ldots x_m.\; y\; M_1 \cdots M_k$，其中 $y$ 是变量。
+\else
 We briefly recall the definition of B\"ohm
 trees~\cite{barendregt1984-lambda-calculus}.
 A \emph{head reduction} $M \to_h M'$ contracts
@@ -4385,52 +4405,96 @@ $M \to_h e[v/x]\; M_1 \cdots M_k$.
 A term $M$ is in \emph{head normal form} (HNF) if it has no
 head redex, that is, $M = \lambda x_1 \ldots x_m.\;
 y\; M_1 \cdots M_k$ where $y$ is a variable.
+\fi
 
+\ifInheritanceChinese
+$\lambda$-项 $M$ 的 \emph{Böhm 树} $\mathrm{BT}(M)$ 是一棵无限标记树，定义如下：
+\else
 The \emph{B\"ohm tree} $\mathrm{BT}(M)$ of a $\lambda$-term $M$
 is an infinite labeled tree defined by:
+\fi
 \[
   \mathrm{BT}(M) =
   \begin{cases}
-    \bot & \text{if } M \text{ has no HNF} \\[6pt]
+    \bot & \text{\bilingual{if}{若} } M \text{ \bilingual{has no HNF}{无 HNF}} \\[6pt]
     \lambda x_1 \ldots x_m.\;
     y\bigl(\mathrm{BT}(M_1),\; \ldots,\; \mathrm{BT}(M_k)\bigr)
     &
     \begin{aligned}[t]
-      &\text{if } M \to^*_h \\[-2pt]
+      &\text{\bilingual{if}{若} } M \to^*_h \\[-2pt]
       &\lambda x_1 \ldots x_m.\; y\; M_1 \cdots M_k
     \end{aligned}
   \end{cases}
 \]
+\ifInheritanceChinese
+Böhm 树等价 $\mathrm{BT}(M) = \mathrm{BT}(N)$ 是惰性 $\lambda$-演算的标准观测等价~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}。
+\else
 B\"ohm tree equivalence $\mathrm{BT}(M) = \mathrm{BT}(N)$ is the
 standard observational equivalence of the lazy
 $\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}.
+\fi
 
-\subsection{Path Encoding}
+\subsection{\bilingual{Path Encoding}{路径编码}}
 
+\ifInheritanceChinese
+我们定义 Böhm 树中的位置与 mixin 树中的路径之间的对应关系。
+当翻译 $\mathcal{T}$ 作用于一个 ANF $\lambda$-项时，所得 mixin 树具有特定形状：
+\else
 We define a correspondence between positions in the B\"ohm tree
 and paths in the mixin tree.
 When the translation $\mathcal{T}$ is applied to an ANF
 $\lambda$-term, the resulting mixin tree has a specific shape:
+\fi
 \begin{itemize}
-  \item An abstraction $\lambda x.\, M$ translates to a record
+  \item \ifInheritanceChinese
+    抽象 $\lambda x.\, M$ 翻译为一条具有自有属性
+    $\{\mathrm{argument}, \mathrm{result}\}$ 的记录，称之为\emph{抽象形状}。
+    \else
+    An abstraction $\lambda x.\, M$ translates to a record
     with own properties $\{\mathrm{argument}, \mathrm{result}\}$,
     which is referred to as the \emph{abstraction shape}.
-  \item A $\mathbf{let}$-binding
+    \fi
+  \item \ifInheritanceChinese
+    $\mathbf{let}$-绑定
+    $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M$ 翻译为一条具有自有属性
+    $\{x, \mathrm{result}\}$ 的记录，其中 $x$ 存放封装的应用
+    $\{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto \mathcal{T}(V_2)\}$。
+    \else
+    A $\mathbf{let}$-binding
     $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M$ translates
     to a record with own properties $\{x, \mathrm{result}\}$,
     where $x$ holds the encapsulated application
     $\{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto
     \mathcal{T}(V_2)\}$.
-  \item A tail call $V_1\; V_2$ translates to a record with own
+    \fi
+  \item \ifInheritanceChinese
+    尾调用 $V_1\; V_2$ 翻译为一条具有自有属性
+    $\{\mathrm{tailCall}, \mathrm{result}\}$ 的记录，其中
+    $\mathrm{tailCall}$ 存放封装的应用，而 $\mathrm{result}$ 投影
+    $\mathrm{tailCall}.\mathrm{result}$。
+    \else
+    A tail call $V_1\; V_2$ translates to a record with own
     properties $\{\mathrm{tailCall}, \mathrm{result}\}$, where
     $\mathrm{tailCall}$ holds the encapsulated application and
     $\mathrm{result}$ projects
     $\mathrm{tailCall}.\mathrm{result}$.
-  \item A variable $x$ with de~Bruijn index $n$ translates to
+    \fi
+  \item \ifInheritanceChinese
+    de~Bruijn 指标为 $n$ 的变量 $x$ 翻译为索引引用 $\dbi{n}.\mathrm{argument}$。
+    \else
+    A variable $x$ with de~Bruijn index $n$ translates to
     an indexed reference $\dbi{n}.\mathrm{argument}$.
+    \fi
 \end{itemize}
 
 \noindent
+\ifInheritanceChinese
+Böhm 树中的每个位置都是从根出发的一系列导航步骤。
+在 Böhm 树中，节点 $\lambda x_1 \ldots x_m.\; y\; M_1 \cdots M_k$ 处
+可能的步骤为：通过剥去一层抽象进入函数体，以及进入首变量的第 $i$ 个参数 $M_i$。
+在 mixin 树中，这些步骤分别对应于跟随 $\mathrm{result}$ 标签（进入函数体）
+和在 $\this$ 解析之后跟随 $\mathrm{argument}$ 标签（进入参数位置）。
+\else
 Each B\"ohm tree position is a sequence of navigation steps from
 the root.
 In the B\"ohm tree, the possible steps at a node
@@ -4441,7 +4505,17 @@ In the mixin tree, these correspond to following the
 $\mathrm{result}$ label (for entering the body) and the
 $\mathrm{argument}$ label after $\this$ resolution (for
 entering an argument position).
+\fi
 
+\ifInheritanceChinese
+与其在不同 mixin 树之间比较绝对路径（这对内部结构敏感），
+我们只观测通过 $\mathrm{result}$ 投影可访问的\emph{收敛}行为
+（定义~\ref{def:convergence}）。
+每个跟随 $\mathrm{result}$ 的步骤对应 $\lambda$-演算中的一次首部归约步骤：
+尾调用的 $\mathrm{result}$ 透过封装的应用进行投影，而 $\mathbf{let}$-绑定的
+$\mathrm{result}$ 进入延续。
+末尾的抽象形状表明已到达首部范式。
+\else
 Rather than comparing absolute paths across different mixin
 trees, which would be sensitive to internal structure, we
 observe only the \emph{convergence} behavior accessible via
@@ -4454,32 +4528,63 @@ application, and a $\mathbf{let}$-binding's $\mathrm{result}$
 enters the continuation.
 The abstraction shape at the end signals that a head
 normal form has been reached.
+\fi
 
-\subsection{Single-Path Lemma}
+\subsection{\bilingual{Single-Path Lemma}{单路径引理}}
 
+\ifInheritanceChinese
+$\this$ 函数（等式~\ref{eq:this}）为多目标 $\this$ 解析的一般情形而设计。
+对于已翻译的 $\lambda$-项，我们证明它退化为单目标解析。
+\else
 The $\this$ function (equation~\ref{eq:this}) is designed for the
 general case of multi-target $\this$ resolution.
 For translated $\lambda$-terms, we show it degenerates to
 single-target resolution.
+\fi
 
-\begin{lemma}[Single-Path]\label{lem:single-path}
+\begin{lemma}[\bilingual{Single-Path}{单路径}]\label{lem:single-path}
+  \ifInheritanceChinese
+  对于任意闭合 ANF $\lambda$-项 $M$，在求值 $\mathcal{T}(M)$ 过程中每次调用
+  $\this(S,\; p_{\mathrm{def}},\; n)$ 时，前沿集合 $S$ 恰好包含一条路径。
+  \else
   For any closed ANF $\lambda$-term $M$, at every invocation of
   $\this(S,\; p_{\mathrm{def}},\; n)$ during evaluation of
   $\mathcal{T}(M)$, the frontier set $S$ contains exactly one
   path.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  对 $\mathcal{T}$ 的翻译规则进行情形分析。
+  由于 $\mathcal{T}$ 是合成的，为每条规则建立的结构不变量传播到所有被继承的子树：
+  mixin 树中出现的每棵子树本身均是某个子项在 $\mathcal{T}$ 下的像，
+  因此该不变量在运行时合成过程中始终成立。
+  \else
   By case analysis on the translation rules of~$\mathcal{T}$.
   Since $\mathcal{T}$ is compositional, the structural invariant
   established for each rule propagates to all inherited subtrees:
   every subtree appearing in the mixin tree is itself the image of
   some sub-term under~$\mathcal{T}$, so the invariant holds
   throughout the runtime composition.
+  \fi
 
-  \paragraph{Case $\mathcal{T}(\lambda x.\, M)
+  \paragraph{\bilingual{Case $\mathcal{T}(\lambda x.\, M)
     = \{\mathrm{argument} \mapsto \{\},\;
-  \mathrm{result} \mapsto \mathcal{T}(M)\}$}
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}{情形 $\mathcal{T}(\lambda x.\, M)
+    = \{\mathrm{argument} \mapsto \{\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}}
+  \ifInheritanceChinese
+  这是一个记录字面量，具有 $\defines = \{\mathrm{argument}, \mathrm{result}\}$
+  且无继承来源，故 $\inherits = \varnothing$。
+  在根路径 $p$ 处，由于不存在引入额外分支的继承来源，
+  $\overrides(p) = \{p\}$（单一路径）。
+  在 $\mathcal{T}(M)$ 内部，对 $x$ 的任何引用均为
+  $\dbi{n}.\mathrm{argument}$，其中 $n$ 是指向该作用域层的 de~Bruijn 指标。
+  由于 $\mathcal{T}(\lambda x.\, M)$ 恰好引入一个作用域层，
+  该层恰有一个 mixin，故 $\this$ 在 $\supers$ 中恰好找到一个匹配对
+  $(p_{\mathrm{site}},\; p_{\mathrm{override}})$。
+  \else
   This is a record literal with
   $\defines = \{\mathrm{argument}, \mathrm{result}\}$ and
   no inheritance sources, so $\inherits = \varnothing$.
@@ -4493,13 +4598,28 @@ single-target resolution.
   scope level, there is exactly one
   mixin at that level, hence $\this$ finds exactly one matching
   pair $(p_{\mathrm{site}},\; p_{\mathrm{override}})$ in $\supers$.
+  \fi
 
-  \paragraph{Case
+  \paragraph{\bilingual{Case
     $\mathcal{T}(\mathbf{let}\; x = V_1\; V_2
     \;\mathbf{in}\; M)
     = \{x \mapsto \{\mathcal{T}(V_1),\;
       \mathrm{argument} \mapsto \mathcal{T}(V_2)\},\;
-  \mathrm{result} \mapsto \mathcal{T}(M)\}$}
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}{情形
+    $\mathcal{T}(\mathbf{let}\; x = V_1\; V_2
+    \;\mathbf{in}\; M)
+    = \{x \mapsto \{\mathcal{T}(V_1),\;
+      \mathrm{argument} \mapsto \mathcal{T}(V_2)\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}}
+  \ifInheritanceChinese
+  外层记录具有自有属性 $\{x, \mathrm{result}\}$ 且外层无继承来源
+  （$\inherits = \varnothing$），故 $\overrides(\text{root}) = \{\text{root}\}$。
+  在 $x$ 子树内部，继承
+  $\{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto \mathcal{T}(V_2)\}$
+  恰好有一个继承来源（$\mathcal{T}(V_1)$），从而恰好创建一个 $\bases$ 条目。
+  对 $V_1$ 归纳，单路径性质在 $\mathcal{T}(V_1)$ 内部成立。
+  在 $\mathcal{T}(M)$ 内部，归纳假设直接适用。
+  \else
   The outer record has own properties $\{x, \mathrm{result}\}$
   and no inheritance sources at the outer level
   ($\inherits = \varnothing$), so $\overrides(\text{root})
@@ -4512,12 +4632,24 @@ single-target resolution.
   $\mathcal{T}(V_1)$.
   Inside $\mathcal{T}(M)$, the induction hypothesis applies
   directly.
+  \fi
 
-  \paragraph{Case
+  \paragraph{\bilingual{Case
     $\mathcal{T}(\mathbf{let}\; x = V
     \;\mathbf{in}\; M)
     = \{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
-  \mathrm{result} \mapsto \mathcal{T}(M)\}$}
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}{情形
+    $\mathcal{T}(\mathbf{let}\; x = V
+    \;\mathbf{in}\; M)
+    = \{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M)\}$}}
+  \ifInheritanceChinese
+  外层记录具有自有属性 $\{x, \mathrm{result}\}$ 且外层无继承来源，
+  故 $\overrides(\text{root}) = \{\text{root}\}$。
+  $x$ 子树本身是一个具有自有属性 $\{\mathrm{result}\}$ 且无继承来源的记录字面量。
+  因此，进入绑定值或进入函数体均不会在 $\supers$ 中引入分支。
+  对 $\mathcal{T}(V)$ 和 $\mathcal{T}(M)$ 归纳，单路径性质均成立。
+  \else
   The outer record has own properties $\{x, \mathrm{result}\}$
   and no inheritance sources at the outer level, so
   $\overrides(\text{root}) = \{\text{root}\}$.
@@ -4528,21 +4660,41 @@ single-target resolution.
   body introduces branching in $\supers$.
   By induction, the single-path property holds inside both
   $\mathcal{T}(V)$ and $\mathcal{T}(M)$.
+  \fi
 
-  \paragraph{Case $\mathcal{T}(V_1\; V_2) =
+  \paragraph{\bilingual{Case $\mathcal{T}(V_1\; V_2) =
     \{\mathrm{tailCall} \mapsto
       \{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto
       \mathcal{T}(V_2)\},\;
       \mathrm{result} \mapsto
-  \{\mathrm{tailCall}.\mathrm{result}\}\}$}
+  \{\mathrm{tailCall}.\mathrm{result}\}\}$}{情形 $\mathcal{T}(V_1\; V_2) =
+    \{\mathrm{tailCall} \mapsto
+      \{\mathcal{T}(V_1),\; \mathrm{argument} \mapsto
+      \mathcal{T}(V_2)\},\;
+      \mathrm{result} \mapsto
+  \{\mathrm{tailCall}.\mathrm{result}\}\}$}}
+  \ifInheritanceChinese
+  与 $\mathbf{let}$-绑定情形完全相同：外层记录具有自有属性
+  $\{\mathrm{tailCall}, \mathrm{result}\}$ 且外层无继承来源，
+  而 $\mathrm{tailCall}$ 子树恰好包含一个继承来源。
+  \else
   Identical to the $\mathbf{let}$-binding case: the outer record
   has own properties $\{\mathrm{tailCall}, \mathrm{result}\}$
   with no inheritance sources at the outer level, and the
   $\mathrm{tailCall}$ subtree contains exactly one inheritance
   source.
+  \fi
 
-  \paragraph{Case $\mathcal{T}(x)
-  = \dbi{n}.\mathrm{argument}$}
+  \paragraph{\bilingual{Case $\mathcal{T}(x)
+  = \dbi{n}.\mathrm{argument}$}{情形 $\mathcal{T}(x)
+  = \dbi{n}.\mathrm{argument}$}}
+  \ifInheritanceChinese
+  这是一个引用，而非记录。
+  $\this$ 函数从包围作用域向上走 $n$ 步。
+  根据上述合成性论证，遍历过程中遇到的每个作用域层，
+  包括通过引用解析到达的被继承子树，都是某个子项在 $\mathcal{T}$ 下的像，
+  因此 $\this$ 的每一步在 $\supers$ 中恰好遇到一个匹配对。
+  \else
   This is a reference, not a record.
   The $\this$ function walks up $n$ steps from the enclosing scope.
   By the compositionality argument above, every scope level
@@ -4550,8 +4702,18 @@ single-target resolution.
   reached through reference resolution, is the image of some
   sub-term under~$\mathcal{T}$, so each step of $\this$
   encounters exactly one matching pair in $\supers$.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  关键的结构不变量如下。
+  对于 $\mathcal{T}$ 生成的每棵子树，其根要么没有继承来源，要么恰有一个继承来源。
+  此外，唯一拥有继承来源的根是由应用 $\mathbf{let}$-绑定规则和尾调用规则
+  引入的应用包装器，而在两种情形中，该来源均是唯一的，并封装在一个专属子项
+  （$x$ 或 $\mathrm{tailCall}$）之下，从不出现在外围作用域层。
+  因此，$\this$ 遍历的每个作用域层在 $\supers$ 中最多贡献一个匹配对，
+  前沿集合在整个求值过程中始终保持为单元素集。
+  \else
   The key structural invariant is the following.
   For every subtree generated by~$\mathcal{T}$,
   its root has either no inheritance source or exactly one
@@ -4565,15 +4727,41 @@ single-target resolution.
   Therefore every scope level traversed by $\this$ contributes
   at most one matching pair in $\supers$, so the frontier set
   remains a singleton throughout evaluation.
+  \fi
 \end{proof}
 
-\subsection{Substitution Lemma}
+\subsection{\bilingual{Substitution Lemma}{替换引理}}
 
+\ifInheritanceChinese
+翻译的核心机制是：带有 $\mathrm{argument} \mapsto \mathcal{T}(V)$ 的继承
+扮演替换的角色。我们将此精确化。
+\else
 The core mechanism of the translation is that inheritance with
 $\mathrm{argument} \mapsto \mathcal{T}(V)$ plays the role of
 substitution.  We make this precise.
+\fi
 
-\begin{lemma}[Substitution]\label{lem:substitution}
+\begin{lemma}[\bilingual{Substitution}{替换}]\label{lem:substitution}
+  \ifInheritanceChinese
+  设 $M$ 为 $x$ 可能自由出现的 ANF 项，$V$ 为闭合值。%
+  \footnote{
+    该证明使用单路径引理（引理~\ref{lem:single-path}），
+    该引理要求被继承树出现在闭合项内。
+    只要 $\lambda x.\, M$ 应用于 $V$ 是某个闭合 ANF 程序的子项，此条件即成立。
+  }
+  定义\emph{被继承树}
+  $C = \{\mathcal{T}(\lambda x.\, M),\;
+  \mathrm{argument} \mapsto \mathcal{T}(V)\}$。
+  则对于 $C \snoc \mathrm{result}$ 下的每条路径 $p$ 和每个标签 $\ell$：
+  \[
+    \ell \in \properties(p)
+    \text{ in } C \snoc \mathrm{result}
+    \quad\Longleftrightarrow\quad
+    \ell \in \properties(p)
+    \text{ in } \mathcal{T}(M[V/x])
+  \]
+  其中 $M[V/x]$ 是通常的避免俘获替换。
+  \else
   Let $M$ be an ANF term in which $x$ may occur free,
   and let $V$ be a closed value.%
   \footnote{
@@ -4596,12 +4784,32 @@ substitution.  We make this precise.
     \text{ in } \mathcal{T}(M[V/x])
   \]
   where $M[V/x]$ is the usual capture-avoiding substitution.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  对 $M$ 进行结构归纳。
+  \else
   By structural induction on $M$.
+  \fi
 
-  \paragraph{Base case: $M = x$}
+  \paragraph{\bilingual{Base case: $M = x$}{基础情形：$M = x$}}
+  \ifInheritanceChinese
+  则 $\mathcal{T}(x) =
+  \dbi{n}.\mathrm{argument}$（$n$ 为 $x$ 的 de~Bruijn 指标），
+  且 $C \snoc \mathrm{result}$ 包含该引用。
+  在被继承树 $C$ 中，$\resolve$ 和 $\this$ 从引用的包围作用域向上走 $n$ 步，
+  到达绑定 $\lambda$，那里的继承
+  $\{\mathcal{T}(\lambda x.\, x),\;
+  \mathrm{argument} \mapsto \mathcal{T}(V)\}$
+  继承到 $\mathrm{argument}$ 槽，提供 $\mathcal{T}(V)$。
+  由于 $C$ 是 $\mathcal{T}\bigl((\lambda x.\, M)\; V\bigr)$ 的
+  $\mathrm{tailCall}$ 子树，而该项是闭合 ANF 项，
+  引理~\ref{lem:single-path} 适用，$\this$ 恰好找到一条路径，
+  故 $\resolve$ 返回 $\mathcal{T}(V)$ 的子树。
+  由于 $M[V/x] = V$，有 $\mathcal{T}(M[V/x]) = \mathcal{T}(V)$，属性吻合。
+  \else
   Then $\mathcal{T}(x) =
   \dbi{n}.\mathrm{argument}$ (where $n$ is the de~Bruijn index
   of $x$), and
@@ -4620,9 +4828,16 @@ substitution.  We make this precise.
   Since $M[V/x] = V$, we have
   $\mathcal{T}(M[V/x]) = \mathcal{T}(V)$, and the properties
   coincide.
+  \fi
 
-  \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
-  $\lambda$-bound}
+  \paragraph{\bilingual{Base case: $M = y$ where $y \neq x$ and $y$ is
+  $\lambda$-bound}{基础情形：$M = y$，其中 $y \neq x$ 且 $y$ 由 $\lambda$ 绑定}}
+  \ifInheritanceChinese
+  则 $\mathcal{T}(y) = \dbi{m}.\mathrm{argument}$，$m$ 为 $y$ 的 de~Bruijn 指标。
+  这会向上走到绑定 $y$ 的作用域，该作用域不同于绑定 $x$ 的作用域，
+  故在 $x$ 绑定作用域处带有 $\mathrm{argument} \mapsto \mathcal{T}(V)$ 的继承无效。
+  由于 $M[V/x] = y$，属性完全相同。
+  \else
   Then $\mathcal{T}(y) = \dbi{m}.\mathrm{argument}$ where $m$
   is the de~Bruijn index of~$y$.
   This walks up to the scope that binds~$y$, which is different
@@ -4630,16 +4845,35 @@ substitution.  We make this precise.
   $\mathrm{argument} \mapsto \mathcal{T}(V)$ at $x$'s binding
   scope has no effect.
   Since $M[V/x] = y$, the properties are identical.
+  \fi
 
-  \paragraph{Base case: $M = y$ where $y \neq x$ and $y$ is
-  let-bound}
+  \paragraph{\bilingual{Base case: $M = y$ where $y \neq x$ and $y$ is
+  let-bound}{基础情形：$M = y$，其中 $y \neq x$ 且 $y$ 由 let 绑定}}
+  \ifInheritanceChinese
+  则 $\mathcal{T}(y) = y.\mathrm{result}$。
+  这是对包围记录中兄弟属性 $y$ 的词法引用，故被继承树 $C$ 不改变其解析。
+  由于 $M[V/x] = y$，属性完全相同。
+  \else
   Then $\mathcal{T}(y) = y.\mathrm{result}$.
   This is a lexical reference to the sibling property~$y$ in the
   enclosing record, so the inherited tree~$C$ does not alter its
   resolution.
   Since $M[V/x] = y$, the properties are identical.
+  \fi
 
-  \paragraph{Inductive case: $M = \lambda y.\, M'$}
+  \paragraph{\bilingual{Inductive case: $M = \lambda y.\, M'$}{归纳情形：$M = \lambda y.\, M'$}}
+  \ifInheritanceChinese
+  则 $\mathcal{T}(M) =
+  \{\mathrm{argument} \mapsto \{\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M')\}$。
+  $C \snoc \mathrm{result}$ 处的子树是另一棵抽象形状的记录。
+  $\mathcal{T}(M')$ 内部对 $x$ 的引用通过 $\this$ 以完全相同的方式解析
+  （多一个来自内层 $\lambda$ 的作用域层），
+  且对 $M'$ 归纳，$C \snoc \mathrm{result} \snoc \mathrm{result}$ 下的属性
+  与 $\mathcal{T}(M'[V/x])$ 的属性吻合。
+  由于 $(\lambda y.\, M')[V/x] = \lambda y.\, (M'[V/x])$（假设 $y$ 是新鲜的），
+  结论成立。
+  \else
   Then $\mathcal{T}(M) =
   \{\mathrm{argument} \mapsto \{\},\;
   \mathrm{result} \mapsto \mathcal{T}(M')\}$.
@@ -4655,10 +4889,26 @@ substitution.  We make this precise.
   Since
   $(\lambda y.\, M')[V/x] = \lambda y.\, (M'[V/x])$
   (assuming $y$ is fresh), the result follows.
+  \fi
 
-  \paragraph{Inductive case:
+  \paragraph{\bilingual{Inductive case:
     $M = \mathbf{let}\; z = V_1\; V_2$
-  $\mathbf{in}\; M'$}
+  $\mathbf{in}\; M'$}{归纳情形：$M = \mathbf{let}\; z = V_1\; V_2\; \mathbf{in}\; M'$}}
+  \ifInheritanceChinese
+  则
+  \[
+    \mathcal{T}(M) =
+    \{z \mapsto \{\mathcal{T}(V_1),\;
+      \mathrm{argument} \mapsto \mathcal{T}(V_2)\},\;
+    \mathrm{result} \mapsto \mathcal{T}(M')\}.
+  \]
+  替换分配：
+  $M[V/x] =
+  \mathbf{let}\; z = V_1[V/x]\; V_2[V/x]
+  \;\mathbf{in}\; M'[V/x]$。
+  对 $V_1$、$V_2$ 和 $M'$ 归纳，每棵子树（$z$ 和 $\mathrm{result}$）下的属性吻合，
+  因为每棵子树内部对 $x$ 的引用均通过相同的 $\this$ 机制解析到 $\mathcal{T}(V)$。
+  \else
   Then
   \[
     \mathcal{T}(M) =
@@ -4674,10 +4924,23 @@ substitution.  We make this precise.
   each subtree ($z$ and $\mathrm{result}$) coincide,
   since references to $x$ inside each subtree resolve to
   $\mathcal{T}(V)$ via the same $\this$ mechanism.
+  \fi
 
-  \paragraph{Inductive case:
+  \paragraph{\bilingual{Inductive case:
     $M = \mathbf{let}\; z = V'
-  \;\mathbf{in}\; M'$}
+  \;\mathbf{in}\; M'$}{归纳情形：$M = \mathbf{let}\; z = V'\; \mathbf{in}\; M'$}}
+  \ifInheritanceChinese
+  则
+  \[
+    \mathcal{T}(M) =
+    \{z \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V')\},\;
+    \mathrm{result} \mapsto \mathcal{T}(M')\}.
+  \]
+  替换分配：$M[V/x] = \mathbf{let}\; z = V'[V/x]\; \mathbf{in}\; M'[V/x]$。
+  对 $V'$ 和 $M'$ 归纳，两棵子树（即 $z$ 和 $\mathrm{result}$）下的属性均吻合。
+  特别地，$M'$ 中对 $z$ 的出现在两侧均翻译为词法引用 $z.\mathrm{result}$，
+  故由值 $\mathbf{let}$-绑定引入的包装器被替换所保留。
+  \else
   Then
   \[
     \mathcal{T}(M) =
@@ -4694,21 +4957,47 @@ substitution.  We make this precise.
   lexical reference $z.\mathrm{result}$ on both sides, so the
   wrapper introduced by the value $\mathbf{let}$-binding is
   preserved by the substitution.
+  \fi
 
-  \paragraph{Inductive case: $M = V_1\; V_2$ (tail call)}
+  \paragraph{\bilingual{Inductive case: $M = V_1\; V_2$ (tail call)}{归纳情形：$M = V_1\; V_2$（尾调用）}}
+  \ifInheritanceChinese
+  与 $\mathbf{let}$-绑定情形类似，以 $\mathrm{tailCall}$ 取代 $z$。
+  \else
   Analogous to the $\mathbf{let}$-binding case with
   $\mathrm{tailCall}$ in place of $z$.
+  \fi
 \end{proof}
 
-\subsection{Convergence Preservation}
+\subsection{\bilingual{Convergence Preservation}{收敛保持}}
 
+\ifInheritanceChinese
+收敛准则（定义~\ref{def:convergence}）从根出发跟随 $\mathrm{result}$ 链。
+该链中的每一步对应 $\lambda$-演算中的一次首部归约步骤。
+我们将此精确化。
+\else
 The convergence criterion (Definition~\ref{def:convergence})
 follows the $\mathrm{result}$ chain from the root.
 Each step in this chain corresponds to one head reduction step
 in the $\lambda$-calculus.
 We make this precise.
+\fi
 
-\begin{lemma}[Result-step]\label{lem:result-step}
+\begin{lemma}[\bilingual{Result-step}{结果步}]\label{lem:result-step}
+  \ifInheritanceChinese
+  设 $(\lambda x.\, M)\; V$ 为一个尾调用，即一个 $\beta$-redex。
+  则对于每条路径 $p$ 和每个标签 $\ell$：
+  \[
+    \ell \in \properties\!\bigl(\,
+    \text{root} \snoc \mathrm{result} \snoc p\,\bigr)
+    \text{ in } \mathcal{T}\bigl((\lambda x.\, M)\; V\bigr)
+    \;\Longleftrightarrow\;
+    \ell \in \properties\!\bigl(\,
+    \text{root} \snoc p\,\bigr)
+    \text{ in } \mathcal{T}(M[V/x])
+  \]
+  即，在尾调用的 mixin 树中跟随一次 $\mathrm{result}$ 投影，
+  所得属性与归约项的 mixin 树根处的属性相同。
+  \else
   Let $(\lambda x.\, M)\; V$ be a tail call, which is a $\beta$-redex.
   Then for every path $p$ and label $\ell$:
   \[
@@ -4723,10 +5012,15 @@ We make this precise.
   That is, following one $\mathrm{result}$ projection in the
   tail call's mixin tree yields the same properties as the
   root of the reduct's mixin tree.
+  \fi
 \end{lemma}
 
 \begin{proof}
+  \ifInheritanceChinese
+  翻译给出：
+  \else
   The translation gives:
+  \fi
   \[
     \mathcal{T}\bigl((\lambda x.\, M)\; V\bigr) =
     \{\mathrm{tailCall} \mapsto
@@ -4735,6 +5029,16 @@ We make this precise.
       \mathrm{result} \mapsto
     \{\mathrm{tailCall}.\mathrm{result}\}\}
   \]
+  \ifInheritanceChinese
+  根处的 $\mathrm{result}$ 标签定义为 $\mathrm{tailCall}.\mathrm{result}$，
+  因此 $\text{root} \snoc \mathrm{result}$ 解析为继承
+  $\mathrm{tailCall} = \{\mathcal{T}(\lambda x.\, M),\;
+  \mathrm{argument} \mapsto \mathcal{T}(V)\}$ 内部的 $\mathrm{result}$ 路径。
+  该继承正是引理~\ref{lem:substitution} 中的被继承树 $C$，
+  而 $\mathrm{tailCall} \snoc \mathrm{result}$ 即为 $C \snoc \mathrm{result}$。
+  由引理~\ref{lem:substitution}，$C \snoc \mathrm{result}$ 下的属性与
+  $\mathcal{T}(M[V/x])$ 的属性吻合。
+  \else
   The $\mathrm{result}$ label at the root is defined as
   $\mathrm{tailCall}.\mathrm{result}$, so
   $\text{root} \snoc \mathrm{result}$ resolves to the
@@ -4748,13 +5052,21 @@ We make this precise.
   By Lemma~\ref{lem:substitution}, the properties under
   $C \snoc \mathrm{result}$ coincide with those of
   $\mathcal{T}(M[V/x])$.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  \emph{Let-绑定变体。}
+  对于 $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M'$（其中
+  $V_1 = \lambda y.\, M''$），类似的结论成立。
+  翻译给出：
+  \else
   \emph{Let-binding variant.}
   An analogous result holds for
   $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M'$
   where $V_1 = \lambda y.\, M''$.
   The translation gives:
+  \fi
   \[
     \mathcal{T}\bigl(\mathbf{let}\; x = V_1\; V_2
     \;\mathbf{in}\; M'\bigr) =
@@ -4762,6 +5074,22 @@ We make this precise.
       \mathrm{argument} \mapsto \mathcal{T}(V_2)\},\;
     \mathrm{result} \mapsto \mathcal{T}(M')\}
   \]
+  \ifInheritanceChinese
+  由于 $\mathrm{result} \mapsto \mathcal{T}(M')$ 是一个属性定义，
+  $\text{root} \snoc \mathrm{result}$ 处的子树为 $\mathcal{T}(M')$。
+  在 $\mathcal{T}(M')$ 内部，对 $x$ 的每个引用均为 $x.\mathrm{result}$，
+  其解析到 $x$ 子树
+  $\{\mathcal{T}(\lambda y.\, M''),\;
+  \mathrm{argument} \mapsto \mathcal{T}(V_2)\}$ 内的 $\mathrm{result}$ 路径。
+  这正是引理~\ref{lem:substitution} 中的被继承树 $C$，
+  故 $x.\mathrm{result}$ 与 $\mathcal{T}(M''[V_2/y])$ 具有相同的属性。
+  在 $\lambda$-演算中，$M = (\lambda x.\, M')(V_1\; V_2)$，首部归约项为
+  $N = M'[(V_1\; V_2)/x]$。
+  在 $\mathcal{T}(N)$ 中，$x$ 的每次出现均被 $(V_1\; V_2)$ 替换，
+  而根据上面的尾调用变体，其结果也产生 $\mathcal{T}(M''[V_2/y])$。
+  因此，$\mathcal{T}(M)$ 中 $\text{root} \snoc \mathrm{result} \snoc p$ 处的属性
+  与 $\mathcal{T}(N)$ 中 $\text{root} \snoc p$ 处的属性对所有 $p$ 均吻合。
+  \else
   Since $\mathrm{result} \mapsto \mathcal{T}(M')$ is a property
   definition, the subtree at
   $\text{root} \snoc \mathrm{result}$ is $\mathcal{T}(M')$.
@@ -4784,17 +5112,34 @@ We make this precise.
   $\text{root} \snoc \mathrm{result} \snoc p$ in
   $\mathcal{T}(M)$ coincide with those at
   $\text{root} \snoc p$ in $\mathcal{T}(N)$ for all $p$.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  \emph{值 let-绑定变体。}
+  对于 $\mathbf{let}\; x = V \;\mathbf{in}\; M'$，类似的结论成立。
+  翻译给出：
+  \else
   \emph{Value let-binding variant.}
   An analogous result holds for
   $\mathbf{let}\; x = V \;\mathbf{in}\; M'$.
   The translation gives:
+  \fi
   \[
     \mathcal{T}\bigl(\mathbf{let}\; x = V \;\mathbf{in}\; M'\bigr) =
     \{x \mapsto \{\mathrm{result} \mapsto \mathcal{T}(V)\},\;
     \mathrm{result} \mapsto \mathcal{T}(M')\}.
   \]
+  \ifInheritanceChinese
+  由于 $\mathrm{result} \mapsto \mathcal{T}(M')$ 是一个属性定义，
+  $\text{root} \snoc \mathrm{result}$ 处的子树为 $\mathcal{T}(M')$。
+  在 $\mathcal{T}(M')$ 内部，$x$ 的每次出现均翻译为词法引用 $x.\mathrm{result}$，
+  其解析到子树 $\mathcal{T}(V)$。
+  这正是归约项 $M'[V/x]$ 的翻译。
+  因此，$\mathcal{T}(\mathbf{let}\; x = V \;\mathbf{in}\; M')$ 中
+  $\text{root} \snoc \mathrm{result} \snoc p$ 处的属性与
+  $\mathcal{T}(M'[V/x])$ 中 $\text{root} \snoc p$ 处的属性对所有 $p$ 均吻合。
+  \else
   Since $\mathrm{result} \mapsto \mathcal{T}(M')$ is a property
   definition, the subtree at
   $\text{root} \snoc \mathrm{result}$ is $\mathcal{T}(M')$.
@@ -4808,16 +5153,39 @@ We make this precise.
   $\mathcal{T}(\mathbf{let}\; x = V \;\mathbf{in}\; M')$
   coincide with those at
   $\text{root} \snoc p$ in $\mathcal{T}(M'[V/x])$ for all $p$.
+  \fi
 \end{proof}
 
-\begin{theorem}[Convergence preservation]%
+\begin{theorem}[\bilingual{Convergence preservation}{收敛保持}]%
   \label{thm:convergence-preservation}
+  \ifInheritanceChinese
+  若 $M \to_h N$（首部归约），则 $\mathcal{T}(M){\Downarrow}$ 当且仅当
+  $\mathcal{T}(N){\Downarrow}$。
+  \else
   If $M \to_h N$ (head reduction), then
   $\mathcal{T}(M){\Downarrow}$ if and only if
   $\mathcal{T}(N){\Downarrow}$.
+  \fi
 \end{theorem}
 
 \begin{proof}
+  \ifInheritanceChinese
+  ANF 中的首部归约步骤取以下三种形式之一：
+  尾调用 $(\lambda x.\, M')\; V \to_h M'[V/x]$，
+  应用 $\mathbf{let}$-绑定
+  $\mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M'
+  \to_h M'[(V_1\; V_2)/x]$，
+  或值 $\mathbf{let}$-绑定
+  $\mathbf{let}\; x = V \;\mathbf{in}\; M'
+  \to_h M'[V/x]$。
+  第二和第三种形式只是底层 $\lambda$-项中一次 $\beta$-步骤的 ANF 呈现。
+  在所有三种情形中，引理~\ref{lem:result-step}
+  （尾调用、应用 let-绑定和值 let-绑定变体）表明：
+  $\mathcal{T}(M)$ 中 $\text{root} \snoc \mathrm{result}^n$ 处的属性
+  与 $\mathcal{T}(N)$ 中 $\text{root} \snoc \mathrm{result}^{n-1}$ 处的属性
+  对所有 $n \ge 1$ 均吻合，其中 $N$ 为首部归约项。
+  因此，抽象形状出现在归约前项的深度 $n$ 处，当且仅当它出现在归约后项的深度 $n - 1$ 处。
+  \else
   A head reduction step in ANF takes one of three forms:
   a tail call $(\lambda x.\, M')\; V \to_h M'[V/x]$,
   an application $\mathbf{let}$-binding
@@ -4840,10 +5208,23 @@ We make this precise.
   Hence the abstraction shape appears at depth $n$ in the
   pre-reduct if and only if it appears at depth $n - 1$ in
   the post-reduct.
+  \fi
 \end{proof}
 
-\begin{remark}[Iteration levels]
+\begin{remark}[\bilingual{Iteration levels}{迭代层级}]
   \label{rem:convergence-lfp}
+  \ifInheritanceChinese
+  第~\ref{sec:bohm-tree}~节表明，Böhm 树对应在第一次迭代 $T_P\!\uparrow\!1$
+  处成立，且 $\mathrm{lfp}(T_P)$ 在图~\ref{fig:calculi-matrix}
+  的幂集意义下是严格更精确定义的。
+  我们在此精确化该联系。
+  tabling 求值~\cite{tamaki1986-tabled-resolution}
+  通过迭代计算 $\mathrm{lfp}(T_P)$：
+  $T_P\!\uparrow\!0 = \bot$，
+  $T_P\!\uparrow\!1 = T_P(\bot)$，
+  $T_P\!\uparrow\!2 = T_P(T_P(\bot))$，
+  \ldots\ 直至稳定（定理~\ref{thm:tabling-soundness}）。
+  \else
   Section~\ref{sec:bohm-tree} showed that the B\"ohm tree
   correspondence holds at the first iteration
   $T_P\!\uparrow\!1$ and that $\mathrm{lfp}(T_P)$ is
@@ -4857,10 +5238,21 @@ We make this precise.
   $T_P\!\uparrow\!2 = T_P(T_P(\bot))$,
   \ldots\ until stabilisation
   (Theorem~\ref{thm:tabling-soundness}).
+  \fi
 
   \begin{description}
-    \item[$T_P\!\uparrow\!1$ corresponds to
-      $\beta$-reduction.]
+    \item[$T_P\!\uparrow\!1$ \bilingual{corresponds to
+      $\beta$-reduction}{对应于 $\beta$-归约}.]
+      \ifInheritanceChinese
+      $T_P\!\uparrow\!1$ 对每个方程求值一次，
+      重入调用返回 $\bot$（来自 $T_P\!\uparrow\!0$ 的值）。
+      结果步引理（引理~\ref{lem:result-step}）在 $\mathcal{T}(M)$
+      和 $\mathcal{T}(N)$ 的方程组之间建立了一个结构同构，
+      偏移一个 $\mathrm{result}$ 步骤。
+      该同构是纯结构性的，对任意次迭代均成立。
+      定理~\ref{thm:adequacy} 和~\ref{thm:first-order-semantics}
+      在该层级处得到证明。
+      \else
       $T_P\!\uparrow\!1$ evaluates each equation once,
       with re-entrant calls returning~$\bot$
       (the value from $T_P\!\uparrow\!0$).
@@ -4875,10 +5267,22 @@ We make this precise.
       Theorems~\ref{thm:adequacy}
       and~\ref{thm:first-order-semantics}
       are proved at this level.
+      \fi
   \end{description}
 
-  \paragraph{Observation granularity}%
+  \paragraph{\bilingual{Observation granularity}{观测粒度}}%
   \label{rem:set-vs-domain}
+  \ifInheritanceChinese
+  $T_P\!\uparrow\!1$ 处的集值语义严格细于惰性 $\lambda$-演算的域论语义。
+  在后者中，不终止的计算产生单一的无差别 $\bot$；
+  在前者中，原则上可以区分 $\varnothing$（在有限时间内确定到达的空集）
+  与 Kleene 迭代的不稳定（没有有限近似足够）。
+  收敛准则（定义~\ref{def:convergence}）有意投影掉这一区别：
+  它只观测 $\mathrm{result}$ 链是否到达抽象形状，
+  将观测归约为单个比特。
+  定理~\ref{thm:adequacy} 和~\ref{thm:first-order-semantics}
+  在这一粗化的观测层级上陈述。
+  \else
   The set-valued semantics at $T_P\!\uparrow\!1$ is
   strictly finer than the domain-theoretic semantics of
   the lazy $\lambda$-calculus.
@@ -4896,9 +5300,18 @@ We make this precise.
   Theorems~\ref{thm:adequacy}
   and~\ref{thm:first-order-semantics}
   are stated at this coarsened observation level.
+  \fi
 
   \begin{description}
-    \item[$\mathrm{lfp}(T_P)$ restores full precision.]
+    \item[$\mathrm{lfp}(T_P)$ \bilingual{restores full precision}{恢复完整精度}.]
+      \ifInheritanceChinese
+      在 $\mathrm{lfp}(T_P)$ 处，集值语义的完整精度得以恢复：
+      在 $T_P\!\uparrow\!1$ 时返回 $\varnothing$ 的重入调用
+      现在可能收敛到非空集合，
+      因此语义区分了"定义上为空"与"经过进一步迭代后收敛"，
+      且 $M{\Downarrow}_\lambda$ 蕴含
+      $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$，但反之不然。
+      \else
       At $\mathrm{lfp}(T_P)$, the full precision of the
       set-valued semantics is restored: re-entrant calls
       that returned~$\varnothing$ at $T_P\!\uparrow\!1$
@@ -4908,14 +5321,19 @@ We make this precise.
       and $M{\Downarrow}_\lambda$ implies
       $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
       but not conversely.
+      \fi
   \end{description}
 \end{remark}
 
-\subsection{Adequacy}
+\subsection{\bilingual{Adequacy}{Adequacy（充分性）}}
 
-\begin{definition}[Inheritance-convergence]\label{def:convergence}
+\begin{definition}[\bilingual{Inheritance-convergence}{继承收敛}]\label{def:convergence}
+  \ifInheritanceChinese
+  若存在 $n \ge 0$ 使得：
+  \else
   A mixin tree $T$ \emph{converges}, written $T{\Downarrow}$,
   if there exists $n \ge 0$ such that:
+  \fi
   \[
     \{\mathrm{argument},\, \mathrm{result}\}
     \;\subseteq\;
@@ -4924,15 +5342,32 @@ We make this precise.
       \snoc \cdots \snoc \mathrm{result}}_{n}
     \,\bigr)
   \]
+  \ifInheritanceChinese
+  在第~\ref{sec:mixin-trees}~节的语义下成立，则称 mixin 树 $T$ \emph{收敛}，
+  记作 $T{\Downarrow}$。
+  \else
   in the semantics of
   Section~\ref{sec:mixin-trees}.
+  \fi
 \end{definition}
 
-\begin{theorem}[Adequacy]\label{thm:adequacy}
+\begin{theorem}[\bilingual{Adequacy}{Adequacy（充分性）}]\label{thm:adequacy}
+  \ifInheritanceChinese
+  闭合 ANF $\lambda$-项 $M$ 有首部范式，当且仅当 $\mathcal{T}(M){\Downarrow}$。
+  \else
   A closed ANF $\lambda$-term $M$ has a head normal form if and
   only if $\mathcal{T}(M){\Downarrow}$.
+  \fi
 \end{theorem}
 
+\ifInheritanceChinese
+顶层的闭合 ANF 项要么是抽象（一个值），要么是计算（应用 $\mathbf{let}$-绑定、
+值 $\mathbf{let}$-绑定或尾调用）。
+抽象翻译为根处立即具有抽象形状的记录；
+计算的根具有 $\{x, \mathrm{result}\}$ 或
+$\{\mathrm{tailCall}, \mathrm{result}\}$ 的形式，
+必须沿 $\mathrm{result}$ 链跟随才能找到最终值。
+\else
 A closed ANF term at the top level is either an abstraction
 (a value) or a computation (an application
   $\mathbf{let}$-binding, a value $\mathbf{let}$-binding,
@@ -4942,15 +5377,31 @@ has the abstraction shape; a computation's root has the form
 $\{x, \mathrm{result}\}$ or
 $\{\mathrm{tailCall}, \mathrm{result}\}$, and one must follow
 the $\mathrm{result}$ chain to find the eventual value.
+\fi
 
-\begin{proof}[Proof of Theorem~\ref{thm:adequacy}]
+\begin{proof}[\bilingual{Proof of Theorem~\ref{thm:adequacy}}{定理~\ref{thm:adequacy} 的证明}]
+  \ifInheritanceChinese
+  （$\Rightarrow$）
+  设 $M \to^*_h \lambda x.\, M'$ 经过 $k$ 步首部归约。
+  我们对 $k$ 归纳，证明 $\mathcal{T}(M)$ 在深度 $\le k$ 处收敛。
+  \else
   ($\Rightarrow$)
   Suppose $M \to^*_h \lambda x.\, M'$ in $k$ head reduction
   steps.
   We show $\mathcal{T}(M)$ converges at depth $\le k$ by
   induction on $k$.
+  \fi
 
-  \paragraph{Base case ($k = 0$)}
+  \paragraph{\bilingual{Base case ($k = 0$)}{基础情形（$k = 0$）}}
+  \ifInheritanceChinese
+  $M$ 已是抽象 $\lambda x.\, M'$。
+  则 $\mathcal{T}(M) =
+  \{\mathrm{argument} \mapsto \{\},\;
+  \mathrm{result} \mapsto \mathcal{T}(M')\}$，
+  其根具有 $\defines = \{\mathrm{argument}, \mathrm{result}\}$。
+  这些标签直接在根的 $\defines$ 中，故递归求值无需进一步递归即可返回它们，
+  $\mathcal{T}(M)$ 在深度 $n = 0$ 处收敛。
+  \else
   $M$ is already an abstraction
   $\lambda x.\, M'$.
   Then $\mathcal{T}(M) =
@@ -4961,8 +5412,22 @@ the $\mathrm{result}$ chain to find the eventual value.
   These labels are directly in $\defines$ of the root, so
   the recursive evaluation returns them without further
   recursion, and $\mathcal{T}(M)$ converges at depth $n = 0$.
+  \fi
 
-  \paragraph{Inductive step ($k \ge 1$)}
+  \paragraph{\bilingual{Inductive step ($k \ge 1$)}{归纳步骤（$k \ge 1$）}}
+  \ifInheritanceChinese
+  $M$ 不是抽象，故 $M$ 是尾调用、应用 $\mathbf{let}$-绑定或值 $\mathbf{let}$-绑定之一。
+  每种形式对应底层 $\lambda$-项中的一次首部 $\beta$-步骤。
+  设 $N$ 为首部归约项，故
+  $M \to_h N \to^{k-1}_h \lambda x.\, M'$。
+  注意 $N$ 是闭合的：首部归约将一个闭合值代入只有替换目标这一个自由变量的项，
+  从而保持闭合性。
+  由引理~\ref{lem:result-step}（尾调用、应用 let-绑定或值 let-绑定变体），
+  $\mathcal{T}(M)$ 中 $\text{root} \snoc \mathrm{result} \snoc p$ 处的属性
+  与 $\mathcal{T}(N)$ 中 $\text{root} \snoc p$ 处的属性吻合。
+  由归纳假设，$\mathcal{T}(N)$ 在深度 $\le k - 1$ 处收敛，
+  故 $\mathcal{T}(M)$ 在深度 $\le k$ 处收敛。
+  \else
   $M$ is not an abstraction,
   so $M$ is either a tail call, an application
   $\mathbf{let}$-binding, or a value
@@ -4983,13 +5448,31 @@ the $\mathrm{result}$ chain to find the eventual value.
   By the induction hypothesis, $\mathcal{T}(N)$
   converges at depth $\le k - 1$, so $\mathcal{T}(M)$
   converges at depth $\le k$.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  （$\Leftarrow$）
+  设 $\mathcal{T}(M){\Downarrow}$ 在深度 $n$ 处收敛。
+  我们对 $n$ 归纳，证明 $M$ 有首部范式。
+  \else
   ($\Leftarrow$)
   Suppose $\mathcal{T}(M){\Downarrow}$ at depth $n$.
   We show $M$ has a head normal form by induction on $n$.
+  \fi
 
-  \paragraph{Base case ($n = 0$)}
+  \paragraph{\bilingual{Base case ($n = 0$)}{基础情形（$n = 0$）}}
+  \ifInheritanceChinese
+  $\mathcal{T}(M)$ 的根具有抽象形状 $\{\mathrm{argument}, \mathrm{result}\}$。
+  只有抽象规则 $\mathcal{T}(\lambda x.\, M')$ 才能产生具有自有属性
+  $\mathrm{argument}$ 的根。
+  （对于尾调用和 $\mathbf{let}$-绑定，根具有
+    $\defines = \{\mathrm{tailCall}, \mathrm{result}\}$
+    或 $\{x, \mathrm{result}\}$，而 $\mathrm{argument}$ 不能通过 $\supers$ 出现，
+    因为根处 $\inherits = \varnothing$，从而
+  $\bases(\text{root}) = \varnothing$。）
+  因此 $M$ 是抽象，已处于首部范式。
+  \else
   The root of $\mathcal{T}(M)$ has
   abstraction shape
   $\{\mathrm{argument}, \mathrm{result}\}$.
@@ -5003,8 +5486,25 @@ the $\mathrm{result}$ chain to find the eventual value.
   $\bases(\text{root}) = \varnothing$.)
   Therefore $M$ is an abstraction, hence already in head normal
   form.
+  \fi
 
-  \paragraph{Inductive step ($n \ge 1$)}
+  \paragraph{\bilingual{Inductive step ($n \ge 1$)}{归纳步骤（$n \ge 1$）}}
+  \ifInheritanceChinese
+  抽象形状出现在深度 $n$ 处而不在深度 $0$ 处。
+  由基础情形论证，$M$ 不是抽象，因此在这个闭合顶层 ANF 项的首部位置，
+  $M$ 是尾调用、应用 $\mathbf{let}$-绑定或值 $\mathbf{let}$-绑定之一。
+  在每种情形中，ANF 语法要求函数位置为一个值 $V_1$
+  （$V ::= x \mid \lambda x.\, M$）。
+  由于 $M$ 是闭合的，$V_1$ 不能是自由变量，
+  故 $V_1$ 必须是 $\lambda$-抽象；首部形式因此是一个 $\beta$-redex。
+  由引理~\ref{lem:result-step}（尾调用、应用 let-绑定或值 let-绑定变体），
+  $\mathcal{T}(N)$ 中深度 $n - 1$ 处的属性与 $\mathcal{T}(M)$ 中深度 $n$ 处的属性吻合，
+  其中 $N$ 为首部归约项。
+  故 $\mathcal{T}(N)$ 在深度 $n - 1$ 处收敛。
+  由于 $M$ 是闭合的，且首部归约保持闭合性（它将一个闭合值代入只有一个自由变量的项），
+  $N$ 是一个闭合 ANF 项。
+  由归纳假设，$N$ 有首部范式，而由 $M \to_h N$，$M$ 也有首部范式。
+  \else
   The abstraction shape
   appears at depth $n$ but not at depth $0$.
   By the base case argument, $M$ is not an abstraction, so at the
@@ -5028,30 +5528,52 @@ the $\mathrm{result}$ chain to find the eventual value.
   free variable), $N$ is a closed ANF term.
   By the induction hypothesis, $N$ has a head normal
   form, and since $M \to_h N$, so does $M$.
+  \fi
 \end{proof}
 
-\subsection{First-Order Semantics of the Lazy \texorpdfstring{$\lambda$}{λ}-Calculus}
+\subsection{\bilingual{First-Order Semantics of the Lazy \texorpdfstring{$\lambda$}{λ}-Calculus}{惰性 $\lambda$-演算的一阶语义}}
 
+\ifInheritanceChinese
+Adequacy（充分性）将单个项的首部范式与其继承收敛联系起来。
+下面的定理将此提升为项之间的等价关系，确立翻译 $\mathcal{T}$
+赋予惰性 $\lambda$-演算一个一阶语义，该语义保持并反映 Böhm 树等价。
+\else
 Adequacy relates a single term's head normal form to its
 inheritance-convergence.
 The following theorem lifts this to an equivalence between
 terms, establishing that the translation $\mathcal{T}$
 gives the lazy $\lambda$-calculus a first-order semantics
 that preserves and reflects B\"ohm tree equivalence.
+\fi
 
-\begin{definition}[$\lambda$-contextual equivalence under $\mathcal{T}$]%
+\begin{definition}[\bilingual{$\lambda$-contextual equivalence under $\mathcal{T}$}{$\mathcal{T}$ 下的 $\lambda$-上下文等价}]%
   \label{def:ctx-equiv}
+  \ifInheritanceChinese
+  对于闭合 $\lambda$-项 $M$ 和 $N$，若对每个封闭的 $\lambda$-演算上下文 $C[\cdot]$：
+  \else
   For closed $\lambda$-terms $M$ and $N$, write
   $\mathcal{T}(M) \approx_\lambda \mathcal{T}(N)$ if for every
   closing $\lambda$-calculus context $C[\cdot]$:
+  \fi
   \[
     \mathcal{T}(C[M]){\Downarrow}
     \;\Longleftrightarrow\;
     \mathcal{T}(C[N]){\Downarrow}
   \]
+  \ifInheritanceChinese
+  则记 $\mathcal{T}(M) \approx_\lambda \mathcal{T}(N)$。
+  \fi
 \end{definition}
 
 \noindent
+\ifInheritanceChinese
+下标 $\lambda$ 强调量化范围是 $\lambda$-演算上下文，而非所有继承演算上下文。
+该定义只观测收敛\footnote{
+  收敛恰好提供一个比特的信息。
+}，但对所有 $\lambda$-上下文量化使其成为细粒度的等价：
+不同的上下文可以提供不同的参数并投影不同的结果，
+探测项在 $\lambda$-可定义片段内行为的每个方面。
+\else
 The subscript $\lambda$ emphasizes that the quantification ranges
 over $\lambda$-calculus contexts, not over all inheritance-calculus contexts.
 This definition observes only convergence\footnote{
@@ -5061,10 +5583,15 @@ quantifying over all $\lambda$-contexts makes it a fine-grained
 equivalence: different contexts can supply different arguments
 and project different results, probing every aspect of the
 term's behavior within the $\lambda$-definable fragment.
+\fi
 
-\begin{theorem}[First-order semantics of the lazy $\lambda$-calculus]%
+\begin{theorem}[\bilingual{First-order semantics of the lazy $\lambda$-calculus}{惰性 $\lambda$-演算的一阶语义}]%
   \label{thm:first-order-semantics}
+  \ifInheritanceChinese
+  对于闭合 $\lambda$-项 $M$ 和 $N$：
+  \else
   For closed $\lambda$-terms $M$ and $N$:
+  \fi
   \[
     \mathcal{T}(M) \approx_\lambda \mathcal{T}(N)
     \quad\Longleftrightarrow\quad
@@ -5072,15 +5599,31 @@ term's behavior within the $\lambda$-definable fragment.
   \]
 \end{theorem}
 
-\begin{proof}[Proof of Theorem~\ref{thm:first-order-semantics}]
+\begin{proof}[\bilingual{Proof of Theorem~\ref{thm:first-order-semantics}}{定理~\ref{thm:first-order-semantics} 的证明}]
+  \ifInheritanceChinese
+  翻译 $\mathcal{T}$ 是合成的：对每个 $\lambda$-演算上下文 $C[\cdot]$，
+  mixin 树 $\mathcal{T}(C[M])$ 由 mixin 树 $\mathcal{T}(M)$ 和上下文的翻译所确定。
+  这意味着 $\mathcal{T}$ 保留了论证所需的上下文结构。
+  \else
   The translation $\mathcal{T}$ is compositional: for every
   $\lambda$-calculus context $C[\cdot]$, the mixin tree
   $\mathcal{T}(C[M])$ is determined by the mixin tree
   $\mathcal{T}(M)$ and the translation of the context.
   This means $\mathcal{T}$ preserves the context structure
   needed for the argument.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  （$\Leftarrow$）
+  设 $\mathrm{BT}(M) = \mathrm{BT}(N)$。
+  Böhm 树等价是一个同余~\cite{barendregt1984-lambda-calculus}，
+  故对每个上下文 $C[\cdot]$，$\mathrm{BT}(C[M]) = \mathrm{BT}(C[N])$。
+  特别地，$C[M]$ 有首部范式当且仅当 $C[N]$ 有首部范式。
+  由定理~\ref{thm:adequacy}，$\mathcal{T}(C[M]){\Downarrow}$
+  当且仅当 $\mathcal{T}(C[N]){\Downarrow}$。
+  故 $\mathcal{T}(M) \approx_\lambda \mathcal{T}(N)$。
+  \else
   ($\Leftarrow$)
   Suppose $\mathrm{BT}(M) = \mathrm{BT}(N)$.
   B\"ohm tree equivalence is a congruence~\cite{barendregt1984-lambda-calculus},
@@ -5091,8 +5634,18 @@ term's behavior within the $\lambda$-definable fragment.
   $\mathcal{T}(C[M]){\Downarrow}$ iff
   $\mathcal{T}(C[N]){\Downarrow}$.
   Hence $\mathcal{T}(M) \approx_\lambda \mathcal{T}(N)$.
+  \fi
 
   \medskip\noindent
+  \ifInheritanceChinese
+  （$\Rightarrow$）
+  设 $\mathrm{BT}(M) \neq \mathrm{BT}(N)$。
+  Böhm 树等价与惰性 $\lambda$-演算的观测等价吻合~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}：
+  存在上下文 $C[\cdot]$ 使得 $C[M]$ 收敛而 $C[N]$ 发散，或反之。
+  由定理~\ref{thm:adequacy}，$\mathcal{T}(C[M]){\Downarrow}$
+  且 $\mathcal{T}(C[N]){\Uparrow}$。
+  故 $\mathcal{T}(M) \not\approx_\lambda \mathcal{T}(N)$。
+  \else
   ($\Rightarrow$)
   Suppose $\mathrm{BT}(M) \neq \mathrm{BT}(N)$.
   B\"ohm tree equivalence coincides with observational
@@ -5104,9 +5657,15 @@ term's behavior within the $\lambda$-definable fragment.
   $\mathcal{T}(C[M]){\Downarrow}$ and
   $\mathcal{T}(C[N]){\Uparrow}$.
   Hence $\mathcal{T}(M) \not\approx_\lambda \mathcal{T}(N)$.
+  \fi
 \end{proof}
 
 \noindent
+\ifInheritanceChinese
+该证明依赖两个支柱：Adequacy（充分性）（定理~\ref{thm:adequacy}），这是我们的贡献；
+以及 Böhm 树等价等于惰性 $\lambda$-演算的观测等价这一经典结论~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}。
+两个支柱都不需要定义或比较 mixin 树中的绝对路径。
+\else
 The proof rests on two pillars: Adequacy
 (Theorem~\ref{thm:adequacy}), which is our contribution, and
 the classical result that B\"ohm tree equivalence equals
@@ -5114,6 +5673,7 @@ observational equivalence for the lazy
 $\lambda$-calculus~\cite{abramsky1993-full-abstraction-lazy-lambda,abramsky1995-games-full-abstraction-lazy-lambda}.
 Neither pillar requires defining or comparing
 absolute paths inside mixin trees.
+\fi
 
 \section{\bilingual{Expressive Asymmetry: Proofs}{表达力的不对称:证明}}
 \label{app:expressiveness}
