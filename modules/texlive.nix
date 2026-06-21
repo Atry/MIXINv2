@@ -81,32 +81,32 @@
         };
 
       inheritanceCalculusSources = lib.fileset.unions [
-        ../papers/inheritance-calculus/inheritance-calculus.tex
-        ../papers/inheritance-calculus/supplement.tex
-        ../papers/inheritance-calculus/supplement-xref.tex
-        ../papers/inheritance-calculus/submission.tex
-        ../papers/inheritance-calculus/preprint.tex
-        ../papers/inheritance-calculus/acmart.cls
-        ../papers/inheritance-calculus/ACM-Reference-Format.bst
-        ../papers/inheritance-calculus/references.bib
-        ../papers/inheritance-calculus/latexmkrc
-        ../papers/inheritance-calculus/generated-evaluation-trace.tex
+        ../paper/inheritance-calculus.tex
+        ../paper/supplement.tex
+        ../paper/supplement-xref.tex
+        ../paper/submission.tex
+        ../paper/preprint.tex
+        ../paper/acmart.cls
+        ../paper/ACM-Reference-Format.bst
+        ../paper/references.bib
+        ../paper/latexmkrc
+        ../paper/generated-evaluation-trace.tex
       ];
 
       inheritanceCalculusSrc = lib.fileset.toSource {
-        root = ../papers/inheritance-calculus;
+        root = ../paper;
         fileset = inheritanceCalculusSources;
       };
 
       inheritanceCalculusAppendixPdf = mkPaperPdf {
         name = "inheritance-calculus-appendix.pdf";
-        root = ../papers/inheritance-calculus;
+        root = ../paper;
         fileset = inheritanceCalculusSources;
       };
 
       inheritanceCalculusSubmissionPdf = mkPaperPdf {
         name = "inheritance-calculus-submission.pdf";
-        root = ../papers/inheritance-calculus;
+        root = ../paper;
         fileset = inheritanceCalculusSources;
         entry = "submission";
       };

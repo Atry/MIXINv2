@@ -22,8 +22,7 @@ from mixinv2._runtime import evaluate
 _PREFIX = ("MultipleOuters",)
 _OUTPUT = (
     Path(__file__).resolve().parents[3]
-    / "papers"
-    / "inheritance-calculus"
+    / "paper"
     / "generated-evaluation-trace.tex"
 )
 
