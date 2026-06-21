@@ -118,23 +118,19 @@
 \newcommand{\qualifiedthis}[1]{#1.\mathbf{this}}
 \newcommand{\dbi}[1]{\uparrow^{\!#1}}
 
-%% Semantic functions for the direct λ-calculus fixpoint semantics (Appendix E)
-%% -- Scope-level functions --
-\newcommand{\result}{\mathtt{result}}
-%% \newcommand{\visiblebindings}{\mathtt{visiblebindings}}
-%% -- Application-level functions --
-\newcommand{\head}{\mathtt{head}}
-\newcommand{\argument}{\mathtt{argument}}
-%% -- Calling context --
-%% callerscope/callerargument inlined as projections from \contexts
-\newcommand{\letcontexts}{\mathtt{letcontexts}}
-\newcommand{\tailcontexts}{\mathtt{tailcontexts}}
-\newcommand{\contexts}{\mathtt{contexts}}
-%% -- Shared resolution --
-\newcommand{\scoperesolution}{\mathtt{scoperesolve}}
-\newcommand{\resolveref}{\mathtt{resolveref}}
-%% -- Auxiliary --
-\newcommand{\enclosingscope}{\mathtt{enclosingscope}}
+
+% --- conditional-compilation switches -------------------------------
+% Entry points choose which parts of this shared file to compile by
+% setting these booleans before \input{inheritance-calculus}.  The
+% defaults include everything, so the full build (preprint.tex) sets
+% nothing; submission.tex clears the appendices (POPL 2027 requires them
+% as separate supplemental material), supplement.tex clears the body.
+% The single bibliography lives at the end and is always emitted, since
+% both the main matter and the appendices cite.
+\makeatletter
+\@ifundefined{ifInheritanceBody}{\newif\ifInheritanceBody\InheritanceBodytrue}{}
+\@ifundefined{ifInheritanceAppendix}{\newif\ifInheritanceAppendix\InheritanceAppendixtrue}{}
+\makeatother
 
 \begin{document}
 
@@ -151,9 +147,9 @@
 \thanks{This work was conducted independently prior to the author's employment at Figure AI.}
 
 \begin{abstract}
-  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. By unifying modules, classes, objects, methods, fields, and locals under a single record abstraction, the calculus models inheritance simply as set union. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling, even for cyclic inheritance hierarchies. These three properties extend to the $\lambda$-calculus, since B\"ohm tree equivalence is fully abstract for the first-iteration approximation of a sublanguage of inheritance-calculus. As a corollary, this establishes a convergence hierarchy $\text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}$ among $\lambda$-calculi sharing the same $\lambda$-syntax.
+  Just as the $\lambda$-calculus uses three primitives (abstraction, application, variable) as the foundation of functional programming, inheritance-calculus uses three primitives (record, definition, inheritance) as the foundation of declarative programming. A record is a set of definitions; by unifying modules, classes, objects, methods, fields, and locals under this single record abstraction, the calculus models inheritance simply as set union of definitions, two definitions of the same name merging recursively rather than one overriding the other. A merge is always meaningful because every value is a record and observation is purely structural: the merged record simply answers queries with the union of what its parts provide, so there is no scalar leaf at which two values could conflict. Consequently, composition is inherently commutative, idempotent, and associative, structurally eliminating the multiple-inheritance linearization problem. Its semantics is first-order, denotational, and computable by tabling (memoized fixpoint iteration as in tabled logic programming), even for cyclic inheritance hierarchies. This first-order, denotational, tabled semantics extends to the $\lambda$-calculus: $\lambda$-terms translate into a sublanguage of a lazy approximation of inheritance-calculus, the approximation that treats cyclic self-reference as divergent instead of iterating it to a fixpoint, and the translation is fully abstract, equating exactly the $\lambda$-terms with equal B\"ohm trees.
 
-  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code acts as different function colors; ordinary arithmetic yields the relational semantics of logic programming; $\mathtt{this}$ resolves to multiple targets; and programs are immune to nonextensibility in the sense of the Expression Problem. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in both common sense and Felleisen's sense.
+  Inheritance-calculus is distilled from MIXINv2, a practical implementation in which the same code can be invoked under different calling conventions (function colors such as synchronous and asynchronous); ordinary arithmetic, encoded within the calculus itself, behaves as multi-directional relations in the sense of logic programming; $\mathtt{this}$ resolves to multiple enclosing targets at once rather than a single receiver; and programs are extensible in both dimensions of the Expression Problem, gaining new variants and new operations by adding code. This makes inheritance-calculus strictly more expressive than the $\lambda$-calculus in Felleisen's sense of macro-expressibility.
 \end{abstract}
 
 \begin{CCSXML}
@@ -212,12 +208,11 @@
 
 \maketitle
 
+\ifInheritanceBody
 \section{Introduction}
 \label{sec:introduction}
 
-Declarative and configuration languages are ubiquitous in modern
-software engineering.
-Systems such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
+Configuration languages such as Jsonnet~\cite{jsonnet}, Hydra~\cite{hydra2023},
 CUE~\cite{cue2019}, Dhall~\cite{dhall2017},
 Kustomize~\cite{kustomize}, and JSON
 Patch~\cite{rfc6902-json-patch} all provide mechanisms for
@@ -229,8 +224,8 @@ Its package collection, \texttt{nixpkgs}, contains over
 113{,}000 packages,%
 \footnote{
   According to Repology~\cite{repology2025},
-  nearly three times the count of Debian or Ubuntu,
-  with a comparable number of contributors.
+  nearly three times the package count of Debian or Ubuntu,
+  achieved with a similar number of contributors.
   Not every package exercises the extensibility mechanisms
   described here, but the same caveat applies to other distributions.
 }
@@ -269,8 +264,7 @@ such as \texttt{mkIf} and \texttt{mkMerge}.
 No computational theory captures the extensibility that this
 mechanism exhibits.
 
-The $\lambda$-calculus serves as the foundational computational model for
-functional programming. No analogous calculus exists for declarative
+The $\lambda$-calculus has no analogue for declarative
 programming. This gap matters because the two paradigms differ in
 fundamental ways, which raises a question:
 
@@ -280,7 +274,8 @@ fundamental ways, which raises a question:
 
 \noindent
 To make the question precise, we operationalize it with four
-\emph{opinionated} proxies, grouped under its two notions.
+\emph{opinionated} proxies, grouped under the question's two halves:
+\emph{configuration} and \emph{practical general-purpose} programming.
 
 \begin{itemize}
   \item Immutable and first-order%
@@ -329,11 +324,14 @@ one:
 \noindent
 The Turing Machine and RAM Machine require mutable state and have no native
 extension mechanism;
-the $\lambda$-calculus is first-order-free and its extensibility is opt-in,
-since a closed function body cannot be extended without rewriting it;
+the $\lambda$-calculus is higher-order rather than first-order, and its
+extensibility is opt-in: a function is extensible only where its author
+anticipated extension, for example by threading open-recursion
+parameters, while a closed function body cannot be extended without
+rewriting it;
 Prolog meets the other three proxies but is extensible only by adding
-disjuncts to existing predicates, not by composing new observations onto
-existing values.
+disjuncts (alternative clauses) to existing predicates, not by attaching
+new fields or methods to existing values.
 No known computational model satisfies all four proxies simultaneously.
 
 The Nix ecosystem already suggests that such a model may exist:
@@ -352,8 +350,24 @@ NixOS module system to a minimal set of primitives.
 The reduction produced MIXIN, an early implementation in Nix,
 and subsequently
 MIXINv2\anon[~(included as supplementary material)]{~\cite{mixin2025}}, now implemented in Python: a declarative programming
-language with only three constructs (record literals, definitions,
+language with only three constructs (record, definition,
 and inheritance) and no functions or let-bindings.
+MIXINv2 obtains scalars such as floating-point numbers through a
+foreign-function interface; inheritance-calculus is what remains after
+removing that interface, so names like $\mathrm{PI}$ and
+$\mathrm{Float}$ in Figure~\ref{fig:cheatsheet} denote imported
+records whose internals the examples never inspect: scalar
+computation such as the figure's additions happens behind the
+interface, while the calculus itself only ever observes structure;
+the case study of Section~\ref{sec:case-study} instead encodes
+naturals and their arithmetic purely in the calculus, with no FFI.
+When two merged records define the same name with different contents,
+the result is simply a record carrying both structures; the calculus
+never compares or rejects them
+(Section~\ref{sec:mixin-trees} makes the merge precise).
+No such collision occurs in Figure~\ref{fig:cheatsheet}: each
+instance defines each scalar field exactly once, and the type record
+it merges with contributes structure, not a competing value.
 
 \begin{figure*}
   \centering
@@ -465,22 +479,69 @@ total = a.plus(
   \end{minipage}
   \caption{A first look at inheritance-calculus (right), beside Python
     (left): the same complex-number class with an addition method.
-    Qualified $\this$ reaches into the enclosing module to access its
-    imported members.
+    An entry $name \mapsto \{\dots\}$ is a definition; a bare name
+    inside braces (such as $\mathrm{BuiltIns}$ or $\mathrm{Complex}$) is
+    an inheritance clause that copies that record's definitions into the
+    enclosing record.
+    $\mathrm{BuiltIns}$, $\mathrm{Math}$, and $\mathrm{Operator}$ are
+    defined in an enclosing scope, elided here.
+    A bare name resolves lexically to the innermost enclosing record
+    that defines it directly; qualified $\this$ reaches members that
+    arrive by inheritance, such as the imported $\mathrm{Float}$ and
+    $\mathrm{Add}$.
+    Types and values share the same record syntax: a field such as
+    $\mathrm{re}$ records its type by inheriting the type's record,
+    with no checking force in the untyped calculus.
     Both sides, typing their components with \texttt{builtins.float},
     drawing their constants from the \texttt{math} module, and adding with
     \texttt{operator.add}, compute the complex
     number $(\pi+\tau) + (e+\pi)i$.
     $\mathrm{\_sumReCall}$ and $\mathrm{\_sumImCall}$ are function
     applications, and $\mathrm{\_totalCall}$ a method application, each
-    encoded as a command pattern, their result read back from a
-    $\mathrm{result}$ field.}
+    encoded as a command pattern: a record that inherits the callee and
+    defines its arguments, the call's result read back from a
+    $\mathrm{result}$ field that the callee defines.
+    Idempotence only means that listing the same inheritance source
+    twice in one record is a no-op; distinct records inheriting the
+    same source, like the two call sites here or the two instances
+    $\mathrm{a}$ and $\mathrm{b}$, remain distinct.}
   \label{fig:cheatsheet}
 \end{figure*}
 
 
 
 In developing real programs in MIXINv2, including a database-backed web server whose Python foreign-function interface only faithfully wraps individual host-library calls, we found that module, class, object, method, field, and local binding can all be expressed as the same construct: a record of definitions composed by inheritance. This paper distills this minimal computational model into \textbf{inheritance-calculus}, shown beside Python in Figure~\ref{fig:cheatsheet}.
+The key to reading the figure is that a reference
+$\qualifiedthis{X}.w$ behaves like a late-bound Java-style
+\texttt{Outer.this}: it denotes the enclosing record labeled $X$ as
+seen from wherever the reference itself ends up in the fully merged
+tree.
+Inheriting a record does not duplicate it; it makes the record's
+definitions, references included, visible at the inheriting position
+as well, and a reference resolves relative to the position from which
+it is viewed.
+The set-union picture and this late-binding picture are the same
+mechanism seen globally and locally: the union says which definitions
+a position carries, and late binding says how a definition behaves at
+each position that carries it.
+Qualified references therefore see members that arrive by merging,
+such as the imported $\mathrm{Float}$, while bare names such as
+$\mathrm{Complex}$ resolve lexically against directly written
+definitions only.
+This late binding is what makes inheritance act as function
+application: the call record $\mathrm{\_totalCall}$ inherits
+$\mathrm{Plus}$, so the merged tree presents
+$\mathrm{Plus}$'s body inside $\mathrm{\_totalCall}$ as well, and
+viewed from there the reference
+$\qualifiedthis{\mathrm{Plus}}.\mathrm{other}$
+denotes that copy's enclosing record, $\mathrm{\_totalCall}$ itself,
+where the argument $\mathrm{other}$ is defined.
+Receivers bind the same way: the dotted bare name
+$\mathrm{a}.\mathrm{Plus}$ resolves its first label lexically and
+projects the rest, denoting the copy of $\mathrm{Plus}$ inside the
+instance $\mathrm{a}$, in which
+$\qualifiedthis{\mathrm{Complex}}.\mathrm{re}$ denotes
+$\mathrm{a}$'s own field.
 Section~\ref{sec:syntax} gives its formal syntax, and
 Section~\ref{sec:mixin-trees} expands this first look into the full
 semantics.
@@ -488,11 +549,28 @@ The linearization problem of mixin-based
 systems~\cite{bracha1990-mixin-inheritance,barrett1996-c3-linearization}
 did not arise: inheritance is inherently commutative, idempotent,
 and associative, and $\this$ naturally resolves to
-\emph{multiple targets} rather than one, where prior systems
+\emph{multiple targets} rather than one: when inheritance places the
+same definition inside several enclosing records, a reference through
+$\this$ inherits from all of them at once, their contents merged,%
+\footnote{
+  Resolution is anchored at the position from which the reference is
+  observed. When both $\mathrm{A}$ and $\mathrm{B}$ inherit
+  $\mathrm{Base}$, a reference in $\mathrm{Base}$ observed inside
+  $\mathrm{A}$ sees only $\mathrm{A}$; the two call sites of
+  Figure~\ref{fig:cheatsheet} therefore stay independent. Multiple
+  targets arise when a single observation position inherits the same
+  definition through two routes, say $\mathrm{C}$ inheriting
+  $\mathrm{Base}$ via both $\mathrm{A}$ and $\mathrm{B}$: observed at
+  $\mathrm{C}$, a $\this$ reference in $\mathrm{Base}$ resolves to
+  $\mathrm{A}$ and $\mathrm{B}$ at once, and projection through it
+  yields the union of what they provide.
+}
+where
+prior systems
 such as Scala and the NixOS module system reject the multi-target
 situation.
 Section~\ref{sec:case-study} traces how boolean logic and
-arithmetic, implemented as separate files, extend in both
+arithmetic, encoded purely in the calculus as separate files, extend in both
 dimensions of the Expression
 Problem~\cite{wadler1998-expression-problem} without any dedicated
 mechanism, and how ordinary arithmetic yields the relational
@@ -501,6 +579,12 @@ programming~\cite{vanemden1976-predicate-logic-semantics}.
 Section~\ref{sec:emergent-phenomena} discusses these and further
 emergent phenomena, including function color
 blindness~\cite{nystrom2015-function-color}.
+Together these sections answer the four proxies: inheritance-calculus
+is immutable and first-order by construction
+(Section~\ref{sec:definitions}), Turing-complete because the
+$\lambda$-calculus embeds into it
+(Section~\ref{sec:forward-translation}), and extensible in both
+dimensions of the Expression Problem (Section~\ref{sec:case-study}).
 
 \begin{figure*}
   \centering
@@ -515,19 +599,19 @@ blindness~\cite{nystrom2015-function-color}.
     % columns: eager (x=0), lazy (x=42), fixpoint (x=84)
     \node[calc] (lam)  at (0,0)   {$\lambda$};
     \node[calc] (llam) at (42,0)  {lazy $\lambda$};
-    \node[calc] (flam) at (84,0)  {fixpoint $\lambda$ (ours)};
+    \node[calc] (flam) at (84,0)  {fixpoint $\lambda$~\cite{yang2026-co-lambda}};
 
     \node[calc] (lsub) at (42,19)  {$\lambda$-lazy-IC (ours)};
-    \node[calc] (sub)  at (84,19)  {$\lambda$-IC (ours)};
+    \node[calc] (sub)  at (84,19)  {$\lambda$-IC};
 
     \node[calc] (lic)  at (42,38)  {lazy IC (ours)};
     \node[calc] (ic)   at (84,38)  {IC (ours)};
 
     % horizontal edges (convergence): "more defined"
-    \draw[more] (lam)  -- node[elbl,below]{more defined} (llam);
-    \draw[more] (llam) -- node[elbl,below]{more defined} (flam);
-    \draw[more] (lsub) -- node[elbl,above]{more defined} (sub);
-    \draw[more] (lic)  -- node[elbl,above]{more defined} (ic);
+    \draw[more] (lam)  -- node[elbl,below]{more defined (non-strict)} (llam);
+    \draw[more] (llam) -- node[elbl,below]{more defined (unproductive $\bot$)} (flam);
+    \draw[more] (lsub) -- node[elbl,above]{more defined (powerset)} (sub);
+    \draw[more] (lic)  -- node[elbl,above]{more defined (powerset)} (ic);
 
     % vertical edges (expressiveness): "strictly more expressive"
     \draw[more] (lsub) -- node[elbl,left]{strictly more expressive} (lic);
@@ -540,14 +624,31 @@ blindness~\cite{nystrom2015-function-color}.
     (ours) are contributions of this paper.
     Abbreviations:
     $\lambda$ is the $\lambda$-calculus;
-    the lazy prefix denotes the first-iteration approximation
-    $T_P\!\uparrow\!1$;
-    fixpoint $\lambda$ the fixpoint $\lambda$-calculus;
+    the lazy prefix denotes the approximation that stops after the first
+    iteration of the fixpoint of this paper's semantic equations
+    (written $T_P\!\uparrow\!1$ in
+    logic-programming notation): lookups that re-enter themselves
+    through cyclic self-reference return divergence instead of being
+    iterated further.
+    Continuing:
+    fixpoint $\lambda$ is the tabled evaluation of the
+    $\lambda$-calculus of Yang~\cite{yang2026-co-lambda};
     IC the inheritance-calculus;
     and $\lambda$-IC and $\lambda$-lazy-IC the $\lambda$ sublanguages of
     IC and of lazy IC, respectively.
     Edge labels:
-    \emph{more defined} refers to convergence;
+    \emph{more defined} means every term that converges in the source
+    calculus also converges in the target calculus, but not conversely.
+    The parenthesized qualifiers distinguish the mechanism:
+    \emph{non-strict} more-definedness gains convergence by deeming
+    abstractions values without evaluating their bodies;
+    \emph{unproductive $\bot$} more-definedness gains convergence by
+    deciding unproductive loops such as $\Omega$ as the definite answer
+    $\bot$ in finite time, preserving the lazy tree semantics;
+    and \emph{powerset} more-definedness gains convergence by
+    resolving cyclic self-references to definite sets, as least fixed
+    points over the powerset lattice.
+    Continuing the edge labels:
     \emph{strictly more expressive} is meant in Felleisen's sense of
     macro-expressibility;
     and \emph{fully abstract} marks full abstraction.}
@@ -563,9 +664,6 @@ the functions are computable by
 tabling~\cite{tamaki1986-tabled-resolution}.
 Section~\ref{sec:forward-translation} shows that
 these functions extend to the $\lambda$-calculus, embedding it.
-Section~\ref{sec:convergence-hierarchy} derives a convergence hierarchy
-among eager, lazy, and fixpoint
-$\lambda$-calculi sharing the same syntax as a corollary.
 Section~\ref{sec:asymmetry} establishes that the lazy
 $\lambda$-calculus cannot macro-express the inheritance constructors,
 so inheritance-calculus is strictly more expressive in
@@ -1329,13 +1427,7 @@ $\lambda$-calculus context $C[\cdot]$;
 then $\approx_\lambda$ coincides with B\"ohm tree
 equivalence~\cite{barendregt1984-lambda-calculus}.
 Formal statements and proofs are in
-Appendix~\ref{app:bohm-tree-proofs}.%
-\footnote{
-  Appendix~\ref{app:lambda-fixpoint} applies the same first-order
-  technique directly on ANF to give the $\lambda$-calculus
-  a self-contained fixpoint semantics, without passing
-  through inheritance-calculus.
-}
+Appendix~\ref{app:bohm-tree-proofs}.
 Note that $\approx_\lambda$ quantifies over $\lambda$-calculus
 contexts only; inheritance-calculus contexts are strictly more
 discriminating, as Section~\ref{sec:asymmetry} establishes.
@@ -1343,71 +1435,33 @@ The correspondence above holds at the first-iteration
 approximation $T_P\!\uparrow\!1$; we now ask what happens
 at the full least fixed point.
 
-\subsection{Convergence Hierarchy}
-\label{sec:convergence-hierarchy}
-
-Inheritance-calculus has $\mathrm{lfp}(T_P)$ semantics,
-as established in Section~\ref{sec:mixin-trees}.
-Since the $\lambda$-calculus embeds into inheritance-calculus
-via~$\mathcal{T}$, translated $\lambda$-terms inherit the
-same semantics.
-As a corollary, B\"ohm tree equivalence is fully abstract for
-the first-iteration approximation $T_P\!\uparrow\!1$,
-where each equation is evaluated once and re-entrant calls
-return~$\bot$; this corresponds to $\beta$-reduction.
-The full $\mathrm{lfp}(T_P)$ is strictly more defined:
-re-entrant calls that returned~$\varnothing$ at
-$T_P\!\uparrow\!1$ may converge to non-empty sets after
-further iteration.
-
-For example,
-$\mathbf{let}\; x = x \;\mathbf{in}\; x$
-diverges under $\beta$-reduction, but its translation
+At $T_P\!\uparrow\!1$, each equation is evaluated once and
+re-entrant calls return~$\bot$; this corresponds to
+$\beta$-reduction.
+At the full $\mathrm{lfp}(T_P)$, re-entrant references instead
+resolve to least fixed points over the powerset lattice: the
+iteration computes fixed points at the \emph{container} level,
+finding a set~$S$ such that $S = F(S)$.
+This is the mechanism by which recursive Datalog converges on
+cyclic graphs (Appendix~\ref{app:datalog-encoding},
+Section~\ref{sec:recursive-rules}), and neither a fixed-point
+combinator such as~$Y$ nor Haskell's \texttt{mfix}
+(\texttt{RecursiveDo}) expresses it: both tie the knot at the
+term level, not over the sets the semantics accumulates.
+The smallest witness that this \emph{powerset} more-definedness
+(Figure~\ref{fig:calculi-matrix}) breaks the B\"ohm-tree
+correspondence is
+$\mathbf{let}\; x = x \;\mathbf{in}\; x$:
+it diverges under $\beta$-reduction, but its translation
 $\{x \mapsto \{\mathrm{result} \mapsto \{x.\mathrm{result}\}\},\;
 \mathrm{result} \mapsto \{x.\mathrm{result}\}\}$
-stabilizes under $\mathrm{lfp}(T_P)$:%
-\footnote{
-  This simple cycle could also be resolved by a
-  fixed-point combinator such as~$Y$.
-  The $\mathrm{lfp}(T_P)$ semantics is more general:
-  it computes fixed points at the \emph{container} level,
-  e.g.\ finding a set~$S$ such that $S = F(S)$.
-  Recursive Datalog on cyclic graphs
-  (Appendix~\ref{app:datalog-encoding},
-  Section~\ref{sec:recursive-rules}) requires exactly this,
-  and neither $Y$ nor Haskell's \texttt{mfix}
-  (\texttt{RecursiveDo}) can express it.
-}
-tabled evaluation detects the cycle and returns
-$\properties(\mathrm{root}) = \{x, \mathrm{result}\}$
----a definite result,
-whereas $\beta$-reduction would diverge.
-
-We call the sublanguage of inheritance-calculus corresponding
-to $\lambda$-terms, evaluated under $\mathrm{lfp}(T_P)$ rather than
-$T_P\!\uparrow\!1$, the \emph{fixpoint $\lambda$-calculus}.
-It shares the same syntax as the lazy $\lambda$-calculus but
-has strictly greater computational power:
-$M{\Downarrow}_\lambda$ implies
-$\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
-but not conversely.
-This establishes a convergence hierarchy
-\[
-  \text{eager} \subsetneq \text{lazy} \subsetneq \text{fixpoint}
-\]
-among $\lambda$-calculi sharing the same syntax.%
-\footnote{
-  Appendix~\ref{app:bohm-tree-proofs},
-  Remark~\ref{rem:convergence-lfp} gives further
-  technical details on the observation granularity
-  of the set-valued semantics.
-}
-
-The convergence hierarchy shows that
-inheritance-calculus is strictly more defined than the
-$\lambda$-calculus: more terms converge.
-The next subsection examines whether it is also strictly
-more expressive.
+stabilizes under $\mathrm{lfp}(T_P)$, where tabled evaluation
+detects the cycle and returns the definite result
+$\properties(\mathrm{root}) = \{x, \mathrm{result}\}$.
+The correspondence of this subsection is therefore a property
+of $T_P\!\uparrow\!1$ alone.
+The next subsection examines whether inheritance-calculus is
+also strictly more expressive.
 
 \subsection{Expressive Asymmetry}
 \label{sec:asymmetry}
@@ -2631,7 +2685,35 @@ Conventional $\lambda$-calculus semantics requires function
 spaces in the semantic domain, and recursive $\lambda$-terms
 ordinarily diverge under $\beta$-reduction;
 using $T_P$ over a first-order domain to give the
-$\lambda$-calculus a fixpoint semantics has not been explored.
+$\lambda$-calculus a fixpoint semantics that changes which
+terms converge has not been explored.
+In recent work, Yang~\cite{yang2026-co-lambda} brings tabled
+evaluation~\cite{tamaki1986-tabled-resolution} to the pure
+$\lambda$-calculus directly: head normalisation is read as a
+coalgebraic equation whose states are interned
+$\lambda$-terms, first-order objects with decidable identity,
+and tabling solves it, deciding unproductive loops such
+as~$\Omega$ as~$\bot$ in finite time.
+That treatment preserves the standard lazy
+(L\'evy--Longo) tree semantics and changes only the evaluator;
+it occupies the fixpoint~$\lambda$ node of
+Figure~\ref{fig:calculi-matrix}.
+It also differs in mechanism.
+The table is keyed by whole interned terms, not by paths
+into a scope tree, so partial results are not shared between
+queries that overlap on a path prefix.
+The order is not a powerset lattice under set inclusion but
+the tree approximation order, in which $\bot$ leaves are
+refined into subtrees, and the fixpoint is unique (least and
+greatest coincide by guardedness): a re-entrant call is
+answered with a single final~$\bot$ that no later iteration
+refines, so the iteration cannot grow an accumulator.
+Its more-definedness over the lazy $\lambda$-calculus is
+therefore exactly the unproductive~$\bot$ of
+Figure~\ref{fig:calculi-matrix}, terms whose divergence is
+decided as a definite~$\bot$ answer, and nothing more;
+the powerset order is what lets iteration accumulate and
+produce new non-$\bot$ values.
 
 \subsection{Inheritance, Objects, and Records}
 
@@ -2922,12 +3004,7 @@ Section~\ref{sec:bohm-tree} extended this first-order
 semantics to the $\lambda$-calculus:
 the prior higher-order semantic frameworks proved faithful
 to the first-iteration approximation of a sublanguage of
-inheritance-calculus's first-order equations;
-Appendix~\ref{app:lambda-fixpoint} reformulated this
-semantics directly on ANF\@.
-A convergence hierarchy among the eager, lazy, and fixpoint
-$\lambda$-calculi sharing the same $\lambda$-syntax followed
-as a corollary in Section~\ref{sec:convergence-hierarchy}.
+inheritance-calculus's first-order equations.
 
 Inheritance-calculus further gains three phenomena
 that the $\lambda$-calculus cannot express;
@@ -2984,9 +3061,13 @@ Section~\ref{sec:practical-union-fs} is
 request~\cite{ratarmount2025}}.
 \anon[All of the above are also included as supplementary material.]{}
 
-\bibliographystyle{ACM-Reference-Format}
-\bibliography{references}
+\begin{acks}
+  Claude Code, GitHub Copilot, Gemini Code Assist, and Codex were utilized to generate sections of this Work,
+  including text, tables, graphs, code, formulas, citations, etc.
+\end{acks}
+\fi % end \ifInheritanceBody (the main matter)
 
+\ifInheritanceAppendix
 \appendix
 
 \section{Well-Definedness of the Semantic Functions}
@@ -3195,12 +3276,11 @@ B\"ohm tree equivalence
 (Theorems~\ref{thm:adequacy} and~\ref{thm:first-order-semantics}),
 establishing that the first iteration coincides with
 the lazy $\lambda$-calculus.
-Second, the full $\mathrm{lfp}(T_P)$ semantics,
-the fixpoint $\lambda$-calculus, is strictly more defined:
-$\lambda$-terms that diverge under $\beta$-reduction
-may converge, as shown in Section~\ref{sec:convergence-hierarchy},
-establishing a convergence hierarchy among the eager,
-lazy, and fixpoint $\lambda$-calculi.
+Second, the full $\mathrm{lfp}(T_P)$ semantics is strictly
+more defined in the powerset sense of
+Figure~\ref{fig:calculi-matrix}: translated $\lambda$-terms
+that diverge under $\beta$-reduction may converge to definite
+sets, as shown in Section~\ref{sec:bohm-tree}.
 
 \subsection{B\"ohm Trees}
 
@@ -3670,12 +3750,13 @@ We make this precise.
   the post-reduct.
 \end{proof}
 
-\begin{remark}[Convergence hierarchy]
+\begin{remark}[Iteration levels]
   \label{rem:convergence-lfp}
   Section~\ref{sec:bohm-tree} showed that the B\"ohm tree
   correspondence holds at the first iteration
   $T_P\!\uparrow\!1$ and that $\mathrm{lfp}(T_P)$ is
-  strictly more defined.
+  strictly more defined in the powerset sense of
+  Figure~\ref{fig:calculi-matrix}.
   Here we make the connection precise.
   Tabled evaluation~\cite{tamaki1986-tabled-resolution}
   computes $\mathrm{lfp}(T_P)$ by iterating:
@@ -3718,26 +3799,21 @@ We make this precise.
   The convergence criterion
   (Definition~\ref{def:convergence}) deliberately
   projects away this distinction: it observes only
-  whether the $\result$ chain reaches an abstraction
+  whether the $\mathrm{result}$ chain reaches an abstraction
   shape, reducing the observation to a single bit.
   Theorems~\ref{thm:adequacy}
   and~\ref{thm:first-order-semantics}
   are stated at this coarsened observation level.
 
   \begin{description}
-    \item[$\mathrm{lfp}(T_P)$ defines the fixpoint
-      $\lambda$-calculus.]
+    \item[$\mathrm{lfp}(T_P)$ restores full precision.]
       At $\mathrm{lfp}(T_P)$, the full precision of the
       set-valued semantics is restored: re-entrant calls
       that returned~$\varnothing$ at $T_P\!\uparrow\!1$
       may now converge to non-empty sets, so the semantics
       distinguishes ``definitionally empty'' from
-      ``convergent after further iteration.''
-      We call the sublanguage with $\mathrm{lfp}(T_P)$
-      semantics the \emph{fixpoint $\lambda$-calculus};
-      it shares the same syntax as the lazy $\lambda$-calculus
-      but has strictly greater computational power:
-      $M{\Downarrow}_\lambda$ implies
+      ``convergent after further iteration,''
+      and $M{\Downarrow}_\lambda$ implies
       $\mathcal{T}(M){\Downarrow}_{\mathrm{lfp}}$,
       but not conversely.
   \end{description}
@@ -4666,564 +4742,6 @@ routes lead to the same definition, and $\supers$
 (equation~\ref{eq:supers}) collects both inheritance-site
 contexts without duplication.
 
-\section{First-Order Semantics of the ANF Fixpoint
-\texorpdfstring{$\lambda$}{λ}-Calculus}
-\label{app:lambda-fixpoint}
-
-This appendix reformulates the semantics of
-Section~\ref{sec:mixin-trees}, specialized to $\lambda$-terms via
-the Single-Path Lemma (Lemma~\ref{lem:single-path}), directly on
-ANF syntax. The first-iteration approximation gives the lazy
-$\lambda$-calculus semantics.
-
-The B\"ohm tree has exactly two path types---\emph{scope}
-($\mathcal{S}$) and \emph{application}
-($\mathcal{A}$)---with a unified $\mathtt{node}$ function
-that maps paths to ADT values.
-As in the main semantics (Section~\ref{sec:mixin-trees}),
-all dynamic functions are set-valued, so that the
-immediate consequence operator $T_P$
-(Definition~\ref{def:tp-operator}) applies directly.
-At $T_P\!\uparrow\!1$, the Single-Path Lemma
-(Lemma~\ref{lem:single-path}) guarantees that each set
-contains at most one element for translated
-$\lambda$-terms; at $\mathrm{lfp}(T_P)$, re-entrant
-calls that converge across iterations may introduce
-additional calling contexts, so the sets can grow beyond
-singletons.
-
-The direct formulation requires eight semantic equations,
-compared to six in Section~\ref{sec:mixin-trees}.
-The additional equations reflect syntactic distinctions
-of the $\lambda$-calculus that the three primitives of
-inheritance-calculus unify away;
-the proliferation is the cost of bypassing~$\mathcal{T}$.
-
-\paragraph{Syntax}
-Let $M$ denote a computation and $V$ a value.
-\[
-  \begin{array}{r@{\;::=\;}l}
-    M & \mathbf{let}\; x = V_1\; V_2 \;\mathbf{in}\; M
-    \mid \mathbf{let}\; x = V \;\mathbf{in}\; M
-    \mid V_1\; V_2
-    \mid V \\
-    V & \dbi{n} \mid x \mid \lambda.\, M
-  \end{array}
-\]
-The grammar includes application let-bindings
-($\mathbf{let}\; x = V_1\; V_2$),
-value let-bindings ($\mathbf{let}\; x = V$),
-tail calls ($V_1\; V_2$), and tail values ($V$).
-Variables use de~Bruijn indices: $\dbi{n}$ counts only
-$\lambda$-abstractions between the reference and its binder,
-following the standard convention.
-Let-bound variables are referenced by their binding name $x$.
-
-\paragraph{Two node types}
-Each position in the B\"ohm tree is either a \emph{scope node}
-or an \emph{application node}.
-These correspond to the path types $\mathcal{S}$ and
-$\mathcal{A}$ introduced above.
-
-A \textbf{scope node} (path type~$\mathcal{S}$)
-represents a body: a chain of let-bindings ending
-in a tail expression.
-Its $\mathtt{node}$ is either
-$\mathrm{Abstraction}(B,\,t)$
-(introduced by $\lambda.\,M$) or
-$\mathrm{Body}(B,\,t)$
-(a continuation); see \emph{AST} below.
-Its edges are the names of \emph{application} let-bindings
-$\{x_1, \ldots, x_k\}$; value let-bindings do not create
-edges (see \emph{AST} below).
-Navigation from a scope to a binding:
-$s \snoc x_i$ gives an application path
-$a \in \mathcal{A}$.
-
-An \textbf{application node} (path type~$\mathcal{A}$)
-represents a function application $V_1\; V_2$ bound by a
-$\mathbf{let}$.
-Its $\mathtt{node}$ is $\mathrm{App}(r_h,\, r_a)$,
-where $r_h, r_a \in \mathrm{ArgRef} \cup
-\mathrm{BindingRef} \cup \mathrm{InlineLambda}$.
-In the evaluated B\"ohm tree, $\head$ and $\argument$
-lazily resolve these references to sets of scope paths:
-$\head(p) \subseteq \mathcal{S}$
-and $\argument(p) \subseteq \mathcal{S}$.
-
-The path types alternate strictly:
-\[
-  \mathcal{S} \xrightarrow{\;\snoc\, x_i\;}
-  \mathcal{A} \xrightarrow{\;\head / \argument\;}
-  \mathcal{S} \xrightarrow{\;\snoc\, y_j\;}
-  \mathcal{A} \;\cdots
-\]
-There is no scope-to-scope or
-application-to-application direct transition.
-
-\paragraph{References}
-A reference
-$r \in \mathrm{ArgRef} \cup \mathrm{BindingRef}
-\cup \mathrm{InlineLambda}$
-encodes how to reach a target scope node.
-The ADT has three variants:
-\begin{itemize}
-  \item $\mathrm{ArgRef}(n)$: go up $n$
-    $\lambda$-scope levels, access the argument value.
-  \item $\mathrm{BindingRef}(n,\, x)$: go up $n$
-    $\lambda$-scope levels, access binding~$x$.
-  \item $\mathrm{InlineLambda}(M)$: an inline
-    $\lambda$-literal that immediately resolves to a
-    scope node (no lookup needed).
-\end{itemize}
-Since $n$ counts only $\lambda$-abstractions (not
-$\mathbf{let}$-bindings or tail calls), it matches the
-standard de~Bruijn convention.
-For example, in $\lambda.\,\lambda.\,\mathbf{let}\; r =
-\dbi{1}\;\dbi{0}\;\mathbf{in}\;r$, the outer-$\lambda$
-variable is $\mathrm{ArgRef}(1)$ and the
-inner-$\lambda$ variable is $\mathrm{ArgRef}(0)$.
-
-\paragraph{AST}
-An ANF term is parsed into an AST\@.
-The function $\mathtt{node}$ maps each path to a
-pure-data ADT value extracted from the parsed term.
-The ADT has three variants:
-\begin{itemize}
-  \item $\mathrm{Abstraction}(B,\, t)$:
-    a $\lambda$-scope with a binder slot,
-    where $B$ is the set of application let-binding names
-    $\{x_1, \ldots, x_k\}$, and $t$ is the tail
-    expression (defined below).
-  \item $\mathrm{Body}(B,\, t)$:
-    a continuation scope,
-    where $B$ is the set of application let-binding names
-    $\{x_1, \ldots, x_k\}$, and $t$ is the tail
-    expression (defined below).
-  \item $\mathrm{App}(r_h,\, r_a)$ where
-    $r_h, r_a \in \mathrm{ArgRef} \cup
-    \mathrm{BindingRef} \cup \mathrm{InlineLambda}$:
-    a function application $V_1\; V_2$ bound by a
-    $\mathbf{let}$, where $r_h$ encodes~$V_1$
-    (the function being applied) and $r_a$ encodes~$V_2$
-    (the argument).
-\end{itemize}
-For scope paths $s \in \mathcal{S}$,
-$\mathtt{node}(s) \in
-\mathrm{Abstraction} \cup \mathrm{Body}$;
-for application paths $a \in \mathcal{A}$,
-$\mathtt{node}(a) \in \mathrm{App}$.
-In pattern matches where the variant tag is irrelevant,
-we write $\mathtt{node}(s) = \_(B, t)$ to bind $B$
-and~$t$ from either variant.
-
-\subparagraph{Tail expression}
-The tail expression
-$t \in \mathrm{Ref} \cup \mathrm{TailCall}$
-has two variants:
-\begin{itemize}
-  \item $\mathrm{Ref}(r)$ where
-    $r \in \mathrm{ArgRef} \cup \mathrm{BindingRef}
-    \cup \mathrm{InlineLambda}$:
-    a tail value encoded as a reference.
-    (Value-bound names are resolved by inlining
-    and do not appear as references.)
-  \item $\mathrm{TailCall}(r_1, r_2)$: a tail-position
-    application, where
-    $r_1, r_2 \in \mathrm{ArgRef} \cup
-    \mathrm{BindingRef} \cup \mathrm{InlineLambda}$.
-\end{itemize}
-
-\subparagraph{Reference encoding}
-The function $\mathrm{enc}$ maps a value $V$ to a
-reference:
-\[
-  \mathrm{enc}(V) =
-  \begin{cases}
-    \mathrm{ArgRef}(m)
-    & \text{if } V = \dbi{m} \\[4pt]
-    \mathrm{BindingRef}(n,\, y)
-    & \text{if } V = y \text{ (let-bound, $n$
-    enclosing $\lambda$s between use and def.)} \\[4pt]
-    \mathrm{InlineLambda}(M')
-    & \text{if } V = \lambda.\, M'
-  \end{cases}
-\]
-
-\subparagraph{Definition of $\mathtt{node}$}
-The function $\mathtt{node}$ is defined by structural
-induction on the ANF term.
-The definition uses two mutually recursive procedures,
-$\mathrm{scope}$ and $\mathrm{body}$, corresponding to
-the two scope variants.
-
-$\mathrm{scope}(\lambda.\,M',\; s)$ defines the
-$\mathtt{node}$ at scope path~$s$ for a
-$\lambda$-abstraction:
-\[
-  \mathrm{scope}(\lambda.\,M',\; s)
-  \;:\quad
-  \mathtt{node}(s) = \mathrm{Abstraction}(B,\, t)
-  \quad\text{where } (B,\, t) = \mathrm{body}(M',\, s)
-\]
-
-$\mathrm{body}(M,\, s)$ processes a computation~$M$
-within an existing scope~$s$, returning $(B,\, t)$
-by cases on~$M$:
-\begin{itemize}
-  \item $M = \mathbf{let}\; x = V_1\; V_2
-    \;\mathbf{in}\; M'$
-    (application let-binding).\;
-    Let $(B',\, t) = \mathrm{body}(M',\, s)$.
-    Then $B = \{x\} \cup B'$, and
-    $\mathtt{node}(s \snoc x) =
-    \mathrm{App}(\mathrm{enc}(V_1),\,
-    \mathrm{enc}(V_2))$.
-
-  \item $M = \mathbf{let}\; x = V
-    \;\mathbf{in}\; M'$
-    (value let-binding).\;
-    No path is created.
-    Every reference to~$x$ in~$M'$ is replaced by
-    $\mathrm{enc}(V)$, with the de~Bruijn index
-    in $\mathrm{ArgRef}$ and $\mathrm{BindingRef}$
-    incremented by one for each $\lambda$-abstraction
-    between the substitution site and the binding site.
-    Then $(B,\, t) = \mathrm{body}(M'[x := V],\, s)$.
-
-  \item $M = V_1\; V_2$
-    (tail call).\;
-    $B = \varnothing$ and
-    $t = \mathrm{TailCall}(\mathrm{enc}(V_1),\,
-    \mathrm{enc}(V_2))$.
-
-  \item $M = V$
-    (tail value).\;
-    $B = \varnothing$ and
-    $t = \mathrm{Ref}(\mathrm{enc}(V))$.
-\end{itemize}
-When $\mathrm{enc}(V) = \mathrm{InlineLambda}(M')$,
-a dedicated scope path $s_\lambda$ is introduced with
-$\mathrm{scope}(\lambda.\,M',\; s_\lambda)$,
-giving
-$\mathtt{node}(s_\lambda) =
-\mathrm{Abstraction}(B',\, t')$
-where $(B',\, t') = \mathrm{body}(M',\, s_\lambda)$.
-Each $\mathrm{InlineLambda}$ occurrence in the ANF
-term determines a distinct~$s_\lambda$.
-
-In every case, the recursion descends to a strict
-subterm of the input; $\mathtt{node}$ is therefore
-total on all paths reachable from the root.
-The initial call is
-$\mathrm{scope}(\lambda.\,M_0,\; \text{root})$
-if the top-level term is $\lambda.\,M_0$, or
-$\mathtt{node}(\text{root}) = \mathrm{Body}(B,\, t)$
-with $(B,\, t) = \mathrm{body}(M_0,\, \text{root})$
-otherwise.
-
-\paragraph{Dynamic functions}
-The following functions are computed via the fixpoint
-equations.
-Functions that directly access the AST are defined by
-exhaustive pattern matching on $\mathtt{node}$;
-the remaining functions are defined by set comprehension.
-We write $\enclosingscope(s \snoc x) = s$.
-
-\subparagraph{Result.}
-$\result(p)$ performs one step of head reduction:
-\begin{equation}\label{eq:lambda-result}
-  \result(p) =
-  \begin{cases}
-    \resolveref(r,\; p)
-    & \text{if } \mathtt{node}(p) = \_(\_,\, \mathrm{Ref}(r)) \\[4pt]
-    \resolveref(r_1,\; p)
-    & \text{if } \mathtt{node}(p) = \_(\_,\, \mathrm{TailCall}(r_1, r_2)) \\[4pt]
-    \varnothing
-    & \text{if } \mathtt{node}(p) \in \mathrm{App}
-  \end{cases}
-\end{equation}
-The two scope cases are exhaustive by the tail-expression
-ADT\@.
-In the $\mathrm{Ref}$ case, $r$ is a reference;
-$\resolveref$ resolves it to a set of scopes
-(including the $\mathrm{InlineLambda}$ case).
-In the $\mathrm{TailCall}$ case,
-$r_1$ is the head reference
-and $\resolveref$ resolves it to function-body scopes.
-The tail call also stores the argument reference~$r_2$,
-which is accessed by de~Bruijn resolution when the function
-body references its argument (see \emph{Calling context} below).
-
-%% visiblebindings is not referenced by other equations;
-%% commented out to reduce clutter.
-%% \subparagraph{Visible bindings.}
-%% $\visiblebindings(p)$ collects all bindings along the
-%% $\result$ chain:
-%% \begin{equation}\label{eq:lambda-visible-bindings}
-%%   \visiblebindings(p) =
-%%   \begin{cases}
-%%     B \;\cup\;
-%%     \left\{\; b \;\middle|\;
-%%       \begin{aligned}
-%%         &p' \in \result(p),\\
-%%         &b \in \visiblebindings(p')
-%%       \end{aligned}
-%%     \right\}
-%%     & \text{if } \mathtt{node}(p) = \_(B,\, \_) \\[6pt]
-%%     \varnothing
-%%     & \text{if } \mathtt{node}(p) \in \mathrm{App}
-%%   \end{cases}
-%% \end{equation}
-
-\subparagraph{Head.}
-$\head(p)$ resolves the head reference of an application:
-\begin{equation}\label{eq:lambda-head}
-  \head(p) =
-  \begin{cases}
-    \resolveref(r_h,\; \enclosingscope(p))
-    & \text{if } \mathtt{node}(p) = \mathrm{App}(r_h,\, \_) \\[4pt]
-    \varnothing
-    & \text{if } \mathtt{node}(p) \in
-    \mathrm{Abstraction} \cup \mathrm{Body}
-  \end{cases}
-\end{equation}
-
-\subparagraph{Argument.}
-$\argument(p)$ resolves the argument reference:
-\begin{equation}\label{eq:lambda-argument}
-  \argument(p) =
-  \begin{cases}
-    \resolveref(r_a,\; \enclosingscope(p))
-    & \text{if } \mathtt{node}(p) = \mathrm{App}(\_,\, r_a) \\[4pt]
-    \varnothing
-    & \text{if } \mathtt{node}(p) \in
-    \mathrm{Abstraction} \cup \mathrm{Body}
-  \end{cases}
-\end{equation}
-
-\paragraph{Calling context and resolution}
-
-\subparagraph{Calling context.}
-When a $\lambda$-abstraction's body is entered via
-$\beta$-reduction, the resulting scope~$s$ acquires a
-\emph{calling context} that records which call
-introduced~$s$.
-A $\lambda$-body scope~$s$ is entered in one of two ways:
-via a let-binding application, or via a tail call.
-Each mechanism contributes calling contexts.
-
-\emph{Let-binding contexts.}\;
-For a scope $s'$ with $\mathtt{node}(s') = \_(B,\, \_)$
-and a binding name $x \in B$, the application
-$s' \snoc x$ contributes:
-\begin{equation}\label{eq:lambda-let-contexts}
-  \letcontexts(s) =
-  \left\{\; (s',\; s_a) \;\middle|\;
-    \begin{aligned}
-      &\mathtt{node}(s') = \_(B,\, \_),\;
-      x \in B,\\
-      &s \in \head(s' \snoc x),\\
-      &s_a \in \argument(s' \snoc x)
-    \end{aligned}
-  \right\}
-\end{equation}
-
-\emph{Tail-call contexts.}\;
-A scope $s'$ with
-$\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2))$
-and $s \in \resolveref(r_1,\, s')$ contributes:
-\begin{equation}\label{eq:lambda-tail-contexts}
-  \tailcontexts(s) =
-  \left\{\; (s',\; s_a) \;\middle|\;
-    \begin{aligned}
-      &\mathtt{node}(s') = \_(\_,\, \mathrm{TailCall}(r_1, r_2)),\\
-      &s \in \resolveref(r_1,\, s'),\\
-      &s_a \in \resolveref(r_2,\, s')
-    \end{aligned}
-  \right\}
-\end{equation}
-
-The full set of calling contexts:
-\begin{equation}\label{eq:lambda-contexts}
-  \contexts(s) =
-  \letcontexts(s) \;\cup\;
-  \tailcontexts(s)
-\end{equation}
-The caller scope and caller argument are obtained by
-projecting $(s',\; \_)$ and $(\_,\; s_a)$ from
-$\contexts(s)$ in the equations that use them
-($\scoperesolution$ and $\resolveref$ below).
-For the root scope, $\contexts$ is empty
-(the root has no caller).
-At $T_P\!\uparrow\!1$, the Single-Path Lemma
-(Lemma~\ref{lem:single-path}) guarantees that
-$\contexts(s)$ contains at most one pair for
-translated $\lambda$-terms.
-At $\mathrm{lfp}(T_P)$, re-entrant calls may converge and
-supply additional calling contexts to the same scope.
-
-\subparagraph{Reference resolution.}
-$\resolveref$ resolves any reference to a set of scope nodes:
-\begin{equation}\label{eq:lambda-resolve-ref}
-  \resolveref(r,\; s) =
-  \begin{cases}
-    \left\{\; s_a \;\middle|\;
-      \begin{aligned}
-        &s' \in \scoperesolution(n,\, s),\\
-        &(\_,\; s_a) \in \contexts(s')
-      \end{aligned}
-    \right\}
-    & \text{if } r = \mathrm{ArgRef}(n) \\[6pt]
-    \left\{\; s_h \;\middle|\;
-      \begin{aligned}
-        &s' \in \scoperesolution(n,\, s),\\
-        &\mathtt{node}(s') = \_(B,\, \_),\;
-        x \in B,\\
-        &s_h \in \head(s' \snoc x)
-      \end{aligned}
-    \right\}
-    & \text{if } r = \mathrm{BindingRef}(n,\, x) \\[6pt]
-    \{s_{\lambda}\}
-    & \text{if } r = \mathrm{InlineLambda}(M)
-  \end{cases}
-\end{equation}
-In the $\mathrm{InlineLambda}$ case,
-$s_\lambda$ is the scope path determined by
-$\mathrm{scope}(\lambda.\,M,\; s_\lambda)$
-(see \emph{Definition of $\mathtt{node}$} above).
-For $\mathrm{ArgRef}(n)$,
-$\scoperesolution$ navigates up $n$ $\lambda$-scope levels,
-yielding a set of scopes;
-the caller argument is then extracted from $\contexts$
-at each such scope.
-For $\mathrm{BindingRef}(n,\, x)$,
-$\scoperesolution$ navigates up $n$ $\lambda$-scope levels,
-then $x$ is projected from each resulting scope and its head is
-resolved.
-
-\subparagraph{Scope resolution.}
-$\scoperesolution$ navigates upward through the B\"ohm tree
-to find the binding site of a de~Bruijn reference,
-returning a set of scopes.
-Only $\lambda$-abstractions count as scope levels;
-application $\mathbf{let}$-bindings and tail calls do not.
-\begin{equation}\label{eq:lambda-scope}
-  \scoperesolution(n,\; s) =
-  \begin{cases}
-    \{s\} & \text{if } n = 0 \\[6pt]
-    \left\{\; s'' \;\middle|\;
-      \begin{aligned}
-        &(s',\; \_) \in \contexts(s),\\
-        &s'' \in \scoperesolution(n - 1,\; s')
-      \end{aligned}
-    \right\}
-    & \text{if } n > 0
-  \end{cases}
-\end{equation}
-Each recursive step moves from the current scope~$s$ to
-each caller scope in $\contexts(s)$
-and decrements~$n$.
-Since $n$ is a nonnegative integer, the nesting depth of
-$\scoperesolution$ is bounded by the de~Bruijn index;
-well-definedness of the mutual recursion with $\contexts$
-follows from the $T_P$ fixed-point construction
-(Definition~\ref{def:tp-operator}), as for all dynamic
-functions above.
-
-\paragraph{Observational fixpoint semantics}
-The definitions above constitute the complete semantics.
-Computation arises from querying progressively deeper paths
-in a lazily constructed tree: the observer drives computation
-by choosing which path to inspect, and the mutually recursive
-definitions unfold on demand.
-
-Formally, the mutually recursive
-equations~(\ref{eq:lambda-result})--(\ref{eq:lambda-contexts})
-and~(\ref{eq:lambda-resolve-ref})--(\ref{eq:lambda-scope})
-define set-valued functions recursively:
-$p' \in \result(p)$ holds if and only if it can be
-established by a finite chain of applications of these
-equations.
-Well-definedness has two parts.
-The static part: $\mathtt{node}$ is total on all
-reachable paths by structural induction on the ANF term,
-as established above.
-The dynamic part: each equation's right-hand side is
-built from $\cup$, $\in$, equality, and positive set
-comprehension, so the immediate consequence
-operator~$T_P$ (Definition~\ref{def:tp-operator}) is
-monotone on the complete lattice of query--answer maps,
-and the Knaster--Tarski theorem gives the least fixed
-point.
-When no finite derivation exists for a given query
-(as with $\Omega$), the fixed-point iteration does not
-terminate.%
-\footnote{
-  Although $\Omega$ is a finite ANF term, the set of
-  reachable paths is infinite: each head reduction step
-  unfolds a new tail call, extending the $\result$ chain
-  and introducing fresh application paths.
-  The query set~$\mathcal{Q}$ is therefore infinite, so
-  the ascending chain condition does not apply and the
-  Kleene iteration $T_P\!\uparrow\!n$ need not stabilise
-  at any finite~$n$.
-}
-
-\paragraph{Convergence and head normal form}
-An ANF term $M$ \emph{converges}, written $M{\Downarrow}$,
-if there exist scopes $s_0, s_1, \ldots, s_k$
-with $s_0 = \text{root}$,
-$s_{i+1} \in \result(s_i)$ for each $0 \le i < k$,
-and $\mathtt{node}(s_k) \in \mathrm{Abstraction}$,
-in the semantics defined by the equations above.
-The term has been reduced through $k$ head reduction steps
-(each tracked by one $\result$ step) to an abstraction
-$\lambda.\,M'$.
-
-The same equations support two evaluation regimes.
-At $T_P\!\uparrow\!1$ (one iteration, re-entrant calls
-return~$\varnothing$), the semantics coincides with the lazy
-$\lambda$-calculus:
-$M$ converges iff it has a head normal form
-(Theorem~\ref{thm:adequacy}), and two terms are
-equivalent iff they have the same
-B\"ohm tree~\cite{barendregt1984-lambda-calculus}
-(Theorem~\ref{thm:first-order-semantics}).
-At $\mathrm{lfp}(T_P)$ (iterate to the least fixpoint),
-the semantics defines the \emph{fixpoint $\lambda$-calculus}
-(Remark~\ref{rem:convergence-lfp}):
-re-entrant calls that returned
-$\varnothing$ at $T_P\!\uparrow\!1$ may now converge and
-contribute additional heads and arguments to the same scope,
-so a single scope acquires multiple calling contexts:
-syntactically single inheritance becomes semantically
-multiple inheritance through value recursion.
-A term that converges under the lazy $\lambda$-calculus
-also converges under the fixpoint $\lambda$-calculus;
-a term that diverges under the lazy $\lambda$-calculus
-may, under the fixpoint $\lambda$-calculus, still diverge
-(as $\Omega$ does), or converge to zero, one, or
-multiple values.
-Only the iteration depth changes; the equations themselves
-are identical.
-
-The B\"ohm tree equations above are self-contained.
-For the proofs (Appendix~\ref{app:bohm-tree-proofs}),
-we observe that each equation is the specialization of
-the corresponding mixin tree equation
-(Section~\ref{sec:mixin-trees}) to terms in the image
-of the translation~$\mathcal{T}$%
-\footnote{
-  Concretely,
-  $\result$ specializes $\properties$/$\bases$,
-  $\head$/$\argument$ specialize $\resolve$,
-  $\scoperesolution$ specializes $\this$,
-  and $\contexts$ specializes the provenance tracking
-  in $\supers$.
-}
-(Section~\ref{sec:forward-translation}).
-
 \section{Encoding Datalog in Inheritance-Calculus}
 \label{app:datalog-encoding}
 
@@ -5933,9 +5451,9 @@ $\properties((\text{``HasMultipleOuters''}, \text{``outer''}))$.
   = \{\text{``MyInner''}\} = \properties((\text{``MyOuter''}))$.
 \end{remark}
 
-\begin{acks}
-  Claude Code, GitHub Copilot, Gemini Code Assist, and Codex were utilized to generate sections of this Work,
-  including text, tables, graphs, code, formulas, citations, etc.
-\end{acks}
+\fi % end \ifInheritanceAppendix
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
 
 \end{document}

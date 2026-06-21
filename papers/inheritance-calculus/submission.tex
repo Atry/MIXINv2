@@ -1,0 +1,16 @@
+%%
+%% POPL submission using the ACM SIGPLAN acmart format.
+%% Main matter only: POPL 2027 requires appendices to be submitted as
+%% separate supplemental material (see supplement.tex), not in this PDF.
+%%
+%% References into the appendices resolve via xr-hyper, reading the labels
+%% of supplement-xref.tex (a leaf appendix build with identical numbering
+%% to supplement.tex). Links point at the distributed supplement.pdf.
+%% latexmk builds supplement-xref automatically (see latexmkrc).
+%%
+\documentclass[acmsmall,screen,review,anonymous,nonacm]{acmart}
+\usepackage{xr-hyper}
+\externaldocument{supplement-xref}[supplement.pdf]
+\newif\ifInheritanceBody\InheritanceBodytrue
+\newif\ifInheritanceAppendix\InheritanceAppendixfalse
+\input{inheritance-calculus}

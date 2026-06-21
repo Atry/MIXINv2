@@ -9,6 +9,12 @@ from mixinv2 import extend, extern, public, resource, scope
 
 
 # [docs:step4-http-server]
+class _Handler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        self.server.request_scope_factory(request=self).responseSent  # type: ignore[attr-defined]
+
+    def log_message(self, format: str, *arguments: object) -> None:
+        pass
 @scope
 class SQLiteDatabase:
     @extern
@@ -134,14 +140,9 @@ class NetworkServer:
     @public
     @resource
     def server(host: str, port: int, Request: Callable) -> HTTPServer:
-        class Handler(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:
-                Request(request=self).responseSent
-
-            def log_message(self, format: str, *arguments: object) -> None:
-                pass
-
-        return HTTPServer((host, port), Handler)
+        http_server = HTTPServer((host, port), _Handler)
+        http_server.request_scope_factory = Request  # type: ignore[attr-defined]
+        return http_server
 
 @extend(
     LexicalReference(path=("SQLiteDatabase",)),

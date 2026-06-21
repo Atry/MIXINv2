@@ -672,7 +672,8 @@ def evaluate(
     """
     from dataclasses import replace
     from types import ModuleType
-    from typing import assert_never
+
+    from typing_extensions import assert_never
 
     from mixinv2._core import (
         MixinSymbol,

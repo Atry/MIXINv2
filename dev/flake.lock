@@ -540,7 +540,9 @@
         "nix2container": "nix2container",
         "nixago": "nixago",
         "nixos-generators": "nixos-generators",
-        "nixpkgs": "nixpkgs_5",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
         "nixpkgs_22_05": "nixpkgs_22_05",
         "poetry2nix": "poetry2nix",
         "pre-commit-hooks": "pre-commit-hooks",
@@ -840,17 +842,18 @@
     },
     "nixpkgs_5": {
       "locked": {
-        "lastModified": 1746663147,
-        "narHash": "sha256-Ua0drDHawlzNqJnclTJGf87dBmaO/tn7iZ+TCkTRpRc=",
+        "lastModified": 1780749050,
+        "narHash": "sha256-3av0pIjlOWQ6rDbNOmpUSvbNnJkGORQKKjb4LtCZsIY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "dda3dcd3fe03e991015e9a74b22d35950f264a54",
+        "rev": "a799d3e3886da994fa307f817a6bc705ae538eeb",
         "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
+        "owner": "NixOS",
         "ref": "nixos-unstable",
-        "type": "indirect"
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "poetry2nix": {
@@ -925,7 +928,8 @@
         "nix2container": [
           "nix-ml-ops",
           "nix2container"
-        ]
+        ],
+        "nixpkgs": "nixpkgs_5"
       }
     },
     "systems": {

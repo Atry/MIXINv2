@@ -1,0 +1,17 @@
+%%
+%% POPL supplemental material: the appendices only.
+%% POPL 2027 requires all appendices to be submitted as supplemental
+%% material rather than as part of the main submission PDF; this entry
+%% compiles exactly that part of the shared body in
+%% inheritance-calculus.tex.
+%%
+%% References back into the main matter resolve via xr-hyper, reading the
+%% labels of submission.tex; latexmk builds it automatically (see
+%% latexmkrc). This is the appendix PDF that is actually distributed.
+%%
+\documentclass[acmsmall,screen,review,anonymous,nonacm]{acmart}
+\usepackage{xr-hyper}
+\externaldocument{submission}[submission.pdf]
+\newif\ifInheritanceBody\InheritanceBodyfalse
+\newif\ifInheritanceAppendix\InheritanceAppendixtrue
+\input{inheritance-calculus}

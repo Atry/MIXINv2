@@ -1,7 +1,7 @@
 topLevel@{ ... }: {
   imports = [ ./dev.nix ];
   partitions.dev.module = { inputs, ... }: {
-    perSystem = { pkgs, lib, ... }:
+    perSystem = { pkgs, lib, system, config, ... }:
       let
         workspace =
           inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ../.; };
@@ -44,14 +44,12 @@ topLevel@{ ... }: {
           })
         ]);
 
-        members = [
-          "mixinv2"
-          "mixinv2-library"
-          "mixinv2-examples"
-          "overlay-language"
-          "overlay-library"
-          "fixpoints"
-        ];
+        # Every workspace package under packages/ is installed editable. Deriving the list from
+        # the directory (rather than hardcoding it) means a newly added package is editable
+        # automatically; the uv2nix member key is the normalized (dash) name, which equals the
+        # directory name (e.g. directory overlay-language for project overlay.language).
+        members = builtins.attrNames (lib.filterAttrs (_: type: type == "directory")
+          (builtins.readDir ../packages));
 
         editableOverlay = workspace.mkEditablePyprojectOverlay {
           root = "$REPO_ROOT";
@@ -114,6 +112,43 @@ topLevel@{ ... }: {
 
         # --- Supplementary material for double-blind review ---
 
+        # Identity anonymization shared by every supplementary bundle. The from/to pairs are
+        # rendered into substituteInPlace arguments; the leak check fails the build if any
+        # de-anonymized identity survives.
+        identityReplacements = [
+          { from = "yang-bo@yang-bo.com"; to = "anonymous@example.com"; }
+          { from = "Yang, Bo"; to = "Anonymous, Author"; }
+          { from = "Bo Yang"; to = "Anonymous Author"; }
+          { from = "Figure AI Inc."; to = "Anonymous Institution"; }
+          { from = "Figure AI"; to = "Anonymous Institution"; }
+          {
+            from = "github.com/Atry/MIXINv2";
+            to = "github.com/anonymous-author/anonymous-repo";
+          }
+        ];
+
+        mkReplaceArgs = replacements:
+          lib.concatMapStringsSep " "
+          (replacement: "--replace-warn '${replacement.from}' '${replacement.to}'")
+          replacements;
+
+        assertNoIdentityLeak = dir: ''
+          for identityNeedle in "Bo Yang" "yang-bo" "Figure AI"; do
+            if grep -rli "$identityNeedle" ${dir}; then
+              echo "FAIL: identity leak '$identityNeedle'" >&2; exit 1
+            fi
+          done
+          if grep -rl "Atry" ${dir}; then
+            echo "FAIL: identity leak 'Atry'" >&2; exit 1
+          fi
+        '';
+
+        # Positive check that anonymization ran: the author line 'Yang, Bo' becomes
+        # 'Anonymous, Author', which every bundle's package metadata carries.
+        assertAnonymized = dir: ''
+          grep -rl "Anonymous, Author" ${dir} > /dev/null
+        '';
+
         sphinxEnv = (pythonSet.mkVirtualEnv "sphinx-env"
           (builtins.removeAttrs workspace.deps.all
             [ "mixinv2-workspace" ])).overrideAttrs
@@ -133,10 +168,6 @@ topLevel@{ ... }: {
             ../packages/mixinv2-examples/tests
             ../packages/mixinv2-library/tests
             ../packages/mixinv2/tests
-            ../packages/fixpoints/src
-            ../packages/fixpoints/pyproject.toml
-            ../packages/fixpoints/README.md
-            ../packages/fixpoints/tests
             ../mixinv2.schema.json
             ../pyproject.toml
             ../uv.lock
@@ -178,7 +209,7 @@ topLevel@{ ... }: {
 
           ## Running Tests
 
-          Requires Python >= 3.13 and [uv](https://docs.astral.sh/uv/).
+          Requires Python >= 3.11 and [uv](https://docs.astral.sh/uv/).
 
           ```
           uv sync
@@ -267,12 +298,7 @@ topLevel@{ ... }: {
             substituteInPlace \
               **/*.py **/*.toml **/*.lock **/*.json **/*.md **/*.rst \
               **/*.cfg **/*.txt **/*.yaml **/*.yml **/*.ini \
-              --replace-warn 'yang-bo@yang-bo.com' 'anonymous@example.com' \
-              --replace-warn 'Yang, Bo' 'Anonymous, Author' \
-              --replace-warn 'Bo Yang' 'Anonymous Author' \
-              --replace-warn 'Figure AI Inc.' 'Anonymous Institution' \
-              --replace-warn 'Figure AI' 'Anonymous Institution' \
-              --replace-warn 'github.com/Atry/MIXINv2' 'github.com/anonymous-author/anonymous-repo' \
+              ${mkReplaceArgs identityReplacements} \
               --replace-warn 'github.com/Atry/overlay' 'github.com/anonymous-author/anonymous-repo' \
               --replace-warn 'github.com/Atry/MIXIN' 'github.com/anonymous-author/anonymous-repo' \
               --replace-warn "'Atry'" "'anonymous-author'" \
@@ -340,18 +366,7 @@ topLevel@{ ... }: {
             unzip $out -d $TMPDIR/verify
 
             # No identity leaks
-            if grep -rli "Bo Yang" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Bo Yang'" >&2; exit 1
-            fi
-            if grep -rli "yang-bo" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'yang-bo'" >&2; exit 1
-            fi
-            if grep -rli "Figure AI" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Figure AI'" >&2; exit 1
-            fi
-            if grep -rl "Atry" $TMPDIR/verify/supplementary-material/; then
-              echo "FAIL: Found 'Atry'" >&2; exit 1
-            fi
+            ${assertNoIdentityLeak "$TMPDIR/verify/supplementary-material/"}
             if grep -rl "2602.16291" $TMPDIR/verify/supplementary-material/; then
               echo "FAIL: Found arxiv self-reference '2602.16291'" >&2; exit 1
             fi
@@ -378,7 +393,7 @@ topLevel@{ ... }: {
             fi
 
             # Anonymization applied
-            grep -rl "Anonymous Author" $TMPDIR/verify/supplementary-material/ > /dev/null
+            ${assertAnonymized "$TMPDIR/verify/supplementary-material/"}
 
             # Integration test (uv sync + pytest) requires network access,
             # so it cannot run in the Nix sandbox. Run manually:
@@ -386,6 +401,7 @@ topLevel@{ ... }: {
             #   uv sync && uv run pytest tests/ packages/mixinv2-examples/tests/
           '';
         };
+
       in {
         packages.default = (pythonSet.mkVirtualEnv "mixinv2-env"
           (builtins.removeAttrs workspace.deps.default

@@ -1,0 +1,19 @@
+%%
+%% Internal cross-reference scaffold -- NOT for distribution.
+%%
+%% An appendix-only build identical to supplement.tex but WITHOUT any
+%% \externaldocument, so it is a dependency-free leaf. Its only purpose is
+%% to export the appendix labels and numbers to submission.tex (read via
+%% xr-hyper). This turns the otherwise circular submission<->supplement
+%% cross-reference into a one-way chain that latexmk can build by itself:
+%%
+%%     supplement-xref  ->  submission  ->  supplement
+%%
+%% supplement-xref and supplement compile the same appendix with the same
+%% options, so their numbering is identical; the numbers submission picks
+%% up here therefore match the distributed supplement.pdf exactly.
+%%
+\documentclass[acmsmall,screen,review,anonymous,nonacm]{acmart}
+\newif\ifInheritanceBody\InheritanceBodyfalse
+\newif\ifInheritanceAppendix\InheritanceAppendixtrue
+\input{inheritance-calculus}

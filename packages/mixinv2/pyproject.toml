@@ -26,13 +26,14 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
-dependencies = ["pyyaml>=6.0.3", "fixpoints"]
+dependencies = [
+    "pyyaml>=6.0.3",
+ "fixpoints",
+ "typing-extensions>=4.0.0",
+]
 
 [project.optional-dependencies]
-docs = ["sphinx>=9.1.0", "sphinx-mdinclude>=0.6.2"]
-
-[tool.uv]
-sources = { fixpoints = { workspace = true } }
+docs = ["sphinx>=8.1.0,<9", "sphinx-mdinclude>=0.6.2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mixinv2"]

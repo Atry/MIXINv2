@@ -1,0 +1,16 @@
+$pdf_mode = 1;
+@default_files = ('submission.tex', 'supplement.tex', 'supplement-xref.tex', 'preprint.tex');
+$bibtex_use = 1;
+
+# Resolve cross-document references (xr-hyper / \externaldocument)
+# automatically: when a build reports a missing external .aux, build the
+# document that produces it first, then rerun. The guard keeps latexmk
+# from recursing on the document it is already building. The dependency
+# chain supplement-xref -> submission -> supplement is acyclic, so this
+# terminates.
+add_cus_dep('tex', 'aux', 0, 'makeexternaldocument');
+sub makeexternaldocument {
+    if ( $root_filename ne $_[0] ) {
+        system("latexmk -pdf -interaction=nonstopmode '$_[0]'");
+    }
+}
