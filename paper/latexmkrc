@@ -1,5 +1,8 @@
+# Build with pdfLaTeX ($pdf_mode = 1). Both the English entry points and the
+# Chinese translation (preprint-zh.tex, which loads CJKutf8 with the gbsn font)
+# render under pdfLaTeX, never XeLaTeX, so every build is identical.
 $pdf_mode = 1;
-@default_files = ('submission.tex', 'supplement.tex', 'supplement-xref.tex', 'preprint.tex');
+@default_files = ('submission.tex', 'supplement.tex', 'supplement-xref.tex', 'preprint.tex', 'preprint-zh.tex');
 $bibtex_use = 1;
 
 # Resolve cross-document references (xr-hyper / \externaldocument)
