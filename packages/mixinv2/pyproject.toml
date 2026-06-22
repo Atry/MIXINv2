@@ -18,7 +18,7 @@ dynamic = ["version"]
 description = "A dependency injection framework with pytest-fixture syntax, plus a configuration language for declarative programming"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [{ name = "Yang, Bo", email = "yang-bo@yang-bo.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",

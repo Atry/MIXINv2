@@ -17,7 +17,7 @@ name = "overlay.language"
 dynamic = ["version", "dependencies"]
 description = "Backward compatibility wrapper — overlay.language is now mixinv2"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [
     {name = "Yang, Bo", email = "yang-bo@yang-bo.com"},
 ]
