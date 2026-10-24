@@ -1230,11 +1230,6 @@ class MixinSymbol(HasDict, Mapping[Hashable, "MixinSymbol"], Symbol):
     def _generate_overrides(self) -> Iterator["MixinSymbol"]:
         match self.origin:
             case Nested(outer=outer, key=key):
-                branch_unions = [
-                    outer_union
-                    for outer_union in outer.qualified_this
-                    if outer_union.has_own_key(key)
-                ]
                 # Reflexive {p} only when p exists: written directly in the AST
                 # (outer owns the key) or reached through inheritance (a branch
                 # owns it). A path that is neither has empty overrides, so
@@ -1242,10 +1237,18 @@ class MixinSymbol(HasDict, Mapping[Hashable, "MixinSymbol"], Symbol):
                 # existence, and supers(p . l) != empty is membership, with the
                 # same answers main read off properties (a non-existent self-pair
                 # never passes the inherits != Nothing filter any observer uses).
-                if outer.has_own_key(key) or branch_unions:
+                # One pass over the branches: the reflexive pair is yielded as
+                # soon as existence is known, before the first branch override,
+                # which keeps the order the evaluation trace records.
+                exists = outer.has_own_key(key)
+                if exists:
                     yield self
-                for outer_union in branch_unions:
-                    yield outer_union[key]
+                for outer_union in outer.qualified_this:
+                    if outer_union.has_own_key(key):
+                        if not exists:
+                            exists = True
+                            yield self
+                        yield outer_union[key]
             case _:
                 yield self
 
