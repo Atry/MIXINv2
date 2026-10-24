@@ -14,3 +14,4 @@
 # the calls to overrides/bases/resolve/this/supers, and renders them as the
 # numbered list written to this file.
 generated-evaluation-trace.tex linguist-generated
+_minted*/** linguist-generated

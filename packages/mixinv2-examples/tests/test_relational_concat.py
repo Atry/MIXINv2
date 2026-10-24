@@ -8,7 +8,7 @@ Standard Datalog result (4 tuples):
 Per-constant construction preserves column correlations and matches
 Datalog semantics exactly.
 
-Uses the RepeatedVisitor encoding with TailMap navigation.
+Uses the RepeatedVisitor encoding with __TailMap navigation.
 """
 
 import pytest
@@ -34,19 +34,19 @@ CONSTANTS = ("a", "b", "c")
 def _collect_quads(
     relation: Scope,
 ) -> set[tuple[str, str, str, str]]:
-    """Enumerate all (X,Y,W,Z) 4-tuples present in a 4-column TailMap relation trie."""
+    """Enumerate all (X,Y,W,Z) 4-tuples present in a 4-column __TailMap relation trie."""
     quads: set[tuple[str, str, str, str]] = set()
     for first in CONSTANTS:
         for second in CONSTANTS:
             for third in CONSTANTS:
                 for fourth in CONSTANTS:
                     try:
-                        tail1 = getattr(relation.TailMap, first)
-                        tail2 = getattr(tail1.TailMap, second)
-                        tail3 = getattr(tail2.TailMap, third)
-                        getattr(tail3.TailMap, fourth)
+                        tail1 = getattr(relation["__TailMap"], first)
+                        tail2 = getattr(tail1["__TailMap"], second)
+                        tail3 = getattr(tail2["__TailMap"], third)
+                        getattr(tail3["__TailMap"], fourth)
                         quads.add((first, second, third, fourth))
-                    except AttributeError:
+                    except (AttributeError, KeyError):
                         pass
     return quads
 
@@ -55,14 +55,14 @@ class TestConcatEdgeFacts:
     """Verify base edge facts are present."""
 
     def test_edge_a_b(self, concat_scope: Scope) -> None:
-        assert isinstance(concat_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(concat_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_c(self, concat_scope: Scope) -> None:
-        assert isinstance(concat_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(concat_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_lacks_a_c(self, concat_scope: Scope) -> None:
-        with pytest.raises(AttributeError):
-            concat_scope.edge.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            concat_scope.edge["__TailMap"].a["__TailMap"].c
 
 
 class TestConcatResult:
@@ -86,28 +86,28 @@ class TestConcatResult:
     def test_concat_a_b_a_b(self, concat_scope: Scope) -> None:
         """edge(a,b) x edge(a,b)."""
         assert isinstance(
-            concat_scope.concat.TailMap.a.TailMap.b.TailMap.a.TailMap.b, Scope
+            concat_scope.concat["__TailMap"].a["__TailMap"].b["__TailMap"].a["__TailMap"].b, Scope
         )
 
     def test_concat_a_b_b_c(self, concat_scope: Scope) -> None:
         """edge(a,b) x edge(b,c)."""
         assert isinstance(
-            concat_scope.concat.TailMap.a.TailMap.b.TailMap.b.TailMap.c, Scope
+            concat_scope.concat["__TailMap"].a["__TailMap"].b["__TailMap"].b["__TailMap"].c, Scope
         )
 
     def test_concat_b_c_a_b(self, concat_scope: Scope) -> None:
         """edge(b,c) x edge(a,b)."""
         assert isinstance(
-            concat_scope.concat.TailMap.b.TailMap.c.TailMap.a.TailMap.b, Scope
+            concat_scope.concat["__TailMap"].b["__TailMap"].c["__TailMap"].a["__TailMap"].b, Scope
         )
 
     def test_concat_b_c_b_c(self, concat_scope: Scope) -> None:
         """edge(b,c) x edge(b,c)."""
         assert isinstance(
-            concat_scope.concat.TailMap.b.TailMap.c.TailMap.b.TailMap.c, Scope
+            concat_scope.concat["__TailMap"].b["__TailMap"].c["__TailMap"].b["__TailMap"].c, Scope
         )
 
     def test_concat_lacks_a_c(self, concat_scope: Scope) -> None:
-        """(a,c,...) absent — a's Tail is only b, never c."""
-        with pytest.raises(AttributeError):
-            concat_scope.concat.TailMap.a.TailMap.c
+        """(a,c,...) absent — a's __Tail is only b, never c."""
+        with pytest.raises((AttributeError, KeyError)):
+            concat_scope.concat["__TailMap"].a["__TailMap"].c

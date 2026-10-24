@@ -1,0 +1,15 @@
+# Generated during the build by the LaTeX include macros (\mixinprovide): the
+# comment-stripped or verbatim copies of the real MIXINv2 sources the paper
+# \lstinputlistings. The originals are tracked under ../packages and
+# ../mixinv2.schema.json; these basename copies are build artifacts.
+*.mixin.yaml
+
+# minted output is a build artifact, not source: the highlight cache directory
+# and the per-job transient files minted writes at the paper root. The arxiv
+# bundle regenerates the cache from scratch during packaging, so none of this
+# is tracked.
+/_minted/
+/_*.config.minted
+/_*.data.minted
+/_*.errlog.minted
+/_*.message.minted

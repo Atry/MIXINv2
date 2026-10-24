@@ -1,21 +1,21 @@
 - [BinNatData]
 - BinNatFactory:
-    Product:
-      increment: [Product]
-    Zero:
-      increment:
-        - [Odd]
+    - Product:
+        - increment: [[Product]]
+    - Zero:
+        - increment:
+            - [Odd]
+            - halfOfPredecessor:
+                - [Zero]
+    - Even:
+        - half:
+            - increment: [[Product]]
+        - increment:
+            - [Odd]
+            - halfOfPredecessor: [[Even, ~, half]]
+    - Odd:
         - halfOfPredecessor:
-            - [Zero]
-    Even:
-      half:
-        increment: [Product]
-      increment:
-        - [Odd]
-        - halfOfPredecessor: [Even, ~, half]
-    Odd:
-      halfOfPredecessor:
-        increment: [Product]
-      increment:
-        - [Even]
-        - half: [Odd, ~, halfOfPredecessor, increment]
+            - increment: [[Product]]
+        - increment:
+            - [Even]
+            - half: [[Odd, ~, halfOfPredecessor, increment]]

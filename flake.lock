@@ -22,11 +22,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1780749050,
-        "narHash": "sha256-3av0pIjlOWQ6rDbNOmpUSvbNnJkGORQKKjb4LtCZsIY=",
+        "lastModified": 1791025097,
+        "narHash": "sha256-fAtIwYfUPAKDKVSrxZXOKI1wGeDfG5zT49y1yeKiFvg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a799d3e3886da994fa307f817a6bc705ae538eeb",
+        "rev": "f667e4c3077776c3056e1228cd47a8af1c3f477d",
         "type": "github"
       },
       "original": {
@@ -98,30 +98,12 @@
         "type": "github"
       }
     },
-    "ratarmount": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1765312622,
-        "narHash": "sha256-CZGErNhtjBchplUNOttuvu5WOXni/iTEHrtARAlXtp0=",
-        "owner": "Atry",
-        "repo": "ratarmount",
-        "rev": "3ae943d980b248c8e5d15fabeed85079be514434",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Atry",
-        "ref": "resolve-symbolic-links",
-        "repo": "ratarmount",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs",
         "pyproject-build-systems": "pyproject-build-systems",
         "pyproject-nix": "pyproject-nix",
-        "ratarmount": "ratarmount",
         "systems": "systems",
         "uv2nix": "uv2nix",
         "uv2nix_hammer_overrides": "uv2nix_hammer_overrides"

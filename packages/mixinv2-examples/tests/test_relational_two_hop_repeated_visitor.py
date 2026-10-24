@@ -10,7 +10,7 @@ Facts:
 Rule:
   twoHop(X,Z) := edge(X,Y), edge(Y,Z).
 
-This encoding uses repeated Acceptance/Visitor pattern to perform
+This encoding uses repeated __Acceptance/__Visitor pattern to perform
 value-level join on Y, avoiding the over-approximation problem of
 the simpler VisitorMapFactory approach.
 
@@ -39,14 +39,14 @@ def repeated_visitor_scope() -> Scope:
 
 
 def _get_tail_map_entry(scope: Scope, entity: str) -> Scope:
-    """Navigate TailMap.<entity> on a scope."""
-    return getattr(scope.TailMap, entity)
+    """Navigate __TailMap.<entity> on a scope."""
+    return getattr(scope["__TailMap"], entity)
 
 
 def _collect_pairs(relation: Scope) -> set[tuple[str, str]]:
     """Enumerate all (first, second) pairs present in a binary relation trie.
 
-    Navigates via TailMap.<entity> for each column.
+    Navigates via __TailMap.<entity> for each column.
     """
     pairs: set[tuple[str, str]] = set()
     for first in CONSTANTS:
@@ -55,7 +55,7 @@ def _collect_pairs(relation: Scope) -> set[tuple[str, str]]:
                 tail1 = _get_tail_map_entry(relation, first)
                 _get_tail_map_entry(tail1, second)
                 pairs.add((first, second))
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
     return pairs
 
@@ -69,14 +69,14 @@ class TestEvaluation:
     """Test that RelationalTwoHopRepeatedVisitor evaluates without errors.
 
     Currently fails with:
-      ValueError: Cannot navigate path ('VisitorMap', 'a', 'Visited'):
-      ('RelationalTwoHopRepeatedVisitor', 'a', 'Acceptance', 'VisitorMap')
+      ValueError: Cannot navigate path ('__VisitorMap', 'a', '__Visited'):
+      ('RelationalTwoHopRepeatedVisitor', 'a', '__Acceptance', '__VisitorMap')
       (unexpected kind CONFLICT) has no child 'a'
 
-    The root cause is in constant 'a' Acceptance definition (lines 49-54):
-    the VisitorMap uses list syntax (- a: [Visitor]) creating a CONFLICT
-    with the VisitorMap inherited from Relation, while constants 'b' and 'c'
-    use plain mapping syntax (VisitorMap: b: [Visitor]) which works correctly.
+    The root cause is in constant 'a' __Acceptance definition (lines 49-54):
+    the __VisitorMap uses list syntax (- a: [__Visitor]) creating a CONFLICT
+    with the __VisitorMap inherited from __Relation, while constants 'b' and 'c'
+    use plain mapping syntax (__VisitorMap: b: [__Visitor]) which works correctly.
     """
 
     def test_scope_loads_without_error(
@@ -100,19 +100,19 @@ class TestEdgeFacts:
     def test_edge_a_b(self, repeated_visitor_scope: Scope) -> None:
         """edge(a,b) exists."""
         assert isinstance(
-            repeated_visitor_scope.edge.TailMap.a.TailMap.b, Scope
+            repeated_visitor_scope.edge["__TailMap"].a["__TailMap"].b, Scope
         )
 
     def test_edge_b_c(self, repeated_visitor_scope: Scope) -> None:
         """edge(b,c) exists."""
         assert isinstance(
-            repeated_visitor_scope.edge.TailMap.b.TailMap.c, Scope
+            repeated_visitor_scope.edge["__TailMap"].b["__TailMap"].c, Scope
         )
 
     def test_edge_c_a(self, repeated_visitor_scope: Scope) -> None:
         """edge(c,a) exists."""
         assert isinstance(
-            repeated_visitor_scope.edge.TailMap.c.TailMap.a, Scope
+            repeated_visitor_scope.edge["__TailMap"].c["__TailMap"].a, Scope
         )
 
     def test_edge_exactly_3_pairs(self, repeated_visitor_scope: Scope) -> None:
@@ -123,21 +123,21 @@ class TestEdgeFacts:
 
 
 # =============================================================================
-# Relation infrastructure
+# __Relation infrastructure
 # =============================================================================
 
 
 class TestRelationInfrastructure:
-    """Test that Relation, Cons, Nil, and constants are defined."""
+    """Test that __Relation, __Cons, __Nil, and constants are defined."""
 
     def test_relation_is_scope(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.Relation, Scope)
+        assert isinstance(repeated_visitor_scope["__Relation"], Scope)
 
     def test_nil_is_scope(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.Nil, Scope)
+        assert isinstance(repeated_visitor_scope["__Nil"], Scope)
 
     def test_cons_is_scope(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.Cons, Scope)
+        assert isinstance(repeated_visitor_scope["__Cons"], Scope)
 
     def test_constant_a_is_scope(self, repeated_visitor_scope: Scope) -> None:
         assert isinstance(repeated_visitor_scope.a, Scope)
@@ -150,29 +150,29 @@ class TestRelationInfrastructure:
 
 
 # =============================================================================
-# Acceptance/Visitor pattern on constants
+# __Acceptance/__Visitor pattern on constants
 # =============================================================================
 
 
 class TestConstantAcceptance:
-    """Test that each constant has a working Acceptance/Visitor."""
+    """Test that each constant has a working __Acceptance/__Visitor."""
 
     def test_a_has_acceptance(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.a.Acceptance, Scope)
-        assert isinstance(repeated_visitor_scope.a.Acceptance.Accepted, Scope)
+        assert isinstance(repeated_visitor_scope.a["__Acceptance"], Scope)
+        assert isinstance(repeated_visitor_scope.a["__Acceptance"]["__Accepted"], Scope)
 
     def test_b_has_acceptance(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.b.Acceptance, Scope)
-        assert isinstance(repeated_visitor_scope.b.Acceptance.Accepted, Scope)
+        assert isinstance(repeated_visitor_scope.b["__Acceptance"], Scope)
+        assert isinstance(repeated_visitor_scope.b["__Acceptance"]["__Accepted"], Scope)
 
     def test_c_has_acceptance(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.c.Acceptance, Scope)
-        assert isinstance(repeated_visitor_scope.c.Acceptance.Accepted, Scope)
+        assert isinstance(repeated_visitor_scope.c["__Acceptance"], Scope)
+        assert isinstance(repeated_visitor_scope.c["__Acceptance"]["__Accepted"], Scope)
 
     def test_nil_has_acceptance(self, repeated_visitor_scope: Scope) -> None:
-        assert isinstance(repeated_visitor_scope.Nil.Acceptance, Scope)
+        assert isinstance(repeated_visitor_scope["__Nil"]["__Acceptance"], Scope)
         assert isinstance(
-            repeated_visitor_scope.Nil.Acceptance.Accepted, Scope
+            repeated_visitor_scope["__Nil"]["__Acceptance"]["__Accepted"], Scope
         )
 
 
@@ -198,19 +198,19 @@ class TestTwoHopResult:
     def test_two_hop_a_c(self, repeated_visitor_scope: Scope) -> None:
         """edge(a,b), edge(b,c) -> twoHop(a,c)."""
         assert isinstance(
-            repeated_visitor_scope.twoHop.TailMap.a.TailMap.c, Scope
+            repeated_visitor_scope.twoHop["__TailMap"].a["__TailMap"].c, Scope
         )
 
     def test_two_hop_b_a(self, repeated_visitor_scope: Scope) -> None:
         """edge(b,c), edge(c,a) -> twoHop(b,a)."""
         assert isinstance(
-            repeated_visitor_scope.twoHop.TailMap.b.TailMap.a, Scope
+            repeated_visitor_scope.twoHop["__TailMap"].b["__TailMap"].a, Scope
         )
 
     def test_two_hop_c_b(self, repeated_visitor_scope: Scope) -> None:
         """edge(c,a), edge(a,b) -> twoHop(c,b)."""
         assert isinstance(
-            repeated_visitor_scope.twoHop.TailMap.c.TailMap.b, Scope
+            repeated_visitor_scope.twoHop["__TailMap"].c["__TailMap"].b, Scope
         )
 
     def test_two_hop_datalog_correct(
@@ -225,12 +225,12 @@ class TestTwoHopResult:
         self, repeated_visitor_scope: Scope
     ) -> None:
         """No self-loops: twoHop(a,a), twoHop(b,b), twoHop(c,c) should not exist."""
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.a.TailMap.a
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.b.TailMap.b
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.c.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].a["__TailMap"].a
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].b["__TailMap"].b
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].c["__TailMap"].c
 
     def test_two_hop_no_identity_pairs(
         self, repeated_visitor_scope: Scope
@@ -239,12 +239,12 @@ class TestTwoHopResult:
 
         These would be the original edges, not two-hop paths.
         """
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.a.TailMap.b
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.b.TailMap.c
-        with pytest.raises(AttributeError):
-            repeated_visitor_scope.twoHop.TailMap.c.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].a["__TailMap"].b
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].b["__TailMap"].c
+        with pytest.raises((AttributeError, KeyError)):
+            repeated_visitor_scope.twoHop["__TailMap"].c["__TailMap"].a
 
 
 # =============================================================================
@@ -258,11 +258,11 @@ class TestIntermediateScopes:
     def test_x_acceptance_is_scope(
         self, repeated_visitor_scope: Scope
     ) -> None:
-        assert isinstance(repeated_visitor_scope._XAcceptance, Scope)
+        assert isinstance(repeated_visitor_scope["__XAcceptance"], Scope)
 
     def test_x_acceptance_has_accepted(
         self, repeated_visitor_scope: Scope
     ) -> None:
         assert isinstance(
-            repeated_visitor_scope._XAcceptance.Accepted, Scope
+            repeated_visitor_scope["__XAcceptance"]["__Accepted"], Scope
         )

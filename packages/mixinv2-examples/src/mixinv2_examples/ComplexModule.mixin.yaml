@@ -1,0 +1,36 @@
+- [Builtins]                          # import    | from builtins import *
+- [Math]                              # import    | from math import *
+- [Operators]                         # import    | from operator import *
+                                      #           | from dataclasses import *
+                                      #           | @dataclass(kw_only=True)
+- Complex:                            # class     | class Complex:
+  - re: [[ComplexModule, ~, Float]]   # field     |   re: float
+  - im: [[ComplexModule, ~, Float]]   # field     |   im: float
+  - Plus:                             # method    |   def plus(self, *,
+    - other: [[Complex]]              # parameter |     other: "Complex"):
+    - _sumReCall:                     # call      |     sumRe = \
+      - [ComplexModule, ~, Add]       # callee    |       add(
+      - operand0: [[re]]              # argument  |         self.re,
+      - operand1: [[other, re]]       # argument  |         other.re
+    - _sumRe: [[_sumReCall, result]]  # end call  |       )
+    - _sumImCall:                     # call      |     sumIm = \
+      - [ComplexModule, ~, Add]       # callee    |       add(
+      - operand0: [[im]]              # argument  |         self.im,
+      - operand1: [[other, im]]       # argument  |         other.im
+    - _sumIm: [[_sumImCall, result]]  # end call  |       )
+    - result:                         # return    |     return \
+      - [Complex]                     # instance  |       Complex(
+      - re: [[_sumRe]]                # argument  |         re=sumRe,
+      - im: [[_sumIm]]                # argument  |         im=sumIm)
+- a:                                  # variable  | a = \
+  - [Complex]                         # instance  |   Complex(
+  - re: [[ComplexModule, ~, PI]]      # argument  |     re=pi,
+  - im: [[ComplexModule, ~, E]]       # argument  |     im=e)
+- b:                                  # variable  | b = \
+  - [Complex]                         # instance  |   Complex(
+  - re: [[ComplexModule, ~, Tau]]     # argument  |     re=tau,
+  - im: [[ComplexModule, ~, PI]]      # argument  |     im=pi)
+- _totalCall:                         # call      | total = \
+  - [a, Plus]                         # method    |   a.plus(
+  - other: [[b]]                      # argument  |     other=b
+- total: [[_totalCall, result]]       # end call  |   )

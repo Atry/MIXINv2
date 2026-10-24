@@ -1,4 +1,4 @@
-# Self-join counterexample for repeated Visitor pattern.
+# Self-join counterexample for repeated __Visitor pattern.
 #
 # edge = {(a,b), (b,a)}
 #
@@ -8,148 +8,148 @@
 #   Datalog result: {(a,a), (b,b)} -- 2 pairs
 #
 # The old VisitorMapFactory approach over-approximates to 4 pairs.
-# This file tests whether the repeated Visitor approach is exact.
+# This file tests whether the repeated __Visitor approach is exact.
 
-- Relation:
-    Acceptance:
-      VisitorMap: []
-      Visitor:
-        Visited: []
-      Accepted: []
+- __Relation:
+    __Acceptance:
+      __VisitorMap: []
+      __Visitor:
+        __Visited: []
+      __Accepted: []
     
-- Nil:
-    - [Relation]
+- __Nil:
+    - [__Relation]
     - 
-      Acceptance:
-        VisitorMap:
-          Nil: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, Nil, Visited]
-- Cons:
-    - [Relation]
-    - Tail:
-        - [Relation]
-        - Replacement:
-            NewTail: [Relation]
-            Replaced:
-              - [Cons]
-              - TailMap: []
+      __Acceptance:
+        __VisitorMap:
+          __Nil: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, __Nil, __Visited]
+- __Cons:
+    - [__Relation]
+    - __Tail:
+        - [__Relation]
+        - __Replacement:
+            __NewTail: [__Relation]
+            __Replaced:
+              - [__Cons]
+              - __TailMap: []
 
 - a:
-    - [Cons]
-    - Tail: []
-      TailMap:
+    - [__Cons]
+    - __Tail: []
+      __TailMap:
         a:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, a]
-                - TailMap:
-                    a: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    a: [__NewTail]
+      __WithVisitorTail:
         a:
-          VisitorTail: [TailMap, a]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, a]
+      __WithVisiteeTail:
         a:
-          VisiteeTail: [TailMap, a]
-      Acceptance:
-        - Visitor:
-            Visited: []
-          VisitorMap:
-            - a: [Visitor]
-          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+          __VisiteeTail: [__TailMap, a]
+      __Acceptance:
+        - __Visitor:
+            __Visited: []
+          __VisitorMap:
+            - a: [__Visitor]
+          __Accepted: [__Acceptance, ~, __VisitorMap, a, __Visited]
 - b:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         b:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, b]
-                - TailMap:
-                    b: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    b: [__NewTail]
+      __WithVisitorTail:
         b:
-          VisitorTail: [TailMap, b]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, b]
+      __WithVisiteeTail:
         b:
-          VisiteeTail: [TailMap, b]
-      Acceptance:
-        VisitorMap:
-          b: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, b, Visited]
+          __VisiteeTail: [__TailMap, b]
+      __Acceptance:
+        __VisitorMap:
+          b: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, b, __Visited]
 
 # edge(a,b).
 - edge:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, b]
-          - TailMap:
-              b: [Nil]
+          - __TailMap:
+              b: [__Nil]
 
 # edge(b,a).
 - edge:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalTwoHopRepeatedVisitorSelfJoin, ~, a]
-          - TailMap:
-              a: [Nil]
+          - __TailMap:
+              a: [__Nil]
 
 # twoHop(X,Z) := edge(X,Y), edge(Y,Z).
-- _XAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _YAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap:
-              - [edge, WithVisitorTail]
-              - [_X, WithVisiteeTail]
-            Visitor:
-              VisiteeTail: [_X, Tail]
-              _Y0: [VisiteeTail]
-              VisitorTail: [edge, Tail]
-              _Y1: [VisitorTail]
-              _NilAcceptance0:
-                - [_Y0, Acceptance]
-                - VisitorMap:
-                    - Nil:
-                        _ZAcceptance:
-                          - [_Y1, Acceptance]
-                          - VisitorMap:
-                              - [_Y1, WithVisiteeTail]
-                          - Visitor:
-                              VisiteeTail: [_Y1, Tail]
-                              _Z: [VisiteeTail]
-                              _NilAcceptance1:
-                                - [VisiteeTail, Acceptance]
-                                - VisitorMap:
-                                    Nil:
-                                      _ZReplacement:
-                                        - [_Z, Replacement]
-                                        - NewTail:
+- __XAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __YAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap:
+              - [edge, __WithVisitorTail]
+              - [__X, __WithVisiteeTail]
+            __Visitor:
+              __VisiteeTail: [__X, __Tail]
+              __Y0: [__VisiteeTail]
+              __VisitorTail: [edge, __Tail]
+              __Y1: [__VisitorTail]
+              __NilAcceptance0:
+                - [__Y0, __Acceptance]
+                - __VisitorMap:
+                    - __Nil:
+                        __ZAcceptance:
+                          - [__Y1, __Acceptance]
+                          - __VisitorMap:
+                              - [__Y1, __WithVisiteeTail]
+                          - __Visitor:
+                              __VisiteeTail: [__Y1, __Tail]
+                              __Z: [__VisiteeTail]
+                              __NilAcceptance1:
+                                - [__VisiteeTail, __Acceptance]
+                                - __VisitorMap:
+                                    __Nil:
+                                      __ZReplacement:
+                                        - [__Z, __Replacement]
+                                        - __NewTail:
                                             [
                                               RelationalTwoHopRepeatedVisitorSelfJoin,
                                               ~,
-                                              Nil,
+                                              __Nil,
                                             ]
-                                      _XReplacement:
-                                        - [_X, Replacement]
-                                        - NewTail: [_ZReplacement, Replaced]
-                                      Visited: [_XReplacement, Replaced]
-                              Visited: [_NilAcceptance1, Accepted]
-                        Visited: [_ZAcceptance, Accepted]
-              Visited: [_NilAcceptance0, Accepted]
-        Visited: [_YAcceptance, Accepted]
+                                      __XReplacement:
+                                        - [__X, __Replacement]
+                                        - __NewTail: [__ZReplacement, __Replaced]
+                                      __Visited: [__XReplacement, __Replaced]
+                              __Visited: [__NilAcceptance1, __Accepted]
+                        __Visited: [__ZAcceptance, __Accepted]
+              __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__YAcceptance, __Accepted]
 
-  twoHop: [_XAcceptance, Accepted]
+  twoHop: [__XAcceptance, __Accepted]

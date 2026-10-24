@@ -1,0 +1,6 @@
+% The pdfLaTeX side of LaTeXML's latexml package: only the \iflatexml switch, false.
+% LaTeXML (and arXiv's HTML conversion) prefers its built-in binding of this package
+% over this file, and that binding sets \iflatexml true, so the paper can tell the
+% two converters apart without depending on any LaTeXML-internal macro name.
+\ProvidesPackage{latexml}
+\newif\iflatexml\latexmlfalse

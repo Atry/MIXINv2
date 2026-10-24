@@ -1,5 +1,3 @@
-NumberFactory: []
-NatFactory:
-  - [NumberFactory]
-  - Product: []
-Nat: [NatFactory, Product]
+- NatFactory:
+    - Product: []
+- Nat: [[NatFactory, Product]]

@@ -1,15 +1,14 @@
 - [BooleanNegation]
 - BooleanFactory:
-    Product:
-      Equal:
-        other: [Product]
-        equal: [Product]
-    "True":
-      Equal:
-        other: [Product]
-        equal: [other]
-
-    "False":
-      Equal:
-        other: [Product]
-        equal: [other, not]
+    - Product:
+        - Equal:
+            - other: [[Product]]
+            - equal: [[Product]]
+    - "True":
+        - Equal:
+            - other: [[Product]]
+            - equal: [[other]]
+    - "False":
+        - Equal:
+            - other: [[Product]]
+            - equal: [[other, not]]

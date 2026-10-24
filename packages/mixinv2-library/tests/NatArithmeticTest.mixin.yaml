@@ -1,0 +1,15 @@
+- [NatConstants]
+- [Builtin, NatEqualityZero]
+- [Builtin, NatEqualitySuccessor]
+- [Builtin, NatPlusZero]
+- [Builtin, NatPlusSuccessor]
+
+# 3 + 4
+- threePlusFour:
+    - [NatArithmeticTest, ~, Three, Plus]
+    - addend: [[NatArithmeticTest, ~, Four]]
+
+# (3 + 4) == 7
+- threePlusFourEqualsSeven:
+    - [NatArithmeticTest, ~, Seven, Equal]
+    - other: [[threePlusFour, sum]]

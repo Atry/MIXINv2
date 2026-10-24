@@ -1,5 +1,6 @@
 - [NatData]
 - NatFactory:
-    Product:
-      Plus:
-        sum: [Product]
+    - Product:
+        - Plus:
+            - addend: [[Product]]
+            - sum: [[Product]]

@@ -1,7 +1,7 @@
 - [NatVisitor]
 - [BooleanData]
 - NatFactory:
-    Product:
-      Equal:
-        other: [Product]
-        equal: [NatEquality, ~, Boolean]
+    - Product:
+        - Equal:
+            - other: [[Product]]
+            - equal: [[NatEquality, ~, Boolean]]

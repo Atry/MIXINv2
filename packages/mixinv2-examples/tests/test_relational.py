@@ -1,7 +1,7 @@
 """Tests for relational algebra example.
 
 Tests the Relational.mixin.yaml which implements Datalog-style relational algebra
-using the RepeatedVisitor encoding (TailMap-based navigation):
+using the RepeatedVisitor encoding (__TailMap-based navigation):
 - edge(a,b) and edge(b,c) as base facts
 - path(X,Y) :- edge(X,Y)  (base case: every edge is a path)
 - path(X,Y) :- edge(X,Z), path(Z,Y)  (recursive: transitive closure)
@@ -36,15 +36,15 @@ CONSTANTS = ("a", "b", "c")
 
 
 def _collect_pairs(relation: Scope) -> set[tuple[str, str]]:
-    """Enumerate all (first, second) pairs present in a TailMap relation trie."""
+    """Enumerate all (first, second) pairs present in a __TailMap relation trie."""
     pairs: set[tuple[str, str]] = set()
     for first in CONSTANTS:
         for second in CONSTANTS:
             try:
-                tail1 = getattr(relation.TailMap, first)
-                getattr(tail1.TailMap, second)
+                tail1 = getattr(relation["__TailMap"], first)
+                getattr(tail1["__TailMap"], second)
                 pairs.add((first, second))
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
     return pairs
 
@@ -61,13 +61,13 @@ class TestEdgeStructure:
         assert isinstance(relational_scope.edge, Scope)
 
     def test_edge_has_tail(self, relational_scope: Scope) -> None:
-        """edge.Tail is the union of second columns across all rows."""
-        assert isinstance(relational_scope.edge.Tail, Scope)
+        """edge["__Tail"] is the union of second columns across all rows."""
+        assert isinstance(relational_scope.edge["__Tail"], Scope)
 
     def test_edge_has_acceptance(self, relational_scope: Scope) -> None:
         edge = relational_scope.edge
-        assert isinstance(edge.Acceptance, Scope)
-        assert isinstance(edge.Acceptance.Accepted, Scope)
+        assert isinstance(edge["__Acceptance"], Scope)
+        assert isinstance(edge["__Acceptance"]["__Accepted"], Scope)
 
 
 class TestEdgeColumns:
@@ -80,29 +80,29 @@ class TestEdgeColumns:
 
     def test_edge_has_a_branch(self, relational_scope: Scope) -> None:
         """edge(a,...) exists."""
-        assert isinstance(relational_scope.edge.TailMap.a, Scope)
+        assert isinstance(relational_scope.edge["__TailMap"].a, Scope)
 
     def test_edge_has_b_branch(self, relational_scope: Scope) -> None:
         """edge(b,...) exists."""
-        assert isinstance(relational_scope.edge.TailMap.b, Scope)
+        assert isinstance(relational_scope.edge["__TailMap"].b, Scope)
 
     def test_edge_has_no_c_first_column(self, relational_scope: Scope) -> None:
         """No edge(c,...) exists."""
-        with pytest.raises(AttributeError):
-            relational_scope.edge.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            relational_scope.edge["__TailMap"].c
 
     def test_edge_a_b(self, relational_scope: Scope) -> None:
         """edge(a, b) exists."""
-        assert isinstance(relational_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(relational_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_a_not_c(self, relational_scope: Scope) -> None:
         """edge(a, c) does not exist."""
-        with pytest.raises(AttributeError):
-            relational_scope.edge.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            relational_scope.edge["__TailMap"].a["__TailMap"].c
 
     def test_edge_b_c(self, relational_scope: Scope) -> None:
         """edge(b, c) exists."""
-        assert isinstance(relational_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(relational_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_complete_set(self, relational_scope: Scope) -> None:
         """edge contains exactly {(a,b), (b,c)}."""
@@ -123,8 +123,8 @@ class TestPathStructure:
 
     def test_path_has_acceptance(self, relational_scope: Scope) -> None:
         path = relational_scope.path
-        assert isinstance(path.Acceptance, Scope)
-        assert isinstance(path.Acceptance.Accepted, Scope)
+        assert isinstance(path["__Acceptance"], Scope)
+        assert isinstance(path["__Acceptance"]["__Accepted"], Scope)
 
 
 class TestPathColumns:
@@ -139,20 +139,20 @@ class TestPathColumns:
 
     def test_path_has_a_branch(self, relational_scope: Scope) -> None:
         """path(a,...) exists."""
-        assert isinstance(relational_scope.path.TailMap.a, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].a, Scope)
 
     def test_path_has_b_branch(self, relational_scope: Scope) -> None:
         """path(b,...) exists."""
-        assert isinstance(relational_scope.path.TailMap.b, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].b, Scope)
 
     def test_path_has_no_c_first_column(self, relational_scope: Scope) -> None:
         """No path(c,...) exists — c is a sink vertex."""
-        with pytest.raises(AttributeError):
-            relational_scope.path.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            relational_scope.path["__TailMap"].c
 
     def test_path_a_b(self, relational_scope: Scope) -> None:
         """path(a, b) exists — from base edge."""
-        assert isinstance(relational_scope.path.TailMap.a.TailMap.b, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_path_a_c(self, relational_scope: Scope) -> None:
         """path(a, c) exists via transitive closure.
@@ -161,11 +161,11 @@ class TestPathColumns:
         edge only has (a,b) and (b,c), so path(a,c) is derived from
         edge(a,b) + path(b,c) → path(a,c).
         """
-        assert isinstance(relational_scope.path.TailMap.a.TailMap.c, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_path_b_c(self, relational_scope: Scope) -> None:
         """path(b, c) exists — from base edge."""
-        assert isinstance(relational_scope.path.TailMap.b.TailMap.c, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_path_complete_set(self, relational_scope: Scope) -> None:
         """path contains exactly {(a,b), (b,c), (a,c)}."""
@@ -183,12 +183,12 @@ class TestTransitiveClosureCompleteness:
 
     def test_edge_a_lacks_c(self, relational_scope: Scope) -> None:
         """edge does NOT have (a,c) — no direct edge from a to c."""
-        with pytest.raises(AttributeError):
-            relational_scope.edge.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            relational_scope.edge["__TailMap"].a["__TailMap"].c
 
     def test_path_a_has_c(self, relational_scope: Scope) -> None:
         """path DOES have (a,c) — derived via transitive closure."""
-        assert isinstance(relational_scope.path.TailMap.a.TailMap.c, Scope)
+        assert isinstance(relational_scope.path["__TailMap"].a["__TailMap"].c, Scope)
 
 
 # =============================================================================
@@ -204,11 +204,11 @@ class TestIntermediateScopes:
     """
 
     def test_base_x_acceptance_is_scope(self, relational_scope: Scope) -> None:
-        """_BaseXAcceptance implements path(X,Y) :- edge(X,Y)."""
-        assert isinstance(relational_scope._BaseXAcceptance, Scope)
+        """__BaseXAcceptance implements path(X,Y) :- edge(X,Y)."""
+        assert isinstance(relational_scope["__BaseXAcceptance"], Scope)
 
     def test_recursive_x_acceptance_is_scope(
         self, relational_scope: Scope
     ) -> None:
-        """_RecursiveXAcceptance implements path(X,Y) :- edge(X,Z), path(Z,Y)."""
-        assert isinstance(relational_scope._RecursiveXAcceptance, Scope)
+        """__RecursiveXAcceptance implements path(X,Y) :- edge(X,Z), path(Z,Y)."""
+        assert isinstance(relational_scope["__RecursiveXAcceptance"], Scope)

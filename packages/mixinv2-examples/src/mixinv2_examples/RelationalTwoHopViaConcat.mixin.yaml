@@ -1,4 +1,4 @@
-# Datalog join via concat + Acceptance-based two-hop.
+# Datalog join via concat + __Acceptance-based two-hop.
 #
 # Facts:
 #   edge(a,b).
@@ -8,257 +8,257 @@
 # Step 1 — Cartesian product (no shared variable):
 #   concat(X,Y,Z,W) :- edge(X,Y), edge(Z,W).
 #
-# Step 2 — Two-hop join via Acceptance (value-level Y==Z):
+# Step 2 — Two-hop join via __Acceptance (value-level Y==Z):
 #   twoHop(X,W) :- edge(X,Y), edge(Y,W).
 #
 # Standard Datalog twoHop result:
 #   {(a,c), (b,a), (c,b)}
 #
-# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap)
-# with nested Acceptance/Replacement for the Cartesian product step.
+# This encoding uses the RepeatedVisitor base (__Relation/__Cons/__Nil/__TailMap)
+# with nested __Acceptance/__Replacement for the Cartesian product step.
 
-- Relation:
-    Acceptance:
-      VisitorMap: []
-      Visitor:
-        Visited: []
-      Accepted: []
+- __Relation:
+    __Acceptance:
+      __VisitorMap: []
+      __Visitor:
+        __Visited: []
+      __Accepted: []
 
-- Nil:
-    - [Relation]
-    - Acceptance:
-        VisitorMap:
-          Nil: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, Nil, Visited]
-- Cons:
-    - [Relation]
-    - Tail:
-        - [Relation]
-        - Replacement:
-            NewTail: [Relation]
-            Replaced:
-              - [Cons]
-              - TailMap: []
+- __Nil:
+    - [__Relation]
+    - __Acceptance:
+        __VisitorMap:
+          __Nil: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, __Nil, __Visited]
+- __Cons:
+    - [__Relation]
+    - __Tail:
+        - [__Relation]
+        - __Replacement:
+            __NewTail: [__Relation]
+            __Replaced:
+              - [__Cons]
+              - __TailMap: []
 
 - a:
-    - [Cons]
-    - Tail: []
-      TailMap:
+    - [__Cons]
+    - __Tail: []
+      __TailMap:
         a:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalTwoHopViaConcat, ~, a]
-                - TailMap:
-                    a: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    a: [__NewTail]
+      __WithVisitorTail:
         a:
-          VisitorTail: [TailMap, a]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, a]
+      __WithVisiteeTail:
         a:
-          VisiteeTail: [TailMap, a]
-      Acceptance:
-        - Visitor:
-            Visited: []
-          VisitorMap:
-            - a: [Visitor]
-          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+          __VisiteeTail: [__TailMap, a]
+      __Acceptance:
+        - __Visitor:
+            __Visited: []
+          __VisitorMap:
+            - a: [__Visitor]
+          __Accepted: [__Acceptance, ~, __VisitorMap, a, __Visited]
 - b:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         b:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalTwoHopViaConcat, ~, b]
-                - TailMap:
-                    b: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    b: [__NewTail]
+      __WithVisitorTail:
         b:
-          VisitorTail: [TailMap, b]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, b]
+      __WithVisiteeTail:
         b:
-          VisiteeTail: [TailMap, b]
-      Acceptance:
-        VisitorMap:
-          b: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, b, Visited]
+          __VisiteeTail: [__TailMap, b]
+      __Acceptance:
+        __VisitorMap:
+          b: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, b, __Visited]
 - c:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         c:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalTwoHopViaConcat, ~, c]
-                - TailMap:
-                    c: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    c: [__NewTail]
+      __WithVisitorTail:
         c:
-          VisitorTail: [TailMap, c]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, c]
+      __WithVisiteeTail:
         c:
-          VisiteeTail: [TailMap, c]
-      Acceptance:
-        VisitorMap:
-          c: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, c, Visited]
+          __VisiteeTail: [__TailMap, c]
+      __Acceptance:
+        __VisitorMap:
+          c: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, c, __Visited]
 
 # edge(a,b).
 - edge:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalTwoHopViaConcat, ~, b]
-          - TailMap:
-              b: [Nil]
+          - __TailMap:
+              b: [__Nil]
 
 # edge(b,c).
 - edge:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalTwoHopViaConcat, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # edge(c,a).
 - edge:
     - [c]
-    - TailMap:
+    - __TailMap:
         c:
           - [RelationalTwoHopViaConcat, ~, a]
-          - TailMap:
-              a: [Nil]
+          - __TailMap:
+              a: [__Nil]
 
 # Step 1: concat(X,Y,Z,W) :- edge(X,Y), edge(Z,W).
 #
-# Cartesian product via nested Acceptance/Replacement:
+# Cartesian product via nested __Acceptance/__Replacement:
 #   For each (X,Y) in edge, for each (Z,W) in edge,
 #   construct (X,Y,Z,W) via 4 nested Replacements.
-- _ConcatXAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _ConcatYAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap: [_X, WithVisiteeTail]
-          - Visitor:
-              VisiteeTail: [_X, Tail]
-              _Y: [VisiteeTail]
-              _NilAcceptance0:
-                - [_Y, Acceptance]
-                - VisitorMap:
-                    Nil:
-                      _ConcatZAcceptance:
-                        - [edge, Acceptance]
-                        - VisitorMap: [edge, WithVisiteeTail]
-                        - Visitor:
-                            VisiteeTail: [edge, Tail]
-                            _Z: [VisiteeTail]
-                            _ConcatWAcceptance:
-                              - [_Z, Acceptance]
-                              - VisitorMap: [_Z, WithVisiteeTail]
-                              - Visitor:
-                                  VisiteeTail: [_Z, Tail]
-                                  _W: [VisiteeTail]
-                                  _NilAcceptance1:
-                                    - [_W, Acceptance]
-                                    - VisitorMap:
-                                        Nil:
-                                          _WReplacement:
-                                            - [_W, Replacement]
-                                            - NewTail:
+- __ConcatXAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __ConcatYAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap: [__X, __WithVisiteeTail]
+          - __Visitor:
+              __VisiteeTail: [__X, __Tail]
+              __Y: [__VisiteeTail]
+              __NilAcceptance0:
+                - [__Y, __Acceptance]
+                - __VisitorMap:
+                    __Nil:
+                      __ConcatZAcceptance:
+                        - [edge, __Acceptance]
+                        - __VisitorMap: [edge, __WithVisiteeTail]
+                        - __Visitor:
+                            __VisiteeTail: [edge, __Tail]
+                            __Z: [__VisiteeTail]
+                            __ConcatWAcceptance:
+                              - [__Z, __Acceptance]
+                              - __VisitorMap: [__Z, __WithVisiteeTail]
+                              - __Visitor:
+                                  __VisiteeTail: [__Z, __Tail]
+                                  __W: [__VisiteeTail]
+                                  __NilAcceptance1:
+                                    - [__W, __Acceptance]
+                                    - __VisitorMap:
+                                        __Nil:
+                                          __WReplacement:
+                                            - [__W, __Replacement]
+                                            - __NewTail:
                                                 [
                                                   RelationalTwoHopViaConcat,
                                                   ~,
-                                                  Nil,
+                                                  __Nil,
                                                 ]
-                                          _ZReplacement:
-                                            - [_Z, Replacement]
-                                            - NewTail: [_WReplacement, Replaced]
-                                          _YReplacement:
-                                            - [_Y, Replacement]
-                                            - NewTail: [_ZReplacement, Replaced]
-                                          _XReplacement:
-                                            - [_X, Replacement]
-                                            - NewTail: [_YReplacement, Replaced]
-                                          Visited: [_XReplacement, Replaced]
-                                  Visited: [_NilAcceptance1, Accepted]
-                            Visited: [_ConcatWAcceptance, Accepted]
-                      Visited: [_ConcatZAcceptance, Accepted]
-              Visited: [_NilAcceptance0, Accepted]
-        Visited: [_ConcatYAcceptance, Accepted]
+                                          __ZReplacement:
+                                            - [__Z, __Replacement]
+                                            - __NewTail: [__WReplacement, __Replaced]
+                                          __YReplacement:
+                                            - [__Y, __Replacement]
+                                            - __NewTail: [__ZReplacement, __Replaced]
+                                          __XReplacement:
+                                            - [__X, __Replacement]
+                                            - __NewTail: [__YReplacement, __Replaced]
+                                          __Visited: [__XReplacement, __Replaced]
+                                  __Visited: [__NilAcceptance1, __Accepted]
+                            __Visited: [__ConcatWAcceptance, __Accepted]
+                      __Visited: [__ConcatZAcceptance, __Accepted]
+              __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__ConcatYAcceptance, __Accepted]
 
-  concat: [_ConcatXAcceptance, Accepted]
+  concat: [__ConcatXAcceptance, __Accepted]
 
 # Step 2: twoHop(X,W) :- edge(X,Y), edge(Y,W).
 #
-# Standard Acceptance-based two-hop join:
+# Standard __Acceptance-based two-hop join:
 #   1. X: iterate first column of edge (outer acceptance)
 #   2. Y: value-level join — match edge's second column against edge's first column
 #   3. W: iterate matched edge's second column
-#   4. Output (X, W) via Replacement
+#   4. Output (X, W) via __Replacement
 
-- _XAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _YAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap:
-              - [edge, WithVisitorTail]
-              - [_X, WithVisiteeTail]
-            Visitor:
-              VisiteeTail: [_X, Tail]
-              _Y0: [VisiteeTail]
-              VisitorTail: [edge, Tail]
-              _Y1: [VisitorTail]
-              _NilAcceptance0:
-                - [_Y0, Acceptance]
-                - VisitorMap:
-                    - Nil:
-                        _ZAcceptance:
-                          - [_Y1, Acceptance]
-                          - VisitorMap:
-                              - [_Y1, WithVisiteeTail]
-                          - Visitor:
-                              VisiteeTail: [_Y1, Tail]
-                              _Z: [VisiteeTail]
-                              _NilAcceptance1:
-                                - [VisiteeTail, Acceptance]
-                                - VisitorMap:
-                                    Nil:
-                                      _ZReplacement:
-                                        - [_Z, Replacement]
-                                        - NewTail:
+- __XAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __YAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap:
+              - [edge, __WithVisitorTail]
+              - [__X, __WithVisiteeTail]
+            __Visitor:
+              __VisiteeTail: [__X, __Tail]
+              __Y0: [__VisiteeTail]
+              __VisitorTail: [edge, __Tail]
+              __Y1: [__VisitorTail]
+              __NilAcceptance0:
+                - [__Y0, __Acceptance]
+                - __VisitorMap:
+                    - __Nil:
+                        __ZAcceptance:
+                          - [__Y1, __Acceptance]
+                          - __VisitorMap:
+                              - [__Y1, __WithVisiteeTail]
+                          - __Visitor:
+                              __VisiteeTail: [__Y1, __Tail]
+                              __Z: [__VisiteeTail]
+                              __NilAcceptance1:
+                                - [__VisiteeTail, __Acceptance]
+                                - __VisitorMap:
+                                    __Nil:
+                                      __ZReplacement:
+                                        - [__Z, __Replacement]
+                                        - __NewTail:
                                             [
                                               RelationalTwoHopViaConcat,
                                               ~,
-                                              Nil,
+                                              __Nil,
                                             ]
-                                      _XReplacement:
-                                        - [_X, Replacement]
-                                        - NewTail: [_ZReplacement, Replaced]
-                                      Visited: [_XReplacement, Replaced]
-                              Visited: [_NilAcceptance1, Accepted]
-                        Visited: [_ZAcceptance, Accepted]
-              Visited: [_NilAcceptance0, Accepted]
-        Visited: [_YAcceptance, Accepted]
+                                      __XReplacement:
+                                        - [__X, __Replacement]
+                                        - __NewTail: [__ZReplacement, __Replaced]
+                                      __Visited: [__XReplacement, __Replaced]
+                              __Visited: [__NilAcceptance1, __Accepted]
+                        __Visited: [__ZAcceptance, __Accepted]
+              __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__YAcceptance, __Accepted]
 
-  twoHop: [_XAcceptance, Accepted]
+  twoHop: [__XAcceptance, __Accepted]

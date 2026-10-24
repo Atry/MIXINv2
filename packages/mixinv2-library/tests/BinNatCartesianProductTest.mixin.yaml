@@ -1,0 +1,77 @@
+- [Builtin, BinNatEquality]
+- [Builtin, BinNatPlus]
+
+  # =============================================================================
+  # Concrete BinNat values
+  # =============================================================================
+
+- BinNatZero:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Zero]
+
+  BinNatOne:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Odd]
+    - halfOfPredecessor: [BinNatZero]
+
+  BinNatTwo:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Even]
+    - half: [BinNatOne]
+
+  BinNatThree:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Odd]
+    - halfOfPredecessor: [BinNatOne]
+
+  BinNatFour:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Even]
+    - half: [BinNatTwo]
+
+  BinNatFive:
+    - [BinNatCartesianProductTest, ~, BinNatFactory, Odd]
+    - halfOfPredecessor: [BinNatTwo]
+
+  # =============================================================================
+  # BinNat trie values
+  #
+  # Even uses `half` and Odd uses `halfOfPredecessor` (distinct fields).
+  # Valid trie combinations:
+  #   - Zero ∪ Even(h)          — Zero has no half, so they can coexist
+  #   - Even(h) ∪ Odd(h')       — h and h' are independent fields
+  # =============================================================================
+
+  # Zero ∪ Two: Zero ∪ Even(One)  →  {0, 2}
+  BinNatZeroOrTwo:
+    - [BinNatZero]
+    - [BinNatTwo]
+
+  # Two ∪ Three: Even(One) ∪ Odd(One)  →  {2, 3}
+  BinNatTwoOrThree:
+    - [BinNatTwo]
+    - [BinNatThree]
+
+  # Four ∪ Five: Even(Two) ∪ Odd(Two)  →  {4, 5}
+  BinNatFourOrFive:
+    - [BinNatFour]
+    - [BinNatFive]
+
+  # =============================================================================
+  # BinNat: (Zero ∪ Two) + Three  →  {0+3, 2+3} = {3, 5}
+  # =============================================================================
+
+  BinNatZeroOrTwoPlusThree:
+    - [BinNatZeroOrTwo, Plus]
+    - addend: [BinNatThree]
+
+  # =============================================================================
+  # BinNat: Three + (Two ∪ Three)  →  {3+2, 3+3} = {5, 6}
+  # =============================================================================
+
+  BinNatThreePlusTwoOrThree:
+    - [BinNatThree, Plus]
+    - addend: [BinNatTwoOrThree]
+
+  # =============================================================================
+  # BinNat: (Two ∪ Three) + (Four ∪ Five)  →  {2+4, 2+5, 3+4, 3+5} = {6, 7, 8}
+  # =============================================================================
+
+  BinNatTwoOrThreePlusFourOrFive:
+    - [BinNatTwoOrThree, Plus]
+    - addend: [BinNatFourOrFive]

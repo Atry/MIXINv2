@@ -90,6 +90,35 @@
         grep -rl "Anonymous, Author" ${dir} > /dev/null
       '';
 
+      # Windows compatibility of the produced zip. Two limits of Windows'
+      # built-in Compressed Folders (Explorer's zipfldr) are encoded here:
+      # MAX_PATH is 260 characters, and Explorer reports the WHOLE archive as
+      # empty when a single in-archive path reaches 260, while its extraction
+      # stops at the first destination path that exceeds MAX_PATH; the limit is
+      # set at 200 here so that extraction into a Windows folder path of up to
+      # about 60 characters still fits. Windows file systems are also
+      # case-insensitive, so two entries whose paths differ only by letter case
+      # overwrite each other on extraction.
+      assertWindowsReadableArchive = archive: ''
+        unzip -Z1 ${archive} > $TMPDIR/archive-entry-paths.txt
+
+        overlongEntryPaths=$(awk 'length($0) >= 200' $TMPDIR/archive-entry-paths.txt)
+        if [ -n "$overlongEntryPaths" ]; then
+          echo "FAIL: in-archive paths of 200 characters or more (Windows MAX_PATH is 260):" >&2
+          echo "$overlongEntryPaths" >&2
+          exit 1
+        fi
+
+        caseInsensitiveDuplicates=$(tr 'A-Z' 'a-z' < $TMPDIR/archive-entry-paths.txt | sort | uniq -d)
+        if [ -n "$caseInsensitiveDuplicates" ]; then
+          echo "FAIL: entry paths differing only by letter case (Windows file systems are case-insensitive):" >&2
+          while IFS= read -r collidingPath; do
+            grep -ixF -- "$collidingPath" $TMPDIR/archive-entry-paths.txt >&2
+          done <<< "$caseInsensitiveDuplicates"
+          exit 1
+        fi
+      '';
+
       sphinxEnv = (pythonSet.mkVirtualEnv "sphinx-env"
         (builtins.removeAttrs workspace.deps.all
           [ "mixinv2-workspace" ])).overrideAttrs
@@ -114,6 +143,13 @@
           ../uv.lock
           ../LICENSE
           ../README.md
+          ../lean/InheritanceCalculus
+          ../lean/InheritanceCalculus.lean
+          ../lean/MixinV2Demo.lean
+          ../lean/lakefile.lean
+          ../lean/lake-manifest.json
+          ../lean/lean-toolchain
+          ../lean/README.md
         ];
       };
 
@@ -126,7 +162,8 @@
         ## Directory Structure
 
         - `docs` — Built HTML documentation
-        - `ratarmount/` — Union file system implementation (Section 5.2)
+        - `lean/` — Machine-checked metatheory in Lean 4 (see `lean/README.md`
+          for the paper-to-Lean correspondence table and build instructions)
         - `packages/mixinv2/src/mixinv2/` — Python implementation of the MIXINv2 runtime
         - `packages/mixinv2-library/src/mixinv2_library/Builtin/` — Standard library (`.mixin.yaml` files):
           Boolean logic, Nat arithmetic, BinNat arithmetic, visitors, equality
@@ -178,58 +215,15 @@
         navigates the scope tree along the given path.
       '';
 
-      ratarmountSource = inputs.ratarmount;
-
-      ratarmountPreamble = pkgs.writeText "ratarmount-preamble.md" ''
-        > **Note:** This directory contains a patched version of
-        > [ratarmount](https://github.com/mxmlnkn/ratarmount) that adds a
-        > `--resolve-symbolic-links` flag.  This flag enables late-binding
-        > symbolic link resolution within union mounts, the mechanism
-        > described in Section 5.2 of the paper (Union file systems).
-        >
-        > **What the patch adds:**
-        >
-        > **`link.py`** implements a new compositing layer with two internal
-        > abstractions:
-        >
-        > - **`_FileVersion`** — binds an underlying `MountSource` path to a
-        >   union path and stores a physical parent chain for resolving
-        >   relative links containing `..`.  This is analogous to lexical
-        >   scoping: the meaning of `..` is tied to the link's static
-        >   location in the underlying hierarchy rather than the access path
-        >   in the merged tree.
-        >
-        > - **`_UnionPath`** — represents a path in the merged view that may
-        >   correspond to multiple `_FileVersion`s.  It provides direct and
-        >   transitive link expansion with deduplication to avoid cycles, and
-        >   a child-lookup strategy analogous to dynamic dispatch: children
-        >   are discovered by searching across all resolved folder versions.
-        >
-        > When enabled, symlink and hardlink targets are resolved **within the
-        > union view**, not constrained to the original source.  This provides
-        > the late-binding semantics for layered trees described in the paper.
-        >
-        > **`MultiMountSourceMixin`** (in `multi.py`) refactors common
-        > multi-source patterns out of `UnionMountSource`, centralizing the
-        > userdata delegation protocol and merged `statfs` handling.
-
-      '';
-
       supplementaryMaterial = pkgs.stdenv.mkDerivation {
-        name = "supplementary-material.zip";
+        name = "inheritance-calculus-supplementary-material.zip";
         src = supplementarySourceFiles;
         nativeBuildInputs = [ pkgs.zip pkgs.unzip sphinxEnv ];
 
         buildPhase = ''
           cd ..
-          mv source supplementary-material
-          cd supplementary-material
-
-          # Include ratarmount pull request source
-          cp -r ${ratarmountSource} ratarmount
-          chmod -R u+w ratarmount
-          cat ${ratarmountPreamble} ratarmount/README.md > ratarmount/README.md.tmp
-          mv ratarmount/README.md.tmp ratarmount/README.md
+          mv source inheritance-calculus-supplementary-material
+          cd inheritance-calculus-supplementary-material
 
           # Replace README with reviewer-oriented version
           cp ${reviewerReadme} README.md
@@ -238,7 +232,7 @@
           shopt -s globstar nullglob
           substituteInPlace \
             **/*.py **/*.toml **/*.lock **/*.json **/*.md **/*.rst \
-            **/*.cfg **/*.txt **/*.yaml **/*.yml **/*.ini \
+            **/*.cfg **/*.txt **/*.yaml **/*.yml **/*.ini **/*.lean \
             ${mkReplaceArgs identityReplacements} \
             --replace-warn 'github.com/Atry/overlay' 'github.com/anonymous-author/anonymous-repo' \
             --replace-warn 'github.com/Atry/MIXIN' 'github.com/anonymous-author/anonymous-repo' \
@@ -294,47 +288,64 @@
           # Copy HTML docs to top-level docs/ directory
           cp -rl packages/mixinv2/docs/_build/html docs
 
+          # The bundled Lean sources (lean/) must actually check: depend on the
+          # Nix build of the library so this zip cannot be produced from broken
+          # proofs. The store path is only tested, not copied into the archive.
+          test -e ${config.packages.mixinv2-lean-demo}
+
           cd ..
-          zip -r --latest-time $TMPDIR/supplementary-material.zip supplementary-material
+          zip -r --latest-time $TMPDIR/inheritance-calculus-supplementary-material.zip inheritance-calculus-supplementary-material
         '';
 
         installPhase = ''
-          cp $TMPDIR/supplementary-material.zip $out
+          cp $TMPDIR/inheritance-calculus-supplementary-material.zip $out
         '';
 
         doInstallCheck = true;
         installCheckPhase = ''
           unzip $out -d $TMPDIR/verify
 
+          # Openable and extractable on Windows
+          ${assertWindowsReadableArchive "$out"}
+
           # No identity leaks
-          ${assertNoIdentityLeak "$TMPDIR/verify/supplementary-material/"}
-          if grep -rl "2602.16291" $TMPDIR/verify/supplementary-material/; then
+          ${assertNoIdentityLeak "$TMPDIR/verify/inheritance-calculus-supplementary-material/"}
+          if grep -rl "2602.16291" $TMPDIR/verify/inheritance-calculus-supplementary-material/; then
             echo "FAIL: Found arxiv self-reference '2602.16291'" >&2; exit 1
           fi
 
           # HTML docs present
-          test -d $TMPDIR/verify/supplementary-material/docs
-          test -f $TMPDIR/verify/supplementary-material/docs/index.html
-          test -f $TMPDIR/verify/supplementary-material/packages/mixinv2/docs/_build/html/index.html
+          test -d $TMPDIR/verify/inheritance-calculus-supplementary-material/docs
+          test -f $TMPDIR/verify/inheritance-calculus-supplementary-material/docs/index.html
+          test -f $TMPDIR/verify/inheritance-calculus-supplementary-material/packages/mixinv2/docs/_build/html/index.html
 
           # Installation page absent (PyPI link leaks identity)
-          if find $TMPDIR/verify/supplementary-material -name 'installation.*' | grep -q .; then
+          if find $TMPDIR/verify/inheritance-calculus-supplementary-material -name 'installation.*' | grep -q .; then
             echo "FAIL: Found installation page" >&2; exit 1
           fi
 
-          # Excluded items absent
-          if find $TMPDIR/verify/supplementary-material -path '*inheritance-calculus*' \
-            -o -path '*overlay-language*' -o -path '*overlay-library*' | grep -q .; then
+          # Lean mechanization present with its reviewer README
+          test -f $TMPDIR/verify/inheritance-calculus-supplementary-material/lean/README.md
+          test -f $TMPDIR/verify/inheritance-calculus-supplementary-material/lean/InheritanceCalculus/WellDefinedness.lean
+          test -f $TMPDIR/verify/inheritance-calculus-supplementary-material/lean/lean-toolchain
+
+          # Excluded items absent: no inheritance-calculus paper file (no
+          # sources, no PDF, no arxiv bundle); overlay packages stay out
+          # entirely. -mindepth 1 skips the bundle's own top directory, whose
+          # name contains inheritance-calculus.
+          if find $TMPDIR/verify/inheritance-calculus-supplementary-material -mindepth 1 \
+            \( -name '*inheritance-calculus*' -o -path '*overlay-language*' -o -path '*overlay-library*' \) \
+            | grep -q .; then
             echo "FAIL: Found excluded directory" >&2; exit 1
           fi
 
           # No overlay references in file contents
-          if grep -rl 'overlay-language\|overlay-library' $TMPDIR/verify/supplementary-material/; then
+          if grep -rl 'overlay-language\|overlay-library' $TMPDIR/verify/inheritance-calculus-supplementary-material/; then
             echo "FAIL: Found overlay-language or overlay-library reference" >&2; exit 1
           fi
 
           # Anonymization applied
-          ${assertAnonymized "$TMPDIR/verify/supplementary-material/"}
+          ${assertAnonymized "$TMPDIR/verify/inheritance-calculus-supplementary-material/"}
 
           # Integration test (uv sync + pytest) requires network access,
           # so it cannot run in the Nix sandbox. Run manually:
@@ -345,6 +356,6 @@
 
     in {
       mixinv2PyprojectOverrides = genericPyprojectOverrides;
-      packages.supplementary-material = supplementaryMaterial;
+      packages.inheritance-calculus-supplementary-material = supplementaryMaterial;
     };
 }

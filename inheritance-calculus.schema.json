@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "title": "Inheritance-Calculus Schema",
+  "description": "The abstract syntax tree of inheritance-calculus, written directly rather than derived from the MIXINv2 schema, which this paper treats as a sugared superset. A program is a single mixin. Relative to MIXINv2 this core admits no syntactic sugar: every object has exactly one property, and a reference may occur only as a member of a mixin, never directly as a property value, so a bare reference value must be wrapped as a singleton member list. It also has no scalar leaves: the leaf values string, number, boolean, and null that MIXINv2 supplies through its foreign-function interface are not part of inheritance-calculus.",
+  "$ref": "#/definitions/mixin",
+  "definitions": {
+    "lexicalReference": {
+      "description": "A lexical reference: a projection list of labels, resolved by searching the enclosing scopes for the leading label.",
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "qualifiedThisReference": {
+      "description": "A reference with a qualified this [Scope, ~, labels...], which names an enclosing scope explicitly and then projects. In YAML the ~ is null and marks the qualified this.",
+      "type": "array",
+      "items": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "additionalItems": { "type": "string" },
+      "minItems": 2
+    },
+    "reference": {
+      "description": "An inheritance source: either a lexical reference or a reference with a qualified this.",
+      "oneOf": [
+        { "$ref": "#/definitions/lexicalReference" },
+        { "$ref": "#/definitions/qualifiedThisReference" }
+      ]
+    },
+    "definition": {
+      "description": "A single property: an object with exactly one key, the defined label, whose value is the defined mixin.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": { "$ref": "#/definitions/mixin" }
+    },
+    "mixin": {
+      "description": "A mixin: a member list, a sequence whose members are definitions and references. The empty sequence is the empty mixin.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/definition" },
+          { "$ref": "#/definitions/reference" }
+        ]
+      }
+    }
+  }
+}

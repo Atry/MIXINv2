@@ -18,195 +18,195 @@
 # With RepeatedVisitor value-level join:
 #   X join: r's first col against s's first col (value-level match)
 #   Y join: r's second col against s's second col (value-level match)
-#   Output: matched (X, Y) pairs reconstructed via Replacement
+#   Output: matched (X, Y) pairs reconstructed via __Replacement
 #
 # Since r and s share no common (X,Y) tuples, the result is empty.
 #
-# This encoding uses repeated Acceptance/Visitor pattern for
+# This encoding uses repeated __Acceptance/__Visitor pattern for
 # value-level joins, producing exact Datalog semantics.
 
-- Relation:
-    Acceptance:
-      VisitorMap: []
-      Visitor:
-        Visited: []
-      Accepted: []
+- __Relation:
+    __Acceptance:
+      __VisitorMap: []
+      __Visitor:
+        __Visited: []
+      __Accepted: []
 
-- Nil:
-    - [Relation]
-    - Acceptance:
-        VisitorMap:
-          Nil: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, Nil, Visited]
-- Cons:
-    - [Relation]
-    - Tail:
-        - [Relation]
-        - Replacement:
-            NewTail: [Relation]
-            Replaced:
-              - [Cons]
-              - TailMap: []
+- __Nil:
+    - [__Relation]
+    - __Acceptance:
+        __VisitorMap:
+          __Nil: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, __Nil, __Visited]
+- __Cons:
+    - [__Relation]
+    - __Tail:
+        - [__Relation]
+        - __Replacement:
+            __NewTail: [__Relation]
+            __Replaced:
+              - [__Cons]
+              - __TailMap: []
 
 - a:
-    - [Cons]
-    - Tail: []
-      TailMap:
+    - [__Cons]
+    - __Tail: []
+      __TailMap:
         a:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalMultiVariableJoin, ~, a]
-                - TailMap:
-                    a: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    a: [__NewTail]
+      __WithVisitorTail:
         a:
-          VisitorTail: [TailMap, a]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, a]
+      __WithVisiteeTail:
         a:
-          VisiteeTail: [TailMap, a]
-      Acceptance:
-        - Visitor:
-            Visited: []
-          VisitorMap:
-            - a: [Visitor]
-          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+          __VisiteeTail: [__TailMap, a]
+      __Acceptance:
+        - __Visitor:
+            __Visited: []
+          __VisitorMap:
+            - a: [__Visitor]
+          __Accepted: [__Acceptance, ~, __VisitorMap, a, __Visited]
 - b:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         b:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalMultiVariableJoin, ~, b]
-                - TailMap:
-                    b: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    b: [__NewTail]
+      __WithVisitorTail:
         b:
-          VisitorTail: [TailMap, b]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, b]
+      __WithVisiteeTail:
         b:
-          VisiteeTail: [TailMap, b]
-      Acceptance:
-        VisitorMap:
-          b: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, b, Visited]
+          __VisiteeTail: [__TailMap, b]
+      __Acceptance:
+        __VisitorMap:
+          b: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, b, __Visited]
 - c:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         c:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalMultiVariableJoin, ~, c]
-                - TailMap:
-                    c: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    c: [__NewTail]
+      __WithVisitorTail:
         c:
-          VisitorTail: [TailMap, c]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, c]
+      __WithVisiteeTail:
         c:
-          VisiteeTail: [TailMap, c]
-      Acceptance:
-        VisitorMap:
-          c: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, c, Visited]
+          __VisiteeTail: [__TailMap, c]
+      __Acceptance:
+        __VisitorMap:
+          c: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, c, __Visited]
 
 # r(a,b).
 - r:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalMultiVariableJoin, ~, b]
-          - TailMap:
-              b: [Nil]
+          - __TailMap:
+              b: [__Nil]
 
 # r(b,c).
 - r:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalMultiVariableJoin, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # s(a,c).
 - s:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalMultiVariableJoin, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # s(b,a).
 - s:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalMultiVariableJoin, ~, a]
-          - TailMap:
-              a: [Nil]
+          - __TailMap:
+              a: [__Nil]
 
 # multiJoin(X,Y) :- r(X,Y), s(X,Y).
 #
 # Two chained value-level joins:
 #   1. X join: r's first col against s's first col
 #   2. Y join: r's second col against s's second col
-#   On both matches, construct output (X, Y) via Replacement
-- _XAcceptance:
-    - [r, Acceptance]
-    - VisitorMap:
-        - [s, WithVisitorTail]
-        - [r, WithVisiteeTail]
-      Visitor:
-        VisiteeTail: [r, Tail]
-        _X0: [VisiteeTail]
-        VisitorTail: [s, Tail]
-        _X1: [VisitorTail]
-        _YAcceptance:
-          - [_X0, Acceptance]
-          - VisitorMap:
-              - [_X1, WithVisitorTail]
-              - [_X0, WithVisiteeTail]
-            Visitor:
-              VisiteeTail: [_X0, Tail]
-              _Y0: [VisiteeTail]
-              VisitorTail: [_X1, Tail]
-              _Y1: [VisitorTail]
-              _NilAcceptance0:
-                - [_Y0, Acceptance]
-                - VisitorMap:
-                    - Nil:
-                        _NilAcceptance1:
-                          - [_Y1, Acceptance]
-                          - VisitorMap:
-                              Nil:
-                                _YReplacement:
-                                  - [_Y0, Replacement]
-                                  - NewTail:
+#   On both matches, construct output (X, Y) via __Replacement
+- __XAcceptance:
+    - [r, __Acceptance]
+    - __VisitorMap:
+        - [s, __WithVisitorTail]
+        - [r, __WithVisiteeTail]
+      __Visitor:
+        __VisiteeTail: [r, __Tail]
+        __X0: [__VisiteeTail]
+        __VisitorTail: [s, __Tail]
+        __X1: [__VisitorTail]
+        __YAcceptance:
+          - [__X0, __Acceptance]
+          - __VisitorMap:
+              - [__X1, __WithVisitorTail]
+              - [__X0, __WithVisiteeTail]
+            __Visitor:
+              __VisiteeTail: [__X0, __Tail]
+              __Y0: [__VisiteeTail]
+              __VisitorTail: [__X1, __Tail]
+              __Y1: [__VisitorTail]
+              __NilAcceptance0:
+                - [__Y0, __Acceptance]
+                - __VisitorMap:
+                    - __Nil:
+                        __NilAcceptance1:
+                          - [__Y1, __Acceptance]
+                          - __VisitorMap:
+                              __Nil:
+                                __YReplacement:
+                                  - [__Y0, __Replacement]
+                                  - __NewTail:
                                       [
                                         RelationalMultiVariableJoin,
                                         ~,
-                                        Nil,
+                                        __Nil,
                                       ]
-                                _XReplacement:
-                                  - [_X0, Replacement]
-                                  - NewTail: [_YReplacement, Replaced]
-                                Visited: [_XReplacement, Replaced]
-                        Visited: [_NilAcceptance1, Accepted]
-              Visited: [_NilAcceptance0, Accepted]
-        Visited: [_YAcceptance, Accepted]
+                                __XReplacement:
+                                  - [__X0, __Replacement]
+                                  - __NewTail: [__YReplacement, __Replaced]
+                                __Visited: [__XReplacement, __Replaced]
+                        __Visited: [__NilAcceptance1, __Accepted]
+              __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__YAcceptance, __Accepted]
 
-  multiJoin: [_XAcceptance, Accepted]
+  multiJoin: [__XAcceptance, __Accepted]

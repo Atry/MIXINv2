@@ -59,15 +59,15 @@ def symmetric_transitive_closure_scope() -> Scope:
 
 
 def _collect_pairs_tailmap(relation: Scope) -> set[tuple[str, str]]:
-    """Enumerate all (first, second) pairs in a TailMap-encoded relation."""
+    """Enumerate all (first, second) pairs in a __TailMap-encoded relation."""
     pairs: set[tuple[str, str]] = set()
     for first in ("a", "b", "c"):
         for second in ("a", "b", "c"):
             try:
-                tail1 = getattr(relation.TailMap, first)
-                getattr(tail1.TailMap, second)
+                tail1 = getattr(relation["__TailMap"], first)
+                getattr(tail1["__TailMap"], second)
                 pairs.add((first, second))
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
     return pairs
 
@@ -89,16 +89,16 @@ class TestSymmetricClosureEdge:
     """Verify edge facts for symmetric closure example."""
 
     def test_edge_a_b(self, symmetric_closure_scope: Scope) -> None:
-        assert isinstance(symmetric_closure_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(symmetric_closure_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_c(self, symmetric_closure_scope: Scope) -> None:
-        assert isinstance(symmetric_closure_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(symmetric_closure_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_has_only_a_and_b_first_columns(
         self, symmetric_closure_scope: Scope
     ) -> None:
-        with pytest.raises(AttributeError):
-            symmetric_closure_scope.edge.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_closure_scope.edge["__TailMap"].c
 
 
 class TestSymmetricClosureSym:
@@ -120,31 +120,31 @@ class TestSymmetricClosureSym:
 
     def test_sym_lacks_a_a(self, symmetric_closure_scope: Scope) -> None:
         """(a,a) absent — no derivation produces it."""
-        with pytest.raises(AttributeError):
-            symmetric_closure_scope.sym.TailMap.a.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_closure_scope.sym["__TailMap"].a["__TailMap"].a
 
     def test_sym_lacks_c_c(self, symmetric_closure_scope: Scope) -> None:
         """(c,c) absent — no derivation produces it."""
-        with pytest.raises(AttributeError):
-            symmetric_closure_scope.sym.TailMap.c.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_closure_scope.sym["__TailMap"].c["__TailMap"].c
 
     def test_sym_has_reverse_a_b(self, symmetric_closure_scope: Scope) -> None:
         """(b,a) present from the swap rule."""
-        assert isinstance(symmetric_closure_scope.sym.TailMap.b.TailMap.a, Scope)
+        assert isinstance(symmetric_closure_scope.sym["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_sym_has_reverse_b_c(self, symmetric_closure_scope: Scope) -> None:
         """(c,b) present from the swap rule."""
-        assert isinstance(symmetric_closure_scope.sym.TailMap.c.TailMap.b, Scope)
+        assert isinstance(symmetric_closure_scope.sym["__TailMap"].c["__TailMap"].b, Scope)
 
     def test_sym_lacks_a_c(self, symmetric_closure_scope: Scope) -> None:
         """(a,c) absent — not derivable in Datalog."""
-        with pytest.raises(AttributeError):
-            symmetric_closure_scope.sym.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_closure_scope.sym["__TailMap"].a["__TailMap"].c
 
     def test_sym_lacks_b_b(self, symmetric_closure_scope: Scope) -> None:
         """(b,b) absent — not derivable in Datalog."""
-        with pytest.raises(AttributeError):
-            symmetric_closure_scope.sym.TailMap.b.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_closure_scope.sym["__TailMap"].b["__TailMap"].b
 
 
 class TestSymmetricClosureDirectResult:
@@ -152,7 +152,7 @@ class TestSymmetricClosureDirectResult:
 
     def test_direct_result(self, symmetric_closure_scope: Scope) -> None:
         """Direct rule: sym(X,Y) :- edge(X,Y) = {(a,b), (b,c)}."""
-        direct_result = symmetric_closure_scope._DirectXAcceptance.Accepted
+        direct_result = symmetric_closure_scope["__DirectXAcceptance"]["__Accepted"]
         pairs = _collect_pairs_tailmap(direct_result)
         expected = {("a", "b"), ("b", "c")}
         assert pairs == expected
@@ -163,7 +163,7 @@ class TestSymmetricClosureSwapResult:
 
     def test_swap_result(self, symmetric_closure_scope: Scope) -> None:
         """Swap rule: sym(X,Y) :- edge(Y,X) = {(b,a), (c,b)}."""
-        swap_result = symmetric_closure_scope._SwapYAcceptance.Accepted
+        swap_result = symmetric_closure_scope["__SwapYAcceptance"]["__Accepted"]
         pairs = _collect_pairs_tailmap(swap_result)
         expected = {("b", "a"), ("c", "b")}
         assert pairs == expected
@@ -187,20 +187,20 @@ class TestCompositionAlpha:
     """Verify alpha relation facts."""
 
     def test_alpha_a_b(self, composition_scope: Scope) -> None:
-        assert isinstance(composition_scope.alpha.TailMap.a.TailMap.b, Scope)
+        assert isinstance(composition_scope.alpha["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_alpha_c_b(self, composition_scope: Scope) -> None:
-        assert isinstance(composition_scope.alpha.TailMap.c.TailMap.b, Scope)
+        assert isinstance(composition_scope.alpha["__TailMap"].c["__TailMap"].b, Scope)
 
 
 class TestCompositionBeta:
     """Verify beta relation facts."""
 
     def test_beta_b_a(self, composition_scope: Scope) -> None:
-        assert isinstance(composition_scope.beta.TailMap.b.TailMap.a, Scope)
+        assert isinstance(composition_scope.beta["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_beta_b_c(self, composition_scope: Scope) -> None:
-        assert isinstance(composition_scope.beta.TailMap.b.TailMap.c, Scope)
+        assert isinstance(composition_scope.beta["__TailMap"].b["__TailMap"].c, Scope)
 
 
 class TestCompositionResult:
@@ -217,28 +217,28 @@ class TestCompositionResult:
 
     def test_composed_a_a(self, composition_scope: Scope) -> None:
         """alpha(a,b) + beta(b,a) → composed(a,a)."""
-        assert isinstance(composition_scope.composed.TailMap.a.TailMap.a, Scope)
+        assert isinstance(composition_scope.composed["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_composed_a_c(self, composition_scope: Scope) -> None:
         """alpha(a,b) + beta(b,c) → composed(a,c)."""
-        assert isinstance(composition_scope.composed.TailMap.a.TailMap.c, Scope)
+        assert isinstance(composition_scope.composed["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_composed_c_a(self, composition_scope: Scope) -> None:
         """alpha(c,b) + beta(b,a) → composed(c,a)."""
-        assert isinstance(composition_scope.composed.TailMap.c.TailMap.a, Scope)
+        assert isinstance(composition_scope.composed["__TailMap"].c["__TailMap"].a, Scope)
 
     def test_composed_c_c(self, composition_scope: Scope) -> None:
         """alpha(c,b) + beta(b,c) → composed(c,c)."""
-        assert isinstance(composition_scope.composed.TailMap.c.TailMap.c, Scope)
+        assert isinstance(composition_scope.composed["__TailMap"].c["__TailMap"].c, Scope)
 
     def test_composed_lacks_b_tuples(self, composition_scope: Scope) -> None:
         """No composed(b,...) — b is not a first-column entity in alpha.
 
-        TailMap.b exists structurally (from Cons definition) but has no
-        nested TailMap entries (no output tuples with b as first column).
+        __TailMap.b exists structurally (from __Cons definition) but has no
+        nested __TailMap entries (no output tuples with b as first column).
         """
-        with pytest.raises(AttributeError):
-            composition_scope.composed.TailMap.b.TailMap
+        with pytest.raises((AttributeError, KeyError)):
+            composition_scope.composed["__TailMap"].b["__TailMap"]
 
 
 # =============================================================================
@@ -272,15 +272,15 @@ class TestSymmetricTransitiveClosureSym:
         self, symmetric_transitive_closure_scope: Scope
     ) -> None:
         """(a,a) absent from sym — no derivation produces it."""
-        with pytest.raises(AttributeError):
-            symmetric_transitive_closure_scope.sym.TailMap.a.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_transitive_closure_scope.sym["__TailMap"].a["__TailMap"].a
 
     def test_sym_lacks_c_c(
         self, symmetric_transitive_closure_scope: Scope
     ) -> None:
         """(c,c) absent from sym — no derivation produces it."""
-        with pytest.raises(AttributeError):
-            symmetric_transitive_closure_scope.sym.TailMap.c.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_transitive_closure_scope.sym["__TailMap"].c["__TailMap"].c
 
 
 class TestSymmetricTransitiveClosureReach:
@@ -305,7 +305,7 @@ class TestSymmetricTransitiveClosureReach:
     ) -> None:
         """(a,a) present in reach but absent from sym."""
         assert isinstance(
-            symmetric_transitive_closure_scope.reach.TailMap.a.TailMap.a, Scope
+            symmetric_transitive_closure_scope.reach["__TailMap"].a["__TailMap"].a, Scope
         )
 
     def test_reach_has_c_c(
@@ -313,22 +313,22 @@ class TestSymmetricTransitiveClosureReach:
     ) -> None:
         """(c,c) present in reach but absent from sym."""
         assert isinstance(
-            symmetric_transitive_closure_scope.reach.TailMap.c.TailMap.c, Scope
+            symmetric_transitive_closure_scope.reach["__TailMap"].c["__TailMap"].c, Scope
         )
 
     def test_sym_lacks_a_a(
         self, symmetric_transitive_closure_scope: Scope
     ) -> None:
         """(a,a) absent from sym — only reach fills this gap."""
-        with pytest.raises(AttributeError):
-            symmetric_transitive_closure_scope.sym.TailMap.a.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_transitive_closure_scope.sym["__TailMap"].a["__TailMap"].a
 
     def test_sym_lacks_c_c(
         self, symmetric_transitive_closure_scope: Scope
     ) -> None:
         """(c,c) absent from sym — only reach fills this gap."""
-        with pytest.raises(AttributeError):
-            symmetric_transitive_closure_scope.sym.TailMap.c.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            symmetric_transitive_closure_scope.sym["__TailMap"].c["__TailMap"].c
 
 
 class TestChainedRuleDependency:

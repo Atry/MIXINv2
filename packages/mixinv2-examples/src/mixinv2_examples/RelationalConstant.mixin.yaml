@@ -16,180 +16,180 @@
 #   edge(b,Z): Z ∈ {c} (edge(b,c))
 #   Output: {(a,c)}
 #
-# This encoding uses repeated Acceptance/Visitor pattern.
+# This encoding uses repeated __Acceptance/__Visitor pattern.
 
-- Relation:
-    Acceptance:
-      VisitorMap: []
-      Visitor:
-        Visited: []
-      Accepted: []
+- __Relation:
+    __Acceptance:
+      __VisitorMap: []
+      __Visitor:
+        __Visited: []
+      __Accepted: []
 
-- Nil:
-    - [Relation]
+- __Nil:
+    - [__Relation]
     -
-      Acceptance:
-        VisitorMap:
-          Nil: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, Nil, Visited]
-- Cons:
-    - [Relation]
-    - Tail:
-        - [Relation]
-        - Replacement:
-            NewTail: [Relation]
-            Replaced:
-              - [Cons]
-              - TailMap: []
+      __Acceptance:
+        __VisitorMap:
+          __Nil: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, __Nil, __Visited]
+- __Cons:
+    - [__Relation]
+    - __Tail:
+        - [__Relation]
+        - __Replacement:
+            __NewTail: [__Relation]
+            __Replaced:
+              - [__Cons]
+              - __TailMap: []
 
 - a:
-    - [Cons]
-    - Tail: []
-      TailMap:
+    - [__Cons]
+    - __Tail: []
+      __TailMap:
         a:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalConstant, ~, a]
-                - TailMap:
-                    a: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    a: [__NewTail]
+      __WithVisitorTail:
         a:
-          VisitorTail: [TailMap, a]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, a]
+      __WithVisiteeTail:
         a:
-          VisiteeTail: [TailMap, a]
-      Acceptance:
-        - Visitor:
-            Visited: []
-          VisitorMap:
-            - a: [Visitor]
-          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+          __VisiteeTail: [__TailMap, a]
+      __Acceptance:
+        - __Visitor:
+            __Visited: []
+          __VisitorMap:
+            - a: [__Visitor]
+          __Accepted: [__Acceptance, ~, __VisitorMap, a, __Visited]
 - b:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         b:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalConstant, ~, b]
-                - TailMap:
-                    b: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    b: [__NewTail]
+      __WithVisitorTail:
         b:
-          VisitorTail: [TailMap, b]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, b]
+      __WithVisiteeTail:
         b:
-          VisiteeTail: [TailMap, b]
-      Acceptance:
-        VisitorMap:
-          b: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, b, Visited]
+          __VisiteeTail: [__TailMap, b]
+      __Acceptance:
+        __VisitorMap:
+          b: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, b, __Visited]
 - c:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         c:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalConstant, ~, c]
-                - TailMap:
-                    c: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    c: [__NewTail]
+      __WithVisitorTail:
         c:
-          VisitorTail: [TailMap, c]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, c]
+      __WithVisiteeTail:
         c:
-          VisiteeTail: [TailMap, c]
-      Acceptance:
-        VisitorMap:
-          c: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, c, Visited]
+          __VisiteeTail: [__TailMap, c]
+      __Acceptance:
+        __VisitorMap:
+          c: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, c, __Visited]
 
 # edge(a,b).
 - edge:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalConstant, ~, b]
-          - TailMap:
-              b: [Nil]
+          - __TailMap:
+              b: [__Nil]
 
 # edge(b,c).
 - edge:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalConstant, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # viaB(X,Z) :- edge(X,b), edge(b,Z).
 #
 # This is a constant-match join where Y is the constant b.
 # 1. Iterate X over edge's first column (outer acceptance)
 # 2. For each X, get edge(X,Y) — iterate Y values
-# 3. Check Y=b via acceptance with only b in VisitorMap (constant match)
-# 4. On b match, get Z from edge(b,Z) = edge.TailMap.b
-# 5. Construct output (X, Z) via Replacement
+# 3. Check Y=b via acceptance with only b in __VisitorMap (constant match)
+# 4. On b match, get Z from edge(b,Z) = edge.__TailMap.b
+# 5. Construct output (X, Z) via __Replacement
 
 # edge(b,Z) — direct navigation to b's row
-- _edgeBTail:
-    - [edge, TailMap, b]
+- __edgeBTail:
+    - [edge, __TailMap, b]
 
-- _XAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _YAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap:
-                # Constant match: only b in VisitorMap
+- __XAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __YAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap:
+                # Constant match: only b in __VisitorMap
                 b:
-                  _NilAcceptance0:
-                    - [_X, TailMap, b, Acceptance]
-                    - VisitorMap:
-                        Nil:
-                          # Y=b confirmed, Nil after b confirmed.
+                  __NilAcceptance0:
+                    - [__X, __TailMap, b, __Acceptance]
+                    - __VisitorMap:
+                        __Nil:
+                          # Y=b confirmed, __Nil after b confirmed.
                           # Now iterate Z from edge(b,Z).
-                          _ZAcceptance:
-                            - [_edgeBTail, Acceptance]
-                            - VisitorMap: [_edgeBTail, WithVisiteeTail]
-                            - Visitor:
-                                VisiteeTail: [_edgeBTail, Tail]
-                                _Z: [VisiteeTail]
-                                _NilAcceptance1:
-                                  - [_Z, Acceptance]
-                                  - VisitorMap:
-                                      Nil:
-                                        _ZReplacement:
-                                          - [_Z, Replacement]
-                                          - NewTail:
+                          __ZAcceptance:
+                            - [__edgeBTail, __Acceptance]
+                            - __VisitorMap: [__edgeBTail, __WithVisiteeTail]
+                            - __Visitor:
+                                __VisiteeTail: [__edgeBTail, __Tail]
+                                __Z: [__VisiteeTail]
+                                __NilAcceptance1:
+                                  - [__Z, __Acceptance]
+                                  - __VisitorMap:
+                                      __Nil:
+                                        __ZReplacement:
+                                          - [__Z, __Replacement]
+                                          - __NewTail:
                                               [
                                                 RelationalConstant,
                                                 ~,
-                                                Nil,
+                                                __Nil,
                                               ]
-                                        _XReplacement:
-                                          - [_X, Replacement]
-                                          - NewTail: [_ZReplacement, Replaced]
-                                        Visited: [_XReplacement, Replaced]
-                                Visited: [_NilAcceptance1, Accepted]
-                          Visited: [_ZAcceptance, Accepted]
-                  Visited: [_NilAcceptance0, Accepted]
-        Visited: [_YAcceptance, Accepted]
+                                        __XReplacement:
+                                          - [__X, __Replacement]
+                                          - __NewTail: [__ZReplacement, __Replaced]
+                                        __Visited: [__XReplacement, __Replaced]
+                                __Visited: [__NilAcceptance1, __Accepted]
+                          __Visited: [__ZAcceptance, __Accepted]
+                  __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__YAcceptance, __Accepted]
 
-  viaB: [_XAcceptance, Accepted]
+  viaB: [__XAcceptance, __Accepted]

@@ -1,6 +1,6 @@
 - [NatData]
 - NatFactory:
-    Product:
-      Acceptance:
-        VisitorMap: []
-        Accepted: []
+    - Product:
+        - Acceptance:
+            - VisitorMap: []
+            - Accepted: []

@@ -6,60 +6,60 @@
 
   # =============================================================================
   # Abstract function type: all Church-encoded values are functions with
-  # argument and result. This is a type declaration enabling static resolution
+  # parameter and result. This is a type declaration enabling static resolution
   # of [x, result] references on let-bound variables.
   # =============================================================================
 
 - _Function:
-    argument: [_Function]
+    parameter: [_Function]
     result: [_Function]
 
   # =============================================================================
-  # Church true: λt.λf.t = {argument ↦ {}, result ↦ {argument ↦ {}, result ↦ ↑¹.argument}}
+  # Church true: λt.λf.t = {parameter ↦ {}, result ↦ {parameter ↦ {}, result ↦ ↑¹.parameter}}
   # =============================================================================
 
   ChurchTrue:
-    argument: [_Function]
+    parameter: [_Function]
     result:
-      argument: [_Function]
-      result: [ChurchTrue, ~, argument]    # ↑¹.arg: outer λ's argument (= t)
+      parameter: [_Function]
+      result: [ChurchTrue, ~, parameter]    # ↑¹.param: outer λ's parameter (= t)
 
   # =============================================================================
-  # Church false: λt.λf.f = {argument ↦ {}, result ↦ {argument ↦ {}, result ↦ ↑⁰.argument}}
+  # Church false: λt.λf.f = {parameter ↦ {}, result ↦ {parameter ↦ {}, result ↦ ↑⁰.parameter}}
   # =============================================================================
 
   ChurchFalse:
-    argument: [_Function]
+    parameter: [_Function]
     result:
-      argument: [_Function]
-      result: [argument]                   # ↑⁰.arg: inner λ's argument (= f)
+      parameter: [_Function]
+      result: [parameter]                   # ↑⁰.param: inner λ's parameter (= f)
 
   # =============================================================================
   # Church eq: λa.λb. let x₁ = b false in let x₂ = x₁ true in let x₃ = a b in x₃ x₂
   #
   # Flattened structure with _LambdaB as unique scope name for λb:
   #   - _x1, _x2, _x3 are siblings inside _LambdaB (not nested via result chains)
-  #   - References to λb.argument use [_LambdaB, ~, argument] (qualified this)
-  #   - References to λa.argument use [ChurchEq, ~, argument] (qualified this)
+  #   - References to λb.parameter use [_LambdaB, ~, parameter] (qualified this)
+  #   - References to λa.parameter use [ChurchEq, ~, parameter] (qualified this)
   #   - Let-bound variable results: [_x1, result], [_x2, result], [_x3, result]
   # =============================================================================
 
   ChurchEq:
-    argument: [_Function]                  # λa's argument slot (typed as function)
+    parameter: [_Function]                  # λa's parameter slot (typed as function)
     _LambdaB:                              # λb scope (unique name for qualified this)
-      argument: [_Function]                # λb's argument slot (typed as function)
+      parameter: [_Function]                # λb's parameter slot (typed as function)
       _x1:                                 # x₁ = b(false)
-        - [_LambdaB, ~, argument]          # T(b): λb.argument via qualified this
-        - argument: [ChurchFalse]          # T(false): Church false
+        - [_LambdaB, ~, parameter]          # T(b): λb.parameter via qualified this
+        - parameter: [ChurchFalse]          # T(false): Church false
       _x2:                                 # x₂ = x₁(true) = (b false)(true)
         - [_x1, result]                    # T(x₁) = x₁.result (rule 2)
-        - argument: [ChurchTrue]           # T(true): Church true
+        - parameter: [ChurchTrue]           # T(true): Church true
       _x3:                                 # x₃ = a(b)
-        - [ChurchEq, ~, argument]          # T(a): λa.argument via qualified this
-        - argument: [_LambdaB, ~, argument]  # T(b): λb.argument
+        - [ChurchEq, ~, parameter]          # T(a): λa.parameter via qualified this
+        - parameter: [_LambdaB, ~, parameter]  # T(b): λb.parameter
       _TailCall:                           # tail call: x₃ x₂
         - [_x3, result]                    # T(x₃) = x₃.result (rule 2)
-        - argument: [_x2, result]          # T(x₂) = x₂.result (rule 2)
+        - parameter: [_x2, result]          # T(x₂) = x₂.result (rule 2)
       result: [_TailCall, result]          # projection: tail.result
     result: [_LambdaB, result]             # ChurchEq.result = λb body result
 
@@ -70,10 +70,10 @@
   FalseEqFalse:
     _eqFalse:                              # let eqFalse = eq(false)
       - [ChurchEq]                         # T(eq): inherit Church eq
-      - argument: [ChurchFalse]            # λa.argument = Church false
+      - parameter: [ChurchFalse]            # λa.parameter = Church false
     _Applied:                              # eqFalse(false): apply λb with b=false
       - [_eqFalse, _LambdaB]              # inherit λb scope
-      - argument: [ChurchFalse]            # λb.argument = Church false
+      - parameter: [ChurchFalse]            # λb.parameter = Church false
     result: [_Applied, result]             # projection
 
   # =============================================================================
@@ -83,10 +83,10 @@
   TrueEqTrue:
     _eqTrue:                               # let eqTrue = eq(true)
       - [ChurchEq]                         # T(eq): inherit Church eq
-      - argument: [ChurchTrue]             # λa.argument = Church true
+      - parameter: [ChurchTrue]             # λa.parameter = Church true
     _Applied:                              # eqTrue(true): apply λb with b=true
       - [_eqTrue, _LambdaB]               # inherit λb scope
-      - argument: [ChurchTrue]             # λb.argument = Church true
+      - parameter: [ChurchTrue]             # λb.parameter = Church true
     result: [_Applied, result]             # projection
 
   # =============================================================================
@@ -95,7 +95,7 @@
   # Church true applied to (One, Zero) selects One → pythonValues = {1}
   # Church false applied to (One, Zero) selects Zero → pythonValues = {0}
   #
-  # Application: "apply f x" = inherit f, override argument, access result.
+  # Application: "apply f x" = inherit f, override parameter, access result.
   # For curried functions: first application gives inner λ, second gives value.
   # =============================================================================
 
@@ -103,20 +103,20 @@
   # Step 1: apply ChurchTrue to One → λf body with t=One
   _churchTrueApplied:
     - [ChurchTrue]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   # Step 2: apply result (inner λ) to Zero → selects t=One
   _churchTrueBodyApplied:
     - [_churchTrueApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   churchTrueObserved: [_churchTrueBodyApplied, result]   # should be One → pythonValues = {1}
 
   # Verify ChurchFalse selects second argument: apply(apply(ChurchFalse, One), Zero)
   _churchFalseApplied:
     - [ChurchFalse]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _churchFalseBodyApplied:
     - [_churchFalseApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   churchFalseObserved: [_churchFalseBodyApplied, result]  # should be Zero → pythonValues = {0}
 
   # Observe eq(false, false) result: should be Church true → selects One
@@ -124,26 +124,26 @@
   # Apply it to One then Zero
   _falseEqFalseApplied:
     - [FalseEqFalse, result]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _falseEqFalseBodyApplied:
     - [_falseEqFalseApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   falseEqFalseObserved: [_falseEqFalseBodyApplied, result]  # Church true → {1}
 
   # Observe eq(true, true) result: should be Church true → selects One
   _trueEqTrueApplied:
     - [TrueEqTrue, result]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _trueEqTrueBodyApplied:
     - [_trueEqTrueApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   trueEqTrueObserved: [_trueEqTrueBodyApplied, result]      # Church true → {1}
 
   # =============================================================================
   # Overlay C: add repr scope to ChurchEq (Felleisen distinguishing context)
   #
   # This overlay adds repr.firstOperand and repr.secondOperand to ChurchEq,
-  # projecting λa's and λb's arguments through the result chain.
+  # projecting λa's and λb's parameters through the result chain.
   # In L₁ = L₀ + overlay, this makes eq(false,false) and eq(true,true)
   # distinguishable even though both evaluate to Church true in L₀.
   #
@@ -151,49 +151,49 @@
   #   ↑⁰ = _Repr itself
   #   ↑¹ = _LambdaB (λb scope)
   #   ↑² = ChurchEq (λa scope)
-  # So firstOperand = ↑².argument, secondOperand = ↑¹.argument
+  # So firstOperand = ↑².parameter, secondOperand = ↑¹.parameter
   # =============================================================================
 
 - ChurchEq:
     _LambdaB:
       _Repr:
-        firstOperand: [ChurchEq, ~, argument]     # ↑².argument: λa's argument
-        secondOperand: [_LambdaB, ~, argument]    # ↑¹.argument: λb's argument
+        firstOperand: [ChurchEq, ~, parameter]     # ↑².parameter: λa's parameter
+        secondOperand: [_LambdaB, ~, parameter]    # ↑¹.parameter: λb's parameter
       repr: [_Repr]
     repr: [_LambdaB, repr]
 
   # Observe repr.firstOperand of eq(false, false): should be ChurchFalse → {0}
   _falseReprFirstApplied:
     - [FalseEqFalse, _Applied, repr, firstOperand]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _falseReprFirstBodyApplied:
     - [_falseReprFirstApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   falseEqFalseReprFirst: [_falseReprFirstBodyApplied, result]
 
   # Observe repr.secondOperand of eq(false, false): should be ChurchFalse → {0}
   _falseReprSecondApplied:
     - [FalseEqFalse, _Applied, repr, secondOperand]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _falseReprSecondBodyApplied:
     - [_falseReprSecondApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   falseEqFalseReprSecond: [_falseReprSecondBodyApplied, result]
 
   # Observe repr.firstOperand of eq(true, true): should be ChurchTrue → {1}
   _trueReprFirstApplied:
     - [TrueEqTrue, _Applied, repr, firstOperand]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _trueReprFirstBodyApplied:
     - [_trueReprFirstApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   trueEqTrueReprFirst: [_trueReprFirstBodyApplied, result]
 
   # Observe repr.secondOperand of eq(true, true): should be ChurchTrue → {1}
   _trueReprSecondApplied:
     - [TrueEqTrue, _Applied, repr, secondOperand]
-    - argument: [ChurchBooleanTest, ~, One]
+    - parameter: [ChurchBooleanTest, ~, One]
   _trueReprSecondBodyApplied:
     - [_trueReprSecondApplied, result]
-    - argument: [ChurchBooleanTest, ~, Zero]
+    - parameter: [ChurchBooleanTest, ~, Zero]
   trueEqTrueReprSecond: [_trueReprSecondBodyApplied, result]

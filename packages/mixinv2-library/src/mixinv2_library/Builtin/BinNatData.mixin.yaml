@@ -1,13 +1,11 @@
-NumberFactory: []
-BinNatFactory:
-  - [NumberFactory]
-  - Product: []
-    Zero:
-      - [Product]
-    Even:
-      - [Product]
-      - half: [Product]
-    Odd:
-      - [Product]
-      - halfOfPredecessor: [Product]
-BinNat: [BinNatFactory, Product]
+- BinNatFactory:
+    - Product: []
+    - Zero:
+        - [Product]
+    - Even:
+        - [Product]
+        - half: [[Product]]
+    - Odd:
+        - [Product]
+        - halfOfPredecessor: [[Product]]
+- BinNat: [[BinNatFactory, Product]]

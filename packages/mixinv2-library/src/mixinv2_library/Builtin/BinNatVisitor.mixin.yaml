@@ -1,23 +1,23 @@
 - [BinNatData]
 - BinNatFactory:
-    Product:
-      Acceptance:
-        VisitorMap: []
-        Accepted: []
-    Zero:
-      Acceptance:
-        VisitorMap:
-          ZeroVisitor: []
-        Accepted: [VisitorMap, ZeroVisitor]
-    Even:
-      half: [Product]
-      Acceptance:
-        VisitorMap:
-          EvenVisitor: []
-        Accepted: [VisitorMap, EvenVisitor]
-    Odd:
-      halfOfPredecessor: [Product]
-      Acceptance:
-        VisitorMap:
-          OddVisitor: []
-        Accepted: [VisitorMap, OddVisitor]
+    - Product:
+        - Acceptance:
+            - VisitorMap: []
+            - Accepted: []
+    - Zero:
+        - Acceptance:
+            - VisitorMap:
+                - ZeroVisitor: []
+            - Accepted: [[VisitorMap, ZeroVisitor]]
+    - Even:
+        - half: [[Product]]
+        - Acceptance:
+            - VisitorMap:
+                - EvenVisitor: []
+            - Accepted: [[VisitorMap, EvenVisitor]]
+    - Odd:
+        - halfOfPredecessor: [[Product]]
+        - Acceptance:
+            - VisitorMap:
+                - OddVisitor: []
+            - Accepted: [[VisitorMap, OddVisitor]]

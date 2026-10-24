@@ -41,14 +41,14 @@ def church_scope() -> Scope:
 class TestChurchBooleanConstruction:
     """Verify Church true/false have the abstraction shape."""
 
-    def test_church_true_has_argument(self, church_scope: Scope) -> None:
-        assert hasattr(church_scope.ChurchTrue, "argument")
+    def test_church_true_has_parameter(self, church_scope: Scope) -> None:
+        assert hasattr(church_scope.ChurchTrue, "parameter")
 
     def test_church_true_has_result(self, church_scope: Scope) -> None:
         assert hasattr(church_scope.ChurchTrue, "result")
 
-    def test_church_false_has_argument(self, church_scope: Scope) -> None:
-        assert hasattr(church_scope.ChurchFalse, "argument")
+    def test_church_false_has_parameter(self, church_scope: Scope) -> None:
+        assert hasattr(church_scope.ChurchFalse, "parameter")
 
     def test_church_false_has_result(self, church_scope: Scope) -> None:
         assert hasattr(church_scope.ChurchFalse, "result")

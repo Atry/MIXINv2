@@ -23,11 +23,14 @@
     ];
   };
   inputs = {
-    ratarmount = {
-      url = "github:Atry/ratarmount/resolve-symbolic-links";
-      flake = false;
-    };
     systems.url = "github:nix-systems/default";
+    # FIXME: flake.lock pins this input to f667e4c3, GitHub's test merge of
+    # NixOS/nixpkgs#569745 into master, not to a nixos-unstable revision. Before it,
+    # texlive's minted bundles latexminted 0.6.0, whose ArgParser rejects the `color`
+    # keyword that Python 3.14's argparse passes, so every minted compile fails with
+    # "minted v3+ executable is not installed" (measured 2026-10-08). GitHub
+    # regenerates a test-merge ref when master moves, so the revision may stop being
+    # fetchable. Relock to nixos-unstable once #569745 is merged there.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
@@ -61,6 +64,7 @@
       imports = [
         ./modules/texlive.nix
         ./modules/python.nix
+        ./modules/lean.nix
       ];
       systems = import inputs.systems;
     };

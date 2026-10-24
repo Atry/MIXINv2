@@ -1,0 +1,7 @@
+\begin{enumerate}
+  \item The sum of the case study's addition: the ToPython readback of the path $(\text{``ArithmeticTest''}, \text{``threePlusFour''}, \text{``sum''})$ is $\{\text{7}\}$.
+  \item The equality check: the readback of $(\text{``ArithmeticTest''}, \text{``threePlusFourEqualsSeven''}, \text{``equal''})$ is $\{\text{True}\}$, so $(3+4) = 7$ holds in the executed encoding.
+  \item The Cartesian-product semantics: the readback of $(\text{``CartesianProductTest''}, \text{``NatOneOrTwoPlusThreeOrFour''}, \text{``sum''})$ is $\{\text{4}, \text{5}, \text{6}\}$, the pointwise sums of $\{1, 2\}$ and $\{3, 4\}$.
+  \item The relational equality: the readback of $(\text{``CartesianProductTest''}, \text{``NatResultEqualitySelf''}, \text{``equal''})$ is $\{\text{False}, \text{True}\}$: comparing the set-valued sum with itself observes both outcomes, one per pair of drawn values.
+  \item The FFI-free witness: from the core path $(\text{``NatArithmeticTest''}, \text{``threePlusFourEqualsSeven''}, \text{``equal''})$ shown in the paper, iterating the $\bases$ step of equation~(\ref{eq:bases}) reaches the written definition $(\text{``NatArithmeticTest''}, \text{``BooleanFactory''}, \text{``True''})$ in 16 hops: the mixin that the reference resolves to inherits \mintinline{yaml}{True}.
+\end{enumerate}

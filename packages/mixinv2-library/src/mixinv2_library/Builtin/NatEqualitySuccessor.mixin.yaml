@@ -1,24 +1,24 @@
 - [NatVisitorSuccessor]
 - [NatEquality]
 - NatFactory:
-    Successor:
-      predecessor:
-        Equal:
-          equal: [NatEqualitySuccessor, ~, Boolean]
-      Equal:
-        other:
-          - [NatFactory, ~, Product]
-          - predecessor: [NatFactory, ~, Product]
-        _recursiveEquality:
-          - [Successor, ~, predecessor, Equal]
-          - other: [Equal, ~, other, predecessor]
-        _OtherAcceptance:
-          - [other, Acceptance]
-          - VisitorMap:
-              ZeroVisitor:
-                equal: [NatEqualitySuccessor, ~, BooleanFactory, "False"]
-              SuccessorVisitor:
-                equal: [_recursiveEquality, equal]
-            Accepted:
-              equal: [NatEqualitySuccessor, ~, Boolean]
-        equal: [_OtherAcceptance, Accepted, equal]
+    - Successor:
+        - predecessor:
+            - Equal:
+                - equal: [[NatEqualitySuccessor, ~, Boolean]]
+        - Equal:
+            - other:
+                - [NatFactory, ~, Product]
+                - predecessor: [[NatFactory, ~, Product]]
+            - _recursiveEquality:
+                - [Successor, ~, predecessor, Equal]
+                - other: [[Equal, ~, other, predecessor]]
+            - _OtherAcceptance:
+                - [other, Acceptance]
+                - VisitorMap:
+                    - ZeroVisitor:
+                        - equal: [[NatEqualitySuccessor, ~, BooleanFactory, "False"]]
+                    - SuccessorVisitor:
+                        - equal: [[_recursiveEquality, equal]]
+                - Accepted:
+                    - equal: [[NatEqualitySuccessor, ~, Boolean]]
+            - equal: [[_OtherAcceptance, Accepted, equal]]

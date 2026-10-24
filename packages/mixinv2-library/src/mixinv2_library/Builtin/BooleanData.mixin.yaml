@@ -1,5 +1,5 @@
-BooleanFactory:
-  Product: []
-  "True": [Product]
-  "False": [Product]
-Boolean: [BooleanFactory, Product]
+- BooleanFactory:
+    - Product: []
+    - "True": [[Product]]
+    - "False": [[Product]]
+- Boolean: [[BooleanFactory, Product]]

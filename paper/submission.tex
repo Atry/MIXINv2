@@ -1,17 +1,10 @@
 %%
-%% POPL submission using the ACM SIGPLAN acmart format.
-%% Main matter only: POPL 2027 requires appendices to be submitted as
-%% separate supplemental material (see supplement.tex), not in this PDF.
+%% TOPLAS submission using the ACM acmart format.
+%% Full document: main matter and appendices. The class options are those of
+%% acmart's sample-acmsmall-submission.tex without `anonymous': `review'
+%% numbers the lines, and the author block, the ACM reference format, the
+%% rights block and the journal footer are printed.
 %%
-%% References into the appendices resolve via xr-hyper, reading the labels
-%% of supplement-xref.tex (a leaf appendix build with identical numbering
-%% to supplement.tex). Links point at the distributed supplement.pdf.
-%% latexmk builds supplement-xref automatically (see latexmkrc).
-%%
-\documentclass[acmsmall,screen,review,anonymous,nonacm]{acmart}
-\usepackage{xr-hyper}
-\input{xr-tocindent-filter}
-\externaldocument{supplement-xref}[supplement.pdf]
-\newif\ifInheritanceBody\InheritanceBodytrue
-\newif\ifInheritanceAppendix\InheritanceAppendixfalse
+\documentclass[acmsmall,screen,review]{acmart}
+\acmJournal{TOPLAS}
 \input{inheritance-calculus}

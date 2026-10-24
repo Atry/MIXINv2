@@ -1,7 +1,7 @@
 - [NatDataZero]
 - [NatPlus]
 - NatFactory:
-    Zero:
-      Plus:
-        addend: [NatFactory, ~, Product]
-        sum: [addend]
+    - Zero:
+        - Plus:
+            - addend: [[NatFactory, ~, Product]]
+            - sum: [[addend]]

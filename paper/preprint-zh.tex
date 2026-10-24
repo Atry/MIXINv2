@@ -2,7 +2,7 @@
 %% Chinese preprint build using the ACM SIGPLAN acmart format.
 %%
 %% Same full document as preprint.tex (main matter and appendices), but with the
-%% reader-facing prose rendered in Chinese: setting \InheritanceChinesetrue selects
+%% reader-facing prose rendered in Chinese: setting \PaperChinesetrue selects
 %% the Chinese branch of every bilingual switch in the shared body and loads
 %% CJKutf8 for Chinese glyphs. Built with pdfLaTeX, like the English entries, so
 %% every build renders identically (see modules/texlive.nix and the
@@ -15,5 +15,5 @@
 \renewcommand\footnotetextcopyrightpermission[1]{}
 \pagestyle{plain}
 
-\newif\ifInheritanceChinese\InheritanceChinesetrue
+\newif\ifPaperChinese\PaperChinesetrue
 \input{inheritance-calculus}

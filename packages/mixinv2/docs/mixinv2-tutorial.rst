@@ -1,8 +1,14 @@
 Getting Started with MIXINv2
 ============================
 
-The Step 4 Python code works, but it has a structural problem: **business logic
-and I/O are tangled together**. Consider ``user_id`` in ``HttpHandlers``:
+The :doc:`decorator tutorial <tutorial>` built a small web application in Python:
+a user-lookup service backed by an in-memory SQLite database, assembled from four
+``@scope`` classes (``SQLiteDatabase``, ``UserRepository``, ``HttpHandlers``, and
+``NetworkServer``). Its final version (Step 4) works, but it has a structural
+problem: **business logic and I/O are tangled together**. This page rewrites that
+same application in MIXINv2 (``.mixin.yaml``) to separate the two.
+
+To see the problem, consider ``user_id`` in ``HttpHandlers``:
 
 .. code-block:: python
 
@@ -103,7 +109,7 @@ Four new concepts:
   is a lexical lookup: search outward through enclosing scopes until a field
   named ``database_path`` is found.
 - ``connection: [_db, connection]`` — **path navigation**. Access the
-  ``connection`` resource on the child scope ``_db``. The leading underscore on
+  ``connection`` resource on the nested scope ``_db``. The leading underscore on
   ``_db`` makes it private; ``connection`` is the public-facing projection.
 
 
@@ -258,8 +264,8 @@ Syntax quick reference
      - **Extern** — value must be provided by a parent scope or caller
    * - ``field: [other]``
      - **Lexical reference** — look up ``other`` in the lexical scope chain
-   * - ``field: [child, property]``
-     - **Path navigation** — access ``property`` on ``child``
+   * - ``field: [nested, property]``
+     - **Path navigation** — access ``property`` on the nested scope ``nested``
    * - ``field: [Scope, ~, symbol]``
      - **Qualified this** — access inherited ``symbol`` through the runtime graph
    * - ``field: "literal"``
@@ -267,7 +273,7 @@ Syntax quick reference
    * - ``_field: ...``
      - **Private** — not visible to external callers (leading underscore)
    * - ``Scope:`` with a mapping
-     - **Nested scope** — a child scope with its own fields
+     - **Nested scope** — a nested scope with its own fields
    * - ``Scope:`` with a list
      - **Inheritance** — ``- [Parent]`` items are inherited scopes; the last item (a mapping) defines own fields
 

@@ -1,9 +1,9 @@
 - [NatDataSuccessor]
 - [NatVisitor]
 - NatFactory:
-    Successor:
-      predecessor: [NatFactory, ~, Product]
-      Acceptance:
-        VisitorMap:
-          SuccessorVisitor: []
-        Accepted: [VisitorMap, SuccessorVisitor]
+    - Successor:
+        - predecessor: [[NatFactory, ~, Product]]
+        - Acceptance:
+            - VisitorMap:
+                - SuccessorVisitor: []
+            - Accepted: [[VisitorMap, SuccessorVisitor]]

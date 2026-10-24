@@ -3,13 +3,13 @@
   "title": "MIXINv2 Schema",
   "$ref": "#/definitions/mixin",
   "definitions": {
-    "inheritance": {
+    "lexicalReference": {
       "type": "array",
       "items": {
         "type": "string"
       },
       "minItems": 1,
-      "description": "An inheritance, represented as an array of strings."
+      "description": "A lexical reference, represented as an array of strings."
     },
     "qualifiedThisReference": {
       "type": "array",
@@ -34,7 +34,7 @@
       "items": {
         "oneOf": [
           {
-            "$ref": "#/definitions/inheritance"
+            "$ref": "#/definitions/lexicalReference"
           },
           {
             "$ref": "#/definitions/qualifiedThisReference"
@@ -52,7 +52,7 @@
       "description": "A mixin",
       "oneOf": [
         {
-          "$ref": "#/definitions/inheritance"
+          "$ref": "#/definitions/lexicalReference"
         },
         {
           "$ref": "#/definitions/qualifiedThisReference"

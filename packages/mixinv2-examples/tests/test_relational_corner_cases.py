@@ -75,21 +75,21 @@ class TestDiamondEdge:
         assert isinstance(diamond_scope.edge, Scope)
 
     def test_edge_a_branch_has_b(self, diamond_scope: Scope) -> None:
-        """edge(a,b) — a-branch Tail contains b."""
-        assert isinstance(diamond_scope.edge.TailMap.a.TailMap.b, Scope)
+        """edge(a,b) — a-branch __Tail contains b."""
+        assert isinstance(diamond_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_a_branch_has_c(self, diamond_scope: Scope) -> None:
-        """edge(a,c) — a-branch Tail also contains c (two edges from a)."""
-        assert isinstance(diamond_scope.edge.TailMap.a.TailMap.c, Scope)
+        """edge(a,c) — a-branch __Tail also contains c (two edges from a)."""
+        assert isinstance(diamond_scope.edge["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_edge_b_branch_has_c(self, diamond_scope: Scope) -> None:
-        """edge(b,c) — b-branch Tail contains c."""
-        assert isinstance(diamond_scope.edge.TailMap.b.TailMap.c, Scope)
+        """edge(b,c) — b-branch __Tail contains c."""
+        assert isinstance(diamond_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_has_no_c_first_column(self, diamond_scope: Scope) -> None:
         """No edge(c,...) — c is only a sink vertex."""
-        with pytest.raises(AttributeError):
-            diamond_scope.edge.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            diamond_scope.edge["__TailMap"].c
 
 
 class TestDiamondPath:
@@ -105,20 +105,20 @@ class TestDiamondPath:
 
     def test_path_a_branch_has_b(self, diamond_scope: Scope) -> None:
         """path(a,b) exists."""
-        assert isinstance(diamond_scope.path.TailMap.a.TailMap.b, Scope)
+        assert isinstance(diamond_scope.path["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_path_a_branch_has_c(self, diamond_scope: Scope) -> None:
         """path(a,c) exists — from both direct edge and transitive derivation."""
-        assert isinstance(diamond_scope.path.TailMap.a.TailMap.c, Scope)
+        assert isinstance(diamond_scope.path["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_path_b_branch_has_c(self, diamond_scope: Scope) -> None:
         """path(b,c) exists."""
-        assert isinstance(diamond_scope.path.TailMap.b.TailMap.c, Scope)
+        assert isinstance(diamond_scope.path["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_path_has_no_c_first_column(self, diamond_scope: Scope) -> None:
         """No path(c,...) — c is a sink with no outgoing edges."""
-        with pytest.raises(AttributeError):
-            diamond_scope.path.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            diamond_scope.path["__TailMap"].c
 
     def test_path_equals_edge_for_diamond(self, diamond_scope: Scope) -> None:
         """For this DAG, path = edge (no new tuples beyond base edges).
@@ -128,12 +128,12 @@ class TestDiamondPath:
         """
         edge = diamond_scope.edge
         path = diamond_scope.path
-        assert isinstance(edge.TailMap.a.TailMap.b, Scope)
-        assert isinstance(edge.TailMap.a.TailMap.c, Scope)
-        assert isinstance(edge.TailMap.b.TailMap.c, Scope)
-        assert isinstance(path.TailMap.a.TailMap.b, Scope)
-        assert isinstance(path.TailMap.a.TailMap.c, Scope)
-        assert isinstance(path.TailMap.b.TailMap.c, Scope)
+        assert isinstance(edge["__TailMap"].a["__TailMap"].b, Scope)
+        assert isinstance(edge["__TailMap"].a["__TailMap"].c, Scope)
+        assert isinstance(edge["__TailMap"].b["__TailMap"].c, Scope)
+        assert isinstance(path["__TailMap"].a["__TailMap"].b, Scope)
+        assert isinstance(path["__TailMap"].a["__TailMap"].c, Scope)
+        assert isinstance(path["__TailMap"].b["__TailMap"].c, Scope)
 
 
 # =============================================================================
@@ -149,18 +149,18 @@ class TestSelfLoopEdge:
         assert isinstance(self_loop_scope.edge, Scope)
 
     def test_edge_a_branch_has_a(self, self_loop_scope: Scope) -> None:
-        """edge(a,a) — a-branch Tail contains a (self-loop)."""
-        assert isinstance(self_loop_scope.edge.TailMap.a.TailMap.a, Scope)
+        """edge(a,a) — a-branch __Tail contains a (self-loop)."""
+        assert isinstance(self_loop_scope.edge["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_edge_has_no_b_first_column(self, self_loop_scope: Scope) -> None:
         """No edge(b,...) — only a has an edge."""
-        with pytest.raises(AttributeError):
-            self_loop_scope.edge.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            self_loop_scope.edge["__TailMap"].b
 
     def test_edge_has_no_c_first_column(self, self_loop_scope: Scope) -> None:
         """No edge(c,...) — only a has an edge."""
-        with pytest.raises(AttributeError):
-            self_loop_scope.edge.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            self_loop_scope.edge["__TailMap"].c
 
 
 class TestSelfLoopPath:
@@ -176,23 +176,23 @@ class TestSelfLoopPath:
 
     def test_path_a_branch_has_a(self, self_loop_scope: Scope) -> None:
         """path(a,a) exists — the self-loop is reachable."""
-        assert isinstance(self_loop_scope.path.TailMap.a.TailMap.a, Scope)
+        assert isinstance(self_loop_scope.path["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_path_has_no_b_first_column(self, self_loop_scope: Scope) -> None:
         """No path(b,...) — b is unreachable."""
-        with pytest.raises(AttributeError):
-            self_loop_scope.path.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            self_loop_scope.path["__TailMap"].b
 
     def test_path_has_no_c_first_column(self, self_loop_scope: Scope) -> None:
         """No path(c,...) — c is unreachable."""
-        with pytest.raises(AttributeError):
-            self_loop_scope.path.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            self_loop_scope.path["__TailMap"].c
 
     def test_path_a_a_terminates_with_nil(self, self_loop_scope: Scope) -> None:
-        """path(a, a, Nil) — the self-loop tuple terminates correctly."""
-        path_a_a_tail = self_loop_scope.path.TailMap.a.TailMap.a
-        assert isinstance(path_a_a_tail.Acceptance, Scope)
-        assert isinstance(path_a_a_tail.Acceptance.Accepted, Scope)
+        """path(a, a, __Nil) — the self-loop tuple terminates correctly."""
+        path_a_a_tail = self_loop_scope.path["__TailMap"].a["__TailMap"].a
+        assert isinstance(path_a_a_tail["__Acceptance"], Scope)
+        assert isinstance(path_a_a_tail["__Acceptance"]["__Accepted"], Scope)
 
 
 # =============================================================================
@@ -209,21 +209,21 @@ class TestBidirectionalEdge:
 
     def test_edge_a_branch_has_b(self, bidirectional_scope: Scope) -> None:
         """edge(a,b) exists."""
-        assert isinstance(bidirectional_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(bidirectional_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_branch_has_a(self, bidirectional_scope: Scope) -> None:
         """edge(b,a) exists."""
-        assert isinstance(bidirectional_scope.edge.TailMap.b.TailMap.a, Scope)
+        assert isinstance(bidirectional_scope.edge["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_edge_a_branch_lacks_a(self, bidirectional_scope: Scope) -> None:
         """No edge(a,a) — no direct self-loop on a."""
-        with pytest.raises(AttributeError):
-            bidirectional_scope.edge.TailMap.a.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            bidirectional_scope.edge["__TailMap"].a["__TailMap"].a
 
     def test_edge_b_branch_lacks_b(self, bidirectional_scope: Scope) -> None:
         """No edge(b,b) — no direct self-loop on b."""
-        with pytest.raises(AttributeError):
-            bidirectional_scope.edge.TailMap.b.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            bidirectional_scope.edge["__TailMap"].b["__TailMap"].b
 
 
 class TestBidirectionalPath:
@@ -240,11 +240,11 @@ class TestBidirectionalPath:
 
     def test_path_a_branch_has_b(self, bidirectional_scope: Scope) -> None:
         """path(a,b) exists — from base edge."""
-        assert isinstance(bidirectional_scope.path.TailMap.a.TailMap.b, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_path_b_branch_has_a(self, bidirectional_scope: Scope) -> None:
         """path(b,a) exists — from base edge."""
-        assert isinstance(bidirectional_scope.path.TailMap.b.TailMap.a, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_path_a_branch_has_a(self, bidirectional_scope: Scope) -> None:
         """path(a,a) exists — derived from edge(a,b) + path(b,a).
@@ -252,19 +252,19 @@ class TestBidirectionalPath:
         This is the KEY test: self-loops are absent from edge but
         present in path, derived via the 2-cycle.
         """
-        assert isinstance(bidirectional_scope.path.TailMap.a.TailMap.a, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_path_b_branch_has_b(self, bidirectional_scope: Scope) -> None:
         """path(b,b) exists — derived from edge(b,a) + path(a,b).
 
         Symmetric to path(a,a): the other self-loop from the 2-cycle.
         """
-        assert isinstance(bidirectional_scope.path.TailMap.b.TailMap.b, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].b["__TailMap"].b, Scope)
 
     def test_path_has_no_c(self, bidirectional_scope: Scope) -> None:
         """No path involving c — c is disconnected."""
-        with pytest.raises(AttributeError):
-            bidirectional_scope.path.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            bidirectional_scope.path["__TailMap"].c
 
 
 class TestBidirectionalTransitiveClosure:
@@ -272,21 +272,21 @@ class TestBidirectionalTransitiveClosure:
 
     def test_edge_lacks_self_loop_a(self, bidirectional_scope: Scope) -> None:
         """edge does NOT have (a,a)."""
-        with pytest.raises(AttributeError):
-            bidirectional_scope.edge.TailMap.a.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            bidirectional_scope.edge["__TailMap"].a["__TailMap"].a
 
     def test_path_has_self_loop_a(self, bidirectional_scope: Scope) -> None:
         """path DOES have (a,a) — derived via 2-cycle."""
-        assert isinstance(bidirectional_scope.path.TailMap.a.TailMap.a, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_edge_lacks_self_loop_b(self, bidirectional_scope: Scope) -> None:
         """edge does NOT have (b,b)."""
-        with pytest.raises(AttributeError):
-            bidirectional_scope.edge.TailMap.b.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            bidirectional_scope.edge["__TailMap"].b["__TailMap"].b
 
     def test_path_has_self_loop_b(self, bidirectional_scope: Scope) -> None:
         """path DOES have (b,b) — derived via 2-cycle."""
-        assert isinstance(bidirectional_scope.path.TailMap.b.TailMap.b, Scope)
+        assert isinstance(bidirectional_scope.path["__TailMap"].b["__TailMap"].b, Scope)
 
 
 # =============================================================================
@@ -303,30 +303,30 @@ class TestCycleEdge:
 
     def test_edge_a_to_b(self, cycle_scope: Scope) -> None:
         """edge(a,b) exists."""
-        assert isinstance(cycle_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(cycle_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_to_c(self, cycle_scope: Scope) -> None:
         """edge(b,c) exists."""
-        assert isinstance(cycle_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(cycle_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_c_to_a(self, cycle_scope: Scope) -> None:
         """edge(c,a) exists."""
-        assert isinstance(cycle_scope.edge.TailMap.c.TailMap.a, Scope)
+        assert isinstance(cycle_scope.edge["__TailMap"].c["__TailMap"].a, Scope)
 
     def test_edge_a_lacks_c(self, cycle_scope: Scope) -> None:
         """No direct edge(a,c)."""
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].a["__TailMap"].c
 
     def test_edge_b_lacks_a(self, cycle_scope: Scope) -> None:
         """No direct edge(b,a)."""
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.b.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].b["__TailMap"].a
 
     def test_edge_c_lacks_b(self, cycle_scope: Scope) -> None:
         """No direct edge(c,b)."""
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.c.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].c["__TailMap"].b
 
 
 class TestCyclePath:
@@ -352,43 +352,43 @@ class TestCyclePath:
 
     def test_path_a_to_a(self, cycle_scope: Scope) -> None:
         """path(a,a) — self-loop derived via a→b→c→a."""
-        assert isinstance(cycle_scope.path.TailMap.a.TailMap.a, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_path_a_to_b(self, cycle_scope: Scope) -> None:
         """path(a,b) — from base edge."""
-        assert isinstance(cycle_scope.path.TailMap.a.TailMap.b, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_path_a_to_c(self, cycle_scope: Scope) -> None:
         """path(a,c) — derived from edge(a,b) + path(b,c)."""
-        assert isinstance(cycle_scope.path.TailMap.a.TailMap.c, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].a["__TailMap"].c, Scope)
 
     # --- b-branch: path(b, {a, b, c}) ---
 
     def test_path_b_to_a(self, cycle_scope: Scope) -> None:
         """path(b,a) — derived from edge(b,c) + path(c,a)."""
-        assert isinstance(cycle_scope.path.TailMap.b.TailMap.a, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_path_b_to_b(self, cycle_scope: Scope) -> None:
         """path(b,b) — self-loop derived via b→c→a→b."""
-        assert isinstance(cycle_scope.path.TailMap.b.TailMap.b, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].b["__TailMap"].b, Scope)
 
     def test_path_b_to_c(self, cycle_scope: Scope) -> None:
         """path(b,c) — from base edge."""
-        assert isinstance(cycle_scope.path.TailMap.b.TailMap.c, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].b["__TailMap"].c, Scope)
 
     # --- c-branch: path(c, {a, b, c}) ---
 
     def test_path_c_to_a(self, cycle_scope: Scope) -> None:
         """path(c,a) — from base edge."""
-        assert isinstance(cycle_scope.path.TailMap.c.TailMap.a, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].c["__TailMap"].a, Scope)
 
     def test_path_c_to_b(self, cycle_scope: Scope) -> None:
         """path(c,b) — derived from edge(c,a) + path(a,b)."""
-        assert isinstance(cycle_scope.path.TailMap.c.TailMap.b, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].c["__TailMap"].b, Scope)
 
     def test_path_c_to_c(self, cycle_scope: Scope) -> None:
         """path(c,c) — self-loop derived via c→a→b→c."""
-        assert isinstance(cycle_scope.path.TailMap.c.TailMap.c, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].c["__TailMap"].c, Scope)
 
 
 class TestCycleTransitiveClosure:
@@ -396,24 +396,24 @@ class TestCycleTransitiveClosure:
 
     def test_edge_lacks_a_to_c(self, cycle_scope: Scope) -> None:
         """No direct edge(a,c)."""
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].a["__TailMap"].c
 
     def test_path_has_a_to_c(self, cycle_scope: Scope) -> None:
         """path(a,c) derived transitively."""
-        assert isinstance(cycle_scope.path.TailMap.a.TailMap.c, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_edge_lacks_self_loops(self, cycle_scope: Scope) -> None:
         """No self-loops in edge."""
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.a.TailMap.a
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.b.TailMap.b
-        with pytest.raises(AttributeError):
-            cycle_scope.edge.TailMap.c.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].a["__TailMap"].a
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].b["__TailMap"].b
+        with pytest.raises((AttributeError, KeyError)):
+            cycle_scope.edge["__TailMap"].c["__TailMap"].c
 
     def test_path_has_all_self_loops(self, cycle_scope: Scope) -> None:
         """All self-loops present in path — derived via the 3-cycle."""
-        assert isinstance(cycle_scope.path.TailMap.a.TailMap.a, Scope)
-        assert isinstance(cycle_scope.path.TailMap.b.TailMap.b, Scope)
-        assert isinstance(cycle_scope.path.TailMap.c.TailMap.c, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].a["__TailMap"].a, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].b["__TailMap"].b, Scope)
+        assert isinstance(cycle_scope.path["__TailMap"].c["__TailMap"].c, Scope)

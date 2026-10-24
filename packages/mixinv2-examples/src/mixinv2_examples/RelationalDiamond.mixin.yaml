@@ -22,209 +22,209 @@
 # paths (multiple derivations of the same fact) are handled correctly
 # by the trie's natural deduplication.
 #
-# This encoding uses the RepeatedVisitor base (Relation/Cons/Nil/TailMap).
+# This encoding uses the RepeatedVisitor base (__Relation/__Cons/__Nil/__TailMap).
 
-- Relation:
-    Acceptance:
-      VisitorMap: []
-      Visitor:
-        Visited: []
-      Accepted: []
+- __Relation:
+    __Acceptance:
+      __VisitorMap: []
+      __Visitor:
+        __Visited: []
+      __Accepted: []
 
-- Nil:
-    - [Relation]
-    - Acceptance:
-        VisitorMap:
-          Nil: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, Nil, Visited]
-- Cons:
-    - [Relation]
-    - Tail:
-        - [Relation]
-        - Replacement:
-            NewTail: [Relation]
-            Replaced:
-              - [Cons]
-              - TailMap: []
-                WithVisitorTail: []
+- __Nil:
+    - [__Relation]
+    - __Acceptance:
+        __VisitorMap:
+          __Nil: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, __Nil, __Visited]
+- __Cons:
+    - [__Relation]
+    - __Tail:
+        - [__Relation]
+        - __Replacement:
+            __NewTail: [__Relation]
+            __Replaced:
+              - [__Cons]
+              - __TailMap: []
+                __WithVisitorTail: []
 
 - a:
-    - [Cons]
-    - Tail: []
-      TailMap:
+    - [__Cons]
+    - __Tail: []
+      __TailMap:
         a:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalDiamond, ~, a]
-                - TailMap:
-                    a: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    a: [__NewTail]
+      __WithVisitorTail:
         a:
-          VisitorTail: [TailMap, a]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, a]
+      __WithVisiteeTail:
         a:
-          VisiteeTail: [TailMap, a]
-      Acceptance:
-        - Visitor:
-            Visited: []
-          VisitorMap:
-            - a: [Visitor]
-          Accepted: [Acceptance, ~, VisitorMap, a, Visited]
+          __VisiteeTail: [__TailMap, a]
+      __Acceptance:
+        - __Visitor:
+            __Visited: []
+          __VisitorMap:
+            - a: [__Visitor]
+          __Accepted: [__Acceptance, ~, __VisitorMap, a, __Visited]
 - b:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         b:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalDiamond, ~, b]
-                - TailMap:
-                    b: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    b: [__NewTail]
+      __WithVisitorTail:
         b:
-          VisitorTail: [TailMap, b]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, b]
+      __WithVisiteeTail:
         b:
-          VisiteeTail: [TailMap, b]
-      Acceptance:
-        VisitorMap:
-          b: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, b, Visited]
+          __VisiteeTail: [__TailMap, b]
+      __Acceptance:
+        __VisitorMap:
+          b: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, b, __Visited]
 - c:
-    - [Cons]
-    - Tail: []
-    - TailMap:
+    - [__Cons]
+    - __Tail: []
+    - __TailMap:
         c:
-          - [Tail]
-          - Replacement:
-              NewTail: [Tail]
-              Replaced:
+          - [__Tail]
+          - __Replacement:
+              __NewTail: [__Tail]
+              __Replaced:
                 - [RelationalDiamond, ~, c]
-                - TailMap:
-                    c: [NewTail]
-      WithVisitorTail:
+                - __TailMap:
+                    c: [__NewTail]
+      __WithVisitorTail:
         c:
-          VisitorTail: [TailMap, c]
-      WithVisiteeTail:
+          __VisitorTail: [__TailMap, c]
+      __WithVisiteeTail:
         c:
-          VisiteeTail: [TailMap, c]
-      Acceptance:
-        VisitorMap:
-          c: [Visitor]
-        Visitor:
-          Visited: []
-        Accepted: [VisitorMap, c, Visited]
+          __VisiteeTail: [__TailMap, c]
+      __Acceptance:
+        __VisitorMap:
+          c: [__Visitor]
+        __Visitor:
+          __Visited: []
+        __Accepted: [__VisitorMap, c, __Visited]
 
 # edge(a,b).
 - edge:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalDiamond, ~, b]
-          - TailMap:
-              b: [Nil]
+          - __TailMap:
+              b: [__Nil]
 
 # edge(a,c).
 - edge:
     - [a]
-    - TailMap:
+    - __TailMap:
         a:
           - [RelationalDiamond, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # edge(b,c).
 - edge:
     - [b]
-    - TailMap:
+    - __TailMap:
         b:
           - [RelationalDiamond, ~, c]
-          - TailMap:
-              c: [Nil]
+          - __TailMap:
+              c: [__Nil]
 
 # path(X,Y) :- edge(X,Y).
-- _BaseXAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _YAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap: [_X, WithVisiteeTail]
-          - Visitor:
-              VisiteeTail: [_X, Tail]
-              _Y: [VisiteeTail]
-              _NilAcceptance:
-                - [VisiteeTail, Acceptance]
-                - VisitorMap:
-                    Nil:
-                      _YReplacement:
-                        - [_Y, Replacement]
-                        - NewTail: [RelationalDiamond, ~, Nil]
-                      _XReplacement:
-                        - [_X, Replacement]
-                        - NewTail: [_YReplacement, Replaced]
-                      Visited: [_XReplacement, Replaced]
-              Visited: [_NilAcceptance, Accepted]
-        Visited: [_YAcceptance, Accepted]
+- __BaseXAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __YAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap: [__X, __WithVisiteeTail]
+          - __Visitor:
+              __VisiteeTail: [__X, __Tail]
+              __Y: [__VisiteeTail]
+              __NilAcceptance:
+                - [__VisiteeTail, __Acceptance]
+                - __VisitorMap:
+                    __Nil:
+                      __YReplacement:
+                        - [__Y, __Replacement]
+                        - __NewTail: [RelationalDiamond, ~, __Nil]
+                      __XReplacement:
+                        - [__X, __Replacement]
+                        - __NewTail: [__YReplacement, __Replaced]
+                      __Visited: [__XReplacement, __Replaced]
+              __Visited: [__NilAcceptance, __Accepted]
+        __Visited: [__YAcceptance, __Accepted]
 
-  path: [_BaseXAcceptance, Accepted]
+  path: [__BaseXAcceptance, __Accepted]
 
 # path(X,Y) :- edge(X,Z), path(Z,Y).
-- _RecursiveXAcceptance:
-    - [edge, Acceptance]
-    - VisitorMap: [edge, WithVisiteeTail]
-    - Visitor:
-        VisiteeTail: [edge, Tail]
-        _X: [VisiteeTail]
-        _ZAcceptance:
-          - [_X, Acceptance]
-          - VisitorMap:
-              - [path, WithVisitorTail]
-              - [_X, WithVisiteeTail]
-            Visitor:
-              VisiteeTail: [_X, Tail]
-              _Z0: [VisiteeTail]
-              VisitorTail: [path, Tail]
-              _NilAcceptance0:
-                - [_Z0, Acceptance]
-                - VisitorMap:
-                    - Nil:
-                        _YAcceptance:
-                          - [VisitorTail, Acceptance]
-                          - VisitorMap:
-                              - [VisitorTail, WithVisiteeTail]
-                          - Visitor:
-                              VisiteeTail: [VisitorTail, Tail]
-                              _Y: [VisiteeTail]
-                              _NilAcceptance1:
-                                - [VisiteeTail, Acceptance]
-                                - VisitorMap:
-                                    Nil:
-                                      _YReplacement:
-                                        - [_Y, Replacement]
-                                        - NewTail:
+- __RecursiveXAcceptance:
+    - [edge, __Acceptance]
+    - __VisitorMap: [edge, __WithVisiteeTail]
+    - __Visitor:
+        __VisiteeTail: [edge, __Tail]
+        __X: [__VisiteeTail]
+        __ZAcceptance:
+          - [__X, __Acceptance]
+          - __VisitorMap:
+              - [path, __WithVisitorTail]
+              - [__X, __WithVisiteeTail]
+            __Visitor:
+              __VisiteeTail: [__X, __Tail]
+              __Z0: [__VisiteeTail]
+              __VisitorTail: [path, __Tail]
+              __NilAcceptance0:
+                - [__Z0, __Acceptance]
+                - __VisitorMap:
+                    - __Nil:
+                        __YAcceptance:
+                          - [__VisitorTail, __Acceptance]
+                          - __VisitorMap:
+                              - [__VisitorTail, __WithVisiteeTail]
+                          - __Visitor:
+                              __VisiteeTail: [__VisitorTail, __Tail]
+                              __Y: [__VisiteeTail]
+                              __NilAcceptance1:
+                                - [__VisiteeTail, __Acceptance]
+                                - __VisitorMap:
+                                    __Nil:
+                                      __YReplacement:
+                                        - [__Y, __Replacement]
+                                        - __NewTail:
                                             [
                                               RelationalDiamond,
                                               ~,
-                                              Nil,
+                                              __Nil,
                                             ]
-                                      _XReplacement:
-                                        - [_X, Replacement]
-                                        - NewTail: [_YReplacement, Replaced]
-                                      Visited: [_XReplacement, Replaced]
-                              Visited: [_NilAcceptance1, Accepted]
-                        Visited: [_YAcceptance, Accepted]
-              Visited: [_NilAcceptance0, Accepted]
-        Visited: [_ZAcceptance, Accepted]
+                                      __XReplacement:
+                                        - [__X, __Replacement]
+                                        - __NewTail: [__YReplacement, __Replaced]
+                                      __Visited: [__XReplacement, __Replaced]
+                              __Visited: [__NilAcceptance1, __Accepted]
+                        __Visited: [__YAcceptance, __Accepted]
+              __Visited: [__NilAcceptance0, __Accepted]
+        __Visited: [__ZAcceptance, __Accepted]
 
-  path: [_RecursiveXAcceptance, Accepted]
+  path: [__RecursiveXAcceptance, __Accepted]

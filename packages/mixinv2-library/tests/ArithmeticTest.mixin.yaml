@@ -1,22 +1,17 @@
-- [NatConstants]
-- [Builtin, NatEqualityZero]
-- [Builtin, NatEqualitySuccessor]
-- [Builtin, NatPlusZero]
-- [Builtin, NatPlusSuccessor]
+# Entry point for the Nat arithmetic tests: the FFI-free core shown in the paper
+# (NatArithmeticTest, a single 3+4 / (3+4)==7 chain) composed with the ToPython
+# FFI so the suite can read results back as Python natives via `.pythonValues`,
+# plus the remaining arithmetic / equality cases the paper does not show.
+- [NatArithmeticTest]
 - [Builtin, NatToPython]
 - [Builtin, BooleanToPython]
 
   # =============================================================================
-  # Addition tests
+  # Further addition cases
   # =============================================================================
 
-  # 3 + 4
-- threePlusFour:
-    - [ArithmeticTest, ~, Three, Plus]
-    - addend: [ArithmeticTest, ~, Four]
-
   # 5 + 2
-  fivePlusTwo:
+- fivePlusTwo:
     - [ArithmeticTest, ~, Five, Plus]
     - addend: [ArithmeticTest, ~, Two]
 
@@ -26,7 +21,7 @@
     - addend: [ArithmeticTest, ~, Three]
 
   # =============================================================================
-  # Direct equality tests (without addition)
+  # Direct equality cases (without addition)
   # =============================================================================
 
   # 0 == 0
@@ -45,13 +40,8 @@
     - other: [ArithmeticTest, ~, Four]
 
   # =============================================================================
-  # Equality tests with addition results
+  # Equality cases on addition results
   # =============================================================================
-
-  # (3 + 4) == 7
-  threePlusFourEqualsSeven:
-    - [ArithmeticTest, ~, Seven, Equal]
-    - other: [threePlusFour, sum]
 
   # (5 + 2) == 7
   fivePlusTwoEqualsSeven:

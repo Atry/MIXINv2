@@ -1,15 +1,58 @@
 ---
 name: mixinv2
-description: "MIXINv2 language coding conventions: C#-like UpperCamelCase/lowerCamelCase naming with totality semantics, namespace/sort/entity/algebraic-structure/category concepts, the *Factory + Product pattern, abstract factories with declarations, nested-class projection fields, private underscore members, Python FFI module naming (@public/@resource/@extern), and lexical vs qualified-this references. Use when authoring or editing .mixin.yaml files, MIXINv2 Python FFI modules, or anything in the MIXINv2 scope tree."
+description: "MIXINv2 language coding conventions: C#-like UpperCamelCase/lowerCamelCase naming with totality semantics, namespace/sort/entity/algebraic-structure/category concepts, the *Factory + Product pattern, abstract factories with declarations, nested-class projection fields, private underscore members, the one-property-per-dash form for own definitions (stable under composition, minimal diffs), Python FFI module naming (@public/@resource/@extern), and lexical vs qualified-this references. Use when authoring or editing .mixin.yaml files, MIXINv2 Python FFI modules, or anything in the MIXINv2 scope tree."
 ---
 
 # MIXINv2 Coding Conventions
 
 **Terminology note:** This project previously used the terms "mixin", "union", and "overlay". The language has been renamed to **MIXINv2**. Legacy references to "mixin", "union", or "overlay" in code, comments, or documentation refer to MIXINv2 concepts.
 
-MIXINv2 adopts C#-like naming conventions. The UpperCamelCase/lowerCamelCase distinction is not merely stylistic — it carries semantic meaning for the totality checker: UpperCamelCase symbols are **scopes** (instantiable at runtime), while lowerCamelCase symbols are written as if they are **resources** (lazily evaluated values, no new UpperCamelCase children defined within them). This naming convention enables automatic totality verification without manual proofs (see `mixin_totality.tex`). Note that the scope/resource distinction is a design intent, not yet enforced by the compiler — currently all symbols compile to scopes regardless of casing.
+MIXINv2 adopts C#-like naming conventions. The UpperCamelCase/lowerCamelCase distinction is not merely stylistic — it carries semantic meaning for the totality checker: UpperCamelCase symbols are **scopes** (instantiable at runtime), while lowerCamelCase symbols are written as if they are **resources** (lazily evaluated values, no new UpperCamelCase children defined within them). This naming convention is intended to enable automatic totality verification without manual proofs (a work-in-progress design document lives in the monorepo's `wip/mixin_totality.tex`, outside this subrepo). Note that the scope/resource distinction is a design intent, not yet enforced by the compiler — currently all symbols compile to scopes regardless of casing.
 
 For initialisms/acronyms, follow C#-style casing: keep the acronym uppercase in PascalCase names (for example, `AsyncFFI`, `StdlibFFI`, `HTTPRequest`) rather than mixed forms like `AsyncFfi`.
+
+### One Property Per Dash
+
+Write every own definition as its own `-` block item: never group several `name:` definitions under one dash, and never place them directly under the mixin. A mixin is then uniformly a list of `-` items, each either an inheritance source `[...]` or a single own `name:` definition.
+
+There are two reasons. First, stability under composition: if own definitions sit directly under the mixin, adding an inheritance source later forces wrapping them in a `-` and re-indenting every line; starting from `-` items makes adding or removing a supermixin a one-line edit with no reindentation. Second, diff stability: with one definition per dash, adding or removing a property is a single-line change, and no existing line has to gain or lose a leading `-` because it became (or stopped being) the first of a group, so version-control diffs stay minimal and local.
+
+Splitting a multi-key group into one dash per key never changes meaning: the entries of a record form a set, so `[{a, b}]` and `[{a}, {b}]` denote the same mixin. This also mirrors the JSON object model, where a mixin is the `inheritanceAndOwnProperties` array in every case.
+
+```yaml
+# ✓ GOOD — one own definition per "-"; adding "- [Super]" or a new property
+# is a one-line edit with no reindentation
+NatFactory:
+  - Product: []
+  - Zero:
+      - [Product]
+  - Successor:
+      - [Product]
+      - predecessor: [[Product]]
+
+# ✗ AVOID — several definitions grouped under one "-" (or placed directly under
+# the mixin); adding or removing one churns the dash placement or reindents
+NatFactory:
+  - Product: []
+    Zero:
+      - [Product]
+    Successor:
+      - [Product]
+      - predecessor: [[Product]]
+```
+
+An empty member keeps the inline empty list (`Product: []` declares an abstract member with no definitions). A member whose value is a single reference wraps it as a one-member list, `sum: [[addend]]`, not `sum: [addend]` (see Strict-Core Compatibility below). Each own definition is its own `-` item.
+
+### Strict-Core Compatibility
+
+The paper's inheritance-calculus is a strict core; MIXINv2 is its sugared superset. Two house rules keep code valid in both and give every mixin a single canonical shape:
+
+- **Single-key objects.** Each `-` item defines at most one `name:` (the One Property Per Dash rule above). MIXINv2 also accepts several keys under one dash; the strict core does not.
+- **Wrap single-reference values.** A property body is a mixin, a list of members; a reference, written `[...]`, resolves to a mixin to inherit from. So a body that inherits from a single reference is `[[addend]]`: the outer list is the mixin, the inner `[addend]` the reference. This makes the property a fresh mixin, with no own definitions, that *inherits* the mixin `[addend]` resolves to; the bare `sum: [addend]` relies on MIXINv2 sugar. A property whose body is already a block list of members (a `- [Super]` followed by `- name:` definitions) needs no change, and an empty mixin stays `name: []`.
+
+Do not bind the same label twice within one mixin either: the strict core rejects a duplicate label (navigation reports an error), whereas MIXINv2 deep-merges the two definitions. The strict core merges same-label definitions only across inheritance, never within a single mixin.
+
+MIXINv2 accepts the unwrapped `sum: [addend]`, multi-key objects, and duplicate labels as sugar, so existing code keeps working. Prefer the strict forms for new code, so it also conforms to the inheritance-calculus core.
 
 ### Naming Convention Summary
 
@@ -35,23 +78,23 @@ Example: `Builtin` is a namespace containing sorts (`Nat`, `Boolean`, `BinNat`),
 
 A **sort** (mathematical term) is a carrier set — MIXINv2's equivalent of a C# class. Its data constructors are called **entities** (ECS term). These are two perspectives on the same concept: a sort is defined by its entities, and an entity belongs to a sort.
 
-Sorts are defined using a `*Factory` + `Product` pattern: the factory contains `Product` (the abstract element type) and all entity constructors, while the sort name is aliased to `[*Factory, Product]`:
+Sorts are defined using a `*Factory` + `Product` pattern: the factory contains `Product` (the abstract element type) and all entity constructors, while the sort name is aliased to `[[*Factory, Product]]`:
 
 ```yaml
 NatFactory:        # Sort factory: natural numbers
-  Product: []      # Abstract element type
-  Zero:
-    - [Product]
-  Successor:
-    - [Product]
-    - predecessor: [Product]
-Nat: [NatFactory, Product]   # Sort alias: Nat = NatFactory.Product
+  - Product: []      # Abstract element type
+  - Zero:
+      - [Product]
+  - Successor:
+      - [Product]
+      - predecessor: [[Product]]
+Nat: [[NatFactory, Product]]   # Sort alias: Nat = NatFactory.Product
 
 BooleanFactory:    # Sort factory: booleans
-  Product: []
-  "True": [Product]
-  "False": [Product]
-Boolean: [BooleanFactory, Product]
+  - Product: []
+  - "True": [[Product]]
+  - "False": [[Product]]
+Boolean: [[BooleanFactory, Product]]
 ```
 
 The `*Factory` indirection allows algebraic structures and categories to be composed onto the same factory without modifying the original sort definition. The sort alias (`Nat`, `Boolean`) provides a stable public name.
@@ -62,12 +105,12 @@ The `*Factory` indirection allows algebraic structures and categories to be comp
 # To construct a Successor wrapping some value n:
 _wrappedN:
   - [Successor]          # inherit the Successor constructor
-  - predecessor: [n]     # supply the required field
+  - predecessor: [[n]]     # supply the required field
 
 # To construct an Odd BinNat from an Even half:
 _result:
   - [Odd]                # inherit the Odd constructor
-  - half: [Even, ~, half]  # supply the required field
+  - half: [[Even, ~, half]]  # supply the required field
 ```
 
 The result is then exposed via a projection field (e.g. `sum`, `decreased`, `increment`) so callers do not need to know which constructor was used — see Nested Class / Method below.
@@ -77,20 +120,20 @@ The entity **name** is its identity — it persists across compositions. Each in
 ```yaml
 # In NatData.mixin.yaml: Zero is defined as a data variant
 NatFactory:
-  Product: []
-  Zero:
-    - [Product]
-  Successor:
-    - [Product]
-    - predecessor: [Product]
+  - Product: []
+  - Zero:
+      - [Product]
+  - Successor:
+      - [Product]
+      - predecessor: [[Product]]
 
 # In NatPlus.mixin.yaml: Zero gets a Plus component overlaid
 - [NatData]
 - NatFactory:
-    Zero:
-      Plus:
-        addend: [Product]
-        sum: [addend]   # 0 + m = m
+    - Zero:
+        - Plus:
+            - addend: [[Product]]
+            - sum: [[addend]]   # 0 + m = m
 
 # When composed, the entity Zero has both its original structure
 # and the Plus behavior merged together
@@ -104,23 +147,23 @@ Borrowed from C#'s partial class concept. An algebraic structure adds operations
 # NatPlus.mixin.yaml — adds Plus operation to Nat
 - [NatData]              # Inherit the sort data definition
 - NatFactory:            # Extend the factory
-    Product:
-      Plus:
-        sum: [Product]   # Abstract type declaration
-    Zero:
-      Plus:
-        addend: [Product]
-        sum: [addend]    # 0 + m = m
-    Successor:
-      Plus:
-        addend: [Product]
-        sum: ...         # S(n) + m = S(n + m)
+    - Product:
+        - Plus:
+            - sum: [[Product]]   # Abstract type declaration
+    - Zero:
+        - Plus:
+            - addend: [[Product]]
+            - sum: [[addend]]    # 0 + m = m
+    - Successor:
+        - Plus:
+            - addend: [[Product]]
+            - sum: ...         # S(n) + m = S(n + m)
 ```
 
 Key points:
 - The file itself is a top-level list (no wrapping name like `NatPlus:`) — it is an anonymous category
 - Inherits `[NatData]` (the category that defines `NatFactory`), not `[Nat]` (the alias `[NatFactory, Product]`)
-- Parameters have type constraints: `addend: [Product]`, not `addend: []`
+- Parameters have type constraints: `addend: [[Product]]`, not `addend: []`
 
 Examples: `NatPlus` (Nat × Nat → Nat), `BooleanNegation` (Boolean → Boolean, exposes `not` field), `BooleanAnd` (Boolean × Boolean → Boolean), `BooleanOr`, `BooleanEquality`, `BinNatPlus`, `BinNatIncrement`, `NatDecrement`, `BinNatDecrement`.
 
@@ -133,23 +176,23 @@ A category encodes operations across different sorts (Sort₁ → Sort₂). Cate
 - [NatVisitor]       # Inherit Nat visitor infrastructure
 - NatFactory:        # Extend the Nat factory with equality
     - Product:
-        Equal:
-          other: [Product]
-          equal: [NatEquality, ~, Boolean]   # Qualified this crosses sort boundary
-      Zero:
-        Equal:
-          other: [Product]
-          _OtherAcceptance:
-            - [other, Acceptance]
-            - VisitorMap:
-                ZeroVisitor:
-                  equal: [NatEquality, ~, BooleanFactory, "True"]
-                SuccessorVisitor:
-                  equal: [NatEquality, ~, BooleanFactory, "False"]
-              Accepted:
-                equal: [NatEquality, ~, Boolean]
-          equal: [_OtherAcceptance, Accepted, equal]
-      Successor:
+        - Equal:
+            - other: [[Product]]
+            - equal: [[NatEquality, ~, Boolean]]   # Qualified this crosses sort boundary
+    - Zero:
+        - Equal:
+            - other: [[Product]]
+            - _OtherAcceptance:
+                - [other, Acceptance]
+                - VisitorMap:
+                    - ZeroVisitor:
+                        - equal: [[NatEquality, ~, BooleanFactory, "True"]]
+                    - SuccessorVisitor:
+                        - equal: [[NatEquality, ~, BooleanFactory, "False"]]
+                - Accepted:
+                    - equal: [[NatEquality, ~, Boolean]]
+            - equal: [[_OtherAcceptance, Accepted, equal]]
+    - Successor:
         ...
 - [BooleanData]      # Inherit Boolean sort data (output sort)
 ```
@@ -172,15 +215,15 @@ A declaration declares an abstract slot with a type constraint, without providin
 ```yaml
 # FibonacciFactory declares abstract Zero and One projections
 FibonacciFactory:
-  Zero: [Product]    # Abstract projection: expects a Product-typed value
-  One: [Product]     # Abstract projection: expects a Product-typed value
-  Product:
-    Fibonacci:
-      n: [Product]
-      fibonacci: ...  # Uses Zero and One through lexical references
+  - Zero: [[Product]]    # Abstract projection: expects a Product-typed value
+  - One: [[Product]]     # Abstract projection: expects a Product-typed value
+  - Product:
+      - Fibonacci:
+          - n: [[Product]]
+          - fibonacci: ...  # Uses Zero and One through lexical references
 ```
 
-**Key insight:** `Zero: [Product]` is **NOT** a reference to a constructor. It is a **type-constrained slot** that concrete factories must satisfy.
+**Key insight:** `Zero: [[Product]]` is **NOT** a reference to a constructor. It is a **type-constrained slot** that concrete factories must satisfy.
 
 #### Creating Abstract Base Classes
 
@@ -193,17 +236,17 @@ NumberFactory: []          # Abstract base factory
 NatFactory:
   - [NumberFactory]        # NatFactory inherits from NumberFactory
   - Product: []
-    Zero: [Product]
-    Successor: [Product]
+  - Zero: [[Product]]
+  - Successor: [[Product]]
 
 # In BinNatData.mixin.yaml:
 NumberFactory: []          # Same abstract base
 BinNatFactory:
   - [NumberFactory]        # BinNatFactory inherits from NumberFactory
   - Product: []
-    Zero: [Product]
-    Even: [Product]
-    Odd: [Product]
+  - Zero: [[Product]]
+  - Even: [[Product]]
+  - Odd: [[Product]]
 ```
 
 Now `NumberFactory` is a common base class that both `NatFactory` and `BinNatFactory` inherit from. This enables polymorphic composition.
@@ -215,16 +258,16 @@ Once the abstract base exists, you can write operations that work for **any** fa
 ```yaml
 # NumberIsZero.mixin.yaml — works for both Nat and BinNat
 - NumberFactory:
-    Zero: [Product]        # Declare abstract Zero projection (satisfied by concrete factories)
-    Product:
-      Equal:
-        other: [Product]   # Declare abstract Equal operation (provided by NatEquality/BinNatEquality)
-        equal: [NumberIsZero, ~, Boolean]  # equal is inherited from composed categories
-      IsZero:
-        _equalZero:
-          - [Equal]        # Use abstract Equal operation
-          - other: [Zero]  # Use abstract Zero projection (lexical reference)
-        isZero: [_equalZero, equal]
+    - Zero: [[Product]]        # Declare abstract Zero projection (satisfied by concrete factories)
+    - Product:
+        - Equal:
+            - other: [[Product]]   # Declare abstract Equal operation (provided by NatEquality/BinNatEquality)
+            - equal: [[NumberIsZero, ~, Boolean]]  # equal is inherited from composed categories
+        - IsZero:
+            - _equalZero:
+                - [Equal]        # Use abstract Equal operation
+                - other: [[Zero]]  # Use abstract Zero projection (lexical reference)
+            - isZero: [[_equalZero, equal]]
 - [Builtin, BooleanData]
 ```
 
@@ -246,15 +289,15 @@ Once the abstract base exists, you can write operations that work for **any** fa
 2. **Declare abstract projections** with type constraints:
    ```yaml
    AbstractFactory:
-     Zero: [Product]   # Abstract projection (slot)
+     - Zero: [[Product]]   # Abstract projection (slot)
    ```
 
 3. **Implement polymorphic operations** using lexical references to abstract projections:
    ```yaml
    - AbstractFactory:
-       Product:
-         Operation:
-           result: [Zero]  # Lexical reference resolves polymorphically
+       - Product:
+           - Operation:
+               - result: [[Zero]]  # Lexical reference resolves polymorphically
    ```
 
 4. **Compose with concrete factories** through inheritance:
@@ -287,31 +330,31 @@ Compare:
 A nested class should expose its result as a **projection field** rather than directly inheriting a constructor. Callers read the result through the field; they should not need to know which constructor was used internally:
 
 ```yaml
-# ✓ GOOD - Plus exposes result via projection field `sum: [Product]`
+# ✓ GOOD - Plus exposes result via projection field `sum: [[Product]]`
 # Callers use ANF style: bind a temporary variable to Plus, then read sum from it
 #   _addition:
 #     - [someNat, Plus]
-#     - addend: [otherNat]
-#   result: [_addition, sum]
-Product:
-  Plus:
-    sum: [Product]    # projection field: abstract result type
-Zero:
-  Plus:
-    addend: [Product]
-    sum: [addend]     # Zero + m = m, result is m directly
-Successor:
-  Plus:
-    addend: [Product]
-    sum: ...          # S(n) + m = S(n+m), result is a Successor
+#     - addend: [[otherNat]]
+#   result: [[_addition, sum]]
+- Product:
+    - Plus:
+        - sum: [[Product]]    # projection field: abstract result type
+- Zero:
+    - Plus:
+        - addend: [[Product]]
+        - sum: [[addend]]     # Zero + m = m, result is m directly
+- Successor:
+    - Plus:
+        - addend: [[Product]]
+        - sum: ...          # S(n) + m = S(n+m), result is a Successor
 
 # ✗ BAD - directly inheriting a constructor leaks implementation details
 # Callers would need to know the result is specifically a Successor
 Successor:
-  Plus:
-    - addend: [Product]
-    - [Successor]
-    - predecessor: ...  # caller must navigate .predecessor, not .sum
+  - Plus:
+      - addend: [[Product]]
+      - [Successor]
+      - predecessor: ...  # caller must navigate .predecessor, not .sum
 ```
 
 ### Field (lowerCamelCase)
@@ -320,12 +363,12 @@ Fields hold values within a class. The compiler currently does not treat fields 
 
 ```yaml
 Successor:
-  predecessor: [Product]    # field: lowerCamelCase
+  - predecessor: [[Product]]    # field: lowerCamelCase
 
 Zero:
-  Plus:
-    addend: [Product]       # parameter: lowerCamelCase
-    sum: [addend]           # field: lowerCamelCase
+  - Plus:
+      - addend: [[Product]]       # parameter: lowerCamelCase
+      - sum: [[addend]]           # field: lowerCamelCase
 ```
 
 ### Parameter (lowerCamelCase)
@@ -334,12 +377,12 @@ External inputs to operations, declared with a type reference to indicate they m
 
 ```yaml
 Plus:
-  addend: [Product]     # parameter: must be provided, typed as Product
-  sum: [addend]         # field: computed from parameter
+  - addend: [[Product]]     # parameter: must be provided, typed as Product
+  - sum: [[addend]]         # field: computed from parameter
 
 Equal:
-  other: [Product]      # parameter: must be provided, typed as Product
-  equal: [other]        # field: computed from parameter
+  - other: [[Product]]      # parameter: must be provided, typed as Product
+  - equal: [[other]]        # field: computed from parameter
 ```
 
 ### Private Members (Underscore Prefix)
@@ -350,38 +393,38 @@ Underscore prefix denotes private implementation details — intermediate comput
 
 ```yaml
 Successor:
-  Equal:
-    other: [Product]
+  - Equal:
+      - other: [[Product]]
 
-    # ✓ GOOD - lowerCamelCase: inherits [Successor] but only provides
-    # lowerCamelCase fields (no new scope definitions)
-    _increasedAddend:
-      - [Successor]
-      - predecessor: [addend]
+      # ✓ GOOD - lowerCamelCase: inherits [Successor] but only provides
+      # lowerCamelCase fields (no new scope definitions)
+      - _increasedAddend:
+          - [Successor]
+          - predecessor: [[addend]]
 
-    # ✓ GOOD - UpperCamelCase: defines new nested scopes
-    # (VisitorMap, Accepted are new scope definitions)
-    _OtherAcceptance:
-      - [other, Acceptance]
-      - VisitorMap:
-            ZeroVisitor:
-              equal: [NatEquality, ~, "False"]
-            SuccessorVisitor:
-              equal: [_recursiveEquality, equal]
-          Accepted:
-            equal: [NatEquality, ~, Boolean]
+      # ✓ GOOD - UpperCamelCase: defines new nested scopes
+      # (VisitorMap, Accepted are new scope definitions)
+      - _OtherAcceptance:
+          - [other, Acceptance]
+          - VisitorMap:
+              - ZeroVisitor:
+                  - equal: [[NatEquality, ~, "False"]]
+              - SuccessorVisitor:
+                  - equal: [[_recursiveEquality, equal]]
+          - Accepted:
+              - equal: [[NatEquality, ~, Boolean]]
 
-    # ✗ BAD - lowerCamelCase but defines new scopes
-    _otherAcceptance:
-      - [other, Acceptance]
-      - VisitorMap:            # Defines a new scope → parent must be UpperCamelCase
-            ZeroVisitor:
-              equal: ...
+      # ✗ BAD - lowerCamelCase but defines new scopes
+      - _otherAcceptance:
+          - [other, Acceptance]
+          - VisitorMap:            # Defines a new scope → parent must be UpperCamelCase
+              - ZeroVisitor:
+                  - equal: ...
 
-    equal: [_OtherAcceptance, Accepted, equal]
+      - equal: [[_OtherAcceptance, Accepted, equal]]
 ```
 
-The distinction: `_increasedAddend` is lowerCamelCase because it only **contains** a Successor scope (via inheritance `- [Successor]`) and provides field values (`predecessor: [addend]`). `_OtherAcceptance` is UpperCamelCase because it **defines** new nested scopes (`VisitorMap`, `Accepted`).
+The distinction: `_increasedAddend` is lowerCamelCase because it only **contains** a Successor scope (via inheritance `- [Successor]`) and provides field values (`predecessor: [[addend]]`). `_OtherAcceptance` is UpperCamelCase because it **defines** new nested scopes (`VisitorMap`, `Accepted`).
 
 ### Python FFI Naming Conventions
 
@@ -446,7 +489,7 @@ def server(host: str, port: int, handler_class: type) -> HTTPServer:
 
 ### References: Lexical vs Qualified This
 
-MIXINv2 provides two kinds of references for navigating the scope hierarchy:
+MIXINv2 provides two kinds of references for navigating the scope hierarchy. A reference is itself written `[Symbol]` (or `[Scope, ~, path...]`); when it is the entire body of a property, it appears wrapped as a one-member list, `name: [[Symbol]]` (see Strict-Core Compatibility), the outer brackets being the member list and the inner brackets the reference. The headings below name each reference form by its bare `[...]` shape.
 
 #### 1. Lexical Reference `[Symbol]`
 
@@ -457,13 +500,13 @@ A **lexical reference** searches for a symbol in the current lexical scope (the 
 ```yaml
 # ✓ GOOD - lexical reference to own property
 NumberFactory:
-  Zero: [Product]          # Own property: defined in this file
-  Product:
-    IsZero:
-      _equalZero:
-        - [Equal]           # Own property: defined in this file
-        - other: [Zero]     # Own property: defined in this file
-      isZero: [_equalZero, equal]
+  - Zero: [[Product]]          # Own property: defined in this file
+  - Product:
+      - IsZero:
+          - _equalZero:
+              - [Equal]           # Own property: defined in this file
+              - other: [[Zero]]     # Own property: defined in this file
+          - isZero: [[_equalZero, equal]]
 ```
 
 **When lexical references work:**
@@ -482,9 +525,9 @@ A **qualified this reference** (essentially "qualified super") navigates through
 ```yaml
 # Example: Accessing inherited Boolean from composed BooleanData
 - NumberFactory:
-    Product:
-      Equal:
-        equal: [NumberIsZero, ~, Boolean]  # Qualified this: Boolean is inherited, not own
+    - Product:
+        - Equal:
+            - equal: [[NumberIsZero, ~, Boolean]]  # Qualified this: Boolean is inherited, not own
 - [Builtin, BooleanData]  # BooleanData provides the Boolean definition
 ```
 
@@ -492,15 +535,15 @@ A **qualified this reference** (essentially "qualified super") navigates through
 
 ```yaml
 Equal:
-  other:                   # Parameter 'other' in outer scope
-    - [Product]
-    - predecessor: [Product]
-  _recursiveEquality:
-    - [Successor, ~, predecessor, Equal]
-    - other: [Equal, ~, other, predecessor]  # Defining field 'other'
-    #         ^^^^^^^^^^^^^^^^^^
-    #         Qualified this to access outer 'other' parameter,
-    #         not the 'other:' field being defined here
+  - other:                   # Parameter 'other' in outer scope
+      - [Product]
+      - predecessor: [[Product]]
+  - _recursiveEquality:
+      - [Successor, ~, predecessor, Equal]
+      - other: [[Equal, ~, other, predecessor]]  # Defining field 'other'
+      #         ^^^^^^^^^^^^^^^^^^
+      #         Qualified this to access outer 'other' parameter,
+      #         not the 'other:' field being defined here
 ```
 
 Without qualified this, `[other]` in a lexical reference would be ambiguous:
@@ -514,22 +557,22 @@ Using `[Equal, ~, other, predecessor]` explicitly navigates from `Equal` scope t
 ```yaml
 # Accessing inherited property from composed category
 NatFactory:
-  Product:
-    Equal:
-      equal: [NatEquality, ~, Boolean]  # Boolean comes from composed BooleanData
-      #       ^^^^^^^^^^^^ scope name in composed result
-      #                     ^^^^^^^ inherited property
+  - Product:
+      - Equal:
+          - equal: [[NatEquality, ~, Boolean]]  # Boolean comes from composed BooleanData
+          #       ^^^^^^^^^^^^ scope name in composed result
+          #                     ^^^^^^^ inherited property
 
 # Cross-file constructor reference
 NatFactory:
-  Zero:
-    Equal:
-      _OtherAcceptance:
-        VisitorMap:
-          ZeroVisitor:
-            equal: [NatEquality, ~, BooleanFactory, "True"]  # BooleanFactory.True is inherited
-          #       ^^^^^^^^^^^^ scope name
-          #                     ^^^^^^^^^^^^^^^ ^^^^^^ path to inherited entity
+  - Zero:
+      - Equal:
+          - _OtherAcceptance:
+              - VisitorMap:
+                  - ZeroVisitor:
+                      - equal: [[NatEquality, ~, BooleanFactory, "True"]]  # BooleanFactory.True is inherited
+                  #       ^^^^^^^^^^^^ scope name
+                  #                     ^^^^^^^^^^^^^^^ ^^^^^^ path to inherited entity
 ```
 
 **When to use qualified this:**
@@ -542,20 +585,20 @@ NatFactory:
 ```yaml
 # ✗ BAD - using file name instead of factory name
 IsZero:
-  _equalZero:
-    - [Equal]
-    - other: [NumberIsZero, ~, Zero]  # WRONG: NumberIsZero is file name, not a factory
-    #        ^^^^^^^^^^^^^ File name, not a runtime scope instance
+  - _equalZero:
+      - [Equal]
+      - other: [[NumberIsZero, ~, Zero]]  # WRONG: NumberIsZero is file name, not a factory
+      #        ^^^^^^^^^^^^^ File name, not a runtime scope instance
 
 # ✓ GOOD - using lexical reference for own property (simplest)
 IsZero:
-  _equalZero:
-    - [Equal]
-    - other: [Zero]  # BEST: lexical reference to own property (defined in this file)
+  - _equalZero:
+      - [Equal]
+      - other: [[Zero]]  # BEST: lexical reference to own property (defined in this file)
 
 # ✓ GOOD - qualified this for inherited property
 IsZero:
-  equal: [NumberIsZero, ~, Boolean]  # Boolean is inherited from BooleanData, not own
+  - equal: [[NumberIsZero, ~, Boolean]]  # Boolean is inherited from BooleanData, not own
 ```
 
 #### Rule: Lexical for Own, Qualified This for Inherited
@@ -573,12 +616,12 @@ Lexical references are simpler but limited to own properties. Qualified this is 
 RequestScope:
   - [ffi, HttpSendResponse]
   - written: []                    # Silently creates empty scope if HttpSendResponse is not composed
-    response: [written]
+  - response: [[written]]
 
 # ✓ GOOD - qualified this fails loudly if inherited property is missing
 RequestScope:
   - [ffi, HttpSendResponse]
-  - response: [RequestScope, ~, written]  # Error if HttpSendResponse does not provide 'written'
+  - response: [[RequestScope, ~, written]]  # Error if HttpSendResponse does not provide 'written'
 ```
 
 ### Known Limitations

@@ -1,16 +1,16 @@
-- [NatConstants]
-- [Builtin, NatEqualityZero]
-- [Builtin, NatEqualitySuccessor]
-- [Builtin, NatPlusZero]
-- [Builtin, NatPlusSuccessor]
+# Entry point for the Cartesian-product tests: the FFI-free Nat core shown in the
+# paper (NatCartesianProductTest, a single {1,2}+{3,4} chain) and the BinNat core,
+# composed with the ToPython FFI so the suite can read trie value sets back as
+# Python natives via `.pythonValues`, plus the remaining Nat trie combinations
+# the paper does not show.
+- [NatCartesianProductTest]
+- [BinNatCartesianProductTest]
 - [Builtin, NatToPython]
 - [Builtin, BooleanToPython]
-- [Builtin, BinNatEquality]
-- [Builtin, BinNatPlus]
 - [Builtin, BinNatToPython]
 
   # =============================================================================
-  # Nat trie values: scopes inheriting multiple constructors simultaneously
+  # Further Nat trie combinations (not shown in the paper)
   # =============================================================================
 
   # Zero ∪ Two:  {0, 2}
@@ -18,119 +18,12 @@
     - [CartesianProductTest, ~, Zero]
     - [CartesianProductTest, ~, Two]
 
-  # One ∪ Two:  {1, 2}
-  NatOneOrTwo:
-    - [CartesianProductTest, ~, One]
-    - [CartesianProductTest, ~, Two]
-
-  # Three ∪ Four:  {3, 4}
-  NatThreeOrFour:
-    - [CartesianProductTest, ~, Three]
-    - [CartesianProductTest, ~, Four]
-
-  # =============================================================================
-  # Nat: (Zero ∪ Two) + Three  →  {0+3, 2+3} = {3, 5}
-  # =============================================================================
-
+  # (Zero ∪ Two) + Three  →  {0+3, 2+3} = {3, 5}
   NatZeroOrTwoPlusThree:
     - [NatZeroOrTwo, Plus]
     - addend: [CartesianProductTest, ~, Three]
 
-  # =============================================================================
-  # Nat: Three + (One ∪ Two)  →  {3+1, 3+2} = {4, 5}
-  # =============================================================================
-
+  # Three + (One ∪ Two)  →  {3+1, 3+2} = {4, 5}
   NatThreePlusOneOrTwo:
     - [CartesianProductTest, ~, Three, Plus]
-    - addend: [NatOneOrTwo]
-
-  # =============================================================================
-  # Nat: (One ∪ Two) + (Three ∪ Four)  →  {1+3, 1+4, 2+3, 2+4} = {4, 5, 6}
-  # =============================================================================
-
-  NatOneOrTwoPlusThreeOrFour:
-    - [NatOneOrTwo, Plus]
-    - addend: [NatThreeOrFour]
-
-  # =============================================================================
-  # Equality check: {4,5,6} == {4,5,6}  →  {True, False}  (Cartesian product)
-  # =============================================================================
-
-  NatResultEqualitySelf:
-    - [NatOneOrTwoPlusThreeOrFour, sum, Equal]
-    - other: [NatOneOrTwoPlusThreeOrFour, sum]
-
-  # =============================================================================
-  # Concrete BinNat values
-  # =============================================================================
-
-  BinNatZero:
-    - [CartesianProductTest, ~, BinNatFactory, Zero]
-
-  BinNatOne:
-    - [CartesianProductTest, ~, BinNatFactory, Odd]
-    - halfOfPredecessor: [BinNatZero]
-
-  BinNatTwo:
-    - [CartesianProductTest, ~, BinNatFactory, Even]
-    - half: [BinNatOne]
-
-  BinNatThree:
-    - [CartesianProductTest, ~, BinNatFactory, Odd]
-    - halfOfPredecessor: [BinNatOne]
-
-  BinNatFour:
-    - [CartesianProductTest, ~, BinNatFactory, Even]
-    - half: [BinNatTwo]
-
-  BinNatFive:
-    - [CartesianProductTest, ~, BinNatFactory, Odd]
-    - halfOfPredecessor: [BinNatTwo]
-
-  # =============================================================================
-  # BinNat trie values
-  #
-  # Even uses `half` and Odd uses `halfOfPredecessor` (distinct fields).
-  # Valid trie combinations:
-  #   - Zero ∪ Even(h)          — Zero has no half, so they can coexist
-  #   - Even(h) ∪ Odd(h')       — h and h' are independent fields
-  # =============================================================================
-
-  # Zero ∪ Two: Zero ∪ Even(One)  →  {0, 2}
-  BinNatZeroOrTwo:
-    - [BinNatZero]
-    - [BinNatTwo]
-
-  # Two ∪ Three: Even(One) ∪ Odd(One)  →  {2, 3}
-  BinNatTwoOrThree:
-    - [BinNatTwo]
-    - [BinNatThree]
-
-  # Four ∪ Five: Even(Two) ∪ Odd(Two)  →  {4, 5}
-  BinNatFourOrFive:
-    - [BinNatFour]
-    - [BinNatFive]
-
-  # =============================================================================
-  # BinNat: (Zero ∪ Two) + Three  →  {0+3, 2+3} = {3, 5}
-  # =============================================================================
-
-  BinNatZeroOrTwoPlusThree:
-    - [BinNatZeroOrTwo, Plus]
-    - addend: [BinNatThree]
-
-  # =============================================================================
-  # BinNat: Three + (Two ∪ Three)  →  {3+2, 3+3} = {5, 6}
-  # =============================================================================
-
-  BinNatThreePlusTwoOrThree:
-    - [BinNatThree, Plus]
-    - addend: [BinNatTwoOrThree]
-
-  # =============================================================================
-  # BinNat: (Two ∪ Three) + (Four ∪ Five)  →  {2+4, 2+5, 3+4, 3+5} = {6, 7, 8}
-  # =============================================================================
-
-  BinNatTwoOrThreePlusFourOrFive:
-    - [BinNatTwoOrThree, Plus]
-    - addend: [BinNatFourOrFive]
+    - addend: [CartesianProductTest, ~, NatOneOrTwo]

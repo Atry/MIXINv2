@@ -162,6 +162,36 @@ def _pair_set(pairs) -> str:
     ) + "\\}"
 
 
+def _eq_block(lhs: str, elements: list) -> str:
+    """A displayed equation stating a call and its result, appended after the
+    prose of a trace item.
+
+    For zero or one element the result is inline. For two or more it is
+    stacked one per line, and the equation breaks after the equals sign so
+    that a long left-hand side does not push the stacked set off the right
+    margin.
+    """
+    if not elements:
+        return f"\n  \\[\n    {lhs} = \\varnothing\n  \\]"
+    if len(elements) == 1:
+        return f"\n  \\[\n    {lhs} = \\{{{elements[0]}\\}}\n  \\]"
+    rows = [f"&{e}," for e in elements[:-1]] + [f"&{elements[-1]}"]
+    body = " \\\\\n          ".join(rows)
+    inner = (
+        "\\left\\{\\begin{aligned}\n          "
+        + body
+        + "\n        \\end{aligned}\\right\\}"
+    )
+    return (
+        "\n  \\[\n"
+        "    \\begin{aligned}\n"
+        f"      &{lhs} ={{}} \\\\\n"
+        f"      &\\quad {inner}\n"
+        "    \\end{aligned}\n"
+        "  \\]"
+    )
+
+
 def _describe(nid, fields, dep_nids, order, resolve_label_of) -> str:
     """English description of one semantic-function call: dependencies, how it
     computes, and the result it yields."""
@@ -170,77 +200,75 @@ def _describe(nid, fields, dep_nids, order, resolve_label_of) -> str:
     deps_clause = f" using {ref}" if ref else ""
 
     if fn == "overrides":
+        path_math = _path(fields["path"])
         p = _path_text(fields["path"])
-        result = _path_set(fields.get("result", ()))
-        return (
-            f"Compute $\\overrides({_path(fields['path'])})$, the paths "
+        elems = [_path(q) for q in fields.get("result", ())]
+        prose = (
+            f"Compute $\\overrides({path_math})$, the paths "
             f"sharing the identity of {p}{deps_clause}. "
             f"It keeps {p} and adds any same-label definition reached through "
-            f"the supers of its enclosing scope. "
-            f"Result: ${result}$."
+            f"the supers of its enclosing scope:"
         )
+        return prose + _eq_block(f"\\overrides({path_math})", elems)
     if fn == "bases":
+        path_math = _path(fields["path"])
         p = _path_text(fields["path"])
-        refs = fields.get("references", ())
-        if not refs:
-            return (
-                f"Compute $\\bases({_path(fields['path'])})$. "
-                f"{p} carries no inheritance reference "
-                f"($\\inherits = \\varnothing$), so it has no direct base. "
-                f"Result: $\\varnothing$."
-            )
-        ref_strs = "; ".join(
-            f"the reference pair $({r['n']}, {_down_math(r['down'])})$ "
-            f"(take {_steps(r['n'])} upward, then project {_down(r['down'])})"
-            for r in refs
+        targets = fields.get("eq_bases") or []
+        prose = (
+            f"Compute $\\bases({path_math})${deps_clause}. "
+            f"It resolves the references carried by the overrides of {p} at the "
+            f"enclosing scope, and collects their targets:"
         )
-        resolve_ref = resolve_label_of.get(nid)
-        target_clause = (
-            f"whose target is obtained by item~\\ref{{{resolve_ref}}}"
-            if resolve_ref
-            else "whose target is obtained by the corresponding $\\resolve$ step"
-        )
-        return (
-            f"Compute $\\bases({_path(fields['path'])})$. "
-            f"{p} carries {ref_strs}, {target_clause}."
+        return prose + _eq_block(
+            f"\\bases({path_math})", [_path(t) for t in targets]
         )
     if fn == "resolve":
         targets = fields.get("targets")
-        result = (
-            f" Result: ${_path_set(targets)}$." if targets is not None else ""
-        )
-        return (
+        prose = (
             f"Compute $\\resolve$ for the reference pair "
             f"$({fields['n']}, {_down_math(fields['down'])})$ defined at "
             f"{_path_text(fields['origin'])}, reached from inheritance site "
             f"{_path_text(fields['site'])}{deps_clause}. "
             f"It takes {_steps(fields['n'])} upward through $\\this$ and then "
-            f"appends the projection.{result}"
+            f"appends the projection"
         )
+        if targets is None:
+            return prose + "."
+        lhs = (
+            f"\\resolve({_path(fields['site'])}, {_path(fields['origin'])}, "
+            f"{fields['n']}, {_down_math(fields['down'])})"
+        )
+        return prose + ":" + _eq_block(lhs, [_path(t) for t in targets])
     if fn == "this":
         fin = ", ".join(_path(p) for p in fields["frontier_in"])
         fout = fields.get("frontier_out")
-        result = (
-            f" Result: ${_path_set(fout)}$." if fout is not None else ""
-        )
-        return (
+        prose = (
             f"Compute one $\\this$ step{deps_clause}: from the frontier "
             f"$\\{{{fin}\\}}$, take the supers of each frontier path and keep "
             f"those whose definition site is {_path_text(fields['def_site'])}, "
-            f"collecting their inheritance sites as the new frontier.{result}"
+            f"collecting their inheritance sites as the new frontier"
         )
+        if fout is None:
+            return prose + "."
+        lhs = (
+            f"\\this(\\{{{fin}\\}}, {_path(fields['def_site'])}, "
+            f"{fields['remaining']})"
+        )
+        return prose + ":" + _eq_block(lhs, [_path(p) for p in fout])
     if fn == "supers":
+        path_math = _path(fields["path"])
         p = _path_text(fields["path"])
         pairs = fields.get("pairs")
-        result = (
-            f" Result: ${_pair_set(pairs)}$." if pairs is not None else ""
-        )
-        return (
-            f"Compute $\\supers({_path(fields['path'])})${deps_clause}. "
+        prose = (
+            f"Compute $\\supers({path_math})${deps_clause}. "
             f"It takes the reflexive-transitive closure of $\\bases$ from {p}, "
             f"pairing each reachable override with the inheritance site through "
-            f"which it is reached.{result}"
+            f"which it is reached"
         )
+        if pairs is None:
+            return prose + "."
+        elems = [f"({_path(s)}, {_path(o)})" for s, o in pairs]
+        return prose + ":" + _eq_block(f"\\supers({path_math})", elems)
     return fn
 
 
@@ -266,6 +294,40 @@ def _steps(n: int) -> str:
     return f"{n} steps"
 
 
+def _sym_at(root_symbol, full_path):
+    """Navigate the root MixinSymbol to a full (unstripped) path via .get."""
+    s = root_symbol
+    for key in full_path:
+        s = s.get(key)
+        if s is None:
+            return None
+    return s
+
+
+def _eq_bases(root_symbol, full_path):
+    """Compute the paper's bases(p) (equation eq:bases): the union, over every
+    override o of p and every reference r that o carries, of resolving r at the
+    enclosing scope init(p). This is what the appendix's trace should show for a
+    bases node; the interpreter instead exposes per-node own references
+    (normalized_references), which is not eq:bases for an inherited override.
+    Returns a sorted list of stripped target paths, or None if p is unreachable.
+    """
+    p_sym = _sym_at(root_symbol, full_path)
+    site = _sym_at(root_symbol, full_path[:-1])
+    if p_sym is None or site is None:
+        return None
+    targets: list = []
+    seen: set = set()
+    for override in p_sym.overrides:
+        for reference in override.normalized_references:
+            for target in reference.get_symbols(site):
+                stripped = _strip(tuple(target.path))
+                if stripped not in seen:
+                    seen.add(stripped)
+                    targets.append(stripped)
+    return sorted(targets)
+
+
 def test_generate_numbered_trace() -> None:
     _trace_patch.reset()
     _trace_patch.install()
@@ -281,6 +343,13 @@ def test_generate_numbered_trace() -> None:
 
     nodes, edges = _collect_graph()
     assert _QUERY_SUPERS in nodes, "query supers node missing"
+
+    # For each bases node, compute the paper's eq:bases value (overrides expanded
+    # and their references resolved at the enclosing scope), not the interpreter's
+    # per-node own references. Computed after uninstall, so it is untraced.
+    for nid, node_fields in nodes.items():
+        if nid[0] == "bases":
+            node_fields["eq_bases"] = _eq_bases(root.symbol, node_fields["path"])
 
     # Merge result fields from the linear records into the node fields, so each
     # node carries everything needed to describe its result. Node ids match the
@@ -346,18 +415,31 @@ def test_generate_numbered_trace() -> None:
         text = _describe(nid, nodes[nid], dep_nids, order, resolve_label_of)
         lines.append(rf"  \item \label{{{_label_for(nid)}}}{text}")
 
-    # Final item: properties of the query, derived from the last supers.
+    # Final item: membership point query for the label MyInner at the query
+    # path, decided from the last supers (membership is supers(p . l) != empty).
     query = ("MultipleOuters", "HasMultipleOuters", "outer")
+    query_inner = query + ("MyInner",)
+    my_outer = ("MultipleOuters", "MyOuter")
+    my_outer_inner = ("MultipleOuters", "MyOuter", "MyInner")
+    obj1 = _path(("MultipleOuters", "Object1"))
+    obj2 = _path(("MultipleOuters", "Object2"))
+    witness = (
+        "\n  \\[\n"
+        "    \\begin{aligned}\n"
+        f"      &(\\_,\\; {_path(my_outer)}) \\in \\supers({_path(query)}), \\\\\n"
+        f"      &{_path(my_outer_inner)} \\in \\dom(\\inherits), \\\\\n"
+        f"      &\\quad \\text{{reached through }} {obj1} \\text{{ and }} {obj2}, \\\\\n"
+        f"      &\\supers({_path(query_inner)}) \\neq \\varnothing.\n"
+        "    \\end{aligned}\n"
+        "  \\]\n  "
+    )
     lines.append(
-        rf"  \item \label{{trace:properties}}Compute "
-        rf"$\properties({_path(query)})$ using "
-        rf"item~\ref{{{_label_for(_QUERY_SUPERS)}}}. "
-        rf"It unions the $\defines$ of every override path in that $\supers$ "
-        rf"set. Only ${_path(('MultipleOuters', 'MyOuter'))}$ defines a "
-        rf"label, namely ${_mathlabel('MyInner')}$, reached through both "
-        rf"${_path(('MultipleOuters', 'Object1'))}$ and "
-        rf"${_path(('MultipleOuters', 'Object2'))}$; set union collapses the "
-        rf"two routes. Result: $\{{{_mathlabel('MyInner')}\}}$."
+        rf"  \item \label{{trace:property}}Decide whether "
+        rf"${_mathlabel('MyInner')}$ is a property at {_path_text(query)}, that is, "
+        rf"whether the path {_path_text(query_inner)} exists. "
+        rf"Item~\ref{{{_label_for(_QUERY_SUPERS)}}} exhibits a witnessing override:"
+        + witness
+        + rf"so ${_mathlabel('MyInner')}$ is a property at {_path_text(query)}."
     )
     lines.append(r"\end{enumerate}")
 

@@ -14,7 +14,7 @@ Tests four patterns not covered by existing test suites:
 - RelationalMultiVariableJoin: join on multiple variables simultaneously
   multiJoin(X,Y) :- r(X,Y), s(X,Y)
 
-All files use the RepeatedVisitor encoding with TailMap navigation.
+All files use the RepeatedVisitor encoding with __TailMap navigation.
 """
 
 import pytest
@@ -84,15 +84,15 @@ def multi_variable_join_scope() -> Scope:
 
 
 def _collect_pairs_tailmap(relation: Scope) -> set[tuple[str, str]]:
-    """Enumerate all (first, second) pairs in a TailMap-encoded relation."""
+    """Enumerate all (first, second) pairs in a __TailMap-encoded relation."""
     pairs: set[tuple[str, str]] = set()
     for first in ("a", "b", "c"):
         for second in ("a", "b", "c"):
             try:
-                tail1 = getattr(relation.TailMap, first)
-                getattr(tail1.TailMap, second)
+                tail1 = getattr(relation["__TailMap"], first)
+                getattr(tail1["__TailMap"], second)
                 pairs.add((first, second))
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
     return pairs
 
@@ -115,45 +115,45 @@ class TestThreeWayJoinAlpha:
     """Verify alpha relation facts."""
 
     def test_alpha_a_b(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.alpha.TailMap.a.TailMap.b, Scope)
+        assert isinstance(three_way_join_scope.alpha["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_alpha_c_b(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.alpha.TailMap.c.TailMap.b, Scope)
+        assert isinstance(three_way_join_scope.alpha["__TailMap"].c["__TailMap"].b, Scope)
 
     def test_alpha_lacks_b_first_column(self, three_way_join_scope: Scope) -> None:
         """No alpha(b,...) — b is not a first-column entity in alpha."""
-        with pytest.raises(AttributeError):
-            three_way_join_scope.alpha.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            three_way_join_scope.alpha["__TailMap"].b
 
 
 class TestThreeWayJoinBeta:
     """Verify beta relation facts."""
 
     def test_beta_b_a(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.beta.TailMap.b.TailMap.a, Scope)
+        assert isinstance(three_way_join_scope.beta["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_beta_b_c(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.beta.TailMap.b.TailMap.c, Scope)
+        assert isinstance(three_way_join_scope.beta["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_beta_lacks_a_first_column(self, three_way_join_scope: Scope) -> None:
         """No beta(a,...) — only b is a first-column entity in beta."""
-        with pytest.raises(AttributeError):
-            three_way_join_scope.beta.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            three_way_join_scope.beta["__TailMap"].a
 
 
 class TestThreeWayJoinGamma:
     """Verify gamma relation facts."""
 
     def test_gamma_a_b(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.gamma.TailMap.a.TailMap.b, Scope)
+        assert isinstance(three_way_join_scope.gamma["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_gamma_c_a(self, three_way_join_scope: Scope) -> None:
-        assert isinstance(three_way_join_scope.gamma.TailMap.c.TailMap.a, Scope)
+        assert isinstance(three_way_join_scope.gamma["__TailMap"].c["__TailMap"].a, Scope)
 
     def test_gamma_lacks_b_first_column(self, three_way_join_scope: Scope) -> None:
         """No gamma(b,...) — b is not a first-column entity in gamma."""
-        with pytest.raises(AttributeError):
-            three_way_join_scope.gamma.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            three_way_join_scope.gamma["__TailMap"].b
 
 
 class TestThreeWayJoinChain:
@@ -173,29 +173,29 @@ class TestThreeWayJoinChain:
 
     def test_chain_a_a(self, three_way_join_scope: Scope) -> None:
         """alpha(a,b) + beta(b,c) + gamma(c,a) → chain(a,a)."""
-        assert isinstance(three_way_join_scope.chain.TailMap.a.TailMap.a, Scope)
+        assert isinstance(three_way_join_scope.chain["__TailMap"].a["__TailMap"].a, Scope)
 
     def test_chain_a_b(self, three_way_join_scope: Scope) -> None:
         """alpha(a,b) + beta(b,a) + gamma(a,b) → chain(a,b)."""
-        assert isinstance(three_way_join_scope.chain.TailMap.a.TailMap.b, Scope)
+        assert isinstance(three_way_join_scope.chain["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_chain_c_a(self, three_way_join_scope: Scope) -> None:
         """alpha(c,b) + beta(b,c) + gamma(c,a) → chain(c,a)."""
-        assert isinstance(three_way_join_scope.chain.TailMap.c.TailMap.a, Scope)
+        assert isinstance(three_way_join_scope.chain["__TailMap"].c["__TailMap"].a, Scope)
 
     def test_chain_c_b(self, three_way_join_scope: Scope) -> None:
         """alpha(c,b) + beta(b,a) + gamma(a,b) → chain(c,b)."""
-        assert isinstance(three_way_join_scope.chain.TailMap.c.TailMap.b, Scope)
+        assert isinstance(three_way_join_scope.chain["__TailMap"].c["__TailMap"].b, Scope)
 
     def test_chain_lacks_b_first_column(self, three_way_join_scope: Scope) -> None:
         """No chain(b,...) — b is not in alpha's first column."""
-        with pytest.raises(AttributeError):
-            three_way_join_scope.chain.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            three_way_join_scope.chain["__TailMap"].b
 
     def test_chain_lacks_c_second_column(self, three_way_join_scope: Scope) -> None:
         """No chain(a,c) — c is not in gamma's second column."""
-        with pytest.raises(AttributeError):
-            three_way_join_scope.chain.TailMap.a.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            three_way_join_scope.chain["__TailMap"].a["__TailMap"].c
 
 
 # =============================================================================
@@ -216,15 +216,15 @@ class TestConstantEdge:
     """Verify edge facts for constant rule example."""
 
     def test_edge_a_b(self, constant_scope: Scope) -> None:
-        assert isinstance(constant_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(constant_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_c(self, constant_scope: Scope) -> None:
-        assert isinstance(constant_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(constant_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_lacks_c_first_column(self, constant_scope: Scope) -> None:
         """No edge(c,...) — c is not a first-column entity."""
-        with pytest.raises(AttributeError):
-            constant_scope.edge.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            constant_scope.edge["__TailMap"].c
 
 
 class TestConstantViaB:
@@ -241,17 +241,17 @@ class TestConstantViaB:
 
     def test_via_b_a_c(self, constant_scope: Scope) -> None:
         """edge(a,b) + edge(b,c) → viaB(a,c)."""
-        assert isinstance(constant_scope.viaB.TailMap.a.TailMap.c, Scope)
+        assert isinstance(constant_scope.viaB["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_via_b_lacks_b_first_column(self, constant_scope: Scope) -> None:
         """No viaB(b,...) — b is not in edge(X,b)'s X when Y=b is required."""
-        with pytest.raises(AttributeError):
-            constant_scope.viaB.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            constant_scope.viaB["__TailMap"].b
 
     def test_via_b_lacks_c_first_column(self, constant_scope: Scope) -> None:
         """No viaB(c,...) — c not in edge's first column."""
-        with pytest.raises(AttributeError):
-            constant_scope.viaB.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            constant_scope.viaB["__TailMap"].c
 
 
 # =============================================================================
@@ -273,13 +273,13 @@ class TestConstantJoinEdge:
     """Verify 3-cycle edge facts for constant join example."""
 
     def test_edge_a_b(self, constant_join_scope: Scope) -> None:
-        assert isinstance(constant_join_scope.edge.TailMap.a.TailMap.b, Scope)
+        assert isinstance(constant_join_scope.edge["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_edge_b_c(self, constant_join_scope: Scope) -> None:
-        assert isinstance(constant_join_scope.edge.TailMap.b.TailMap.c, Scope)
+        assert isinstance(constant_join_scope.edge["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_edge_c_a(self, constant_join_scope: Scope) -> None:
-        assert isinstance(constant_join_scope.edge.TailMap.c.TailMap.a, Scope)
+        assert isinstance(constant_join_scope.edge["__TailMap"].c["__TailMap"].a, Scope)
 
 
 class TestConstantJoinResult:
@@ -291,22 +291,22 @@ class TestConstantJoinResult:
         assert pairs == expected
 
     def test_const_join_c_c(self, constant_join_scope: Scope) -> None:
-        assert isinstance(constant_join_scope.constJoin.TailMap.c.TailMap.c, Scope)
+        assert isinstance(constant_join_scope.constJoin["__TailMap"].c["__TailMap"].c, Scope)
 
     def test_const_join_lacks_a_first_column(
         self, constant_join_scope: Scope
     ) -> None:
         """No constJoin(a,...) — edge(X,Y=a) requires edge(a,b),
         but edge(Y=a,b) means Y=a, and then edge(a,b) has b≠b check fails."""
-        with pytest.raises(AttributeError):
-            constant_join_scope.constJoin.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            constant_join_scope.constJoin["__TailMap"].a
 
     def test_const_join_lacks_b_first_column(
         self, constant_join_scope: Scope
     ) -> None:
         """No constJoin(b,...) — no edge(X,Y) where edge(Y,b) holds and X=b."""
-        with pytest.raises(AttributeError):
-            constant_join_scope.constJoin.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            constant_join_scope.constJoin["__TailMap"].b
 
 
 class TestConstantJoinVsUnconstrained:
@@ -319,10 +319,10 @@ class TestConstantJoinVsUnconstrained:
 
     def test_const_join_w_restricted_to_c(self, constant_join_scope: Scope) -> None:
         """W is always c — edge(b,W) only has W=c."""
-        with pytest.raises(AttributeError):
-            constant_join_scope.constJoin.TailMap.c.TailMap.a
-        with pytest.raises(AttributeError):
-            constant_join_scope.constJoin.TailMap.c.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            constant_join_scope.constJoin["__TailMap"].c["__TailMap"].a
+        with pytest.raises((AttributeError, KeyError)):
+            constant_join_scope.constJoin["__TailMap"].c["__TailMap"].b
 
 
 # =============================================================================
@@ -339,28 +339,28 @@ class TestMultiVariableJoinR:
     """Verify r relation facts."""
 
     def test_r_a_b(self, multi_variable_join_scope: Scope) -> None:
-        assert isinstance(multi_variable_join_scope.r.TailMap.a.TailMap.b, Scope)
+        assert isinstance(multi_variable_join_scope.r["__TailMap"].a["__TailMap"].b, Scope)
 
     def test_r_b_c(self, multi_variable_join_scope: Scope) -> None:
-        assert isinstance(multi_variable_join_scope.r.TailMap.b.TailMap.c, Scope)
+        assert isinstance(multi_variable_join_scope.r["__TailMap"].b["__TailMap"].c, Scope)
 
     def test_r_lacks_c_first_column(self, multi_variable_join_scope: Scope) -> None:
-        with pytest.raises(AttributeError):
-            multi_variable_join_scope.r.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            multi_variable_join_scope.r["__TailMap"].c
 
 
 class TestMultiVariableJoinS:
     """Verify s relation facts."""
 
     def test_s_a_c(self, multi_variable_join_scope: Scope) -> None:
-        assert isinstance(multi_variable_join_scope.s.TailMap.a.TailMap.c, Scope)
+        assert isinstance(multi_variable_join_scope.s["__TailMap"].a["__TailMap"].c, Scope)
 
     def test_s_b_a(self, multi_variable_join_scope: Scope) -> None:
-        assert isinstance(multi_variable_join_scope.s.TailMap.b.TailMap.a, Scope)
+        assert isinstance(multi_variable_join_scope.s["__TailMap"].b["__TailMap"].a, Scope)
 
     def test_s_lacks_c_first_column(self, multi_variable_join_scope: Scope) -> None:
-        with pytest.raises(AttributeError):
-            multi_variable_join_scope.s.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            multi_variable_join_scope.s["__TailMap"].c
 
 
 class TestMultiVariableJoinResult:
@@ -380,22 +380,22 @@ class TestMultiVariableJoinResult:
         self, multi_variable_join_scope: Scope
     ) -> None:
         """No multiJoin(a,...) — r(a,b) and s(a,c) differ in Y."""
-        with pytest.raises(AttributeError):
-            multi_variable_join_scope.multiJoin.TailMap.a
+        with pytest.raises((AttributeError, KeyError)):
+            multi_variable_join_scope.multiJoin["__TailMap"].a
 
     def test_multi_join_lacks_b_first_column(
         self, multi_variable_join_scope: Scope
     ) -> None:
         """No multiJoin(b,...) — r(b,c) and s(b,a) differ in Y."""
-        with pytest.raises(AttributeError):
-            multi_variable_join_scope.multiJoin.TailMap.b
+        with pytest.raises((AttributeError, KeyError)):
+            multi_variable_join_scope.multiJoin["__TailMap"].b
 
     def test_multi_join_lacks_c_first_column(
         self, multi_variable_join_scope: Scope
     ) -> None:
         """No multiJoin(c,...) — c not in r's first column."""
-        with pytest.raises(AttributeError):
-            multi_variable_join_scope.multiJoin.TailMap.c
+        with pytest.raises((AttributeError, KeyError)):
+            multi_variable_join_scope.multiJoin["__TailMap"].c
 
 
 class TestMultiVariableJoinSemantics:

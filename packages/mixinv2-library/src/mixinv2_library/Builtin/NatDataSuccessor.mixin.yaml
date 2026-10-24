@@ -1,5 +1,5 @@
 - [NatData]
 - NatFactory:
-    Successor:
-      - [NatFactory, ~, Product]
-      - predecessor: [NatFactory, ~, Product]
+    - Successor:
+        - [NatFactory, ~, Product]
+        - predecessor: [[NatFactory, ~, Product]]

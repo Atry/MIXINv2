@@ -1,12 +1,12 @@
 - [NatDataZero]
 - [NatDataSuccessor]
 - NatFactory:
-    Product:
-      Decrement:
-        decreased: [Product]
-    Zero:
-      Decrement:
-        decreased: [Zero]
-    Successor:
-      Decrement:
-        decreased: [Successor, ~, predecessor]
+    - Product:
+        - Decrement:
+            - decreased: [[Product]]
+    - Zero:
+        - Decrement:
+            - decreased: [[Zero]]
+    - Successor:
+        - Decrement:
+            - decreased: [[Successor, ~, predecessor]]
